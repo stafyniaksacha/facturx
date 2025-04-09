@@ -1,12 +1,12 @@
 import { defineCommand, runMain as _runMain, ParsedArgs, ArgsDef } from "citty";
-import { name, description, version } from "../package.json" assert { type: "json" };
+import pkg from "../package.json" assert { type: "json" };
 
 
 export const main = defineCommand({
   meta: {
-    name,
-    description,
-    version,
+    name: pkg.name,
+    description: pkg.description,
+    version: pkg.version,
   },
   subCommands: {
     extract: () => import('./commands/extract').then((r) => r.default),

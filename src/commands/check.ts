@@ -33,13 +33,18 @@ export default defineCommand({
       flavor: args.args.flavor,
       level: args.args.level,
     }
-    const valid = await check(options)
+    const result = await check(options)
 
-    if (!valid) {
-      console.error(`Invalid XML format (${options.flavor} - ${options.level})`)
+    if (!result.valid) {
+      console.error(`Invalid XML format (${result.flavor} - ${result.level}):`)
+
+      for (const error of result.errors) {
+        console.error(error.message)
+      }
+      
       process.exit(1)
     }
 
-    console.log(`Valid XML format (${options.flavor} - ${options.level})`)
+    console.log(`Valid XML format (${result.flavor} - ${result.level})`)
   }
 })

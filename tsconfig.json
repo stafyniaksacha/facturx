@@ -8,7 +8,10 @@
     "strict": true,
     "declaration": true,
     "resolveJsonModule": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "~/*": ["./src/*"]
+    }
   },
   "include": ["src", "tests/facturx.test.ts"]
 }

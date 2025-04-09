@@ -15,7 +15,6 @@ import {
   TradePartyType,
   TradeAddressType,
   TradeTaxType,
-  SpecifiedPeriodType,
   TradeSettlementHeaderMonetarySummationType,
   CrossIndustryInvoiceType,
   ExchangedDocumentContextType,
@@ -24,8 +23,15 @@ import {
   HeaderTradeDeliveryType,
   HeaderTradeSettlementType,
   SupplyChainTradeTransactionType,
-  FacturX
-} from '../src/models/facturx/index';
+  SupplyChainTradeLineItemType,
+  DocumentLineDocumentType,
+  TradeProductType,
+  LineTradeAgreementType,
+  LineTradeDeliveryType,
+  LineTradeSettlementType,
+  TradeSettlementLineMonetarySummationType,
+  TradePriceType,
+} from '../src/models';
 
 describe('Factur-X model', () => {
   describe('UnqualifiedDataTypes', () => {
@@ -135,7 +141,7 @@ describe('Factur-X model', () => {
   });
 
   describe('Complete invoice model', () => {
-    test('Should create a minimal valid invoice', () => {
+    test('Should create a minimal invoice', () => {
       // Document context
       const guidelineID = new IDType({ value: 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:extended' });
       const guidelineParameter = new DocumentContextParameterType({ id: guidelineID });
@@ -208,8 +214,36 @@ describe('Factur-X model', () => {
       });
 
       // Supply chain transaction
+      const lineItem = new SupplyChainTradeLineItemType({
+        associatedDocumentLineDocument: new DocumentLineDocumentType({
+          lineID: new IDType({ value: '1' })
+        }),
+        specifiedTradeProduct: new TradeProductType({
+          name: new TextType({ value: 'Test Product' })
+        }),
+        specifiedLineTradeAgreement: new LineTradeAgreementType({
+          netPriceProductTradePrice: new TradePriceType({
+            chargeAmount: new AmountType({ value: 100, currencyID: 'EUR' }),
+            basisQuantity: { value: 1, unitCode: 'C62' }
+          })
+        }),
+        specifiedLineTradeDelivery: new LineTradeDeliveryType({
+          billedQuantity: { value: 1, unitCode: 'C62' }
+        }),
+        specifiedLineTradeSettlement: new LineTradeSettlementType({
+          applicableTradeTax: [new TradeTaxType({
+            categoryCode: new TaxCategoryCodeType({ value: 'S' }),
+            typeCode: new TaxTypeCodeType({ value: 'VAT' }),
+            rateApplicablePercent: { value: 20 }
+          })],
+          specifiedTradeSettlementLineMonetarySummation: new TradeSettlementLineMonetarySummationType({
+            lineTotalAmount: new AmountType({ value: 120, currencyID: 'EUR' })
+          })
+        })
+      });
+
       const transaction = new SupplyChainTradeTransactionType({
-        includedSupplyChainTradeLineItem: [],
+        includedSupplyChainTradeLineItem: [lineItem],
         applicableHeaderTradeAgreement: tradeAgreement,
         applicableHeaderTradeDelivery: tradeDelivery,
         applicableHeaderTradeSettlement: tradeSettlement
@@ -227,15 +261,6 @@ describe('Factur-X model', () => {
       expect(invoice.exchangedDocumentContext).toBe(documentContext);
       expect(invoice.exchangedDocument).toBe(document);
       expect(invoice.supplyChainTradeTransaction).toBe(transaction);
-      
-      // Check FacturX alias
-      const factux = new FacturX({
-        exchangedDocumentContext: documentContext,
-        exchangedDocument: document,
-        supplyChainTradeTransaction: transaction
-      });
-      
-      expect(factux).toBeInstanceOf(CrossIndustryInvoiceType);
     });
   });
-}); 
+});

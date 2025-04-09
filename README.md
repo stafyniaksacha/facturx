@@ -24,7 +24,7 @@ npx @stafyniaksacha/facturx generate \
 # Extract a Factur-X/Order-X XML from a PDF
 npx @stafyniaksacha/facturx extract input.pdf > output.xml
 
-# Check a Factur-X/Order-X XML file
+# Check a Factur-X/Order-X XML file, display validation errors
 npx @stafyniaksacha/facturx check input.xml \
   --flavor facturx \ # autodetects the flavor if not provided
   --level en16931 # autodetects the level if not provided
@@ -60,6 +60,7 @@ const buffer = await generate({
     title: 'John Doe',
     subject: 'John Doe',
     keywords: ['John', 'Doe'],
+    date: new Date(),
   },
 })
 
@@ -74,7 +75,7 @@ const [filename, content] = await extract({
 })
 
 // Extract a Factur-X/Order-X XML from a PDF
-const valid = await check({
+const { valid, errors, flavor, level } = await check({
   xml, // string, buffer or XMLDocument
 
   // Optional
@@ -86,70 +87,118 @@ const valid = await check({
 
 
 ```typescript
-import { FacturX, modelToXml } from '@stafyniaksacha/facturx'
+import { invoiceToXml } from '@stafyniaksacha/facturx'
 import {
-  AmountType, 
+  AmountType,
   IDType,
   TextType,
   DateTimeType,
-  DocumentCodeType,
   CurrencyCodeType,
+  DocumentCodeType,
   CountryIDType,
+  TaxCategoryCodeType,
+  TaxTypeCodeType,
   DocumentContextParameterType,
   TradePartyType,
   TradeAddressType,
+  TradeTaxType,
   TradeSettlementHeaderMonetarySummationType,
+  CrossIndustryInvoiceType,
   ExchangedDocumentContextType,
   ExchangedDocumentType,
   HeaderTradeAgreementType,
   HeaderTradeDeliveryType,
   HeaderTradeSettlementType,
-  SupplyChainTradeTransactionType
-} from '@stafyniaksacha/facturx'
+  SupplyChainTradeTransactionType,
+} from '@stafyniaksacha/facturx/models'
 
-// Convert a FacturX model to XML
-const invoice = new FacturX({
-  exchangedDocumentContext: new ExchangedDocumentContextType({
-    guidelineSpecifiedDocumentContextParameter: new DocumentContextParameterType({
-      id: new IDType({ value: 'urn:factur-x.eu:1p0:minimum' })
-    })
-  }),
-  exchangedDocument: new ExchangedDocumentType({
-    id: new IDType({ value: 'INV-2023-001' }),
-    typeCode: new DocumentCodeType({ value: '380' }),
-    issueDateTime: new DateTimeType({ dateTimeString: '20230415', format: '102' })
-  }),
-  supplyChainTradeTransaction: new SupplyChainTradeTransactionType({
-    includedSupplyChainTradeLineItem: [],
-    applicableHeaderTradeAgreement: new HeaderTradeAgreementType({
-      sellerTradeParty: new TradePartyType({
-        name: new TextType({ value: 'Seller Company' }),
-        postalTradeAddress: new TradeAddressType({
-          countryID: new CountryIDType({ value: 'FR' })
-        })
-      }),
-      buyerTradeParty: new TradePartyType({
-        name: new TextType({ value: 'Buyer Company' })
-      })
-    }),
-    applicableHeaderTradeDelivery: new HeaderTradeDeliveryType({}),
-    applicableHeaderTradeSettlement: new HeaderTradeSettlementType({
-      invoiceCurrencyCode: new CurrencyCodeType({ value: 'EUR' }),
-      applicableTradeTax: [],
-      specifiedTradeSettlementHeaderMonetarySummation: new TradeSettlementHeaderMonetarySummationType({
-        lineTotalAmount: new AmountType({ value: 100 }),
-        taxBasisTotalAmount: [new AmountType({ value: 100 })],
-        taxTotalAmount: [new AmountType({ value: 20, currencyID: 'EUR' })],
-        grandTotalAmount: [new AmountType({ value: 120 })],
-        duePayableAmount: new AmountType({ value: 120 })
-      })
-    })
-  })
+// Create a FacturX model (minimum version)
+const guidelineID = new IDType({ value: 'urn:factur-x.eu:1p0:minimum' });
+const guidelineParameter = new DocumentContextParameterType({ id: guidelineID });
+const documentContext = new ExchangedDocumentContextType({
+  guidelineSpecifiedDocumentContextParameter: guidelineParameter
+});
+
+// Document 
+const invoiceID = new IDType({ value: 'INV-2023-001' });
+const typeCode = new DocumentCodeType({ value: '380' });
+const issueDT = new DateTimeType({ dateTimeString: '20230415', format: '102' });
+const document = new ExchangedDocumentType({
+  id: invoiceID,
+  typeCode,
+  issueDateTime: issueDT
+});
+
+// Seller and buyer
+const sellerName = new TextType({ value: 'Acme Corporation' });
+const sellerAddress = new TradeAddressType({
+  countryID: new CountryIDType({ value: 'FR' })
+});
+const sellerParty = new TradePartyType({
+  name: sellerName,
+  postalTradeAddress: sellerAddress
+});
+
+const buyerName = new TextType({ value: 'Sample Customer' });
+const buyerAddress = new TradeAddressType({
+  countryID: new CountryIDType({ value: 'FR' })
+});
+const buyerParty = new TradePartyType({
+  name: buyerName,
+  postalTradeAddress: buyerAddress
+});
+
+// Trade agreement
+const tradeAgreement = new HeaderTradeAgreementType({
+  sellerTradeParty: sellerParty,
+  buyerTradeParty: buyerParty
+});
+
+// Trade delivery
+const tradeDelivery = new HeaderTradeDeliveryType({});
+
+// Trade settlement
+const currencyCode = new CurrencyCodeType({ value: 'EUR' });
+const tradeTax = new TradeTaxType({
+  categoryCode: new TaxCategoryCodeType({ value: 'S' }),
+  typeCode: new TaxTypeCodeType({ value: 'VAT' }),
+  rateApplicablePercent: { value: 20 }
+});
+
+const taxBasisTotalAmount = new AmountType({ value: 100, currencyID: 'EUR' });
+const taxTotalAmount = new AmountType({ value: 20, currencyID: 'EUR' });
+const grandTotalAmount = new AmountType({ value: 120, currencyID: 'EUR' });
+const duePayableAmount = new AmountType({ value: 120, currencyID: 'EUR' });
+
+const summation = new TradeSettlementHeaderMonetarySummationType({
+  lineTotalAmount: new AmountType({ value: 100, currencyID: 'EUR' }),
+  taxBasisTotalAmount: [taxBasisTotalAmount],
+  taxTotalAmount: [taxTotalAmount],
+  grandTotalAmount: [grandTotalAmount],
+  duePayableAmount
+});
+
+const tradeSettlement = new HeaderTradeSettlementType({
+  invoiceCurrencyCode: currencyCode,
+  applicableTradeTax: [tradeTax],
+  specifiedTradeSettlementHeaderMonetarySummation: summation
+});
+
+const transaction = new SupplyChainTradeTransactionType({
+  applicableHeaderTradeAgreement: tradeAgreement,
+  applicableHeaderTradeDelivery: tradeDelivery,
+  applicableHeaderTradeSettlement: tradeSettlement
+});
+
+const invoice = new CrossIndustryInvoiceType({
+  exchangedDocumentContext: documentContext,
+  exchangedDocument: document,
+  supplyChainTradeTransaction: transaction
 });
 
 // Convert the model to XML
-const xmlDoc = await modelToXml(invoice);
-const xmlString = xmlDoc.toString();
+const xml = await invoiceToXml(invoice);
+const xmlString = xml.toString();
 ```
 
 ## Usefull links

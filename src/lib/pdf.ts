@@ -10,7 +10,22 @@ import {
   PDFRawStream,
 } from 'pdf-lib';
 
-const extractRawAttachments = (pdfDoc: PDFDocument) => {
+export function extractAttachments(pdfDoc: PDFDocument) {
+  const rawAttachments = extractRawAttachments(pdfDoc)
+
+  return rawAttachments.map(({ fileName, fileSpec }) => {
+    const stream = fileSpec
+      .lookup(PDFName.of('EF'), PDFDict)
+      .lookup(PDFName.of('F'), PDFStream) as PDFRawStream
+
+    return {
+      name: fileName.decodeText(),
+      data: decodePDFRawStream(stream).decode(),
+    }
+  })
+}
+
+function extractRawAttachments(pdfDoc: PDFDocument) {
   if (!pdfDoc.catalog.has(PDFName.of('Names'))) return [];
   const Names = pdfDoc.catalog.lookup(PDFName.of('Names'), PDFDict);
 
@@ -32,17 +47,4 @@ const extractRawAttachments = (pdfDoc: PDFDocument) => {
   }
 
   return rawAttachments;
-};
-
-export const extractAttachments = (pdfDoc: PDFDocument) => {
-  const rawAttachments = extractRawAttachments(pdfDoc);
-  return rawAttachments.map(({ fileName, fileSpec }) => {
-    const stream = fileSpec
-      .lookup(PDFName.of('EF'), PDFDict)
-      .lookup(PDFName.of('F'), PDFStream) as PDFRawStream;
-    return {
-      name: fileName.decodeText(),
-      data: decodePDFRawStream(stream).decode(),
-    };
-  });
-};
+}

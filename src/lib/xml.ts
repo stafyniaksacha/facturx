@@ -1,0 +1,164 @@
+import { XMLDocument, XMLElement } from "libxmljs"
+import { parse } from "date-fns"
+import {
+  DOC_TYPE_KEY,
+  FACTURX_SCHEMA,
+  ORDERX_SCHEMA,
+} from './constants'
+import { resolveXml } from "./resolve"
+import { BaseInfo } from "../types"
+
+const xmlnsRe = /xmlns:([^=]+)="([^"]+)"/g
+
+export function extractNamespaces(fileDoc: XMLDocument) {
+  // segfault - https://github.com/libxmljs/libxmljs/issues/649
+  // const namespaces = fileDoc.namespaces()
+  const str = fileDoc.toString()
+
+  const namespaces: Record<string, string> = {}
+
+  let match: RegExpExecArray | null
+  while ((match = xmlnsRe.exec(str)) !== null) {
+    namespaces[match[1]] = match[2]
+  }
+
+  return namespaces
+}
+
+export function getLevel(xmlDoc: XMLDocument) {
+  const namespaces = extractNamespaces(xmlDoc)
+
+  // Factur-X and Order-X
+  let doc_id_xpath = xmlDoc.find([
+    "//rsm:ExchangedDocumentContext",
+    "/ram:GuidelineSpecifiedDocumentContextParameter",
+    "/ram:ID",
+  ].join(''), namespaces)
+  
+  if (!doc_id_xpath.length) {
+    // ZUGFeRD 1.0
+    doc_id_xpath = xmlDoc.find([
+      "//rsm:SpecifiedExchangedDocumentContext",
+      "/ram:GuidelineSpecifiedDocumentContextParameter",
+      "/ram:ID",
+    ].join(''), namespaces)
+  }
+  if (!doc_id_xpath.length) {
+    throw new Error('No ID found in the document')
+  }
+  const xpathNode = doc_id_xpath[0]
+
+  if (!('text' in xpathNode)) {
+    throw new Error('No text found in the ID node')
+  }
+
+  const doc_id = xpathNode?.text()?.split(':')
+  let level = doc_id[doc_id.length - 1]
+
+  const possibleValues = new Set([...Object.keys(FACTURX_SCHEMA), ...Object.keys(ORDERX_SCHEMA)])
+  if (!possibleValues.has(level)) {
+    // Order-X
+    level = doc_id[doc_id.length - 2] // skip the last part (date revision)
+  }
+  if (!possibleValues.has(level)) {
+    throw new Error(`Unknown level: "${level}"`)
+  }
+  return level
+}
+
+export function getFlavor(fileDoc: XMLDocument) {
+  const tag = fileDoc.root()?.name()
+  switch (tag) {
+    case 'SCRDMCCBDACIOMessageStructure':
+      return 'orderx'
+    case 'CrossIndustryInvoice':
+      return 'facturx'
+    case 'CrossIndustryDocument':
+      return 'zugferd'
+  }
+  throw new Error(`XML not recognized as Factur-X, Order-X or ZUGFeRD`)
+}
+
+export async function extractBaseInfo(xml: string | Buffer | XMLDocument): Promise<BaseInfo> {
+  const xmlDoc = await resolveXml(xml)
+
+  const namespaces = extractNamespaces(xmlDoc)
+
+  const dateEl = findXPath(xmlDoc, "//rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString", namespaces)
+  const dateStr = dateEl.text()
+  const dateFormat = dateEl.getAttribute('format')?.value() || '102'
+  const formatMap = {
+    '102': 'yyyyMMdd',
+    '203': 'yyyyMMddHHmm',
+  } as const
+  const date = dateStr ? parse(dateStr, formatMap[dateFormat as keyof typeof formatMap], new Date()) : new Date()
+
+  const numberEl = findXPath(xmlDoc, "//rsm:ExchangedDocument/ram:ID", namespaces)
+  const number = numberEl.text() || ''
+
+  const sellerEl = findXPath(xmlDoc, "//ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name", namespaces)
+  const seller = sellerEl.text() || ''
+
+  const buyerEl = findXPath(xmlDoc, "//ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:Name", namespaces)
+  const buyer = buyerEl.text() || ''
+
+  const docTypeEl = findXPath(xmlDoc, "//rsm:ExchangedDocument/ram:TypeCode", namespaces)
+  const docType = docTypeEl.text() as DOC_TYPE_KEY || ''
+
+  return {
+    'seller': seller,
+    'buyer': buyer,
+    'number': number,
+    'date': date,
+    'docType': docType,
+  }
+}
+// export function getOrderXLevel(fileDoc) {
+//   // segfault - https://github.com/libxmljs/libxmljs/issues/649
+//   // const namespaces = fileDoc.namespaces()
+//   const namespaces = {
+//     rsm: 'urn:un:unece:uncefact:data:SCRDMCCBDACIOMessageStructure:100',
+//     udt: 'urn:un:unece:uncefact:data:standard:UnqualifiedDataType:128',
+//     qdt: 'urn:un:unece:uncefact:data:standard:QualifiedDataType:128',
+//     ram: 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:128',
+//     xsi: 'http://www.w3.org/2001/XMLSchema-instance',
+//   }
+
+//   const type_code_xpath = fileDoc.find([
+//     "/rsm:SCRDMCCBDACIOMessageStructure",
+//     "/rsm:ExchangedDocument",
+//     "/ram:TypeCode",
+//   ].join(''), namespaces)
+
+//   if (!type_code_xpath.length) {
+//     throw new Error('No Type Code found in the document')
+//   }
+
+//   const type_code = type_code_xpath[0].text().split(':')
+//   console.log('type_code', type_code)
+
+//   let level = type_code[type_code.length - 1]
+//   // if (!doc_id_xpath.length) {
+//   //   throw new Error('No ID found in the document')
+//   // }
+//   // const doc_id = doc_id_xpath[0].text().split(':')
+//   // let level = doc_id[doc_id.length - 1]
+
+//   // const possibleValues = Object.keys(facturx)
+//   // if (!possibleValues.includes(level)) {
+//   //   level = doc_id[doc_id.length - 2]
+//   // }
+//   // if (!possibleValues.includes(level)) {
+//   //   throw new Error(`Unknown level: "${level}"`)
+//   // }
+//   return level
+// }
+
+
+function findXPath(fileDoc: XMLDocument, xpath: string, namespaces: Record<string, string>) {
+  const xpathNode = fileDoc.find(xpath, namespaces)
+  if (!xpathNode.length) {
+    throw new Error(`No ${xpath} found in the document`)
+  }
+  return xpathNode[0] as XMLElement
+}

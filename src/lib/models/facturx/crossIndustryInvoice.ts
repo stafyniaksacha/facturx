@@ -292,7 +292,7 @@ export class SupplyChainTradeTransactionType {
     applicableHeaderTradeDelivery,
     applicableHeaderTradeSettlement
   }: {
-    includedSupplyChainTradeLineItem: ram.SupplyChainTradeLineItemType[];
+    includedSupplyChainTradeLineItem?: ram.SupplyChainTradeLineItemType[];
     applicableHeaderTradeAgreement: HeaderTradeAgreementType;
     applicableHeaderTradeDelivery: HeaderTradeDeliveryType;
     applicableHeaderTradeSettlement: HeaderTradeSettlementType;
@@ -303,7 +303,7 @@ export class SupplyChainTradeTransactionType {
     this.applicableHeaderTradeSettlement = applicableHeaderTradeSettlement;
   }
 
-  includedSupplyChainTradeLineItem: ram.SupplyChainTradeLineItemType[];
+  includedSupplyChainTradeLineItem?: ram.SupplyChainTradeLineItemType[];
   applicableHeaderTradeAgreement: HeaderTradeAgreementType;
   applicableHeaderTradeDelivery: HeaderTradeDeliveryType;
   applicableHeaderTradeSettlement: HeaderTradeSettlementType;

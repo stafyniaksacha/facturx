@@ -1,4 +1,6 @@
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
+
+import { invoiceToXml } from '../src';
 import { 
   AmountType,
   IDType,
@@ -18,9 +20,9 @@ import {
   HeaderTradeDeliveryType,
   HeaderTradeSettlementType,
   SupplyChainTradeTransactionType
-} from '../src/models/facturx/index';
-import { modelToXml } from '../src/utils/converter';
-import { VALID_FACTURX_MINIMUM } from './fixtures';
+} from '../src/models';
+
+import { getMinimumXML } from './fixtures/xml';
 
 describe('FacturX XML Converter', () => {
   test('should convert a minimum Factur-X model to valid XML', async () => {
@@ -119,7 +121,7 @@ describe('FacturX XML Converter', () => {
     });
 
     // Convert to XML
-    const xmlDoc = await modelToXml(invoice);
+    const xmlDoc = await invoiceToXml(invoice);
     const xmlString = xmlDoc.toString();
 
     // Verify basic structure elements are present
@@ -139,7 +141,7 @@ describe('FacturX XML Converter', () => {
     expect(xmlString).toContain('<ram:Name>Ma jolie boutique</ram:Name>');
 
     // Verify monetary summation
-    expect(xmlString).toContain('<ram:TaxBasisTotalAmount>624.9</ram:TaxBasisTotalAmount>');
+    expect(xmlString).toContain('<ram:TaxBasisTotalAmount>624.90</ram:TaxBasisTotalAmount>');
     expect(xmlString).toContain('<ram:TaxTotalAmount currencyID="EUR">46.25</ram:TaxTotalAmount>');
     expect(xmlString).toContain('<ram:GrandTotalAmount>671.15</ram:GrandTotalAmount>');
     expect(xmlString).toContain('<ram:DuePayableAmount>470.15</ram:DuePayableAmount>');
@@ -225,7 +227,7 @@ describe('FacturX XML Converter', () => {
     });
 
     // Convert to XML
-    const xmlDoc = await modelToXml(invoice);
+    const xmlDoc = await invoiceToXml(invoice);
     const xmlString = xmlDoc.toString();
 
     // Verify the XML string contains the expected elements
@@ -235,9 +237,9 @@ describe('FacturX XML Converter', () => {
     expect(xmlString).toContain('<udt:DateTimeString format="102">20171113</udt:DateTimeString>');
     
     // Compare with the reference XML (basic check that essential elements match)
-    expect(VALID_FACTURX_MINIMUM).toContain('urn:factur-x.eu:1p0:minimum');
-    expect(VALID_FACTURX_MINIMUM).toContain('<ram:ID>FA-2017-0010</ram:ID>');
-    expect(VALID_FACTURX_MINIMUM).toContain('<ram:TypeCode>380</ram:TypeCode>');
-    expect(VALID_FACTURX_MINIMUM).toContain('<udt:DateTimeString format="102">20171113</udt:DateTimeString>');
+    expect(getMinimumXML()).toContain('urn:factur-x.eu:1p0:minimum');
+    expect(getMinimumXML()).toContain('<ram:ID>FA-2017-0010</ram:ID>');
+    expect(getMinimumXML()).toContain('<ram:TypeCode>380</ram:TypeCode>');
+    expect(getMinimumXML()).toContain('<udt:DateTimeString format="102">20171113</udt:DateTimeString>');
   });
 }); 

@@ -1,17 +1,17 @@
 import { Buffer } from 'node:buffer'
 import { describe, expect, test, vi } from 'vitest'
-import { check } from '../dist/index.mjs'
+import { check } from '../src'
 import { 
-  VALID_FACTURX_MINIMUM,
-  VALID_FACTURX_EN16931,
-  VALID_ORDERX_BASIC,
-} from './fixtures'
+  getMinimumXML,
+  getEN16931XML,
+  getOrderXBasicXML,
+} from './fixtures/xml'
 
 describe('check', () => {
   test('should accept xml input', async () => {
     const checkSpy = vi.fn(check)
     const options = {
-      xml: VALID_FACTURX_MINIMUM,
+      xml: getMinimumXML(),
       flavor: '',
       level: ''
     }
@@ -23,7 +23,7 @@ describe('check', () => {
   test('should accept buffer input', async () => {
     const checkSpy = vi.fn(check)
     const options = {
-      xml: Buffer.from(VALID_FACTURX_MINIMUM),
+      xml: Buffer.from(getMinimumXML()),
       flavor: '',
       level: ''
     }
@@ -54,50 +54,50 @@ describe('check', () => {
 
   test('should pass with proper flavor provided', async () => {
     const options = {
-      xml: VALID_FACTURX_EN16931,
+      xml: getMinimumXML(),
       flavor: 'facturx',
     }
-    const valid = await check(options)
+    const result = await check(options)
 
-    expect(valid).toBe(true)
+    expect(result.valid).toBe(true)
   })
   
   test('should pass with proper flavor and level provided', async () => {
     const options = {
-      xml: VALID_FACTURX_EN16931,
+      xml: getEN16931XML(),
       flavor: 'facturx',
       level: 'en16931'
     }
-    const valid = await check(options)
+    const result = await check(options)
 
-    expect(valid).toBe(true)
+    expect(result.valid).toBe(true)
   })
 
   test('should fail with invalid level', async () => {
     const options = {
-      xml: VALID_FACTURX_EN16931,
+      xml: getEN16931XML(),
       flavor: 'facturx',
       level: 'minimum'
     }
-    const valid = await check(options)
+    const result = await check(options)
 
-    expect(valid).toBe(false)
+    expect(result.valid).toBe(false)
   })
 
   test('should fail with invalid flavor', async () => {
     const options = {
-      xml: VALID_FACTURX_EN16931,
+      xml: getEN16931XML(),
       flavor: 'orderx',
       level: 'basic'
     }
-    const valid = await check(options)
+    const result = await check(options)
 
-    expect(valid).toBe(false)
+    expect(result.valid).toBe(false)
   })
 
   test('should throw if unknown flavor is provided', async () => {
     const options = {
-      xml: VALID_FACTURX_EN16931,
+      xml: getEN16931XML(),
       flavor: 'unknown'
     }
 
@@ -106,7 +106,7 @@ describe('check', () => {
 
   test('should throw if unknown facturx level is provided', async () => {
     const options = {
-      xml: VALID_FACTURX_EN16931,
+      xml: getEN16931XML(),
       flavor: 'facturx',
       level: 'unknown'
     }
@@ -116,7 +116,7 @@ describe('check', () => {
 
   test('should throw if unknown orderx level is provided', async () => {
     const options = {
-      xml: VALID_FACTURX_EN16931,
+      xml: getEN16931XML(),
       flavor: 'orderx',
       level: 'unknown'
     }
@@ -126,27 +126,29 @@ describe('check', () => {
 
   test('should autodetect facturx flavor and level', async () => {
     const options = {
-      xml: VALID_FACTURX_EN16931,
+      xml: getEN16931XML(),
       flavor: '',
       level: ''
     }
-    const valid = await check(options)
+    const result = await check(options)
 
-    expect(valid).toBe(true)
-    expect(options.flavor).toBe('facturx')
-    expect(options.level).toBe('en16931')
+    expect(result.valid).toBe(true)
+    expect(result.errors).toStrictEqual([])
+    expect(result.flavor).toBe('facturx')
+    expect(result.level).toBe('en16931')
   })
 
   test('should autodetect orderx flavor and level', async () => {
     const options = {
-      xml: VALID_ORDERX_BASIC,
+      xml: getOrderXBasicXML(),
       flavor: '',
       level: ''
     }
-    const valid = await check(options)
+    const result = await check(options)
 
-    expect(valid).toBe(true)
-    expect(options.flavor).toBe('orderx')
-    expect(options.level).toBe('basic')
+    expect(result.valid).toBe(true)
+    expect(result.errors).toStrictEqual([])
+    expect(result.flavor).toBe('orderx')
+    expect(result.level).toBe('basic')
   })
 })
