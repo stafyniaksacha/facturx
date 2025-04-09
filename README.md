@@ -41,26 +41,6 @@ npm install @stafyniaksacha/facturx
 import { readFile } from 'node:fs/promises' 
 
 import { generate, extract, check } from '@stafyniaksacha/facturx'
-import { FacturX, modelToXml } from '@stafyniaksacha/facturx'
-import { 
-  AmountType, 
-  IDType,
-  TextType,
-  DateTimeType,
-  DocumentCodeType,
-  CurrencyCodeType,
-  CountryIDType,
-  DocumentContextParameterType,
-  TradePartyType,
-  TradeAddressType,
-  TradeSettlementHeaderMonetarySummationType,
-  ExchangedDocumentContextType,
-  ExchangedDocumentType,
-  HeaderTradeAgreementType,
-  HeaderTradeDeliveryType,
-  HeaderTradeSettlementType,
-  SupplyChainTradeTransactionType
-} from '@stafyniaksacha/facturx'
 
 const pdf = await readFile('/path/to/input.pdf')
 const xml = await readFile('/path/to/input.xml')
@@ -101,6 +81,31 @@ const valid = await check({
   flavor: 'facturx', // autodetects the flavor if not provided
   level: 'en16931', // autodetects the level if not provided
 })
+```
+
+
+
+```typescript
+import { FacturX, modelToXml } from '@stafyniaksacha/facturx'
+import {
+  AmountType, 
+  IDType,
+  TextType,
+  DateTimeType,
+  DocumentCodeType,
+  CurrencyCodeType,
+  CountryIDType,
+  DocumentContextParameterType,
+  TradePartyType,
+  TradeAddressType,
+  TradeSettlementHeaderMonetarySummationType,
+  ExchangedDocumentContextType,
+  ExchangedDocumentType,
+  HeaderTradeAgreementType,
+  HeaderTradeDeliveryType,
+  HeaderTradeSettlementType,
+  SupplyChainTradeTransactionType
+} from '@stafyniaksacha/facturx'
 
 // Convert a FacturX model to XML
 const invoice = new FacturX({

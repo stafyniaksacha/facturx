@@ -3,8 +3,6 @@
  * Based on urn:un:unece:uncefact:data:standard:QualifiedDataType:100
  */
 
-import { TextType } from './unqualifiedTypes';
-
 /**
  * Accounting account type code content
  */

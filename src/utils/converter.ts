@@ -9,71 +9,7 @@ import {
   HeaderTradeSettlementType
 } from '../models/facturx/crossIndustryInvoice';
 import * as udt from '../models/facturx/unqualifiedTypes';
-import * as qdt from '../models/facturx/qualifiedTypes';
 import * as ram from '../models/facturx/reusableTypes';
-
-/**
- * Converter interface for converting model objects to XML elements
- */
-interface Converter<T> {
-  toXml(object: T, parent: XMLElement): XMLElement;
-}
-
-/**
- * Converter for UnqualifiedDataTypes
- */
-const udtConverters = {
-  /**
-   * Convert AmountType to XML
-   */
-  convertAmount({ value, currencyID }: udt.AmountType, parent: XMLElement): XMLElement {
-    parent.text(String(value));
-    
-    if (currencyID) {
-      parent.attr({ currencyID });
-    }
-    
-    return parent;
-  },
-
-  /**
-   * Convert IDType to XML
-   */
-  convertID({ value, schemeID }: udt.IDType, parent: XMLElement): XMLElement {
-    parent.text(value);
-    
-    if (schemeID) {
-      parent.attr({ schemeID });
-    }
-    
-    return parent;
-  },
-
-  /**
-   * Convert TextType to XML
-   */
-  convertText({ value }: udt.TextType, parent: XMLElement): XMLElement {
-    parent.text(value);
-    return parent;
-  },
-
-  /**
-   * Convert DateTimeType to XML
-   */
-  convertDateTime({ dateTimeString, format }: udt.DateTimeType, parent: XMLElement): XMLElement {
-    const dateTimeStringElement = parent.node('udt:DateTimeString', dateTimeString);
-    dateTimeStringElement.attr({ format });
-    return parent;
-  },
-
-  /**
-   * Convert IndicatorType to XML
-   */
-  convertIndicator({ indicator }: udt.IndicatorType, parent: XMLElement): XMLElement {
-    parent.node('udt:Indicator', String(indicator));
-    return parent;
-  }
-};
 
 /**
  * Converter for FacturX CrossIndustryInvoice model to XML
@@ -105,6 +41,57 @@ export async function modelToXml(invoice: CrossIndustryInvoiceType): Promise<XML
 }
 
 /**
+ * Convert AmountType to XML
+ */
+function convertAmount({ value, currencyID }: udt.AmountType, parent: XMLElement): XMLElement {
+  parent.text(String(value));
+  
+  if (currencyID) {
+    parent.attr({ currencyID });
+  }
+  
+  return parent;
+}
+
+/**
+ * Convert IDType to XML
+ */
+function convertID({ value, schemeID }: udt.IDType, parent: XMLElement): XMLElement {
+  parent.text(value);
+  
+  if (schemeID) {
+    parent.attr({ schemeID });
+  }
+  
+  return parent;
+}
+
+/**
+ * Convert TextType to XML
+ */
+function convertText({ value }: udt.TextType, parent: XMLElement): XMLElement {
+  parent.text(value);
+  return parent;
+}
+
+/**
+ * Convert DateTimeType to XML
+ */
+function convertDateTime({ dateTimeString, format }: udt.DateTimeType, parent: XMLElement): XMLElement {
+  const dateTimeStringElement = parent.node('udt:DateTimeString', dateTimeString);
+  dateTimeStringElement.attr({ format });
+  return parent;
+}
+
+/**
+ * Convert IndicatorType to XML
+ */
+function convertIndicator({ indicator }: udt.IndicatorType, parent: XMLElement): XMLElement {
+  parent.node('udt:Indicator', String(indicator));
+  return parent;
+}
+
+/**
  * Convert ExchangedDocumentContextType to XML
  */
 function convertExchangedDocumentContext(
@@ -115,7 +102,7 @@ function convertExchangedDocumentContext(
   
   if (testIndicator) {
     const testIndicatorEl = context.node('ram:TestIndicator');
-    udtConverters.convertIndicator(testIndicator, testIndicatorEl);
+    convertIndicator(testIndicator, testIndicatorEl);
   }
 
   if (businessProcessSpecifiedDocumentContextParameter) {
@@ -135,7 +122,7 @@ function convertDocumentContextParameter(
   parent: XMLElement
 ): void {
   const idEl = parent.node('ram:ID');
-  udtConverters.convertID(id, idEl);
+  convertID(id, idEl);
 }
 
 /**
@@ -148,28 +135,28 @@ function convertExchangedDocument(
   const doc = parent.node('rsm:ExchangedDocument');
   
   const idEl = doc.node('ram:ID');
-  udtConverters.convertID(id, idEl);
+  convertID(id, idEl);
   
   if (name) {
     const nameEl = doc.node('ram:Name');
-    udtConverters.convertText(name, nameEl);
+    convertText(name, nameEl);
   }
   
   const typeCodeEl = doc.node('ram:TypeCode');
   typeCodeEl.text(typeCode.value);
   
   const issueDateTimeEl = doc.node('ram:IssueDateTime');
-  udtConverters.convertDateTime(issueDateTime, issueDateTimeEl);
+  convertDateTime(issueDateTime, issueDateTimeEl);
   
   if (copyIndicator) {
     const copyIndicatorEl = doc.node('ram:CopyIndicator');
-    udtConverters.convertIndicator(copyIndicator, copyIndicatorEl);
+    convertIndicator(copyIndicator, copyIndicatorEl);
   }
   
   if (languageID && languageID.length > 0) {
     languageID.forEach(lang => {
       const langEl = doc.node('ram:LanguageID');
-      udtConverters.convertID(lang, langEl);
+      convertID(lang, langEl);
     });
   }
   
@@ -193,11 +180,11 @@ function convertNote(
   const noteEl = parent.node('ram:IncludedNote');
   
   const contentEl = noteEl.node('ram:Content');
-  udtConverters.convertText(content, contentEl);
+  convertText(content, contentEl);
   
   if (subjectCode) {
     const subjectCodeEl = noteEl.node('ram:SubjectCode');
-    udtConverters.convertText(subjectCode, subjectCodeEl);
+    convertText(subjectCode, subjectCodeEl);
   }
 }
 
@@ -210,22 +197,22 @@ function convertSpecifiedPeriod(
 ): void {
   if (startDateTime) {
     const startDateTimeEl = parent.node('ram:StartDateTime');
-    udtConverters.convertDateTime(startDateTime, startDateTimeEl);
+    convertDateTime(startDateTime, startDateTimeEl);
   }
   
   if (endDateTime) {
     const endDateTimeEl = parent.node('ram:EndDateTime');
-    udtConverters.convertDateTime(endDateTime, endDateTimeEl);
+    convertDateTime(endDateTime, endDateTimeEl);
   }
   
   if (completeDateTime) {
     const completeDateTimeEl = parent.node('ram:CompleteDateTime');
-    udtConverters.convertDateTime(completeDateTime, completeDateTimeEl);
+    convertDateTime(completeDateTime, completeDateTimeEl);
   }
   
   if (description) {
     const descriptionEl = parent.node('ram:Description');
-    udtConverters.convertText(description, descriptionEl);
+    convertText(description, descriptionEl);
   }
 }
 
@@ -273,7 +260,7 @@ function convertSupplyChainTradeLineItem(
     
     if (lineItem.associatedDocumentLineDocument.lineID) {
       const lineIDEl = docLineEl.node('ram:LineID');
-      udtConverters.convertID(lineItem.associatedDocumentLineDocument.lineID, lineIDEl);
+      convertID(lineItem.associatedDocumentLineDocument.lineID, lineIDEl);
     }
   }
   
@@ -282,7 +269,7 @@ function convertSupplyChainTradeLineItem(
     
     if (lineItem.specifiedTradeProduct.name) {
       const nameEl = productEl.node('ram:Name');
-      udtConverters.convertText(lineItem.specifiedTradeProduct.name, nameEl);
+      convertText(lineItem.specifiedTradeProduct.name, nameEl);
     }
   }
 }
@@ -296,7 +283,7 @@ function convertHeaderTradeAgreement(
 ): void {
   if (buyerReference) {
     const refEl = parent.node('ram:BuyerReference');
-    udtConverters.convertText(buyerReference, refEl);
+    convertText(buyerReference, refEl);
   }
   
   // Convert seller party
@@ -313,7 +300,7 @@ function convertHeaderTradeAgreement(
     
     if (buyerOrderReferencedDocument.issuerAssignedID) {
       const idEl = docEl.node('ram:IssuerAssignedID');
-      udtConverters.convertID(buyerOrderReferencedDocument.issuerAssignedID, idEl);
+      convertID(buyerOrderReferencedDocument.issuerAssignedID, idEl);
     }
   }
 }
@@ -327,7 +314,7 @@ function convertTradeParty(
 ): void {
   if (name) {
     const nameEl = parent.node('ram:Name');
-    udtConverters.convertText(name, nameEl);
+    convertText(name, nameEl);
   }
   
   if (specifiedLegalOrganization) {
@@ -335,7 +322,7 @@ function convertTradeParty(
     
     if (specifiedLegalOrganization.id) {
       const idEl = orgEl.node('ram:ID');
-      udtConverters.convertID(specifiedLegalOrganization.id, idEl);
+      convertID(specifiedLegalOrganization.id, idEl);
     }
   }
   
@@ -350,7 +337,7 @@ function convertTradeParty(
       
       if (tax.id) {
         const idEl = taxEl.node('ram:ID');
-        udtConverters.convertID(tax.id, idEl);
+        convertID(tax.id, idEl);
       }
     });
   }
@@ -365,17 +352,17 @@ function convertTradeAddress(
 ): void {
   if (postcodeCode) {
     const postcodeEl = parent.node('ram:PostcodeCode');
-    udtConverters.convertText(postcodeCode, postcodeEl);
+    convertText(postcodeCode, postcodeEl);
   }
   
   if (lineOne) {
     const lineOneEl = parent.node('ram:LineOne');
-    udtConverters.convertText(lineOne, lineOneEl);
+    convertText(lineOne, lineOneEl);
   }
   
   if (cityName) {
     const cityNameEl = parent.node('ram:CityName');
-    udtConverters.convertText(cityName, cityNameEl);
+    convertText(cityName, cityNameEl);
   }
   
   if (countryID) {
@@ -454,32 +441,32 @@ function convertTradeSettlementHeaderMonetarySummation(
 ): void {
   if (lineTotalAmount) {
     const lineTotalEl = parent.node('ram:LineTotalAmount');
-    udtConverters.convertAmount(lineTotalAmount, lineTotalEl);
+    convertAmount(lineTotalAmount, lineTotalEl);
   }
   
   if (taxBasisTotalAmount && taxBasisTotalAmount.length > 0) {
     taxBasisTotalAmount.forEach(amount => {
       const taxBasisEl = parent.node('ram:TaxBasisTotalAmount');
-      udtConverters.convertAmount(amount, taxBasisEl);
+      convertAmount(amount, taxBasisEl);
     });
   }
   
   if (taxTotalAmount && taxTotalAmount.length > 0) {
     taxTotalAmount.forEach(amount => {
       const taxTotalEl = parent.node('ram:TaxTotalAmount');
-      udtConverters.convertAmount(amount, taxTotalEl);
+      convertAmount(amount, taxTotalEl);
     });
   }
   
   if (grandTotalAmount && grandTotalAmount.length > 0) {
     grandTotalAmount.forEach(amount => {
       const grandTotalEl = parent.node('ram:GrandTotalAmount');
-      udtConverters.convertAmount(amount, grandTotalEl);
+      convertAmount(amount, grandTotalEl);
     });
   }
   
   if (duePayableAmount) {
     const duePayableEl = parent.node('ram:DuePayableAmount');
-    udtConverters.convertAmount(duePayableAmount, duePayableEl);
+    convertAmount(duePayableAmount, duePayableEl);
   }
 } 
