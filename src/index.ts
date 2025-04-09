@@ -11,6 +11,10 @@ import { extractAttachments } from './utils/pdf'
 import { getXsd, getLevel, getFlavor, extractBaseInfo, baseInfo2PdfMetadata } from './utils/schema'
 import { FACTURX_FILENAME, ORDERX_FILENAME, PdfMetadata, ZUGFERD_FILENAMES } from './constants'
 import { resolvePdf, resolveXml } from './utils/resolve'
+import { modelToXml } from './utils/converter'
+import { FacturX } from './models/facturx'
+
+export { modelToXml, FacturX }
 
 export async function generate(options: {
   pdf: string | Buffer | PDFDocument

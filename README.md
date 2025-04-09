@@ -41,6 +41,26 @@ npm install @stafyniaksacha/facturx
 import { readFile } from 'node:fs/promises' 
 
 import { generate, extract, check } from '@stafyniaksacha/facturx'
+import { FacturX, modelToXml } from '@stafyniaksacha/facturx'
+import { 
+  AmountType, 
+  IDType,
+  TextType,
+  DateTimeType,
+  DocumentCodeType,
+  CurrencyCodeType,
+  CountryIDType,
+  DocumentContextParameterType,
+  TradePartyType,
+  TradeAddressType,
+  TradeSettlementHeaderMonetarySummationType,
+  ExchangedDocumentContextType,
+  ExchangedDocumentType,
+  HeaderTradeAgreementType,
+  HeaderTradeDeliveryType,
+  HeaderTradeSettlementType,
+  SupplyChainTradeTransactionType
+} from '@stafyniaksacha/facturx'
 
 const pdf = await readFile('/path/to/input.pdf')
 const xml = await readFile('/path/to/input.xml')
@@ -81,6 +101,50 @@ const valid = await check({
   flavor: 'facturx', // autodetects the flavor if not provided
   level: 'en16931', // autodetects the level if not provided
 })
+
+// Convert a FacturX model to XML
+const invoice = new FacturX({
+  exchangedDocumentContext: new ExchangedDocumentContextType({
+    guidelineSpecifiedDocumentContextParameter: new DocumentContextParameterType({
+      id: new IDType({ value: 'urn:factur-x.eu:1p0:minimum' })
+    })
+  }),
+  exchangedDocument: new ExchangedDocumentType({
+    id: new IDType({ value: 'INV-2023-001' }),
+    typeCode: new DocumentCodeType({ value: '380' }),
+    issueDateTime: new DateTimeType({ dateTimeString: '20230415', format: '102' })
+  }),
+  supplyChainTradeTransaction: new SupplyChainTradeTransactionType({
+    includedSupplyChainTradeLineItem: [],
+    applicableHeaderTradeAgreement: new HeaderTradeAgreementType({
+      sellerTradeParty: new TradePartyType({
+        name: new TextType({ value: 'Seller Company' }),
+        postalTradeAddress: new TradeAddressType({
+          countryID: new CountryIDType({ value: 'FR' })
+        })
+      }),
+      buyerTradeParty: new TradePartyType({
+        name: new TextType({ value: 'Buyer Company' })
+      })
+    }),
+    applicableHeaderTradeDelivery: new HeaderTradeDeliveryType({}),
+    applicableHeaderTradeSettlement: new HeaderTradeSettlementType({
+      invoiceCurrencyCode: new CurrencyCodeType({ value: 'EUR' }),
+      applicableTradeTax: [],
+      specifiedTradeSettlementHeaderMonetarySummation: new TradeSettlementHeaderMonetarySummationType({
+        lineTotalAmount: new AmountType({ value: 100 }),
+        taxBasisTotalAmount: [new AmountType({ value: 100 })],
+        taxTotalAmount: [new AmountType({ value: 20, currencyID: 'EUR' })],
+        grandTotalAmount: [new AmountType({ value: 120 })],
+        duePayableAmount: new AmountType({ value: 120 })
+      })
+    })
+  })
+});
+
+// Convert the model to XML
+const xmlDoc = await modelToXml(invoice);
+const xmlString = xmlDoc.toString();
 ```
 
 ## Usefull links
