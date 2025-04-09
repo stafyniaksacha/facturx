@@ -39,7 +39,7 @@ describe('check', () => {
       level: ''
     }
 
-    expect(() => check(options)).rejects.toThrowError("Start tag expected, '<' not found")
+    await expect(() => check(options)).rejects.toThrowError("Start tag expected, '<' not found")
   })
   
   test('should throw with invalid xml', async () => {
@@ -49,7 +49,7 @@ describe('check', () => {
       level: ''
     }
 
-    expect(() => check(options)).rejects.toThrowError("XML not recognized as Factur-X, Order-X or ZUGFeRD")
+    await expect(() => check(options)).rejects.toThrowError("XML not recognized as Factur-X, Order-X or ZUGFeRD")
   })
 
   test('should pass with proper flavor provided', async () => {
@@ -101,7 +101,7 @@ describe('check', () => {
       flavor: 'unknown'
     }
 
-    expect(() => check(options)).rejects.toThrowError('Unknown schema flavor: "unknown"')
+    await expect(() => check(options)).rejects.toThrowError('Unknown schema flavor: "unknown"')
   })
 
   test('should throw if unknown facturx level is provided', async () => {
@@ -111,7 +111,7 @@ describe('check', () => {
       level: 'unknown'
     }
 
-    expect(() => check(options)).rejects.toThrowError('Unknown Factur-X level: "unknown"')
+    await expect(() => check(options)).rejects.toThrowError('Unknown Factur-X level: "unknown"')
   })
 
   test('should throw if unknown orderx level is provided', async () => {
@@ -121,7 +121,7 @@ describe('check', () => {
       level: 'unknown'
     }
 
-    expect(() => check(options)).rejects.toThrowError('Unknown Order-X level: "unknown"')
+    await expect(() => check(options)).rejects.toThrowError('Unknown Order-X level: "unknown"')
   })
 
   test('should autodetect facturx flavor and level', async () => {
