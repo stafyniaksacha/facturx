@@ -1,10 +1,11 @@
-import { PDFDocument, PDFName } from "pdf-lib";
-import { XmpMetadata } from "../types";
+import type { PDFDocument } from 'pdf-lib'
+import type { XmpMetadata } from '../types'
+import { PDFName } from 'pdf-lib'
 
 export function setPDFA3BMetadata(
   { date, documentId, title, subject, author, producer, creator, filename, conformanceLevel }: XmpMetadata,
-  pdf: PDFDocument
-) {
+  pdf: PDFDocument,
+): void {
   const metadataXML = `
   <?xpacket begin="" id="${documentId}"?>
     <x:xmpmeta xmlns:x="adobe:ns:meta/">
@@ -91,18 +92,18 @@ export function setPDFA3BMetadata(
       </rdf:RDF>
     </x:xmpmeta>
   <?xpacket end="w"?>
-  `.trim();
+  `.trim()
 
   const metadataStream = pdf.context.stream(metadataXML, {
     Type: 'Metadata',
     Subtype: 'XML',
     Length: metadataXML.length,
-  });
-  const metadataStreamRef = pdf.context.register(metadataStream);
-  pdf.catalog.set(PDFName.of('Metadata'), metadataStreamRef);
+  })
+  const metadataStreamRef = pdf.context.register(metadataStream)
+  pdf.catalog.set(PDFName.of('Metadata'), metadataStreamRef)
 }
 
 // remove millisecond from date
-function formatDateMetadata({ date }: { date: Date }) {
-  return date.toISOString().split('.')[0] + 'Z';
+function formatDateMetadata({ date }: { date: Date }): string {
+  return `${date.toISOString().split('.')[0]}Z`
 }

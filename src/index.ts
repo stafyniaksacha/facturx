@@ -1,14 +1,13 @@
+import { check } from './lib/check'
 import { invoiceToXml } from './lib/converters/facturx'
 import { extract } from './lib/extract'
-import { check } from './lib/check'
 import { generate } from './lib/generate'
 import * as Models from './lib/models/facturx'
 
-export { 
+export {
+  check,
+  extract,
+  generate,
   invoiceToXml,
   Models,
-  extract,
-  check,
-  generate,
 }
-

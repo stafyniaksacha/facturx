@@ -3,15 +3,15 @@
     "target": "ES6",
     "module": "ESNext",
     "moduleResolution": "Node",
-    "esModuleInterop": true,
-    "outDir": "dist",
-    "strict": true,
-    "declaration": true,
-    "resolveJsonModule": true,
-    "types": ["node"],
     "paths": {
       "~/*": ["./src/*"]
-    }
+    },
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "strict": true,
+    "declaration": true,
+    "outDir": "dist",
+    "esModuleInterop": true
   },
   "include": ["src", "tests/facturx.test.ts"]
 }

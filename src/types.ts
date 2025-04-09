@@ -1,4 +1,4 @@
-import { DOC_TYPE_KEY } from "./lib/constants"
+import type { DOC_TYPE_KEY } from './lib/constants'
 
 export interface BaseInfo {
   seller: string
@@ -12,12 +12,12 @@ export interface PdfMetadata {
   title: string
   subject: string
   keywords: string[]
-  date: Date;
+  date: Date
 }
 export interface XmpMetadata extends PdfMetadata {
-  producer: string;
-  creator: string;
-  documentId: string;
-  filename: string;
-  conformanceLevel: string;
+  producer: string
+  creator: string
+  documentId: string
+  filename: string
+  conformanceLevel: string
 }

@@ -1,58 +1,58 @@
 import { Buffer } from 'node:buffer'
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { check } from '../src'
-import { 
-  getMinimumXML,
+import {
   getEN16931XML,
+  getMinimumXML,
   getOrderXBasicXML,
 } from './fixtures/xml'
 
 describe('check', () => {
-  test('should accept xml input', async () => {
+  it('should accept xml input', async () => {
     const checkSpy = vi.fn(check)
     const options = {
       xml: getMinimumXML(),
       flavor: '',
-      level: ''
+      level: '',
     }
     await checkSpy(options)
 
     expect(checkSpy).toHaveResolved()
   })
-  
-  test('should accept buffer input', async () => {
+
+  it('should accept buffer input', async () => {
     const checkSpy = vi.fn(check)
     const options = {
       xml: Buffer.from(getMinimumXML()),
       flavor: '',
-      level: ''
+      level: '',
     }
     await checkSpy(options)
 
     expect(checkSpy).toHaveResolved()
   })
-  
-  test('should throw with non xml input', async () => {
+
+  it('should throw with non xml input', async () => {
     const options = {
       xml: 'not-xml',
       flavor: '',
-      level: ''
+      level: '',
     }
 
-    await expect(() => check(options)).rejects.toThrowError("Start tag expected, '<' not found")
+    await expect(() => check(options)).rejects.toThrowError('Start tag expected, \'<\' not found')
   })
-  
-  test('should throw with invalid xml', async () => {
+
+  it('should throw with invalid xml', async () => {
     const options = {
       xml: '<?xml version="1.0" encoding="UTF-8"?><test></test>',
       flavor: '',
-      level: ''
+      level: '',
     }
 
-    await expect(() => check(options)).rejects.toThrowError("XML not recognized as Factur-X, Order-X or ZUGFeRD")
+    await expect(() => check(options)).rejects.toThrowError('XML not recognized as Factur-X, Order-X or ZUGFeRD')
   })
 
-  test('should pass with proper flavor provided', async () => {
+  it('should pass with proper flavor provided', async () => {
     const options = {
       xml: getMinimumXML(),
       flavor: 'facturx',
@@ -61,74 +61,74 @@ describe('check', () => {
 
     expect(result.valid).toBe(true)
   })
-  
-  test('should pass with proper flavor and level provided', async () => {
+
+  it('should pass with proper flavor and level provided', async () => {
     const options = {
       xml: getEN16931XML(),
       flavor: 'facturx',
-      level: 'en16931'
+      level: 'en16931',
     }
     const result = await check(options)
 
     expect(result.valid).toBe(true)
   })
 
-  test('should fail with invalid level', async () => {
+  it('should fail with invalid level', async () => {
     const options = {
       xml: getEN16931XML(),
       flavor: 'facturx',
-      level: 'minimum'
+      level: 'minimum',
     }
     const result = await check(options)
 
     expect(result.valid).toBe(false)
   })
 
-  test('should fail with invalid flavor', async () => {
+  it('should fail with invalid flavor', async () => {
     const options = {
       xml: getEN16931XML(),
       flavor: 'orderx',
-      level: 'basic'
+      level: 'basic',
     }
     const result = await check(options)
 
     expect(result.valid).toBe(false)
   })
 
-  test('should throw if unknown flavor is provided', async () => {
+  it('should throw if unknown flavor is provided', async () => {
     const options = {
       xml: getEN16931XML(),
-      flavor: 'unknown'
+      flavor: 'unknown',
     }
 
     await expect(() => check(options)).rejects.toThrowError('Unknown schema flavor: "unknown"')
   })
 
-  test('should throw if unknown facturx level is provided', async () => {
+  it('should throw if unknown facturx level is provided', async () => {
     const options = {
       xml: getEN16931XML(),
       flavor: 'facturx',
-      level: 'unknown'
+      level: 'unknown',
     }
 
     await expect(() => check(options)).rejects.toThrowError('Unknown Factur-X level: "unknown"')
   })
 
-  test('should throw if unknown orderx level is provided', async () => {
+  it('should throw if unknown orderx level is provided', async () => {
     const options = {
       xml: getEN16931XML(),
       flavor: 'orderx',
-      level: 'unknown'
+      level: 'unknown',
     }
 
     await expect(() => check(options)).rejects.toThrowError('Unknown Order-X level: "unknown"')
   })
 
-  test('should autodetect facturx flavor and level', async () => {
+  it('should autodetect facturx flavor and level', async () => {
     const options = {
       xml: getEN16931XML(),
       flavor: '',
-      level: ''
+      level: '',
     }
     const result = await check(options)
 
@@ -138,11 +138,11 @@ describe('check', () => {
     expect(result.level).toBe('en16931')
   })
 
-  test('should autodetect orderx flavor and level', async () => {
+  it('should autodetect orderx flavor and level', async () => {
     const options = {
       xml: getOrderXBasicXML(),
       flavor: '',
-      level: ''
+      level: '',
     }
     const result = await check(options)
 

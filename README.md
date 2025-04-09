@@ -32,15 +32,14 @@ npx @stafyniaksacha/facturx check input.xml \
 
 ### Node.js
 
-
 ```bash
 npm install @stafyniaksacha/facturx
 ```
 
 ```typescript
-import { readFile } from 'node:fs/promises' 
+import { readFile } from 'node:fs/promises'
 
-import { generate, extract, check } from '@stafyniaksacha/facturx'
+import { check, extract, generate } from '@stafyniaksacha/facturx'
 
 const pdf = await readFile('/path/to/input.pdf')
 const xml = await readFile('/path/to/input.xml')
@@ -65,7 +64,7 @@ const buffer = await generate({
 })
 
 // Extract a Factur-X/Order-X XML from a PDF
-const [filename, content] = await extract({
+const { filename, xml, flavor, level } = await extract({
   pdf, // string, buffer or PDFDocument
 
   // Optional
@@ -84,91 +83,89 @@ const { valid, errors, flavor, level } = await check({
 })
 ```
 
-
-
 ```typescript
 import { invoiceToXml } from '@stafyniaksacha/facturx'
 import {
   AmountType,
-  IDType,
-  TextType,
-  DateTimeType,
-  CurrencyCodeType,
-  DocumentCodeType,
   CountryIDType,
-  TaxCategoryCodeType,
-  TaxTypeCodeType,
-  DocumentContextParameterType,
-  TradePartyType,
-  TradeAddressType,
-  TradeTaxType,
-  TradeSettlementHeaderMonetarySummationType,
   CrossIndustryInvoiceType,
+  CurrencyCodeType,
+  DateTimeType,
+  DocumentCodeType,
+  DocumentContextParameterType,
   ExchangedDocumentContextType,
   ExchangedDocumentType,
   HeaderTradeAgreementType,
   HeaderTradeDeliveryType,
   HeaderTradeSettlementType,
+  IDType,
   SupplyChainTradeTransactionType,
+  TaxCategoryCodeType,
+  TaxTypeCodeType,
+  TextType,
+  TradeAddressType,
+  TradePartyType,
+  TradeSettlementHeaderMonetarySummationType,
+  TradeTaxType,
 } from '@stafyniaksacha/facturx/models'
 
 // Create a FacturX model (minimum version)
-const guidelineID = new IDType({ value: 'urn:factur-x.eu:1p0:minimum' });
-const guidelineParameter = new DocumentContextParameterType({ id: guidelineID });
+const guidelineID = new IDType({ value: 'urn:factur-x.eu:1p0:minimum' })
+const guidelineParameter = new DocumentContextParameterType({ id: guidelineID })
 const documentContext = new ExchangedDocumentContextType({
   guidelineSpecifiedDocumentContextParameter: guidelineParameter
-});
+})
 
-// Document 
-const invoiceID = new IDType({ value: 'INV-2023-001' });
-const typeCode = new DocumentCodeType({ value: '380' });
-const issueDT = new DateTimeType({ dateTimeString: '20230415', format: '102' });
+// Document
+const invoiceID = new IDType({ value: 'INV-2023-001' })
+const typeCode = new DocumentCodeType({ value: '380' })
+const issueDT = new DateTimeType({ dateTimeString: '20230415', format: '102' })
 const document = new ExchangedDocumentType({
   id: invoiceID,
   typeCode,
   issueDateTime: issueDT
-});
+})
 
 // Seller and buyer
-const sellerName = new TextType({ value: 'Acme Corporation' });
+const sellerName = new TextType({ value: 'Acme Corporation' })
 const sellerAddress = new TradeAddressType({
   countryID: new CountryIDType({ value: 'FR' })
-});
+})
 const sellerParty = new TradePartyType({
   name: sellerName,
   postalTradeAddress: sellerAddress
-});
+})
 
-const buyerName = new TextType({ value: 'Sample Customer' });
+const buyerName = new TextType({ value: 'Sample Customer' })
 const buyerAddress = new TradeAddressType({
   countryID: new CountryIDType({ value: 'FR' })
-});
+})
 const buyerParty = new TradePartyType({
   name: buyerName,
   postalTradeAddress: buyerAddress
-});
+})
 
 // Trade agreement
 const tradeAgreement = new HeaderTradeAgreementType({
   sellerTradeParty: sellerParty,
   buyerTradeParty: buyerParty
-});
+})
 
 // Trade delivery
-const tradeDelivery = new HeaderTradeDeliveryType({});
+const tradeDelivery = new HeaderTradeDeliveryType({})
 
 // Trade settlement
-const currencyCode = new CurrencyCodeType({ value: 'EUR' });
+const currencyCode = new CurrencyCodeType({ value: 'EUR' })
 const tradeTax = new TradeTaxType({
   categoryCode: new TaxCategoryCodeType({ value: 'S' }),
   typeCode: new TaxTypeCodeType({ value: 'VAT' }),
   rateApplicablePercent: { value: 20 }
-});
+})
 
-const taxBasisTotalAmount = new AmountType({ value: 100, currencyID: 'EUR' });
-const taxTotalAmount = new AmountType({ value: 20, currencyID: 'EUR' });
-const grandTotalAmount = new AmountType({ value: 120, currencyID: 'EUR' });
-const duePayableAmount = new AmountType({ value: 120, currencyID: 'EUR' });
+const taxBasisTotalAmount = new AmountType({ value: 100, currencyID: 'EUR' })
+const taxTotalAmount = new AmountType({ value: 20, currencyID: 'EUR' })
+const grandTotalAmount = new AmountType({ value: 120, currencyID: 'EUR' })
+const duePayableAmount = new AmountType({ value: 120, currencyID: 'EUR' })
 
 const summation = new TradeSettlementHeaderMonetarySummationType({
   lineTotalAmount: new AmountType({ value: 100, currencyID: 'EUR' }),
@@ -176,29 +173,29 @@ const summation = new TradeSettlementHeaderMonetarySummationType({
   taxTotalAmount: [taxTotalAmount],
   grandTotalAmount: [grandTotalAmount],
   duePayableAmount
-});
+})
 
 const tradeSettlement = new HeaderTradeSettlementType({
   invoiceCurrencyCode: currencyCode,
   applicableTradeTax: [tradeTax],
   specifiedTradeSettlementHeaderMonetarySummation: summation
-});
+})
 
 const transaction = new SupplyChainTradeTransactionType({
   applicableHeaderTradeAgreement: tradeAgreement,
   applicableHeaderTradeDelivery: tradeDelivery,
   applicableHeaderTradeSettlement: tradeSettlement
-});
+})
 
 const invoice = new CrossIndustryInvoiceType({
   exchangedDocumentContext: documentContext,
   exchangedDocument: document,
   supplyChainTradeTransaction: transaction
-});
+})
 
 // Convert the model to XML
-const xml = await invoiceToXml(invoice);
-const xmlString = xml.toString();
+const xml = await invoiceToXml(invoice)
+const xmlString = xml.toString()
 ```
 
 ## Usefull links

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import process from 'node:process'
 import { defineCommand } from 'citty'
 
 import { check } from '../index'
@@ -11,17 +12,17 @@ export default defineCommand({
   },
   args: {
     xml: {
-      type: "positional",
+      type: 'positional',
       description: 'Input XML file',
       required: true,
     },
     flavor: {
-      type: "string",
+      type: 'string',
       description: 'Schema flavor, autodetect by default (facturx, orderx, zugferd)',
       alias: 'f',
     },
     level: {
-      type: "string",
+      type: 'string',
       description: 'Schema level, autodetect by default (orderx: basic, extended, comfort) (facturx: basic, basic-wl, en16931, extended, minimum)',
       alias: 'l',
     },
@@ -41,10 +42,11 @@ export default defineCommand({
       for (const error of result.errors) {
         console.error(error.message)
       }
-      
+
       process.exit(1)
     }
 
+    // eslint-disable-next-line no-console
     console.log(`Valid XML format (${result.flavor} - ${result.level})`)
-  }
+  },
 })

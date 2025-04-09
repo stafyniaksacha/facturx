@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { check, invoiceToXml } from '../src'
 import { getBasicFacturXModel } from './fixtures/model-basic'
 import { getBasicWLFacturXModel } from './fixtures/model-basic-wl'
@@ -7,29 +7,32 @@ import { getExtendedFacturXModel } from './fixtures/model-extended'
 import { getMinimalFacturXModel } from './fixtures/model-minimal'
 
 describe('invoiceToXml', () => {
-  test('should generate valid basic model', async () => {
+  it('should generate valid basic model', async () => {
+    const checkSpy = vi.fn(check)
+
     const model = getBasicFacturXModel()
-    const xml = await invoiceToXml(model, 'basic')
+    const xml = await invoiceToXml(model)
     const options = {
       xml: xml.toString(),
       flavor: 'facturx',
-      level: 'basic'
+      level: 'basic',
     }
-    const result = await check(options)
+    const result = await checkSpy(options)
 
+    expect(checkSpy).toHaveResolved()
     expect(result.errors).toStrictEqual([])
     expect(result.valid).toBe(true)
     expect(result.flavor).toBe('facturx')
     expect(result.level).toBe('basic')
   })
 
-  test('should generate valid basic WL model', async () => {
+  it('should generate valid basic WL model', async () => {
     const model = getBasicWLFacturXModel()
-    const xml = await invoiceToXml(model, 'basic-wl')
+    const xml = await invoiceToXml(model)
     const options = {
       xml: xml.toString(),
       flavor: 'facturx',
-      level: 'basic-wl'
+      level: 'basic-wl',
     }
     const result = await check(options)
 
@@ -39,13 +42,13 @@ describe('invoiceToXml', () => {
     expect(result.level).toBe('basic-wl')
   })
 
-  test('should generate valid en16931 model', async () => {
+  it('should generate valid en16931 model', async () => {
     const model = getEN16931FacturXModel()
-    const xml = await invoiceToXml(model, 'en16931')
+    const xml = await invoiceToXml(model)
     const options = {
       xml: xml.toString(),
       flavor: 'facturx',
-      level: 'en16931'
+      level: 'en16931',
     }
     const result = await check(options)
 
@@ -54,14 +57,14 @@ describe('invoiceToXml', () => {
     expect(result.flavor).toBe('facturx')
     expect(result.level).toBe('en16931')
   })
-  
-  test('should generate valid extended model', async () => {
+
+  it('should generate valid extended model', async () => {
     const model = getExtendedFacturXModel()
-    const xml = await invoiceToXml(model, 'extended')
+    const xml = await invoiceToXml(model)
     const options = {
       xml: xml.toString(),
       flavor: 'facturx',
-      level: 'extended'
+      level: 'extended',
     }
     const result = await check(options)
 
@@ -71,13 +74,29 @@ describe('invoiceToXml', () => {
     expect(result.level).toBe('extended')
   })
 
-  test('should not validate invalid extended model', async () => {
+  it('should generate valid minimal model', async () => {
     const model = getMinimalFacturXModel()
-    const xml = await invoiceToXml(model, 'extended')
+    const xml = await invoiceToXml(model)
     const options = {
       xml: xml.toString(),
       flavor: 'facturx',
-      level: 'extended'
+      level: 'minimum',
+    }
+    const result = await check(options)
+
+    expect(result.errors).toStrictEqual([])
+    expect(result.valid).toBe(true)
+    expect(result.flavor).toBe('facturx')
+    expect(result.level).toBe('minimum')
+  })
+
+  it('should not validate invalid extended model', async () => {
+    const model = getMinimalFacturXModel()
+    const xml = await invoiceToXml(model)
+    const options = {
+      xml: xml.toString(),
+      flavor: 'facturx',
+      level: 'extended',
     }
     const result = await check(options)
 

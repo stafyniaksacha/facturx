@@ -8,10 +8,10 @@
  */
 export class AccountingAccountTypeCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -19,10 +19,10 @@ export class AccountingAccountTypeCodeType {
  */
 export class AllowanceChargeReasonCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -30,10 +30,10 @@ export class AllowanceChargeReasonCodeType {
  */
 export class ContactTypeCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -41,10 +41,10 @@ export class ContactTypeCodeType {
  */
 export class CountryIDType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -52,10 +52,10 @@ export class CountryIDType {
  */
 export class CurrencyCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -63,10 +63,10 @@ export class CurrencyCodeType {
  */
 export class DeliveryTermsCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -74,23 +74,23 @@ export class DeliveryTermsCodeType {
  */
 export class DocumentCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
  * Formatted date time type
  */
 export class FormattedDateTimeType {
-  constructor({ dateTimeString, format }: { dateTimeString: string; format: string }) {
-    this.dateTimeString = dateTimeString;
-    this.format = format;
+  constructor({ dateTimeString, format }: { dateTimeString: string, format: string }) {
+    this.dateTimeString = dateTimeString
+    this.format = format
   }
 
-  dateTimeString: string;
-  format: string;
+  dateTimeString: string
+  format: string
 }
 
 /**
@@ -98,10 +98,10 @@ export class FormattedDateTimeType {
  */
 export class LineStatusCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -109,10 +109,10 @@ export class LineStatusCodeType {
  */
 export class PartyRoleCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -120,10 +120,10 @@ export class PartyRoleCodeType {
  */
 export class PaymentMeansCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -131,10 +131,10 @@ export class PaymentMeansCodeType {
  */
 export class ReferenceCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -142,10 +142,10 @@ export class ReferenceCodeType {
  */
 export class TaxCategoryCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -153,10 +153,10 @@ export class TaxCategoryCodeType {
  */
 export class TaxTypeCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -164,10 +164,10 @@ export class TaxTypeCodeType {
  */
 export class TimeReferenceCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
+  value: string
 }
 
 /**
@@ -175,8 +175,8 @@ export class TimeReferenceCodeType {
  */
 export class TransportModeCodeType {
   constructor({ value }: { value: string }) {
-    this.value = value;
+    this.value = value
   }
 
-  value: string;
-} 
+  value: string
+}

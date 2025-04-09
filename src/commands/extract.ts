@@ -1,5 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import process from 'node:process'
 import { defineCommand } from 'citty'
 
 import { extract } from '../index'
@@ -11,27 +12,27 @@ export default defineCommand({
   },
   args: {
     pdf: {
-      type: "positional",
+      type: 'positional',
       description: 'Input PDF-A/3 file',
       required: true,
     },
     check: {
-      type: "boolean",
+      type: 'boolean',
       description: 'Validate the XML file',
       default: true,
     },
     flavor: {
-      type: "string",
+      type: 'string',
       description: 'Schema flavor, autodetect by default (facturx, orderx, zugferd)',
       alias: 'f',
     },
     level: {
-      type: "string",
+      type: 'string',
       description: 'Schema level, autodetect by default (orderx: basic, extended, comfort) (facturx: basic, basic-wl, en16931, extended, minimum)',
       alias: 'l',
     },
     output: {
-      type: "string",
+      type: 'string',
       description: 'Output XML file, defaults to stdout',
       alias: 'o',
     },
@@ -39,7 +40,7 @@ export default defineCommand({
   run: async (args) => {
     const pdf = await readFile(resolve(args.args.pdf))
 
-    const [file, content] = await extract({
+    const { xml } = await extract({
       pdf,
       flavor: args.args.flavor,
       level: args.args.level,
@@ -48,11 +49,14 @@ export default defineCommand({
 
     if (args.args.output) {
       const out = resolve(args.args.output)
-      await writeFile(out, content)
+      await writeFile(out, xml)
+
+      // eslint-disable-next-line no-console
       console.log(`Saved to ${out}`)
     }
     else {
-      console.log(content)
+      // write to stdout
+      process.stdout.write(xml)
     }
-  }
+  },
 })

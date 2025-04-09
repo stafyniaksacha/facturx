@@ -1,18 +1,20 @@
-import { readFile } from 'node:fs/promises'
-import { resolve, join } from 'node:path'
+import type { XMLDocument } from 'libxmljs'
+import type {
+  FACTURX_SCHEMA_TYPE,
+  ORDERX_SCHEMA_TYPE,
+} from './constants'
 
-import { XMLDocument } from 'libxmljs'
+import { readFile } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 import {
   FACTURX_SCHEMA,
-  FACTURX_SCHEMA_TYPE,
   ORDERX_SCHEMA,
-  ORDERX_SCHEMA_TYPE,
 } from './constants'
 import { resolveXml } from './resolve'
 
 const _cache = {} as Record<string, Record<string, XMLDocument>>
 
-export async function getXsd(flavor: string, level: string, cache = true) {
+export async function getXsd(flavor: string, level: string, cache = true): Promise<XMLDocument> {
   if (cache && flavor in _cache && level in _cache[flavor]) {
     return _cache[flavor][level]
   }
@@ -38,19 +40,19 @@ export async function getXsd(flavor: string, level: string, cache = true) {
       throw new Error(`Unknown schema flavor: "${flavor}"`)
   }
 }
-export async function getFacturxXsd(level: FACTURX_SCHEMA_TYPE) {
+export async function getFacturxXsd(level: FACTURX_SCHEMA_TYPE): Promise<XMLDocument> {
   if (!level || !(level in FACTURX_SCHEMA)) {
     throw new Error(`Unknown Factur-X level: "${level}"`)
   }
 
   const url = resolve(join(import.meta.dirname, FACTURX_SCHEMA[level]))
   const buffer = await readFile(url)
-  
+
   return await resolveXml(buffer, {
     url,
   })
 }
-export async function getOrderxXsd(level: ORDERX_SCHEMA_TYPE) {
+export async function getOrderxXsd(level: ORDERX_SCHEMA_TYPE): Promise<XMLDocument> {
   if (!level || !(level in ORDERX_SCHEMA)) {
     throw new Error(`Unknown Order-X level: "${level}"`)
   }

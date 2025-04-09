@@ -3,8 +3,8 @@
  * Based on urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100
  */
 
-import * as udt from './unqualifiedTypes';
-import * as qdt from './qualifiedTypes';
+import type * as qdt from './qualifiedTypes'
+import type * as udt from './unqualifiedTypes'
 
 /**
  * Specified period type
@@ -14,23 +14,23 @@ export class SpecifiedPeriodType {
     description,
     startDateTime,
     endDateTime,
-    completeDateTime
+    completeDateTime,
   }: {
-    description?: udt.TextType;
-    startDateTime?: udt.DateTimeType;
-    endDateTime?: udt.DateTimeType;
-    completeDateTime?: udt.DateTimeType;
+    description?: udt.TextType
+    startDateTime?: udt.DateTimeType
+    endDateTime?: udt.DateTimeType
+    completeDateTime?: udt.DateTimeType
   }) {
-    this.description = description;
-    this.startDateTime = startDateTime;
-    this.endDateTime = endDateTime;
-    this.completeDateTime = completeDateTime;
+    this.description = description
+    this.startDateTime = startDateTime
+    this.endDateTime = endDateTime
+    this.completeDateTime = completeDateTime
   }
 
-  description?: udt.TextType;
-  startDateTime?: udt.DateTimeType;
-  endDateTime?: udt.DateTimeType;
-  completeDateTime?: udt.DateTimeType;
+  description?: udt.TextType
+  startDateTime?: udt.DateTimeType
+  endDateTime?: udt.DateTimeType
+  completeDateTime?: udt.DateTimeType
 }
 
 /**
@@ -45,35 +45,35 @@ export class ReferencedDocumentType {
     name,
     attachmentBinaryObject,
     referenceTypeCode,
-    formattedIssueDateTime
+    formattedIssueDateTime,
   }: {
-    issuerAssignedID?: udt.IDType;
-    uriID?: udt.IDType;
-    lineID?: udt.IDType;
-    typeCode?: qdt.DocumentCodeType;
-    name?: udt.TextType[];
-    attachmentBinaryObject?: udt.BinaryObjectType;
-    referenceTypeCode?: qdt.ReferenceCodeType;
-    formattedIssueDateTime?: qdt.FormattedDateTimeType;
+    issuerAssignedID?: udt.IDType
+    uriID?: udt.IDType
+    lineID?: udt.IDType
+    typeCode?: qdt.DocumentCodeType
+    name?: udt.TextType[]
+    attachmentBinaryObject?: udt.BinaryObjectType
+    referenceTypeCode?: qdt.ReferenceCodeType
+    formattedIssueDateTime?: qdt.FormattedDateTimeType
   }) {
-    this.issuerAssignedID = issuerAssignedID;
-    this.uriID = uriID;
-    this.lineID = lineID;
-    this.typeCode = typeCode;
-    this.name = name;
-    this.attachmentBinaryObject = attachmentBinaryObject;
-    this.referenceTypeCode = referenceTypeCode;
-    this.formattedIssueDateTime = formattedIssueDateTime;
+    this.issuerAssignedID = issuerAssignedID
+    this.uriID = uriID
+    this.lineID = lineID
+    this.typeCode = typeCode
+    this.name = name
+    this.attachmentBinaryObject = attachmentBinaryObject
+    this.referenceTypeCode = referenceTypeCode
+    this.formattedIssueDateTime = formattedIssueDateTime
   }
 
-  issuerAssignedID?: udt.IDType;
-  uriID?: udt.IDType;
-  lineID?: udt.IDType;
-  typeCode?: qdt.DocumentCodeType;
-  name?: udt.TextType[];
-  attachmentBinaryObject?: udt.BinaryObjectType;
-  referenceTypeCode?: qdt.ReferenceCodeType;
-  formattedIssueDateTime?: qdt.FormattedDateTimeType;
+  issuerAssignedID?: udt.IDType
+  uriID?: udt.IDType
+  lineID?: udt.IDType
+  typeCode?: qdt.DocumentCodeType
+  name?: udt.TextType[]
+  attachmentBinaryObject?: udt.BinaryObjectType
+  referenceTypeCode?: qdt.ReferenceCodeType
+  formattedIssueDateTime?: qdt.FormattedDateTimeType
 }
 
 /**
@@ -81,14 +81,14 @@ export class ReferencedDocumentType {
  */
 export class TradeDeliveryTermsType {
   constructor({
-    deliveryTypeCode
+    deliveryTypeCode,
   }: {
-    deliveryTypeCode: qdt.DeliveryTermsCodeType;
+    deliveryTypeCode: qdt.DeliveryTermsCodeType
   }) {
-    this.deliveryTypeCode = deliveryTypeCode;
+    this.deliveryTypeCode = deliveryTypeCode
   }
 
-  deliveryTypeCode: qdt.DeliveryTermsCodeType;
+  deliveryTypeCode: qdt.DeliveryTermsCodeType
 }
 
 /**
@@ -97,17 +97,17 @@ export class TradeDeliveryTermsType {
 export class ProcuringProjectType {
   constructor({
     id,
-    name
+    name,
   }: {
-    id: udt.IDType;
-    name: udt.TextType;
+    id: udt.IDType
+    name: udt.TextType
   }) {
-    this.id = id;
-    this.name = name;
+    this.id = id
+    this.name = name
   }
 
-  id: udt.IDType;
-  name: udt.TextType;
+  id: udt.IDType
+  name: udt.TextType
 }
 
 /**
@@ -117,20 +117,20 @@ export class AdvancePaymentType {
   constructor({
     paidAmount,
     formattedReceivedDateTime,
-    includedTradeTax
+    includedTradeTax,
   }: {
-    paidAmount: udt.AmountType;
-    formattedReceivedDateTime?: qdt.FormattedDateTimeType;
-    includedTradeTax: TradeTaxType[];
+    paidAmount: udt.AmountType
+    formattedReceivedDateTime?: qdt.FormattedDateTimeType
+    includedTradeTax: TradeTaxType[]
   }) {
-    this.paidAmount = paidAmount;
-    this.formattedReceivedDateTime = formattedReceivedDateTime;
-    this.includedTradeTax = includedTradeTax;
+    this.paidAmount = paidAmount
+    this.formattedReceivedDateTime = formattedReceivedDateTime
+    this.includedTradeTax = includedTradeTax
   }
 
-  paidAmount: udt.AmountType;
-  formattedReceivedDateTime?: qdt.FormattedDateTimeType;
-  includedTradeTax: TradeTaxType[];
+  paidAmount: udt.AmountType
+  formattedReceivedDateTime?: qdt.FormattedDateTimeType
+  includedTradeTax: TradeTaxType[]
 }
 
 /**
@@ -140,20 +140,20 @@ export class CreditorFinancialAccountType {
   constructor({
     ibanID,
     accountName,
-    proprietaryID
+    proprietaryID,
   }: {
-    ibanID?: udt.IDType;
-    accountName?: udt.TextType;
-    proprietaryID?: udt.IDType;
+    ibanID?: udt.IDType
+    accountName?: udt.TextType
+    proprietaryID?: udt.IDType
   }) {
-    this.ibanID = ibanID;
-    this.accountName = accountName;
-    this.proprietaryID = proprietaryID;
+    this.ibanID = ibanID
+    this.accountName = accountName
+    this.proprietaryID = proprietaryID
   }
 
-  ibanID?: udt.IDType;
-  accountName?: udt.TextType;
-  proprietaryID?: udt.IDType;
+  ibanID?: udt.IDType
+  accountName?: udt.TextType
+  proprietaryID?: udt.IDType
 }
 
 /**
@@ -161,10 +161,10 @@ export class CreditorFinancialAccountType {
  */
 export class CreditorFinancialInstitutionType {
   constructor({ bicID }: { bicID: udt.IDType }) {
-    this.bicID = bicID;
+    this.bicID = bicID
   }
 
-  bicID: udt.IDType;
+  bicID: udt.IDType
 }
 
 /**
@@ -172,10 +172,10 @@ export class CreditorFinancialInstitutionType {
  */
 export class DebtorFinancialAccountType {
   constructor({ ibanID }: { ibanID: udt.IDType }) {
-    this.ibanID = ibanID;
+    this.ibanID = ibanID
   }
 
-  ibanID: udt.IDType;
+  ibanID: udt.IDType
 }
 
 /**
@@ -183,10 +183,10 @@ export class DebtorFinancialAccountType {
  */
 export class DocumentContextParameterType {
   constructor({ id }: { id: udt.IDType }) {
-    this.id = id;
+    this.id = id
   }
 
-  id: udt.IDType;
+  id: udt.IDType
 }
 
 /**
@@ -196,20 +196,20 @@ export class NoteType {
   constructor({
     contentCode,
     content,
-    subjectCode
+    subjectCode,
   }: {
-    contentCode?: udt.CodeType;
-    content: udt.TextType;
-    subjectCode?: udt.CodeType;
+    contentCode?: udt.CodeType
+    content: udt.TextType
+    subjectCode?: udt.CodeType
   }) {
-    this.contentCode = contentCode;
-    this.content = content;
-    this.subjectCode = subjectCode;
+    this.contentCode = contentCode
+    this.content = content
+    this.subjectCode = subjectCode
   }
 
-  contentCode?: udt.CodeType;
-  content: udt.TextType;
-  subjectCode?: udt.CodeType;
+  contentCode?: udt.CodeType
+  content: udt.TextType
+  subjectCode?: udt.CodeType
 }
 
 /**
@@ -221,26 +221,26 @@ export class DocumentLineDocumentType {
     parentLineID,
     lineStatusCode,
     lineStatusReasonCode,
-    includedNote
+    includedNote,
   }: {
-    lineID: udt.IDType;
-    parentLineID?: udt.IDType;
-    lineStatusCode?: qdt.LineStatusCodeType;
-    lineStatusReasonCode?: udt.CodeType;
-    includedNote?: NoteType[];
+    lineID: udt.IDType
+    parentLineID?: udt.IDType
+    lineStatusCode?: qdt.LineStatusCodeType
+    lineStatusReasonCode?: udt.CodeType
+    includedNote?: NoteType[]
   }) {
-    this.lineID = lineID;
-    this.parentLineID = parentLineID;
-    this.lineStatusCode = lineStatusCode;
-    this.lineStatusReasonCode = lineStatusReasonCode;
-    this.includedNote = includedNote;
+    this.lineID = lineID
+    this.parentLineID = parentLineID
+    this.lineStatusCode = lineStatusCode
+    this.lineStatusReasonCode = lineStatusReasonCode
+    this.includedNote = includedNote
   }
 
-  lineID: udt.IDType;
-  parentLineID?: udt.IDType;
-  lineStatusCode?: qdt.LineStatusCodeType;
-  lineStatusReasonCode?: udt.CodeType;
-  includedNote?: NoteType[];
+  lineID: udt.IDType
+  parentLineID?: udt.IDType
+  lineStatusCode?: qdt.LineStatusCodeType
+  lineStatusReasonCode?: udt.CodeType
+  includedNote?: NoteType[]
 }
 
 /**
@@ -258,44 +258,44 @@ export class TradeTaxType {
     exemptionReasonCode,
     taxPointDate,
     dueDateTypeCode,
-    rateApplicablePercent
+    rateApplicablePercent,
   }: {
-    calculatedAmount?: udt.AmountType;
-    typeCode?: qdt.TaxTypeCodeType;
-    exemptionReason?: udt.TextType;
-    basisAmount?: udt.AmountType;
-    lineTotalBasisAmount?: udt.AmountType;
-    allowanceChargeBasisAmount?: udt.AmountType;
-    categoryCode: qdt.TaxCategoryCodeType;
-    exemptionReasonCode?: udt.CodeType;
-    taxPointDate?: udt.DateType;
-    dueDateTypeCode?: qdt.TimeReferenceCodeType;
-    rateApplicablePercent?: udt.PercentType;
+    calculatedAmount?: udt.AmountType
+    typeCode?: qdt.TaxTypeCodeType
+    exemptionReason?: udt.TextType
+    basisAmount?: udt.AmountType
+    lineTotalBasisAmount?: udt.AmountType
+    allowanceChargeBasisAmount?: udt.AmountType
+    categoryCode: qdt.TaxCategoryCodeType
+    exemptionReasonCode?: udt.CodeType
+    taxPointDate?: udt.DateType
+    dueDateTypeCode?: qdt.TimeReferenceCodeType
+    rateApplicablePercent?: udt.PercentType
   }) {
-    this.calculatedAmount = calculatedAmount;
-    this.typeCode = typeCode;
-    this.exemptionReason = exemptionReason;
-    this.basisAmount = basisAmount;
-    this.lineTotalBasisAmount = lineTotalBasisAmount;
-    this.allowanceChargeBasisAmount = allowanceChargeBasisAmount;
-    this.categoryCode = categoryCode;
-    this.exemptionReasonCode = exemptionReasonCode;
-    this.taxPointDate = taxPointDate;
-    this.dueDateTypeCode = dueDateTypeCode;
-    this.rateApplicablePercent = rateApplicablePercent;
+    this.calculatedAmount = calculatedAmount
+    this.typeCode = typeCode
+    this.exemptionReason = exemptionReason
+    this.basisAmount = basisAmount
+    this.lineTotalBasisAmount = lineTotalBasisAmount
+    this.allowanceChargeBasisAmount = allowanceChargeBasisAmount
+    this.categoryCode = categoryCode
+    this.exemptionReasonCode = exemptionReasonCode
+    this.taxPointDate = taxPointDate
+    this.dueDateTypeCode = dueDateTypeCode
+    this.rateApplicablePercent = rateApplicablePercent
   }
 
-  calculatedAmount?: udt.AmountType;
-  typeCode?: qdt.TaxTypeCodeType;
-  exemptionReason?: udt.TextType;
-  basisAmount?: udt.AmountType;
-  lineTotalBasisAmount?: udt.AmountType;
-  allowanceChargeBasisAmount?: udt.AmountType;
-  categoryCode: qdt.TaxCategoryCodeType;
-  exemptionReasonCode?: udt.CodeType;
-  taxPointDate?: udt.DateType;
-  dueDateTypeCode?: qdt.TimeReferenceCodeType;
-  rateApplicablePercent?: udt.PercentType;
+  calculatedAmount?: udt.AmountType
+  typeCode?: qdt.TaxTypeCodeType
+  exemptionReason?: udt.TextType
+  basisAmount?: udt.AmountType
+  lineTotalBasisAmount?: udt.AmountType
+  allowanceChargeBasisAmount?: udt.AmountType
+  categoryCode: qdt.TaxCategoryCodeType
+  exemptionReasonCode?: udt.CodeType
+  taxPointDate?: udt.DateType
+  dueDateTypeCode?: qdt.TimeReferenceCodeType
+  rateApplicablePercent?: udt.PercentType
 }
 
 /**
@@ -309,32 +309,32 @@ export class TradeAddressType {
     lineThree,
     cityName,
     countryID,
-    countrySubDivisionName
+    countrySubDivisionName,
   }: {
-    postcodeCode?: udt.CodeType;
-    lineOne?: udt.TextType;
-    lineTwo?: udt.TextType;
-    lineThree?: udt.TextType;
-    cityName?: udt.TextType;
-    countryID: qdt.CountryIDType;
-    countrySubDivisionName?: udt.TextType[];
+    postcodeCode?: udt.CodeType
+    lineOne?: udt.TextType
+    lineTwo?: udt.TextType
+    lineThree?: udt.TextType
+    cityName?: udt.TextType
+    countryID: qdt.CountryIDType
+    countrySubDivisionName?: udt.TextType[]
   }) {
-    this.postcodeCode = postcodeCode;
-    this.lineOne = lineOne;
-    this.lineTwo = lineTwo;
-    this.lineThree = lineThree;
-    this.cityName = cityName;
-    this.countryID = countryID;
-    this.countrySubDivisionName = countrySubDivisionName;
+    this.postcodeCode = postcodeCode
+    this.lineOne = lineOne
+    this.lineTwo = lineTwo
+    this.lineThree = lineThree
+    this.cityName = cityName
+    this.countryID = countryID
+    this.countrySubDivisionName = countrySubDivisionName
   }
 
-  postcodeCode?: udt.CodeType;
-  lineOne?: udt.TextType;
-  lineTwo?: udt.TextType;
-  lineThree?: udt.TextType;
-  cityName?: udt.TextType;
-  countryID: qdt.CountryIDType;
-  countrySubDivisionName?: udt.TextType[];
+  postcodeCode?: udt.CodeType
+  lineOne?: udt.TextType
+  lineTwo?: udt.TextType
+  lineThree?: udt.TextType
+  cityName?: udt.TextType
+  countryID: qdt.CountryIDType
+  countrySubDivisionName?: udt.TextType[]
 }
 
 /**
@@ -343,17 +343,17 @@ export class TradeAddressType {
 export class UniversalCommunicationType {
   constructor({
     uriID,
-    completeNumber
+    completeNumber,
   }: {
-    uriID?: udt.IDType;
-    completeNumber?: udt.TextType;
+    uriID?: udt.IDType
+    completeNumber?: udt.TextType
   }) {
-    this.uriID = uriID;
-    this.completeNumber = completeNumber;
+    this.uriID = uriID
+    this.completeNumber = completeNumber
   }
 
-  uriID?: udt.IDType;
-  completeNumber?: udt.TextType;
+  uriID?: udt.IDType
+  completeNumber?: udt.TextType
 }
 
 /**
@@ -366,29 +366,29 @@ export class TradeContactType {
     typeCode,
     telephoneUniversalCommunication,
     faxUniversalCommunication,
-    emailURIUniversalCommunication
+    emailURIUniversalCommunication,
   }: {
-    personName?: udt.TextType;
-    departmentName?: udt.TextType;
-    typeCode?: qdt.ContactTypeCodeType;
-    telephoneUniversalCommunication?: UniversalCommunicationType;
-    faxUniversalCommunication?: UniversalCommunicationType;
-    emailURIUniversalCommunication?: UniversalCommunicationType;
+    personName?: udt.TextType
+    departmentName?: udt.TextType
+    typeCode?: qdt.ContactTypeCodeType
+    telephoneUniversalCommunication?: UniversalCommunicationType
+    faxUniversalCommunication?: UniversalCommunicationType
+    emailURIUniversalCommunication?: UniversalCommunicationType
   }) {
-    this.personName = personName;
-    this.departmentName = departmentName;
-    this.typeCode = typeCode;
-    this.telephoneUniversalCommunication = telephoneUniversalCommunication;
-    this.faxUniversalCommunication = faxUniversalCommunication;
-    this.emailURIUniversalCommunication = emailURIUniversalCommunication;
+    this.personName = personName
+    this.departmentName = departmentName
+    this.typeCode = typeCode
+    this.telephoneUniversalCommunication = telephoneUniversalCommunication
+    this.faxUniversalCommunication = faxUniversalCommunication
+    this.emailURIUniversalCommunication = emailURIUniversalCommunication
   }
 
-  personName?: udt.TextType;
-  departmentName?: udt.TextType;
-  typeCode?: qdt.ContactTypeCodeType;
-  telephoneUniversalCommunication?: UniversalCommunicationType;
-  faxUniversalCommunication?: UniversalCommunicationType;
-  emailURIUniversalCommunication?: UniversalCommunicationType;
+  personName?: udt.TextType
+  departmentName?: udt.TextType
+  typeCode?: qdt.ContactTypeCodeType
+  telephoneUniversalCommunication?: UniversalCommunicationType
+  faxUniversalCommunication?: UniversalCommunicationType
+  emailURIUniversalCommunication?: UniversalCommunicationType
 }
 
 /**
@@ -398,20 +398,20 @@ export class LegalOrganizationType {
   constructor({
     id,
     tradingBusinessName,
-    postalTradeAddress
+    postalTradeAddress,
   }: {
-    id?: udt.IDType;
-    tradingBusinessName?: udt.TextType;
-    postalTradeAddress?: TradeAddressType;
+    id?: udt.IDType
+    tradingBusinessName?: udt.TextType
+    postalTradeAddress?: TradeAddressType
   }) {
-    this.id = id;
-    this.tradingBusinessName = tradingBusinessName;
-    this.postalTradeAddress = postalTradeAddress;
+    this.id = id
+    this.tradingBusinessName = tradingBusinessName
+    this.postalTradeAddress = postalTradeAddress
   }
 
-  id?: udt.IDType;
-  tradingBusinessName?: udt.TextType;
-  postalTradeAddress?: TradeAddressType;
+  id?: udt.IDType
+  tradingBusinessName?: udt.TextType
+  postalTradeAddress?: TradeAddressType
 }
 
 /**
@@ -419,10 +419,10 @@ export class LegalOrganizationType {
  */
 export class TaxRegistrationType {
   constructor({ id }: { id: udt.IDType }) {
-    this.id = id;
+    this.id = id
   }
 
-  id: udt.IDType;
+  id: udt.IDType
 }
 
 /**
@@ -439,41 +439,41 @@ export class TradePartyType {
     definedTradeContact,
     postalTradeAddress,
     uriUniversalCommunication,
-    specifiedTaxRegistration
+    specifiedTaxRegistration,
   }: {
-    id?: udt.IDType[];
-    globalID?: udt.IDType[];
-    name?: udt.TextType;
-    roleCode?: qdt.PartyRoleCodeType;
-    description?: udt.TextType;
-    specifiedLegalOrganization?: LegalOrganizationType;
-    definedTradeContact?: TradeContactType[];
-    postalTradeAddress?: TradeAddressType;
-    uriUniversalCommunication?: UniversalCommunicationType;
-    specifiedTaxRegistration?: TaxRegistrationType[];
+    id?: udt.IDType[]
+    globalID?: udt.IDType[]
+    name?: udt.TextType
+    roleCode?: qdt.PartyRoleCodeType
+    description?: udt.TextType
+    specifiedLegalOrganization?: LegalOrganizationType
+    definedTradeContact?: TradeContactType[]
+    postalTradeAddress?: TradeAddressType
+    uriUniversalCommunication?: UniversalCommunicationType
+    specifiedTaxRegistration?: TaxRegistrationType[]
   }) {
-    this.id = id;
-    this.globalID = globalID;
-    this.name = name;
-    this.roleCode = roleCode;
-    this.description = description;
-    this.specifiedLegalOrganization = specifiedLegalOrganization;
-    this.definedTradeContact = definedTradeContact;
-    this.postalTradeAddress = postalTradeAddress;
-    this.uriUniversalCommunication = uriUniversalCommunication;
-    this.specifiedTaxRegistration = specifiedTaxRegistration;
+    this.id = id
+    this.globalID = globalID
+    this.name = name
+    this.roleCode = roleCode
+    this.description = description
+    this.specifiedLegalOrganization = specifiedLegalOrganization
+    this.definedTradeContact = definedTradeContact
+    this.postalTradeAddress = postalTradeAddress
+    this.uriUniversalCommunication = uriUniversalCommunication
+    this.specifiedTaxRegistration = specifiedTaxRegistration
   }
 
-  id?: udt.IDType[];
-  globalID?: udt.IDType[];
-  name?: udt.TextType;
-  roleCode?: qdt.PartyRoleCodeType;
-  description?: udt.TextType;
-  specifiedLegalOrganization?: LegalOrganizationType;
-  definedTradeContact?: TradeContactType[];
-  postalTradeAddress?: TradeAddressType;
-  uriUniversalCommunication?: UniversalCommunicationType;
-  specifiedTaxRegistration?: TaxRegistrationType[];
+  id?: udt.IDType[]
+  globalID?: udt.IDType[]
+  name?: udt.TextType
+  roleCode?: qdt.PartyRoleCodeType
+  description?: udt.TextType
+  specifiedLegalOrganization?: LegalOrganizationType
+  definedTradeContact?: TradeContactType[]
+  postalTradeAddress?: TradeAddressType
+  uriUniversalCommunication?: UniversalCommunicationType
+  specifiedTaxRegistration?: TaxRegistrationType[]
 }
 
 /**
@@ -481,14 +481,14 @@ export class TradePartyType {
  */
 export class SupplyChainEventType {
   constructor({
-    occurrenceDateTime
+    occurrenceDateTime,
   }: {
-    occurrenceDateTime: udt.DateTimeType;
+    occurrenceDateTime: udt.DateTimeType
   }) {
-    this.occurrenceDateTime = occurrenceDateTime;
+    this.occurrenceDateTime = occurrenceDateTime
   }
 
-  occurrenceDateTime: udt.DateTimeType;
+  occurrenceDateTime: udt.DateTimeType
 }
 
 /**
@@ -496,14 +496,14 @@ export class SupplyChainEventType {
  */
 export class SupplyChainConsignmentType {
   constructor({
-    specifiedLogisticsTransportMovement
+    specifiedLogisticsTransportMovement,
   }: {
-    specifiedLogisticsTransportMovement?: LogisticsTransportMovementType[];
+    specifiedLogisticsTransportMovement?: LogisticsTransportMovementType[]
   }) {
-    this.specifiedLogisticsTransportMovement = specifiedLogisticsTransportMovement;
+    this.specifiedLogisticsTransportMovement = specifiedLogisticsTransportMovement
   }
 
-  specifiedLogisticsTransportMovement?: LogisticsTransportMovementType[];
+  specifiedLogisticsTransportMovement?: LogisticsTransportMovementType[]
 }
 
 /**
@@ -511,14 +511,14 @@ export class SupplyChainConsignmentType {
  */
 export class LogisticsTransportMovementType {
   constructor({
-    modeCode
+    modeCode,
   }: {
-    modeCode: qdt.TransportModeCodeType;
+    modeCode: qdt.TransportModeCodeType
   }) {
-    this.modeCode = modeCode;
+    this.modeCode = modeCode
   }
 
-  modeCode: qdt.TransportModeCodeType;
+  modeCode: qdt.TransportModeCodeType
 }
 
 /**
@@ -527,17 +527,17 @@ export class LogisticsTransportMovementType {
 export class TradeAccountingAccountType {
   constructor({
     id,
-    typeCode
+    typeCode,
   }: {
-    id: udt.IDType;
-    typeCode?: qdt.AccountingAccountTypeCodeType;
+    id: udt.IDType
+    typeCode?: qdt.AccountingAccountTypeCodeType
   }) {
-    this.id = id;
-    this.typeCode = typeCode;
+    this.id = id
+    this.typeCode = typeCode
   }
 
-  id: udt.IDType;
-  typeCode?: qdt.AccountingAccountTypeCodeType;
+  id: udt.IDType
+  typeCode?: qdt.AccountingAccountTypeCodeType
 }
 
 /**
@@ -548,23 +548,23 @@ export class TradeCurrencyExchangeType {
     sourceCurrencyCode,
     targetCurrencyCode,
     conversionRate,
-    conversionRateDateTime
+    conversionRateDateTime,
   }: {
-    sourceCurrencyCode: qdt.CurrencyCodeType;
-    targetCurrencyCode: qdt.CurrencyCodeType;
-    conversionRate: udt.RateType;
-    conversionRateDateTime?: udt.DateTimeType;
+    sourceCurrencyCode: qdt.CurrencyCodeType
+    targetCurrencyCode: qdt.CurrencyCodeType
+    conversionRate: udt.RateType
+    conversionRateDateTime?: udt.DateTimeType
   }) {
-    this.sourceCurrencyCode = sourceCurrencyCode;
-    this.targetCurrencyCode = targetCurrencyCode;
-    this.conversionRate = conversionRate;
-    this.conversionRateDateTime = conversionRateDateTime;
+    this.sourceCurrencyCode = sourceCurrencyCode
+    this.targetCurrencyCode = targetCurrencyCode
+    this.conversionRate = conversionRate
+    this.conversionRateDateTime = conversionRateDateTime
   }
 
-  sourceCurrencyCode: qdt.CurrencyCodeType;
-  targetCurrencyCode: qdt.CurrencyCodeType;
-  conversionRate: udt.RateType;
-  conversionRateDateTime?: udt.DateTimeType;
+  sourceCurrencyCode: qdt.CurrencyCodeType
+  targetCurrencyCode: qdt.CurrencyCodeType
+  conversionRate: udt.RateType
+  conversionRateDateTime?: udt.DateTimeType
 }
 
 /**
@@ -580,38 +580,38 @@ export class TradeAllowanceChargeType {
     actualAmount,
     reasonCode,
     reason,
-    categoryTradeTax
+    categoryTradeTax,
   }: {
-    chargeIndicator: udt.IndicatorType;
-    sequenceNumeric?: udt.NumericType;
-    calculationPercent?: udt.PercentType;
-    basisAmount?: udt.AmountType;
-    basisQuantity?: udt.QuantityType;
-    actualAmount: udt.AmountType;
-    reasonCode?: qdt.AllowanceChargeReasonCodeType;
-    reason?: udt.TextType;
-    categoryTradeTax?: TradeTaxType;
+    chargeIndicator: udt.IndicatorType
+    sequenceNumeric?: udt.NumericType
+    calculationPercent?: udt.PercentType
+    basisAmount?: udt.AmountType
+    basisQuantity?: udt.QuantityType
+    actualAmount: udt.AmountType
+    reasonCode?: qdt.AllowanceChargeReasonCodeType
+    reason?: udt.TextType
+    categoryTradeTax?: TradeTaxType
   }) {
-    this.chargeIndicator = chargeIndicator;
-    this.sequenceNumeric = sequenceNumeric;
-    this.calculationPercent = calculationPercent;
-    this.basisAmount = basisAmount;
-    this.basisQuantity = basisQuantity;
-    this.actualAmount = actualAmount;
-    this.reasonCode = reasonCode;
-    this.reason = reason;
-    this.categoryTradeTax = categoryTradeTax;
+    this.chargeIndicator = chargeIndicator
+    this.sequenceNumeric = sequenceNumeric
+    this.calculationPercent = calculationPercent
+    this.basisAmount = basisAmount
+    this.basisQuantity = basisQuantity
+    this.actualAmount = actualAmount
+    this.reasonCode = reasonCode
+    this.reason = reason
+    this.categoryTradeTax = categoryTradeTax
   }
 
-  chargeIndicator: udt.IndicatorType;
-  sequenceNumeric?: udt.NumericType;
-  calculationPercent?: udt.PercentType;
-  basisAmount?: udt.AmountType;
-  basisQuantity?: udt.QuantityType;
-  actualAmount: udt.AmountType;
-  reasonCode?: qdt.AllowanceChargeReasonCodeType;
-  reason?: udt.TextType;
-  categoryTradeTax?: TradeTaxType;
+  chargeIndicator: udt.IndicatorType
+  sequenceNumeric?: udt.NumericType
+  calculationPercent?: udt.PercentType
+  basisAmount?: udt.AmountType
+  basisQuantity?: udt.QuantityType
+  actualAmount: udt.AmountType
+  reasonCode?: qdt.AllowanceChargeReasonCodeType
+  reason?: udt.TextType
+  categoryTradeTax?: TradeTaxType
 }
 
 /**
@@ -621,20 +621,20 @@ export class LogisticsServiceChargeType {
   constructor({
     description,
     appliedAmount,
-    appliedTradeTax
+    appliedTradeTax,
   }: {
-    description: udt.TextType;
-    appliedAmount: udt.AmountType;
-    appliedTradeTax?: TradeTaxType[];
+    description: udt.TextType
+    appliedAmount: udt.AmountType
+    appliedTradeTax?: TradeTaxType[]
   }) {
-    this.description = description;
-    this.appliedAmount = appliedAmount;
-    this.appliedTradeTax = appliedTradeTax;
+    this.description = description
+    this.appliedAmount = appliedAmount
+    this.appliedTradeTax = appliedTradeTax
   }
 
-  description: udt.TextType;
-  appliedAmount: udt.AmountType;
-  appliedTradeTax?: TradeTaxType[];
+  description: udt.TextType
+  appliedAmount: udt.AmountType
+  appliedTradeTax?: TradeTaxType[]
 }
 
 /**
@@ -646,26 +646,26 @@ export class TradePaymentPenaltyTermsType {
     basisPeriodMeasure,
     basisAmount,
     calculationPercent,
-    actualPenaltyAmount
+    actualPenaltyAmount,
   }: {
-    basisDateTime?: udt.DateTimeType;
-    basisPeriodMeasure?: udt.MeasureType;
-    basisAmount?: udt.AmountType;
-    calculationPercent?: udt.PercentType;
-    actualPenaltyAmount?: udt.AmountType;
+    basisDateTime?: udt.DateTimeType
+    basisPeriodMeasure?: udt.MeasureType
+    basisAmount?: udt.AmountType
+    calculationPercent?: udt.PercentType
+    actualPenaltyAmount?: udt.AmountType
   }) {
-    this.basisDateTime = basisDateTime;
-    this.basisPeriodMeasure = basisPeriodMeasure;
-    this.basisAmount = basisAmount;
-    this.calculationPercent = calculationPercent;
-    this.actualPenaltyAmount = actualPenaltyAmount;
+    this.basisDateTime = basisDateTime
+    this.basisPeriodMeasure = basisPeriodMeasure
+    this.basisAmount = basisAmount
+    this.calculationPercent = calculationPercent
+    this.actualPenaltyAmount = actualPenaltyAmount
   }
 
-  basisDateTime?: udt.DateTimeType;
-  basisPeriodMeasure?: udt.MeasureType;
-  basisAmount?: udt.AmountType;
-  calculationPercent?: udt.PercentType;
-  actualPenaltyAmount?: udt.AmountType;
+  basisDateTime?: udt.DateTimeType
+  basisPeriodMeasure?: udt.MeasureType
+  basisAmount?: udt.AmountType
+  calculationPercent?: udt.PercentType
+  actualPenaltyAmount?: udt.AmountType
 }
 
 /**
@@ -677,26 +677,26 @@ export class TradePaymentDiscountTermsType {
     basisPeriodMeasure,
     basisAmount,
     calculationPercent,
-    actualDiscountAmount
+    actualDiscountAmount,
   }: {
-    basisDateTime?: udt.DateTimeType;
-    basisPeriodMeasure?: udt.MeasureType;
-    basisAmount?: udt.AmountType;
-    calculationPercent?: udt.PercentType;
-    actualDiscountAmount?: udt.AmountType;
+    basisDateTime?: udt.DateTimeType
+    basisPeriodMeasure?: udt.MeasureType
+    basisAmount?: udt.AmountType
+    calculationPercent?: udt.PercentType
+    actualDiscountAmount?: udt.AmountType
   }) {
-    this.basisDateTime = basisDateTime;
-    this.basisPeriodMeasure = basisPeriodMeasure;
-    this.basisAmount = basisAmount;
-    this.calculationPercent = calculationPercent;
-    this.actualDiscountAmount = actualDiscountAmount;
+    this.basisDateTime = basisDateTime
+    this.basisPeriodMeasure = basisPeriodMeasure
+    this.basisAmount = basisAmount
+    this.calculationPercent = calculationPercent
+    this.actualDiscountAmount = actualDiscountAmount
   }
 
-  basisDateTime?: udt.DateTimeType;
-  basisPeriodMeasure?: udt.MeasureType;
-  basisAmount?: udt.AmountType;
-  calculationPercent?: udt.PercentType;
-  actualDiscountAmount?: udt.AmountType;
+  basisDateTime?: udt.DateTimeType
+  basisPeriodMeasure?: udt.MeasureType
+  basisAmount?: udt.AmountType
+  calculationPercent?: udt.PercentType
+  actualDiscountAmount?: udt.AmountType
 }
 
 /**
@@ -710,32 +710,32 @@ export class TradePaymentTermsType {
     partialPaymentAmount,
     applicableTradePaymentPenaltyTerms,
     applicableTradePaymentDiscountTerms,
-    payeeTradeParty
+    payeeTradeParty,
   }: {
-    description?: udt.TextType;
-    dueDateDateTime?: udt.DateTimeType;
-    directDebitMandateID?: udt.IDType;
-    partialPaymentAmount?: udt.AmountType;
-    applicableTradePaymentPenaltyTerms?: TradePaymentPenaltyTermsType;
-    applicableTradePaymentDiscountTerms?: TradePaymentDiscountTermsType;
-    payeeTradeParty?: TradePartyType;
+    description?: udt.TextType
+    dueDateDateTime?: udt.DateTimeType
+    directDebitMandateID?: udt.IDType
+    partialPaymentAmount?: udt.AmountType
+    applicableTradePaymentPenaltyTerms?: TradePaymentPenaltyTermsType
+    applicableTradePaymentDiscountTerms?: TradePaymentDiscountTermsType
+    payeeTradeParty?: TradePartyType
   }) {
-    this.description = description;
-    this.dueDateDateTime = dueDateDateTime;
-    this.directDebitMandateID = directDebitMandateID;
-    this.partialPaymentAmount = partialPaymentAmount;
-    this.applicableTradePaymentPenaltyTerms = applicableTradePaymentPenaltyTerms;
-    this.applicableTradePaymentDiscountTerms = applicableTradePaymentDiscountTerms;
-    this.payeeTradeParty = payeeTradeParty;
+    this.description = description
+    this.dueDateDateTime = dueDateDateTime
+    this.directDebitMandateID = directDebitMandateID
+    this.partialPaymentAmount = partialPaymentAmount
+    this.applicableTradePaymentPenaltyTerms = applicableTradePaymentPenaltyTerms
+    this.applicableTradePaymentDiscountTerms = applicableTradePaymentDiscountTerms
+    this.payeeTradeParty = payeeTradeParty
   }
 
-  description?: udt.TextType;
-  dueDateDateTime?: udt.DateTimeType;
-  directDebitMandateID?: udt.IDType;
-  partialPaymentAmount?: udt.AmountType;
-  applicableTradePaymentPenaltyTerms?: TradePaymentPenaltyTermsType;
-  applicableTradePaymentDiscountTerms?: TradePaymentDiscountTermsType;
-  payeeTradeParty?: TradePartyType;
+  description?: udt.TextType
+  dueDateDateTime?: udt.DateTimeType
+  directDebitMandateID?: udt.IDType
+  partialPaymentAmount?: udt.AmountType
+  applicableTradePaymentPenaltyTerms?: TradePaymentPenaltyTermsType
+  applicableTradePaymentDiscountTerms?: TradePaymentDiscountTermsType
+  payeeTradeParty?: TradePartyType
 }
 
 /**
@@ -744,17 +744,17 @@ export class TradePaymentTermsType {
 export class TradeSettlementFinancialCardType {
   constructor({
     id,
-    cardholderName
+    cardholderName,
   }: {
-    id: udt.IDType;
-    cardholderName?: udt.TextType;
+    id: udt.IDType
+    cardholderName?: udt.TextType
   }) {
-    this.id = id;
-    this.cardholderName = cardholderName;
+    this.id = id
+    this.cardholderName = cardholderName
   }
 
-  id: udt.IDType;
-  cardholderName?: udt.TextType;
+  id: udt.IDType
+  cardholderName?: udt.TextType
 }
 
 /**
@@ -767,29 +767,29 @@ export class TradeSettlementPaymentMeansType {
     applicableTradeSettlementFinancialCard,
     payerPartyDebtorFinancialAccount,
     payeePartyCreditorFinancialAccount,
-    payeeSpecifiedCreditorFinancialInstitution
+    payeeSpecifiedCreditorFinancialInstitution,
   }: {
-    typeCode: qdt.PaymentMeansCodeType;
-    information?: udt.TextType;
-    applicableTradeSettlementFinancialCard?: TradeSettlementFinancialCardType;
-    payerPartyDebtorFinancialAccount?: DebtorFinancialAccountType;
-    payeePartyCreditorFinancialAccount?: CreditorFinancialAccountType;
-    payeeSpecifiedCreditorFinancialInstitution?: CreditorFinancialInstitutionType;
+    typeCode: qdt.PaymentMeansCodeType
+    information?: udt.TextType
+    applicableTradeSettlementFinancialCard?: TradeSettlementFinancialCardType
+    payerPartyDebtorFinancialAccount?: DebtorFinancialAccountType
+    payeePartyCreditorFinancialAccount?: CreditorFinancialAccountType
+    payeeSpecifiedCreditorFinancialInstitution?: CreditorFinancialInstitutionType
   }) {
-    this.typeCode = typeCode;
-    this.information = information;
-    this.applicableTradeSettlementFinancialCard = applicableTradeSettlementFinancialCard;
-    this.payerPartyDebtorFinancialAccount = payerPartyDebtorFinancialAccount;
-    this.payeePartyCreditorFinancialAccount = payeePartyCreditorFinancialAccount;
-    this.payeeSpecifiedCreditorFinancialInstitution = payeeSpecifiedCreditorFinancialInstitution;
+    this.typeCode = typeCode
+    this.information = information
+    this.applicableTradeSettlementFinancialCard = applicableTradeSettlementFinancialCard
+    this.payerPartyDebtorFinancialAccount = payerPartyDebtorFinancialAccount
+    this.payeePartyCreditorFinancialAccount = payeePartyCreditorFinancialAccount
+    this.payeeSpecifiedCreditorFinancialInstitution = payeeSpecifiedCreditorFinancialInstitution
   }
 
-  typeCode: qdt.PaymentMeansCodeType;
-  information?: udt.TextType;
-  applicableTradeSettlementFinancialCard?: TradeSettlementFinancialCardType;
-  payerPartyDebtorFinancialAccount?: DebtorFinancialAccountType;
-  payeePartyCreditorFinancialAccount?: CreditorFinancialAccountType;
-  payeeSpecifiedCreditorFinancialInstitution?: CreditorFinancialInstitutionType;
+  typeCode: qdt.PaymentMeansCodeType
+  information?: udt.TextType
+  applicableTradeSettlementFinancialCard?: TradeSettlementFinancialCardType
+  payerPartyDebtorFinancialAccount?: DebtorFinancialAccountType
+  payeePartyCreditorFinancialAccount?: CreditorFinancialAccountType
+  payeeSpecifiedCreditorFinancialInstitution?: CreditorFinancialInstitutionType
 }
 
 /**
@@ -805,38 +805,38 @@ export class TradeSettlementHeaderMonetarySummationType {
     roundingAmount,
     grandTotalAmount,
     totalPrepaidAmount,
-    duePayableAmount
+    duePayableAmount,
   }: {
-    lineTotalAmount: udt.AmountType;
-    chargeTotalAmount?: udt.AmountType;
-    allowanceTotalAmount?: udt.AmountType;
-    taxBasisTotalAmount: udt.AmountType[];
-    taxTotalAmount?: udt.AmountType[];
-    roundingAmount?: udt.AmountType;
-    grandTotalAmount: udt.AmountType[];
-    totalPrepaidAmount?: udt.AmountType;
-    duePayableAmount: udt.AmountType;
+    lineTotalAmount: udt.AmountType
+    chargeTotalAmount?: udt.AmountType
+    allowanceTotalAmount?: udt.AmountType
+    taxBasisTotalAmount: udt.AmountType[]
+    taxTotalAmount?: udt.AmountType[]
+    roundingAmount?: udt.AmountType
+    grandTotalAmount: udt.AmountType[]
+    totalPrepaidAmount?: udt.AmountType
+    duePayableAmount: udt.AmountType
   }) {
-    this.lineTotalAmount = lineTotalAmount;
-    this.chargeTotalAmount = chargeTotalAmount;
-    this.allowanceTotalAmount = allowanceTotalAmount;
-    this.taxBasisTotalAmount = taxBasisTotalAmount;
-    this.taxTotalAmount = taxTotalAmount;
-    this.roundingAmount = roundingAmount;
-    this.grandTotalAmount = grandTotalAmount;
-    this.totalPrepaidAmount = totalPrepaidAmount;
-    this.duePayableAmount = duePayableAmount;
+    this.lineTotalAmount = lineTotalAmount
+    this.chargeTotalAmount = chargeTotalAmount
+    this.allowanceTotalAmount = allowanceTotalAmount
+    this.taxBasisTotalAmount = taxBasisTotalAmount
+    this.taxTotalAmount = taxTotalAmount
+    this.roundingAmount = roundingAmount
+    this.grandTotalAmount = grandTotalAmount
+    this.totalPrepaidAmount = totalPrepaidAmount
+    this.duePayableAmount = duePayableAmount
   }
 
-  lineTotalAmount: udt.AmountType;
-  chargeTotalAmount?: udt.AmountType;
-  allowanceTotalAmount?: udt.AmountType;
-  taxBasisTotalAmount: udt.AmountType[];
-  taxTotalAmount?: udt.AmountType[];
-  roundingAmount?: udt.AmountType;
-  grandTotalAmount: udt.AmountType[];
-  totalPrepaidAmount?: udt.AmountType;
-  duePayableAmount: udt.AmountType;
+  lineTotalAmount: udt.AmountType
+  chargeTotalAmount?: udt.AmountType
+  allowanceTotalAmount?: udt.AmountType
+  taxBasisTotalAmount: udt.AmountType[]
+  taxTotalAmount?: udt.AmountType[]
+  roundingAmount?: udt.AmountType
+  grandTotalAmount: udt.AmountType[]
+  totalPrepaidAmount?: udt.AmountType
+  duePayableAmount: udt.AmountType
 }
 
 /**
@@ -847,23 +847,23 @@ export class ProductCharacteristicType {
     typeCode,
     description,
     valueMeasure,
-    value
+    value,
   }: {
-    typeCode?: udt.CodeType;
-    description: udt.TextType;
-    valueMeasure?: udt.MeasureType;
-    value: udt.TextType;
+    typeCode?: udt.CodeType
+    description: udt.TextType
+    valueMeasure?: udt.MeasureType
+    value: udt.TextType
   }) {
-    this.typeCode = typeCode;
-    this.description = description;
-    this.valueMeasure = valueMeasure;
-    this.value = value;
+    this.typeCode = typeCode
+    this.description = description
+    this.valueMeasure = valueMeasure
+    this.value = value
   }
 
-  typeCode?: udt.CodeType;
-  description: udt.TextType;
-  valueMeasure?: udt.MeasureType;
-  value: udt.TextType;
+  typeCode?: udt.CodeType
+  description: udt.TextType
+  valueMeasure?: udt.MeasureType
+  value: udt.TextType
 }
 
 /**
@@ -872,17 +872,17 @@ export class ProductCharacteristicType {
 export class ProductClassificationType {
   constructor({
     classCode,
-    className
+    className,
   }: {
-    classCode?: udt.CodeType;
-    className?: udt.TextType;
+    classCode?: udt.CodeType
+    className?: udt.TextType
   }) {
-    this.classCode = classCode;
-    this.className = className;
+    this.classCode = classCode
+    this.className = className
   }
 
-  classCode?: udt.CodeType;
-  className?: udt.TextType;
+  classCode?: udt.CodeType
+  className?: udt.TextType
 }
 
 /**
@@ -891,17 +891,17 @@ export class ProductClassificationType {
 export class TradeProductInstanceType {
   constructor({
     batchID,
-    supplierAssignedSerialID
+    supplierAssignedSerialID,
   }: {
-    batchID?: udt.IDType;
-    supplierAssignedSerialID?: udt.IDType;
+    batchID?: udt.IDType
+    supplierAssignedSerialID?: udt.IDType
   }) {
-    this.batchID = batchID;
-    this.supplierAssignedSerialID = supplierAssignedSerialID;
+    this.batchID = batchID
+    this.supplierAssignedSerialID = supplierAssignedSerialID
   }
 
-  batchID?: udt.IDType;
-  supplierAssignedSerialID?: udt.IDType;
+  batchID?: udt.IDType
+  supplierAssignedSerialID?: udt.IDType
 }
 
 /**
@@ -909,14 +909,14 @@ export class TradeProductInstanceType {
  */
 export class TradeCountryType {
   constructor({
-    id
+    id,
   }: {
-    id?: qdt.CountryIDType;
+    id?: qdt.CountryIDType
   }) {
-    this.id = id;
+    this.id = id
   }
 
-  id?: qdt.CountryIDType;
+  id?: qdt.CountryIDType
 }
 
 /**
@@ -931,35 +931,35 @@ export class ReferencedProductType {
     industryAssignedID,
     name,
     description,
-    unitQuantity
+    unitQuantity,
   }: {
-    id?: udt.IDType;
-    globalID?: udt.IDType[];
-    sellerAssignedID?: udt.IDType;
-    buyerAssignedID?: udt.IDType;
-    industryAssignedID?: udt.IDType;
-    name: udt.TextType;
-    description?: udt.TextType;
-    unitQuantity?: udt.QuantityType;
+    id?: udt.IDType
+    globalID?: udt.IDType[]
+    sellerAssignedID?: udt.IDType
+    buyerAssignedID?: udt.IDType
+    industryAssignedID?: udt.IDType
+    name: udt.TextType
+    description?: udt.TextType
+    unitQuantity?: udt.QuantityType
   }) {
-    this.id = id;
-    this.globalID = globalID;
-    this.sellerAssignedID = sellerAssignedID;
-    this.buyerAssignedID = buyerAssignedID;
-    this.industryAssignedID = industryAssignedID;
-    this.name = name;
-    this.description = description;
-    this.unitQuantity = unitQuantity;
+    this.id = id
+    this.globalID = globalID
+    this.sellerAssignedID = sellerAssignedID
+    this.buyerAssignedID = buyerAssignedID
+    this.industryAssignedID = industryAssignedID
+    this.name = name
+    this.description = description
+    this.unitQuantity = unitQuantity
   }
 
-  id?: udt.IDType;
-  globalID?: udt.IDType[];
-  sellerAssignedID?: udt.IDType;
-  buyerAssignedID?: udt.IDType;
-  industryAssignedID?: udt.IDType;
-  name: udt.TextType;
-  description?: udt.TextType;
-  unitQuantity?: udt.QuantityType;
+  id?: udt.IDType
+  globalID?: udt.IDType[]
+  sellerAssignedID?: udt.IDType
+  buyerAssignedID?: udt.IDType
+  industryAssignedID?: udt.IDType
+  name: udt.TextType
+  description?: udt.TextType
+  unitQuantity?: udt.QuantityType
 }
 
 /**
@@ -977,44 +977,44 @@ export class TradeProductType {
     designatedProductClassification,
     individualTradeProductInstance,
     originTradeCountry,
-    includedReferencedProduct
+    includedReferencedProduct,
   }: {
-    id?: udt.IDType;
-    globalID?: udt.IDType;
-    sellerAssignedID?: udt.IDType;
-    buyerAssignedID?: udt.IDType;
-    name: udt.TextType;
-    description?: udt.TextType;
-    applicableProductCharacteristic?: ProductCharacteristicType[];
-    designatedProductClassification?: ProductClassificationType[];
-    individualTradeProductInstance?: TradeProductInstanceType[];
-    originTradeCountry?: TradeCountryType;
-    includedReferencedProduct?: ReferencedProductType[];
+    id?: udt.IDType
+    globalID?: udt.IDType
+    sellerAssignedID?: udt.IDType
+    buyerAssignedID?: udt.IDType
+    name: udt.TextType
+    description?: udt.TextType
+    applicableProductCharacteristic?: ProductCharacteristicType[]
+    designatedProductClassification?: ProductClassificationType[]
+    individualTradeProductInstance?: TradeProductInstanceType[]
+    originTradeCountry?: TradeCountryType
+    includedReferencedProduct?: ReferencedProductType[]
   }) {
-    this.id = id;
-    this.globalID = globalID;
-    this.sellerAssignedID = sellerAssignedID;
-    this.buyerAssignedID = buyerAssignedID;
-    this.name = name;
-    this.description = description;
-    this.applicableProductCharacteristic = applicableProductCharacteristic;
-    this.designatedProductClassification = designatedProductClassification;
-    this.individualTradeProductInstance = individualTradeProductInstance;
-    this.originTradeCountry = originTradeCountry;
-    this.includedReferencedProduct = includedReferencedProduct;
+    this.id = id
+    this.globalID = globalID
+    this.sellerAssignedID = sellerAssignedID
+    this.buyerAssignedID = buyerAssignedID
+    this.name = name
+    this.description = description
+    this.applicableProductCharacteristic = applicableProductCharacteristic
+    this.designatedProductClassification = designatedProductClassification
+    this.individualTradeProductInstance = individualTradeProductInstance
+    this.originTradeCountry = originTradeCountry
+    this.includedReferencedProduct = includedReferencedProduct
   }
 
-  id?: udt.IDType;
-  globalID?: udt.IDType;
-  sellerAssignedID?: udt.IDType;
-  buyerAssignedID?: udt.IDType;
-  name: udt.TextType;
-  description?: udt.TextType;
-  applicableProductCharacteristic?: ProductCharacteristicType[];
-  designatedProductClassification?: ProductClassificationType[];
-  individualTradeProductInstance?: TradeProductInstanceType[];
-  originTradeCountry?: TradeCountryType;
-  includedReferencedProduct?: ReferencedProductType[];
+  id?: udt.IDType
+  globalID?: udt.IDType
+  sellerAssignedID?: udt.IDType
+  buyerAssignedID?: udt.IDType
+  name: udt.TextType
+  description?: udt.TextType
+  applicableProductCharacteristic?: ProductCharacteristicType[]
+  designatedProductClassification?: ProductClassificationType[]
+  individualTradeProductInstance?: TradeProductInstanceType[]
+  originTradeCountry?: TradeCountryType
+  includedReferencedProduct?: ReferencedProductType[]
 }
 
 /**
@@ -1025,23 +1025,23 @@ export class TradePriceType {
     chargeAmount,
     basisQuantity,
     appliedTradeAllowanceCharge,
-    includedTradeTax
+    includedTradeTax,
   }: {
-    chargeAmount: udt.AmountType;
-    basisQuantity?: udt.QuantityType;
-    appliedTradeAllowanceCharge?: TradeAllowanceChargeType[];
-    includedTradeTax?: TradeTaxType;
+    chargeAmount: udt.AmountType
+    basisQuantity?: udt.QuantityType
+    appliedTradeAllowanceCharge?: TradeAllowanceChargeType[]
+    includedTradeTax?: TradeTaxType
   }) {
-    this.chargeAmount = chargeAmount;
-    this.basisQuantity = basisQuantity;
-    this.appliedTradeAllowanceCharge = appliedTradeAllowanceCharge;
-    this.includedTradeTax = includedTradeTax;
+    this.chargeAmount = chargeAmount
+    this.basisQuantity = basisQuantity
+    this.appliedTradeAllowanceCharge = appliedTradeAllowanceCharge
+    this.includedTradeTax = includedTradeTax
   }
 
-  chargeAmount: udt.AmountType;
-  basisQuantity?: udt.QuantityType;
-  appliedTradeAllowanceCharge?: TradeAllowanceChargeType[];
-  includedTradeTax?: TradeTaxType;
+  chargeAmount: udt.AmountType
+  basisQuantity?: udt.QuantityType
+  appliedTradeAllowanceCharge?: TradeAllowanceChargeType[]
+  includedTradeTax?: TradeTaxType
 }
 
 /**
@@ -1055,32 +1055,32 @@ export class LineTradeAgreementType {
     additionalReferencedDocument,
     grossPriceProductTradePrice,
     netPriceProductTradePrice,
-    ultimateCustomerOrderReferencedDocument
+    ultimateCustomerOrderReferencedDocument,
   }: {
-    buyerOrderReferencedDocument?: ReferencedDocumentType;
-    quotationReferencedDocument?: ReferencedDocumentType;
-    contractReferencedDocument?: ReferencedDocumentType;
-    additionalReferencedDocument?: ReferencedDocumentType[];
-    grossPriceProductTradePrice?: TradePriceType;
-    netPriceProductTradePrice: TradePriceType;
-    ultimateCustomerOrderReferencedDocument?: ReferencedDocumentType[];
+    buyerOrderReferencedDocument?: ReferencedDocumentType
+    quotationReferencedDocument?: ReferencedDocumentType
+    contractReferencedDocument?: ReferencedDocumentType
+    additionalReferencedDocument?: ReferencedDocumentType[]
+    grossPriceProductTradePrice?: TradePriceType
+    netPriceProductTradePrice: TradePriceType
+    ultimateCustomerOrderReferencedDocument?: ReferencedDocumentType[]
   }) {
-    this.buyerOrderReferencedDocument = buyerOrderReferencedDocument;
-    this.quotationReferencedDocument = quotationReferencedDocument;
-    this.contractReferencedDocument = contractReferencedDocument;
-    this.additionalReferencedDocument = additionalReferencedDocument;
-    this.grossPriceProductTradePrice = grossPriceProductTradePrice;
-    this.netPriceProductTradePrice = netPriceProductTradePrice;
-    this.ultimateCustomerOrderReferencedDocument = ultimateCustomerOrderReferencedDocument;
+    this.buyerOrderReferencedDocument = buyerOrderReferencedDocument
+    this.quotationReferencedDocument = quotationReferencedDocument
+    this.contractReferencedDocument = contractReferencedDocument
+    this.additionalReferencedDocument = additionalReferencedDocument
+    this.grossPriceProductTradePrice = grossPriceProductTradePrice
+    this.netPriceProductTradePrice = netPriceProductTradePrice
+    this.ultimateCustomerOrderReferencedDocument = ultimateCustomerOrderReferencedDocument
   }
 
-  buyerOrderReferencedDocument?: ReferencedDocumentType;
-  quotationReferencedDocument?: ReferencedDocumentType;
-  contractReferencedDocument?: ReferencedDocumentType;
-  additionalReferencedDocument?: ReferencedDocumentType[];
-  grossPriceProductTradePrice?: TradePriceType;
-  netPriceProductTradePrice: TradePriceType;
-  ultimateCustomerOrderReferencedDocument?: ReferencedDocumentType[];
+  buyerOrderReferencedDocument?: ReferencedDocumentType
+  quotationReferencedDocument?: ReferencedDocumentType
+  contractReferencedDocument?: ReferencedDocumentType
+  additionalReferencedDocument?: ReferencedDocumentType[]
+  grossPriceProductTradePrice?: TradePriceType
+  netPriceProductTradePrice: TradePriceType
+  ultimateCustomerOrderReferencedDocument?: ReferencedDocumentType[]
 }
 
 /**
@@ -1096,38 +1096,38 @@ export class LineTradeDeliveryType {
     actualDeliverySupplyChainEvent,
     despatchAdviceReferencedDocument,
     receivingAdviceReferencedDocument,
-    deliveryNoteReferencedDocument
+    deliveryNoteReferencedDocument,
   }: {
-    billedQuantity: udt.QuantityType;
-    chargeFreeQuantity?: udt.QuantityType;
-    packageQuantity?: udt.QuantityType;
-    shipToTradeParty?: TradePartyType;
-    ultimateShipToTradeParty?: TradePartyType;
-    actualDeliverySupplyChainEvent?: SupplyChainEventType;
-    despatchAdviceReferencedDocument?: ReferencedDocumentType;
-    receivingAdviceReferencedDocument?: ReferencedDocumentType;
-    deliveryNoteReferencedDocument?: ReferencedDocumentType;
+    billedQuantity: udt.QuantityType
+    chargeFreeQuantity?: udt.QuantityType
+    packageQuantity?: udt.QuantityType
+    shipToTradeParty?: TradePartyType
+    ultimateShipToTradeParty?: TradePartyType
+    actualDeliverySupplyChainEvent?: SupplyChainEventType
+    despatchAdviceReferencedDocument?: ReferencedDocumentType
+    receivingAdviceReferencedDocument?: ReferencedDocumentType
+    deliveryNoteReferencedDocument?: ReferencedDocumentType
   }) {
-    this.billedQuantity = billedQuantity;
-    this.chargeFreeQuantity = chargeFreeQuantity;
-    this.packageQuantity = packageQuantity;
-    this.shipToTradeParty = shipToTradeParty;
-    this.ultimateShipToTradeParty = ultimateShipToTradeParty;
-    this.actualDeliverySupplyChainEvent = actualDeliverySupplyChainEvent;
-    this.despatchAdviceReferencedDocument = despatchAdviceReferencedDocument;
-    this.receivingAdviceReferencedDocument = receivingAdviceReferencedDocument;
-    this.deliveryNoteReferencedDocument = deliveryNoteReferencedDocument;
+    this.billedQuantity = billedQuantity
+    this.chargeFreeQuantity = chargeFreeQuantity
+    this.packageQuantity = packageQuantity
+    this.shipToTradeParty = shipToTradeParty
+    this.ultimateShipToTradeParty = ultimateShipToTradeParty
+    this.actualDeliverySupplyChainEvent = actualDeliverySupplyChainEvent
+    this.despatchAdviceReferencedDocument = despatchAdviceReferencedDocument
+    this.receivingAdviceReferencedDocument = receivingAdviceReferencedDocument
+    this.deliveryNoteReferencedDocument = deliveryNoteReferencedDocument
   }
 
-  billedQuantity: udt.QuantityType;
-  chargeFreeQuantity?: udt.QuantityType;
-  packageQuantity?: udt.QuantityType;
-  shipToTradeParty?: TradePartyType;
-  ultimateShipToTradeParty?: TradePartyType;
-  actualDeliverySupplyChainEvent?: SupplyChainEventType;
-  despatchAdviceReferencedDocument?: ReferencedDocumentType;
-  receivingAdviceReferencedDocument?: ReferencedDocumentType;
-  deliveryNoteReferencedDocument?: ReferencedDocumentType;
+  billedQuantity: udt.QuantityType
+  chargeFreeQuantity?: udt.QuantityType
+  packageQuantity?: udt.QuantityType
+  shipToTradeParty?: TradePartyType
+  ultimateShipToTradeParty?: TradePartyType
+  actualDeliverySupplyChainEvent?: SupplyChainEventType
+  despatchAdviceReferencedDocument?: ReferencedDocumentType
+  receivingAdviceReferencedDocument?: ReferencedDocumentType
+  deliveryNoteReferencedDocument?: ReferencedDocumentType
 }
 
 /**
@@ -1140,29 +1140,29 @@ export class TradeSettlementLineMonetarySummationType {
     allowanceTotalAmount,
     taxTotalAmount,
     grandTotalAmount,
-    totalAllowanceChargeAmount
+    totalAllowanceChargeAmount,
   }: {
-    lineTotalAmount: udt.AmountType;
-    chargeTotalAmount?: udt.AmountType;
-    allowanceTotalAmount?: udt.AmountType;
-    taxTotalAmount?: udt.AmountType;
-    grandTotalAmount?: udt.AmountType;
-    totalAllowanceChargeAmount?: udt.AmountType;
+    lineTotalAmount: udt.AmountType
+    chargeTotalAmount?: udt.AmountType
+    allowanceTotalAmount?: udt.AmountType
+    taxTotalAmount?: udt.AmountType
+    grandTotalAmount?: udt.AmountType
+    totalAllowanceChargeAmount?: udt.AmountType
   }) {
-    this.lineTotalAmount = lineTotalAmount;
-    this.chargeTotalAmount = chargeTotalAmount;
-    this.allowanceTotalAmount = allowanceTotalAmount;
-    this.taxTotalAmount = taxTotalAmount;
-    this.grandTotalAmount = grandTotalAmount;
-    this.totalAllowanceChargeAmount = totalAllowanceChargeAmount;
+    this.lineTotalAmount = lineTotalAmount
+    this.chargeTotalAmount = chargeTotalAmount
+    this.allowanceTotalAmount = allowanceTotalAmount
+    this.taxTotalAmount = taxTotalAmount
+    this.grandTotalAmount = grandTotalAmount
+    this.totalAllowanceChargeAmount = totalAllowanceChargeAmount
   }
 
-  lineTotalAmount: udt.AmountType;
-  chargeTotalAmount?: udt.AmountType;
-  allowanceTotalAmount?: udt.AmountType;
-  taxTotalAmount?: udt.AmountType;
-  grandTotalAmount?: udt.AmountType;
-  totalAllowanceChargeAmount?: udt.AmountType;
+  lineTotalAmount: udt.AmountType
+  chargeTotalAmount?: udt.AmountType
+  allowanceTotalAmount?: udt.AmountType
+  taxTotalAmount?: udt.AmountType
+  grandTotalAmount?: udt.AmountType
+  totalAllowanceChargeAmount?: udt.AmountType
 }
 
 /**
@@ -1176,32 +1176,32 @@ export class LineTradeSettlementType {
     specifiedTradeSettlementLineMonetarySummation,
     invoiceReferencedDocument,
     additionalReferencedDocument,
-    receivableSpecifiedTradeAccountingAccount
+    receivableSpecifiedTradeAccountingAccount,
   }: {
-    applicableTradeTax: TradeTaxType[];
-    billingSpecifiedPeriod?: SpecifiedPeriodType;
-    specifiedTradeAllowanceCharge?: TradeAllowanceChargeType[];
-    specifiedTradeSettlementLineMonetarySummation: TradeSettlementLineMonetarySummationType;
-    invoiceReferencedDocument?: ReferencedDocumentType;
-    additionalReferencedDocument?: ReferencedDocumentType[];
-    receivableSpecifiedTradeAccountingAccount?: TradeAccountingAccountType;
+    applicableTradeTax: TradeTaxType[]
+    billingSpecifiedPeriod?: SpecifiedPeriodType
+    specifiedTradeAllowanceCharge?: TradeAllowanceChargeType[]
+    specifiedTradeSettlementLineMonetarySummation: TradeSettlementLineMonetarySummationType
+    invoiceReferencedDocument?: ReferencedDocumentType
+    additionalReferencedDocument?: ReferencedDocumentType[]
+    receivableSpecifiedTradeAccountingAccount?: TradeAccountingAccountType
   }) {
-    this.applicableTradeTax = applicableTradeTax;
-    this.billingSpecifiedPeriod = billingSpecifiedPeriod;
-    this.specifiedTradeAllowanceCharge = specifiedTradeAllowanceCharge;
-    this.specifiedTradeSettlementLineMonetarySummation = specifiedTradeSettlementLineMonetarySummation;
-    this.invoiceReferencedDocument = invoiceReferencedDocument;
-    this.additionalReferencedDocument = additionalReferencedDocument;
-    this.receivableSpecifiedTradeAccountingAccount = receivableSpecifiedTradeAccountingAccount;
+    this.applicableTradeTax = applicableTradeTax
+    this.billingSpecifiedPeriod = billingSpecifiedPeriod
+    this.specifiedTradeAllowanceCharge = specifiedTradeAllowanceCharge
+    this.specifiedTradeSettlementLineMonetarySummation = specifiedTradeSettlementLineMonetarySummation
+    this.invoiceReferencedDocument = invoiceReferencedDocument
+    this.additionalReferencedDocument = additionalReferencedDocument
+    this.receivableSpecifiedTradeAccountingAccount = receivableSpecifiedTradeAccountingAccount
   }
 
-  applicableTradeTax: TradeTaxType[];
-  billingSpecifiedPeriod?: SpecifiedPeriodType;
-  specifiedTradeAllowanceCharge?: TradeAllowanceChargeType[];
-  specifiedTradeSettlementLineMonetarySummation: TradeSettlementLineMonetarySummationType;
-  invoiceReferencedDocument?: ReferencedDocumentType;
-  additionalReferencedDocument?: ReferencedDocumentType[];
-  receivableSpecifiedTradeAccountingAccount?: TradeAccountingAccountType;
+  applicableTradeTax: TradeTaxType[]
+  billingSpecifiedPeriod?: SpecifiedPeriodType
+  specifiedTradeAllowanceCharge?: TradeAllowanceChargeType[]
+  specifiedTradeSettlementLineMonetarySummation: TradeSettlementLineMonetarySummationType
+  invoiceReferencedDocument?: ReferencedDocumentType
+  additionalReferencedDocument?: ReferencedDocumentType[]
+  receivableSpecifiedTradeAccountingAccount?: TradeAccountingAccountType
 }
 
 /**
@@ -1213,24 +1213,24 @@ export class SupplyChainTradeLineItemType {
     specifiedTradeProduct,
     specifiedLineTradeAgreement,
     specifiedLineTradeDelivery,
-    specifiedLineTradeSettlement
+    specifiedLineTradeSettlement,
   }: {
-    associatedDocumentLineDocument: DocumentLineDocumentType;
-    specifiedTradeProduct: TradeProductType;
-    specifiedLineTradeAgreement: LineTradeAgreementType;
-    specifiedLineTradeDelivery: LineTradeDeliveryType;
-    specifiedLineTradeSettlement: LineTradeSettlementType;
+    associatedDocumentLineDocument: DocumentLineDocumentType
+    specifiedTradeProduct: TradeProductType
+    specifiedLineTradeAgreement: LineTradeAgreementType
+    specifiedLineTradeDelivery: LineTradeDeliveryType
+    specifiedLineTradeSettlement: LineTradeSettlementType
   }) {
-    this.associatedDocumentLineDocument = associatedDocumentLineDocument;
-    this.specifiedTradeProduct = specifiedTradeProduct;
-    this.specifiedLineTradeAgreement = specifiedLineTradeAgreement;
-    this.specifiedLineTradeDelivery = specifiedLineTradeDelivery;
-    this.specifiedLineTradeSettlement = specifiedLineTradeSettlement;
+    this.associatedDocumentLineDocument = associatedDocumentLineDocument
+    this.specifiedTradeProduct = specifiedTradeProduct
+    this.specifiedLineTradeAgreement = specifiedLineTradeAgreement
+    this.specifiedLineTradeDelivery = specifiedLineTradeDelivery
+    this.specifiedLineTradeSettlement = specifiedLineTradeSettlement
   }
 
-  associatedDocumentLineDocument: DocumentLineDocumentType;
-  specifiedTradeProduct: TradeProductType;
-  specifiedLineTradeAgreement: LineTradeAgreementType;
-  specifiedLineTradeDelivery: LineTradeDeliveryType;
-  specifiedLineTradeSettlement: LineTradeSettlementType;
-} 
+  associatedDocumentLineDocument: DocumentLineDocumentType
+  specifiedTradeProduct: TradeProductType
+  specifiedLineTradeAgreement: LineTradeAgreementType
+  specifiedLineTradeDelivery: LineTradeDeliveryType
+  specifiedLineTradeSettlement: LineTradeSettlementType
+}

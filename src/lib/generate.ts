@@ -1,23 +1,25 @@
-import { Buffer } from 'node:buffer'
-import { randomBytes } from 'node:crypto'
-import pkg from '../../package.json' assert { type: 'json' }
+import type { XMLDocument } from 'libxmljs'
+import type { Buffer } from 'node:buffer'
+import type {
+  PDFDocument,
+} from 'pdf-lib'
 
 import type { PdfMetadata } from '../types'
 
-import { XMLDocument } from 'libxmljs'
+import { randomBytes } from 'node:crypto'
 import {
-  PDFDocument,
   AFRelationship,
   PDFHexString,
-} from 'pdf-lib';
+} from 'pdf-lib'
+import pkg from '../../package.json' assert { type: 'json' }
 
-import { extractBaseInfo, getLevel, getFlavor } from './xml'
-import { baseInfo2PdfMetadata } from './metadata'
+import { check } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
+import { baseInfo2PdfMetadata } from './metadata'
 
 import { resolvePdf, resolveXml } from './resolve'
-import { setPDFA3BMetadata } from './xmp';
-import { check } from './check';
+import { extractBaseInfo, getFlavor, getLevel } from './xml'
+import { setPDFA3BMetadata } from './xmp'
 
 export async function generate(options: {
   pdf: string | Buffer | PDFDocument
@@ -27,8 +29,8 @@ export async function generate(options: {
   level?: string
   language?: string
   meta?: PdfMetadata
-}) {
-  const xml =  await resolveXml(options.xml)
+}): Promise<Uint8Array> {
+  const xml = await resolveXml(options.xml)
 
   const flavor = options.flavor || getFlavor(xml)
   const level = options.level || getLevel(xml)
@@ -84,12 +86,12 @@ export async function generate(options: {
   else {
     documentId = randomBytes(16).toString('hex')
     const id = PDFHexString.of(documentId)
-    pdf.context.trailerInfo.ID = pdf.context.obj([id, id]);
+    pdf.context.trailerInfo.ID = pdf.context.obj([id, id])
   }
 
   const encoder = new TextEncoder()
-  const uint8Array = encoder.encode(xml.toString());
-  
+  const uint8Array = encoder.encode(xml.toString())
+
   await pdf.attach(uint8Array, filename, {
     afRelationship: AFRelationship.Data,
     mimeType: 'text/xml',

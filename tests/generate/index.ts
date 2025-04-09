@@ -1,24 +1,25 @@
-import { PageSizes, PDFDocument, PDFName, PDFString } from 'pdf-lib'
-import { readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import fontkit from '@pdf-lib/fontkit'
-import { getExtendedFacturXModel } from '../fixtures/model-extended';
-import { invoiceToXml, generate } from '../../src';
+import { PageSizes, PDFDocument, PDFName, PDFString } from 'pdf-lib'
+import { generate, invoiceToXml } from '../../src'
+// import { getExtendedFacturXModel } from '../fixtures/model-extended'
+import { getEN16931FacturXModel } from '../fixtures/model-en16931'
 
-async function main() {
+async function main(): Promise<void> {
   // Create a new PDF document
-  const pdf = await PDFDocument.create();
+  const pdf = await PDFDocument.create()
 
   // // Set document ID
   // const documentId = randomBytes(16).toString('hex')
   // const id = PDFHexString.of(documentId)
   // pdf.context.trailerInfo.ID = pdf.context.obj([id, id]);
-  
+
   // Embed fonts (required for PDF/A-3B compliance)
   pdf.registerFontkit(fontkit)
   const fontBuffer = await readFile(resolve(import.meta.dirname, './roboto-latin-400-normal.ttf'))
   const font = await pdf.embedFont(fontBuffer)
-  
+
   // Embed ICC profile (required for PDF/A-3B compliance)
   // They can be found here: https://www.color.org/srgbprofiles.xalter
   const icc = await readFile(resolve(import.meta.dirname, './sRGB2014.icc'))
@@ -26,16 +27,15 @@ async function main() {
     Length: icc.length,
   })
   const outputIntent = pdf.context.obj({
-    Type: "OutputIntent",
-    S: "GTS_PDFA1",
-    OutputConditionIdentifier: PDFString.of("sRGB"),
+    Type: 'OutputIntent',
+    S: 'GTS_PDFA1',
+    OutputConditionIdentifier: PDFString.of('sRGB'),
     DestOutputProfile: pdf.context.register(iccStream),
   })
   const outputIntentRef = pdf.context.register(outputIntent)
-  pdf.catalog.set(PDFName.of("OutputIntents"), pdf.context.obj([outputIntentRef]))
+  pdf.catalog.set(PDFName.of('OutputIntents'), pdf.context.obj([outputIntentRef]))
 
-  
-  const page = pdf.addPage(PageSizes.A4);
+  const page = pdf.addPage(PageSizes.A4)
   // Trim box (required for PDF/A-3B compliance)
   page.setTrimBox(0, 0, PageSizes.A4[0], PageSizes.A4[1])
 
@@ -47,7 +47,7 @@ async function main() {
     opacity: 0.05,
   })
 
-  const invoice = getExtendedFacturXModel()
+  const invoice = getEN16931FacturXModel()
   const xml = await invoiceToXml(invoice)
 
   await writeFile(resolve(import.meta.dirname, './output.xml'), xml.toString({ format: false, whitespace: true }))
@@ -56,12 +56,11 @@ async function main() {
   const output = await generate({
     pdf,
     // @Todo: check why xpath is not working with direct xml object
-    // xml
+    // xml,
     xml: xml.toString(),
   })
 
   await writeFile(resolve(import.meta.dirname, './output.pdf'), output)
 }
-
 
 main().catch(console.error)

@@ -1,7 +1,7 @@
-import { format } from 'date-fns'
+import type { BaseInfo, PdfMetadata } from '../types'
 
+import { format } from 'date-fns'
 import { DOC_TYPE } from './constants'
-import type { PdfMetadata, BaseInfo } from '../types'
 
 export function baseInfo2PdfMetadata(info: BaseInfo): PdfMetadata {
   let title = ''

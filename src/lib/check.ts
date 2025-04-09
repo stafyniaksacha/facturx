@@ -1,21 +1,21 @@
-import { Buffer } from 'node:buffer'
+import type { XMLDocument } from 'libxmljs'
 
-import { XMLDocument } from 'libxmljs'
+import type { Buffer } from 'node:buffer'
 
+import { resolveXml } from './resolve'
+import { getFlavor, getLevel } from './xml'
 import { getXsd } from './xsd'
-import { getLevel, getFlavor } from './xml'
-import {  resolveXml } from './resolve'
 
 export async function check(options: {
-  xml: string | Buffer | XMLDocument,
-  flavor?: string,
-  level?: string,
-}): Promise<{ 
-  valid: boolean, 
-  errors: any[],
-  flavor: string,
-  level: string,
-}> {
+  xml: string | Buffer | XMLDocument
+  flavor?: string
+  level?: string
+}): Promise<{
+    valid: boolean
+    errors: any[]
+    flavor: string
+    level: string
+  }> {
   const xml = await resolveXml(options.xml)
 
   const flavor = options.flavor || getFlavor(xml)
@@ -32,5 +32,5 @@ export async function check(options: {
     errors,
     flavor,
     level,
-  } 
+  }
 }

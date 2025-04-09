@@ -1,7 +1,10 @@
 {
   "name": "@stafyniaksacha/facturx",
+  "type": "module",
   "version": "0.2.0",
+  "packageManager": "pnpm@9.10.0",
   "description": "Factur-X and Order-X generation library for European e-invoicing standard",
+  "license": "MIT",
   "repository": "stafyniaksacha/facturx",
   "keywords": [
     "factur-x",
@@ -12,8 +15,6 @@
     "european",
     "en16931"
   ],
-  "license": "MIT",
-  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
@@ -29,19 +30,21 @@
     }
   },
   "main": "./dist/index.mjs",
-  "files": [
-    "dist",
-    "schema",
-    "bin"
-  ],
   "bin": {
     "facturx": "./bin/facturx.mjs"
   },
+  "files": [
+    "bin",
+    "dist",
+    "schema"
+  ],
   "scripts": {
     "prepack": "unbuild",
     "dev:prepare": "unbuild --stub",
     "dev": "vitest",
     "build": "unbuild",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
     "test": "vitest run"
   },
   "dependencies": {
@@ -52,11 +55,12 @@
     "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
+    "@antfu/eslint-config": "^4.11.0",
     "@types/node": "^22.14.0",
     "@vitest/coverage-v8": "3.1.1",
+    "eslint": "^9.24.0",
     "typescript": "^5.8.3",
     "unbuild": "^3.5.0",
     "vitest": "^3.1.1"
-  },
-  "packageManager": "pnpm@9.10.0"
+  }
 }

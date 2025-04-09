@@ -11,7 +11,7 @@ export default defineBuildConfig({
       input: 'src/utils/xsd/',
       outDir: 'dist/xsd',
       pattern: ['**/*.xsd'],
-    }
+    },
   ],
   rollup: {
     esbuild: {

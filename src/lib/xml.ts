@@ -1,16 +1,17 @@
-import { XMLDocument, XMLElement } from "libxmljs"
-import { parse } from "date-fns"
-import {
+import type { XMLDocument, XMLElement } from 'libxmljs'
+import type { Buffer } from 'node:buffer'
+import type { BaseInfo } from '../types'
+import type {
   DOC_TYPE_KEY,
+} from './constants'
+import { parse } from 'date-fns'
+import {
   FACTURX_SCHEMA,
   ORDERX_SCHEMA,
 } from './constants'
-import { resolveXml } from "./resolve"
-import { BaseInfo } from "../types"
+import { resolveXml } from './resolve'
 
-const xmlnsRe = /xmlns:([^=]+)="([^"]+)"/g
-
-export function extractNamespaces(fileDoc: XMLDocument) {
+export function extractNamespaces(fileDoc: XMLDocument): Record<string, string> {
   // segfault - https://github.com/libxmljs/libxmljs/issues/649
   // const namespaces = fileDoc.namespaces()
   const str = fileDoc.toString()
@@ -18,6 +19,9 @@ export function extractNamespaces(fileDoc: XMLDocument) {
   const namespaces: Record<string, string> = {}
 
   let match: RegExpExecArray | null
+
+  const xmlnsRe = /xmlns:([^=]+)="([^"]+)"/g
+  // eslint-disable-next-line no-cond-assign
   while ((match = xmlnsRe.exec(str)) !== null) {
     namespaces[match[1]] = match[2]
   }
@@ -25,22 +29,22 @@ export function extractNamespaces(fileDoc: XMLDocument) {
   return namespaces
 }
 
-export function getLevel(xmlDoc: XMLDocument) {
+export function getLevel(xmlDoc: XMLDocument): string {
   const namespaces = extractNamespaces(xmlDoc)
 
   // Factur-X and Order-X
   let doc_id_xpath = xmlDoc.find([
-    "//rsm:ExchangedDocumentContext",
-    "/ram:GuidelineSpecifiedDocumentContextParameter",
-    "/ram:ID",
+    '//rsm:ExchangedDocumentContext',
+    '/ram:GuidelineSpecifiedDocumentContextParameter',
+    '/ram:ID',
   ].join(''), namespaces)
-  
+
   if (!doc_id_xpath.length) {
     // ZUGFeRD 1.0
     doc_id_xpath = xmlDoc.find([
-      "//rsm:SpecifiedExchangedDocumentContext",
-      "/ram:GuidelineSpecifiedDocumentContextParameter",
-      "/ram:ID",
+      '//rsm:SpecifiedExchangedDocumentContext',
+      '/ram:GuidelineSpecifiedDocumentContextParameter',
+      '/ram:ID',
     ].join(''), namespaces)
   }
   if (!doc_id_xpath.length) {
@@ -66,7 +70,7 @@ export function getLevel(xmlDoc: XMLDocument) {
   return level
 }
 
-export function getFlavor(fileDoc: XMLDocument) {
+export function getFlavor(fileDoc: XMLDocument): string {
   const tag = fileDoc.root()?.name()
   switch (tag) {
     case 'SCRDMCCBDACIOMessageStructure':
@@ -84,33 +88,35 @@ export async function extractBaseInfo(xml: string | Buffer | XMLDocument): Promi
 
   const namespaces = extractNamespaces(xmlDoc)
 
-  const dateEl = findXPath(xmlDoc, "//rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString", namespaces)
+  const dateEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString', namespaces)
   const dateStr = dateEl.text()
   const dateFormat = dateEl.getAttribute('format')?.value() || '102'
   const formatMap = {
+    // eslint-disable-next-line style/quote-props
     '102': 'yyyyMMdd',
+    // eslint-disable-next-line style/quote-props
     '203': 'yyyyMMddHHmm',
   } as const
   const date = dateStr ? parse(dateStr, formatMap[dateFormat as keyof typeof formatMap], new Date()) : new Date()
 
-  const numberEl = findXPath(xmlDoc, "//rsm:ExchangedDocument/ram:ID", namespaces)
+  const numberEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:ID', namespaces)
   const number = numberEl.text() || ''
 
-  const sellerEl = findXPath(xmlDoc, "//ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name", namespaces)
+  const sellerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name', namespaces)
   const seller = sellerEl.text() || ''
 
-  const buyerEl = findXPath(xmlDoc, "//ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:Name", namespaces)
+  const buyerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:Name', namespaces)
   const buyer = buyerEl.text() || ''
 
-  const docTypeEl = findXPath(xmlDoc, "//rsm:ExchangedDocument/ram:TypeCode", namespaces)
+  const docTypeEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:TypeCode', namespaces)
   const docType = docTypeEl.text() as DOC_TYPE_KEY || ''
 
   return {
-    'seller': seller,
-    'buyer': buyer,
-    'number': number,
-    'date': date,
-    'docType': docType,
+    seller,
+    buyer,
+    number,
+    date,
+    docType,
   }
 }
 // export function getOrderXLevel(fileDoc) {
@@ -154,8 +160,7 @@ export async function extractBaseInfo(xml: string | Buffer | XMLDocument): Promi
 //   return level
 // }
 
-
-function findXPath(fileDoc: XMLDocument, xpath: string, namespaces: Record<string, string>) {
+function findXPath(fileDoc: XMLDocument, xpath: string, namespaces: Record<string, string>): XMLElement {
   const xpathNode = fileDoc.find(xpath, namespaces)
   if (!xpathNode.length) {
     throw new Error(`No ${xpath} found in the document`)

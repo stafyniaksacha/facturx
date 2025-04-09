@@ -11,38 +11,38 @@ export default defineCommand({
   },
   args: {
     pdf: {
-      type: "string",
+      type: 'string',
       description: 'Input PDF file',
       required: true,
     },
     xml: {
-      type: "string",
+      type: 'string',
       description: 'Input XML file',
       required: true,
     },
     output: {
-      type: "string",
+      type: 'string',
       description: 'Output PDF-A/3 file, defaults to stdout',
       required: true,
       alias: 'o',
     },
     check: {
-      type: "boolean",
+      type: 'boolean',
       description: 'Validate the XML file',
       default: true,
     },
     flavor: {
-      type: "string",
+      type: 'string',
       description: 'Schema flavor, autodetect by default (facturx, orderx, zugferd)',
       alias: 'f',
     },
     level: {
-      type: "string",
+      type: 'string',
       description: 'Schema level, autodetect by default (orderx: basic, extended, comfort) (facturx: basic, basic-wl, en16931, extended, minimum)',
       alias: 'l',
     },
     language: {
-      type: "string",
+      type: 'string',
       description: 'Language code for the PDF (RFC 3066)',
     },
   },
@@ -61,6 +61,8 @@ export default defineCommand({
 
     const out = resolve(args.args.output)
     await writeFile(out, content)
+
+    // eslint-disable-next-line no-console
     console.log(`Saved to ${out}`)
-  }
+  },
 })

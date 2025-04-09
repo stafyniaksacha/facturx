@@ -1,16 +1,21 @@
-import {
+import type {
   PDFDocument,
-  PDFName,
-  PDFDict,
-  PDFArray,
   PDFHexString,
-  PDFString,
-  PDFStream,
-  decodePDFRawStream,
   PDFRawStream,
-} from 'pdf-lib';
+  PDFString,
+} from 'pdf-lib'
+import {
+  decodePDFRawStream,
+  PDFArray,
+  PDFDict,
+  PDFName,
+  PDFStream,
+} from 'pdf-lib'
 
-export function extractAttachments(pdfDoc: PDFDocument) {
+export function extractAttachments(pdfDoc: PDFDocument): {
+  name: string
+  data: Uint8Array<ArrayBufferLike>
+}[] {
   const rawAttachments = extractRawAttachments(pdfDoc)
 
   return rawAttachments.map(({ fileName, fileSpec }) => {
@@ -25,26 +30,32 @@ export function extractAttachments(pdfDoc: PDFDocument) {
   })
 }
 
-function extractRawAttachments(pdfDoc: PDFDocument) {
-  if (!pdfDoc.catalog.has(PDFName.of('Names'))) return [];
-  const Names = pdfDoc.catalog.lookup(PDFName.of('Names'), PDFDict);
+function extractRawAttachments(pdfDoc: PDFDocument): {
+  fileName: PDFHexString | PDFString
+  fileSpec: PDFDict
+}[] {
+  if (!pdfDoc.catalog.has(PDFName.of('Names')))
+    return []
+  const Names = pdfDoc.catalog.lookup(PDFName.of('Names'), PDFDict)
 
-  if (!Names.has(PDFName.of('EmbeddedFiles'))) return [];
-  const EmbeddedFiles = Names.lookup(PDFName.of('EmbeddedFiles'), PDFDict);
+  if (!Names.has(PDFName.of('EmbeddedFiles')))
+    return []
+  const EmbeddedFiles = Names.lookup(PDFName.of('EmbeddedFiles'), PDFDict)
 
-  if (!EmbeddedFiles.has(PDFName.of('Names'))) return [];
-  const EFNames = EmbeddedFiles.lookup(PDFName.of('Names'), PDFArray);
+  if (!EmbeddedFiles.has(PDFName.of('Names')))
+    return []
+  const EFNames = EmbeddedFiles.lookup(PDFName.of('Names'), PDFArray)
 
   const rawAttachments = [] as {
-    fileName: PDFHexString | PDFString;
-    fileSpec: PDFDict;
-  }[];
+    fileName: PDFHexString | PDFString
+    fileSpec: PDFDict
+  }[]
 
   for (let idx = 0, len = EFNames.size(); idx < len; idx += 2) {
-    const fileName = EFNames.lookup(idx) as PDFHexString | PDFString;
-    const fileSpec = EFNames.lookup(idx + 1, PDFDict);
-    rawAttachments.push({ fileName, fileSpec });
+    const fileName = EFNames.lookup(idx) as PDFHexString | PDFString
+    const fileSpec = EFNames.lookup(idx + 1, PDFDict)
+    rawAttachments.push({ fileName, fileSpec })
   }
 
-  return rawAttachments;
+  return rawAttachments
 }

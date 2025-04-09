@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-import { runMain } from "../dist/cli.mjs";
+import { runMain } from '../dist/cli.mjs'
 
-runMain();
+runMain()
