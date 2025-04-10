@@ -38,6 +38,9 @@
     "dist",
     "schema"
   ],
+  "engines": {
+    "node": ">=20.11.0"
+  },
   "scripts": {
     "prepack": "unbuild",
     "dev:prepare": "unbuild --stub",
