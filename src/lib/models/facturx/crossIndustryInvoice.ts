@@ -228,7 +228,7 @@ export class HeaderTradeSettlementType {
     payerTradeParty?: ram.TradePartyType
     taxApplicableTradeCurrencyExchange?: ram.TradeCurrencyExchangeType
     specifiedTradeSettlementPaymentMeans?: ram.TradeSettlementPaymentMeansType[]
-    applicableTradeTax: ram.TradeTaxType[]
+    applicableTradeTax?: ram.TradeTaxType[]
     billingSpecifiedPeriod?: ram.SpecifiedPeriodType
     specifiedTradeAllowanceCharge?: ram.TradeAllowanceChargeType[]
     specifiedLogisticsServiceCharge?: ram.LogisticsServiceChargeType[]
@@ -249,7 +249,7 @@ export class HeaderTradeSettlementType {
     this.payerTradeParty = payerTradeParty
     this.taxApplicableTradeCurrencyExchange = taxApplicableTradeCurrencyExchange
     this.specifiedTradeSettlementPaymentMeans = specifiedTradeSettlementPaymentMeans
-    this.applicableTradeTax = applicableTradeTax
+    this.applicableTradeTax = applicableTradeTax ?? []
     this.billingSpecifiedPeriod = billingSpecifiedPeriod
     this.specifiedTradeAllowanceCharge = specifiedTradeAllowanceCharge
     this.specifiedLogisticsServiceCharge = specifiedLogisticsServiceCharge

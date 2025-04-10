@@ -742,9 +742,10 @@ function convertTradeSettlementHeaderMonetarySummation(
   }: ram.TradeSettlementHeaderMonetarySummationType,
   parent: XMLElement,
 ): void {
-  // Required field in all profiles
-  const lineTotalEl = parent.node('ram:LineTotalAmount')
-  convertAmount(lineTotalAmount, lineTotalEl)
+  if (lineTotalAmount) {
+    const lineTotalEl = parent.node('ram:LineTotalAmount')
+    convertAmount(lineTotalAmount, lineTotalEl)
+  }
 
   if (chargeTotalAmount) {
     const chargeTotalEl = parent.node('ram:ChargeTotalAmount')

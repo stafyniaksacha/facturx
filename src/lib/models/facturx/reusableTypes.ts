@@ -807,7 +807,7 @@ export class TradeSettlementHeaderMonetarySummationType {
     totalPrepaidAmount,
     duePayableAmount,
   }: {
-    lineTotalAmount: udt.AmountType
+    lineTotalAmount?: udt.AmountType
     chargeTotalAmount?: udt.AmountType
     allowanceTotalAmount?: udt.AmountType
     taxBasisTotalAmount: udt.AmountType[]
@@ -828,7 +828,7 @@ export class TradeSettlementHeaderMonetarySummationType {
     this.duePayableAmount = duePayableAmount
   }
 
-  lineTotalAmount: udt.AmountType
+  lineTotalAmount?: udt.AmountType
   chargeTotalAmount?: udt.AmountType
   allowanceTotalAmount?: udt.AmountType
   taxBasisTotalAmount: udt.AmountType[]
