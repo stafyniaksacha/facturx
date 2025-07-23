@@ -8,8 +8,8 @@ export default defineBuildConfig({
     'src/cli.ts',
     'src/models.ts',
     {
-      input: 'src/utils/xsd/',
-      outDir: 'dist/xsd',
+      input: 'src/lib/xsd/',
+      outDir: 'dist/shared/xsd',
       pattern: ['**/*.xsd'],
     },
   ],

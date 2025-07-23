@@ -1,6 +1,4 @@
-import { describe, expect, it } from 'vitest'
-
-import { invoiceToXml } from '../src'
+import { invoiceToXml } from '@stafyniaksacha/facturx'
 import {
   AmountType,
   CountryIDType,
@@ -20,7 +18,9 @@ import {
   TradeAddressType,
   TradePartyType,
   TradeSettlementHeaderMonetarySummationType,
-} from '../src/models'
+} from '@stafyniaksacha/facturx/models'
+
+import { describe, expect, it } from 'vitest'
 
 import { getMinimumXML } from './fixtures/xml'
 

@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest'
 import {
   AmountType,
   CountryIDType,
@@ -31,7 +30,9 @@ import {
   TradeSettlementHeaderMonetarySummationType,
   TradeSettlementLineMonetarySummationType,
   TradeTaxType,
-} from '../src/models'
+} from '@stafyniaksacha/facturx/models'
+
+import { describe, expect, it } from 'vitest'
 
 describe('factur-X model', () => {
   describe('unqualifiedDataTypes', () => {

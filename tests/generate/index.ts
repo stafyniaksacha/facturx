@@ -1,8 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import fontkit from '@pdf-lib/fontkit'
+import { generate, invoiceToXml } from '@stafyniaksacha/facturx'
 import { PageSizes, PDFDocument, PDFName, PDFString } from 'pdf-lib'
-import { generate, invoiceToXml } from '../../src'
 import { getMinimalFacturXModel } from '../fixtures/model-minimal'
 // import { getEN16931FacturXModel } from '../fixtures/model-en16931'
 

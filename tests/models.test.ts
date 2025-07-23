@@ -1,5 +1,5 @@
+import { check, invoiceToXml } from '@stafyniaksacha/facturx'
 import { describe, expect, it, vi } from 'vitest'
-import { check, invoiceToXml } from '../src'
 import { getBasicFacturXModel } from './fixtures/model-basic'
 import { getBasicWLFacturXModel } from './fixtures/model-basic-wl'
 import { getEN16931FacturXModel } from './fixtures/model-en16931'

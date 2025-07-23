@@ -1,0 +1,8 @@
+{
+  "name": "@stafyniaksacha/facturx-test",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@stafyniaksacha/facturx": "workspace:*"
+  }
+}

@@ -1,8 +1,4 @@
-import { parseXmlAsync } from 'libxmljs'
-
-import { describe, expect, it } from 'vitest'
-import { invoiceToXml, xmlToInvoice } from '../src'
-
+import { invoiceToXml, xmlToInvoice } from '@stafyniaksacha/facturx'
 import {
   CrossIndustryInvoiceType,
   ExchangedDocumentContextType,
@@ -11,7 +7,10 @@ import {
   // HeaderTradeDeliveryType,
   HeaderTradeSettlementType,
   SupplyChainTradeTransactionType,
-} from '../src/models'
+} from '@stafyniaksacha/facturx/models'
+import { parseXmlAsync } from 'libxmljs'
+import { describe, expect, it } from 'vitest'
+
 import { getEN16931XML, getMinimumXML } from './fixtures/xml'
 
 describe('facturX XML Parser', () => {

@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer'
+import { check } from '@stafyniaksacha/facturx'
 import { describe, expect, it, vi } from 'vitest'
-import { check } from '../src'
 import {
   getEN16931XML,
   getMinimumXML,

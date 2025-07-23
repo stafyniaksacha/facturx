@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "ESNext",
-    "moduleResolution": "Node",
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
     "paths": {
       "~/*": ["./src/*"]
     },
@@ -13,5 +13,5 @@
     "outDir": "dist",
     "esModuleInterop": true
   },
-  "include": ["src", "tests/facturx.test.ts"]
+  "include": ["src", "tests"]
 }
