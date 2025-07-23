@@ -4,18 +4,18 @@ export const ORDERX_FILENAME = 'order-x.xml'
 
 export type FACTURX_SCHEMA_TYPE = keyof typeof FACTURX_SCHEMA
 export const FACTURX_SCHEMA = {
-  'basic': './xsd/facturx/basic/FACTUR-X_BASIC.xsd',
-  'basic-wl': './xsd/facturx/basic-wl/FACTUR-X_BASIC-WL.xsd',
-  'en16931': './xsd/facturx/en16931/FACTUR-X_EN16931.xsd',
-  'extended': './xsd/facturx/extended/FACTUR-X_EXTENDED.xsd',
-  'minimum': './xsd/facturx/minimum/FACTUR-X_MINIMUM.xsd',
+  basic: './xsd/facturx/basic/FACTUR-X_BASIC.xsd',
+  basicwl: './xsd/facturx/basicwl/FACTUR-X_BASIC-WL.xsd',
+  en16931: './xsd/facturx/en16931/FACTUR-X_EN16931.xsd',
+  extended: './xsd/facturx/extended/FACTUR-X_EXTENDED.xsd',
+  minimum: './xsd/facturx/minimum/FACTUR-X_MINIMUM.xsd',
 } as const
 export const FACTURX_CONFORMANCE_LEVEL = {
-  'basic': 'BASIC',
-  'basic-wl': 'BASIC WL',
-  'en16931': 'EN 16931',
-  'extended': 'EXTENDED',
-  'minimum': 'MINIMUM',
+  basic: 'BASIC',
+  basicwl: 'BASIC WL',
+  en16931: 'EN 16931',
+  extended: 'EXTENDED',
+  minimum: 'MINIMUM',
 } as const
 
 export type ORDERX_SCHEMA_TYPE = keyof typeof ORDERX_SCHEMA

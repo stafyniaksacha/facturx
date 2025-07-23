@@ -1,7 +1,7 @@
 import { check, invoiceToXml } from '@stafyniaksacha/facturx'
 import { describe, expect, it, vi } from 'vitest'
 import { getBasicFacturXModel } from './fixtures/model-basic'
-import { getBasicWLFacturXModel } from './fixtures/model-basic-wl'
+import { getBasicWLFacturXModel } from './fixtures/model-basicwl'
 import { getEN16931FacturXModel } from './fixtures/model-en16931'
 import { getExtendedFacturXModel } from './fixtures/model-extended'
 import { getMinimalFacturXModel } from './fixtures/model-minimal'
@@ -32,14 +32,14 @@ describe('invoiceToXml', () => {
     const options = {
       xml: xml.toString(),
       flavor: 'facturx',
-      level: 'basic-wl',
+      level: 'basicwl',
     }
     const result = await check(options)
 
     expect(result.errors).toStrictEqual([])
     expect(result.valid).toBe(true)
     expect(result.flavor).toBe('facturx')
-    expect(result.level).toBe('basic-wl')
+    expect(result.level).toBe('basicwl')
   })
 
   it('should generate valid en16931 model', async () => {
