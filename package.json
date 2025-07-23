@@ -1,7 +1,7 @@
 {
   "name": "@stafyniaksacha/facturx",
   "type": "module",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "packageManager": "pnpm@9.10.0",
   "description": "Factur-X and Order-X generation library for European e-invoicing standard",
   "license": "MIT",

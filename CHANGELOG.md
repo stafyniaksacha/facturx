@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://github.com/stafyniaksacha/facturx/compare/v0.3.0...v0.4.0) (2025-07-23)
+
+
+### Features
+
+* add xmlToInvoice method to convert xml into CrossIndustryInvoiceType object ([5f2b3ef](https://github.com/stafyniaksacha/facturx/commit/5f2b3efeba35182010e1f44fc1f79f6754fa1ea0))
+
+
+### Bug Fixes
+
+* **models:** make lineTotalAmount and applicableTradeTax optionnal as they are not required in minimal spec ([5346821](https://github.com/stafyniaksacha/facturx/commit/5346821189d02f4ed42b2ccd93ce4f298a1c17dc))
+* rename basic-wl level to basicwl ([2d9c6a3](https://github.com/stafyniaksacha/facturx/commit/2d9c6a363775e30b3ac91d42ff74b29ad8c41bed)), closes [#4](https://github.com/stafyniaksacha/facturx/issues/4)
+* update build config to copy xsd files + update tests to use module instead of source ([6144d91](https://github.com/stafyniaksacha/facturx/commit/6144d9133743d815b8d58876d132f63abe5eb32c)), closes [#5](https://github.com/stafyniaksacha/facturx/issues/5)
+
 ## [0.3.0](https://github.com/stafyniaksacha/facturx/compare/v0.2.0...v0.3.0) (2025-04-10)
 
 
