@@ -3,8 +3,8 @@ import { resolve } from 'node:path'
 import fontkit from '@pdf-lib/fontkit'
 import { PageSizes, PDFDocument, PDFName, PDFString } from 'pdf-lib'
 import { generate, invoiceToXml } from '../../src'
-// import { getExtendedFacturXModel } from '../fixtures/model-extended'
-import { getEN16931FacturXModel } from '../fixtures/model-en16931'
+import { getMinimalFacturXModel } from '../fixtures/model-minimal'
+// import { getEN16931FacturXModel } from '../fixtures/model-en16931'
 
 async function main(): Promise<void> {
   // Create a new PDF document
@@ -47,7 +47,7 @@ async function main(): Promise<void> {
     opacity: 0.05,
   })
 
-  const invoice = getEN16931FacturXModel()
+  const invoice = getMinimalFacturXModel()
   const xml = await invoiceToXml(invoice)
 
   await writeFile(resolve(import.meta.dirname, './output.xml'), xml.toString({ format: false, whitespace: true }))
