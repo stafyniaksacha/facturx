@@ -6,11 +6,15 @@ import {
   CrossIndustryInvoiceType,
   CurrencyCodeType,
   DateTimeType,
+  DebtorFinancialAccountType,
+  DebtorFinancialInstitutionType,
+  DeliveryTermsCodeType,
   DocumentCodeType,
   DocumentContextParameterType,
   DocumentLineDocumentType,
   ExchangedDocumentContextType,
   ExchangedDocumentType,
+  FinancialAdjustmentType,
   HeaderTradeAgreementType,
   HeaderTradeDeliveryType,
   HeaderTradeSettlementType,
@@ -34,6 +38,8 @@ import {
   TradeAddressType,
   TradeAllowanceChargeType,
   TradeCurrencyExchangeType,
+  TradeDeliveryTermsType,
+  TradeLocationType,
   TradePartyType,
   TradePaymentTermsType,
   TradePriceType,
@@ -168,6 +174,24 @@ export function getExtendedFacturXModel() {
     }),
   })
 
+  // SEPA direct debit means exercising debtor account + financial institution (EXTENDED)
+  const directDebitMeans = new TradeSettlementPaymentMeansType({
+    typeCode: new PaymentMeansCodeType({ value: '59' }),
+    payerPartyDebtorFinancialAccount: new DebtorFinancialAccountType({
+      ibanID: new IDType({ value: 'FR7630006000019876543210123' }),
+      accountName: new TextType({ value: 'Buyer Account' }),
+    }),
+    payerSpecifiedDebtorFinancialInstitution: new DebtorFinancialInstitutionType({
+      bicID: new IDType({ value: 'BNPAFRPP' }),
+    }),
+  })
+
+  // Financial adjustment (EXTENDED)
+  const financialAdjustment = new FinancialAdjustmentType({
+    reason: new TextType({ value: 'Rounding adjustment' }),
+    actualAmount: new AmountType({ value: 0, currencyID: 'EUR' }),
+  })
+
   // Additional taxes
   const vat20 = new TradeTaxType({
     categoryCode: new TaxCategoryCodeType({ value: 'S' }),
@@ -212,9 +236,9 @@ export function getExtendedFacturXModel() {
     lineTotalAmount,
     chargeTotalAmount,
     allowanceTotalAmount,
-    taxBasisTotalAmount: [taxBasisTotalAmount],
+    taxBasisTotalAmount: taxBasisTotalAmount,
     taxTotalAmount: [taxTotalAmount],
-    grandTotalAmount: [grandTotalAmount],
+    grandTotalAmount: grandTotalAmount,
     totalPrepaidAmount,
     duePayableAmount,
   })
@@ -239,14 +263,15 @@ export function getExtendedFacturXModel() {
     paymentReference: new TextType({ value: 'PAYMENT-INV-2023-003' }),
     invoiceCurrencyCode: currencyCode,
     taxCurrencyCode,
-    specifiedTradeSettlementPaymentMeans: [paymentMeans],
+    specifiedTradeSettlementPaymentMeans: [paymentMeans, directDebitMeans],
     applicableTradeTax: [vat20, vat10],
     billingSpecifiedPeriod: effectivePeriod,
     specifiedTradeAllowanceCharge: [headerAllowance],
     taxApplicableTradeCurrencyExchange: currencyExchange,
     specifiedTradeSettlementHeaderMonetarySummation: summation,
-    specifiedTradePaymentTerms: [paymentTerms],
+    specifiedFinancialAdjustment: [financialAdjustment],
     specifiedAdvancePayment: [advancePayment],
+    specifiedTradePaymentTerms: [paymentTerms],
   })
 
   // Line items with more details
@@ -257,8 +282,24 @@ export function getExtendedFacturXModel() {
     specifiedTradeProduct: new TradeProductType({
       globalID: new IDType({ value: '1234567890123', schemeID: 'EAN' }),
       name: new TextType({ value: 'Product 1' }),
+      brandName: new TextType({ value: 'AcmeBrand' }),
+      modelName: new TextType({ value: 'X-2000' }),
+      batchID: [new IDType({ value: 'BATCH-001' })],
+      manufacturerTradeParty: new TradePartyType({
+        name: new TextType({ value: 'Acme Manufacturing' }),
+      }),
     }),
     specifiedLineTradeAgreement: new LineTradeAgreementType({
+      applicableTradeDeliveryTerms: new TradeDeliveryTermsType({
+        deliveryTypeCode: new DeliveryTermsCodeType({ value: 'EXW' }),
+        relevantTradeLocation: new TradeLocationType({
+          countryID: new CountryIDType({ value: 'FR' }),
+          name: new TextType({ value: 'Lyon warehouse' }),
+        }),
+      }),
+      itemSellerTradeParty: new TradePartyType({
+        name: new TextType({ value: 'Reseller SARL' }),
+      }),
       grossPriceProductTradePrice: new TradePriceType({
         chargeAmount: new AmountType({ value: 90, currencyID: 'EUR' }),
       }),
@@ -269,6 +310,7 @@ export function getExtendedFacturXModel() {
     }),
     specifiedLineTradeDelivery: new LineTradeDeliveryType({
       billedQuantity: { value: 1, unitCode: 'C62' },
+      perPackageUnitQuantity: { value: 10, unitCode: 'C62' },
     }),
     specifiedLineTradeSettlement: new LineTradeSettlementType({
       applicableTradeTax: [new TradeTaxType({

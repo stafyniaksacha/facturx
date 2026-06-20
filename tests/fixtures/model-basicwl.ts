@@ -118,9 +118,9 @@ export function getBasicWLFacturXModel() {
     lineTotalAmount,
     chargeTotalAmount,
     allowanceTotalAmount,
-    taxBasisTotalAmount: [taxBasisTotalAmount],
+    taxBasisTotalAmount: taxBasisTotalAmount,
     taxTotalAmount: [taxTotalAmount],
-    grandTotalAmount: [grandTotalAmount],
+    grandTotalAmount: grandTotalAmount,
     duePayableAmount,
   })
 

@@ -114,9 +114,9 @@ export function getBasicFacturXModel() {
     lineTotalAmount,
     chargeTotalAmount,
     allowanceTotalAmount,
-    taxBasisTotalAmount: [taxBasisTotalAmount],
+    taxBasisTotalAmount: taxBasisTotalAmount,
     taxTotalAmount: [taxTotalAmount],
-    grandTotalAmount: [grandTotalAmount],
+    grandTotalAmount: grandTotalAmount,
     duePayableAmount,
   })
 

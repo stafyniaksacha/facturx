@@ -83,9 +83,9 @@ export function getMinimalFacturXModel() {
 
   const summation = new TradeSettlementHeaderMonetarySummationType({
     // lineTotalAmount: new AmountType({ value: 100, currencyID: 'EUR' }),
-    taxBasisTotalAmount: [taxBasisTotalAmount],
+    taxBasisTotalAmount: taxBasisTotalAmount,
     taxTotalAmount: [taxTotalAmount],
-    grandTotalAmount: [grandTotalAmount],
+    grandTotalAmount: grandTotalAmount,
     duePayableAmount,
   })
 

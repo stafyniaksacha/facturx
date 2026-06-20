@@ -82,13 +82,36 @@ export class ReferencedDocumentType {
 export class TradeDeliveryTermsType {
   constructor({
     deliveryTypeCode,
+    relevantTradeLocation,
   }: {
     deliveryTypeCode: qdt.DeliveryTermsCodeType
+    relevantTradeLocation?: TradeLocationType
   }) {
     this.deliveryTypeCode = deliveryTypeCode
+    this.relevantTradeLocation = relevantTradeLocation
   }
 
   deliveryTypeCode: qdt.DeliveryTermsCodeType
+  relevantTradeLocation?: TradeLocationType
+}
+
+/**
+ * Trade location type (EXTENDED)
+ */
+export class TradeLocationType {
+  constructor({
+    countryID,
+    name,
+  }: {
+    countryID?: qdt.CountryIDType
+    name?: udt.TextType
+  }) {
+    this.countryID = countryID
+    this.name = name
+  }
+
+  countryID?: qdt.CountryIDType
+  name?: udt.TextType
 }
 
 /**
@@ -118,19 +141,42 @@ export class AdvancePaymentType {
     paidAmount,
     formattedReceivedDateTime,
     includedTradeTax,
+    invoiceSpecifiedReferencedDocument,
   }: {
     paidAmount: udt.AmountType
     formattedReceivedDateTime?: qdt.FormattedDateTimeType
     includedTradeTax: TradeTaxType[]
+    invoiceSpecifiedReferencedDocument?: ReferencedDocumentType
   }) {
     this.paidAmount = paidAmount
     this.formattedReceivedDateTime = formattedReceivedDateTime
     this.includedTradeTax = includedTradeTax
+    this.invoiceSpecifiedReferencedDocument = invoiceSpecifiedReferencedDocument
   }
 
   paidAmount: udt.AmountType
   formattedReceivedDateTime?: qdt.FormattedDateTimeType
   includedTradeTax: TradeTaxType[]
+  invoiceSpecifiedReferencedDocument?: ReferencedDocumentType
+}
+
+/**
+ * Financial adjustment type (EXTENDED)
+ */
+export class FinancialAdjustmentType {
+  constructor({
+    reason,
+    actualAmount,
+  }: {
+    reason: udt.TextType
+    actualAmount: udt.AmountType
+  }) {
+    this.reason = reason
+    this.actualAmount = actualAmount
+  }
+
+  reason: udt.TextType
+  actualAmount: udt.AmountType
 }
 
 /**
@@ -171,11 +217,24 @@ export class CreditorFinancialInstitutionType {
  * Debtor financial account type
  */
 export class DebtorFinancialAccountType {
-  constructor({ ibanID }: { ibanID: udt.IDType }) {
+  constructor({ ibanID, accountName }: { ibanID: udt.IDType, accountName?: udt.TextType }) {
     this.ibanID = ibanID
+    this.accountName = accountName
   }
 
   ibanID: udt.IDType
+  accountName?: udt.TextType
+}
+
+/**
+ * Debtor financial institution type (EXTENDED)
+ */
+export class DebtorFinancialInstitutionType {
+  constructor({ bicID }: { bicID?: udt.IDType }) {
+    this.bicID = bicID
+  }
+
+  bicID?: udt.IDType
 }
 
 /**
@@ -767,6 +826,7 @@ export class TradeSettlementPaymentMeansType {
     applicableTradeSettlementFinancialCard,
     payerPartyDebtorFinancialAccount,
     payeePartyCreditorFinancialAccount,
+    payerSpecifiedDebtorFinancialInstitution,
     payeeSpecifiedCreditorFinancialInstitution,
   }: {
     typeCode: qdt.PaymentMeansCodeType
@@ -774,6 +834,7 @@ export class TradeSettlementPaymentMeansType {
     applicableTradeSettlementFinancialCard?: TradeSettlementFinancialCardType
     payerPartyDebtorFinancialAccount?: DebtorFinancialAccountType
     payeePartyCreditorFinancialAccount?: CreditorFinancialAccountType
+    payerSpecifiedDebtorFinancialInstitution?: DebtorFinancialInstitutionType
     payeeSpecifiedCreditorFinancialInstitution?: CreditorFinancialInstitutionType
   }) {
     this.typeCode = typeCode
@@ -781,6 +842,7 @@ export class TradeSettlementPaymentMeansType {
     this.applicableTradeSettlementFinancialCard = applicableTradeSettlementFinancialCard
     this.payerPartyDebtorFinancialAccount = payerPartyDebtorFinancialAccount
     this.payeePartyCreditorFinancialAccount = payeePartyCreditorFinancialAccount
+    this.payerSpecifiedDebtorFinancialInstitution = payerSpecifiedDebtorFinancialInstitution
     this.payeeSpecifiedCreditorFinancialInstitution = payeeSpecifiedCreditorFinancialInstitution
   }
 
@@ -789,6 +851,7 @@ export class TradeSettlementPaymentMeansType {
   applicableTradeSettlementFinancialCard?: TradeSettlementFinancialCardType
   payerPartyDebtorFinancialAccount?: DebtorFinancialAccountType
   payeePartyCreditorFinancialAccount?: CreditorFinancialAccountType
+  payerSpecifiedDebtorFinancialInstitution?: DebtorFinancialInstitutionType
   payeeSpecifiedCreditorFinancialInstitution?: CreditorFinancialInstitutionType
 }
 
@@ -810,10 +873,10 @@ export class TradeSettlementHeaderMonetarySummationType {
     lineTotalAmount?: udt.AmountType
     chargeTotalAmount?: udt.AmountType
     allowanceTotalAmount?: udt.AmountType
-    taxBasisTotalAmount: udt.AmountType[]
+    taxBasisTotalAmount: udt.AmountType
     taxTotalAmount?: udt.AmountType[]
     roundingAmount?: udt.AmountType
-    grandTotalAmount: udt.AmountType[]
+    grandTotalAmount: udt.AmountType
     totalPrepaidAmount?: udt.AmountType
     duePayableAmount: udt.AmountType
   }) {
@@ -831,10 +894,12 @@ export class TradeSettlementHeaderMonetarySummationType {
   lineTotalAmount?: udt.AmountType
   chargeTotalAmount?: udt.AmountType
   allowanceTotalAmount?: udt.AmountType
-  taxBasisTotalAmount: udt.AmountType[]
+  // 1.09: TaxBasisTotalAmount (BT-109) is single & required; TaxTotalAmount (BT-110/111) is 0..2
+  taxBasisTotalAmount: udt.AmountType
   taxTotalAmount?: udt.AmountType[]
   roundingAmount?: udt.AmountType
-  grandTotalAmount: udt.AmountType[]
+  // 1.09: GrandTotalAmount (BT-112) is single & required
+  grandTotalAmount: udt.AmountType
   totalPrepaidAmount?: udt.AmountType
   duePayableAmount: udt.AmountType
 }
@@ -971,36 +1036,54 @@ export class TradeProductType {
     globalID,
     sellerAssignedID,
     buyerAssignedID,
+    industryAssignedID,
+    modelID,
     name,
     description,
+    batchID,
+    brandName,
+    modelName,
     applicableProductCharacteristic,
     designatedProductClassification,
     individualTradeProductInstance,
     originTradeCountry,
+    manufacturerTradeParty,
     includedReferencedProduct,
   }: {
     id?: udt.IDType
     globalID?: udt.IDType
     sellerAssignedID?: udt.IDType
     buyerAssignedID?: udt.IDType
+    industryAssignedID?: udt.IDType
+    modelID?: udt.IDType
     name: udt.TextType
     description?: udt.TextType
+    batchID?: udt.IDType[]
+    brandName?: udt.TextType
+    modelName?: udt.TextType
     applicableProductCharacteristic?: ProductCharacteristicType[]
     designatedProductClassification?: ProductClassificationType[]
     individualTradeProductInstance?: TradeProductInstanceType[]
     originTradeCountry?: TradeCountryType
+    manufacturerTradeParty?: TradePartyType
     includedReferencedProduct?: ReferencedProductType[]
   }) {
     this.id = id
     this.globalID = globalID
     this.sellerAssignedID = sellerAssignedID
     this.buyerAssignedID = buyerAssignedID
+    this.industryAssignedID = industryAssignedID
+    this.modelID = modelID
     this.name = name
     this.description = description
+    this.batchID = batchID
+    this.brandName = brandName
+    this.modelName = modelName
     this.applicableProductCharacteristic = applicableProductCharacteristic
     this.designatedProductClassification = designatedProductClassification
     this.individualTradeProductInstance = individualTradeProductInstance
     this.originTradeCountry = originTradeCountry
+    this.manufacturerTradeParty = manufacturerTradeParty
     this.includedReferencedProduct = includedReferencedProduct
   }
 
@@ -1008,12 +1091,18 @@ export class TradeProductType {
   globalID?: udt.IDType
   sellerAssignedID?: udt.IDType
   buyerAssignedID?: udt.IDType
+  industryAssignedID?: udt.IDType
+  modelID?: udt.IDType
   name: udt.TextType
   description?: udt.TextType
+  batchID?: udt.IDType[]
+  brandName?: udt.TextType
+  modelName?: udt.TextType
   applicableProductCharacteristic?: ProductCharacteristicType[]
   designatedProductClassification?: ProductClassificationType[]
   individualTradeProductInstance?: TradeProductInstanceType[]
   originTradeCountry?: TradeCountryType
+  manufacturerTradeParty?: TradePartyType
   includedReferencedProduct?: ReferencedProductType[]
 }
 
@@ -1049,37 +1138,49 @@ export class TradePriceType {
  */
 export class LineTradeAgreementType {
   constructor({
+    applicableTradeDeliveryTerms,
+    sellerOrderReferencedDocument,
     buyerOrderReferencedDocument,
     quotationReferencedDocument,
     contractReferencedDocument,
     additionalReferencedDocument,
     grossPriceProductTradePrice,
     netPriceProductTradePrice,
+    itemSellerTradeParty,
     ultimateCustomerOrderReferencedDocument,
   }: {
+    applicableTradeDeliveryTerms?: TradeDeliveryTermsType
+    sellerOrderReferencedDocument?: ReferencedDocumentType
     buyerOrderReferencedDocument?: ReferencedDocumentType
     quotationReferencedDocument?: ReferencedDocumentType
     contractReferencedDocument?: ReferencedDocumentType
     additionalReferencedDocument?: ReferencedDocumentType[]
     grossPriceProductTradePrice?: TradePriceType
-    netPriceProductTradePrice: TradePriceType
+    netPriceProductTradePrice?: TradePriceType
+    itemSellerTradeParty?: TradePartyType
     ultimateCustomerOrderReferencedDocument?: ReferencedDocumentType[]
   }) {
+    this.applicableTradeDeliveryTerms = applicableTradeDeliveryTerms
+    this.sellerOrderReferencedDocument = sellerOrderReferencedDocument
     this.buyerOrderReferencedDocument = buyerOrderReferencedDocument
     this.quotationReferencedDocument = quotationReferencedDocument
     this.contractReferencedDocument = contractReferencedDocument
     this.additionalReferencedDocument = additionalReferencedDocument
     this.grossPriceProductTradePrice = grossPriceProductTradePrice
     this.netPriceProductTradePrice = netPriceProductTradePrice
+    this.itemSellerTradeParty = itemSellerTradeParty
     this.ultimateCustomerOrderReferencedDocument = ultimateCustomerOrderReferencedDocument
   }
 
+  applicableTradeDeliveryTerms?: TradeDeliveryTermsType
+  sellerOrderReferencedDocument?: ReferencedDocumentType
   buyerOrderReferencedDocument?: ReferencedDocumentType
   quotationReferencedDocument?: ReferencedDocumentType
   contractReferencedDocument?: ReferencedDocumentType
   additionalReferencedDocument?: ReferencedDocumentType[]
   grossPriceProductTradePrice?: TradePriceType
-  netPriceProductTradePrice: TradePriceType
+  netPriceProductTradePrice?: TradePriceType
+  itemSellerTradeParty?: TradePartyType
   ultimateCustomerOrderReferencedDocument?: ReferencedDocumentType[]
 }
 
@@ -1091,6 +1192,7 @@ export class LineTradeDeliveryType {
     billedQuantity,
     chargeFreeQuantity,
     packageQuantity,
+    perPackageUnitQuantity,
     shipToTradeParty,
     ultimateShipToTradeParty,
     actualDeliverySupplyChainEvent,
@@ -1098,9 +1200,10 @@ export class LineTradeDeliveryType {
     receivingAdviceReferencedDocument,
     deliveryNoteReferencedDocument,
   }: {
-    billedQuantity: udt.QuantityType
+    billedQuantity?: udt.QuantityType
     chargeFreeQuantity?: udt.QuantityType
     packageQuantity?: udt.QuantityType
+    perPackageUnitQuantity?: udt.QuantityType
     shipToTradeParty?: TradePartyType
     ultimateShipToTradeParty?: TradePartyType
     actualDeliverySupplyChainEvent?: SupplyChainEventType
@@ -1111,6 +1214,7 @@ export class LineTradeDeliveryType {
     this.billedQuantity = billedQuantity
     this.chargeFreeQuantity = chargeFreeQuantity
     this.packageQuantity = packageQuantity
+    this.perPackageUnitQuantity = perPackageUnitQuantity
     this.shipToTradeParty = shipToTradeParty
     this.ultimateShipToTradeParty = ultimateShipToTradeParty
     this.actualDeliverySupplyChainEvent = actualDeliverySupplyChainEvent
@@ -1119,9 +1223,10 @@ export class LineTradeDeliveryType {
     this.deliveryNoteReferencedDocument = deliveryNoteReferencedDocument
   }
 
-  billedQuantity: udt.QuantityType
+  billedQuantity?: udt.QuantityType
   chargeFreeQuantity?: udt.QuantityType
   packageQuantity?: udt.QuantityType
+  perPackageUnitQuantity?: udt.QuantityType
   shipToTradeParty?: TradePartyType
   ultimateShipToTradeParty?: TradePartyType
   actualDeliverySupplyChainEvent?: SupplyChainEventType
@@ -1181,10 +1286,10 @@ export class LineTradeSettlementType {
     applicableTradeTax: TradeTaxType[]
     billingSpecifiedPeriod?: SpecifiedPeriodType
     specifiedTradeAllowanceCharge?: TradeAllowanceChargeType[]
-    specifiedTradeSettlementLineMonetarySummation: TradeSettlementLineMonetarySummationType
+    specifiedTradeSettlementLineMonetarySummation?: TradeSettlementLineMonetarySummationType
     invoiceReferencedDocument?: ReferencedDocumentType
     additionalReferencedDocument?: ReferencedDocumentType[]
-    receivableSpecifiedTradeAccountingAccount?: TradeAccountingAccountType
+    receivableSpecifiedTradeAccountingAccount?: TradeAccountingAccountType[]
   }) {
     this.applicableTradeTax = applicableTradeTax
     this.billingSpecifiedPeriod = billingSpecifiedPeriod
@@ -1198,10 +1303,10 @@ export class LineTradeSettlementType {
   applicableTradeTax: TradeTaxType[]
   billingSpecifiedPeriod?: SpecifiedPeriodType
   specifiedTradeAllowanceCharge?: TradeAllowanceChargeType[]
-  specifiedTradeSettlementLineMonetarySummation: TradeSettlementLineMonetarySummationType
+  specifiedTradeSettlementLineMonetarySummation?: TradeSettlementLineMonetarySummationType
   invoiceReferencedDocument?: ReferencedDocumentType
   additionalReferencedDocument?: ReferencedDocumentType[]
-  receivableSpecifiedTradeAccountingAccount?: TradeAccountingAccountType
+  receivableSpecifiedTradeAccountingAccount?: TradeAccountingAccountType[]
 }
 
 /**
@@ -1217,8 +1322,8 @@ export class SupplyChainTradeLineItemType {
   }: {
     associatedDocumentLineDocument: DocumentLineDocumentType
     specifiedTradeProduct: TradeProductType
-    specifiedLineTradeAgreement: LineTradeAgreementType
-    specifiedLineTradeDelivery: LineTradeDeliveryType
+    specifiedLineTradeAgreement?: LineTradeAgreementType
+    specifiedLineTradeDelivery?: LineTradeDeliveryType
     specifiedLineTradeSettlement: LineTradeSettlementType
   }) {
     this.associatedDocumentLineDocument = associatedDocumentLineDocument
@@ -1230,7 +1335,7 @@ export class SupplyChainTradeLineItemType {
 
   associatedDocumentLineDocument: DocumentLineDocumentType
   specifiedTradeProduct: TradeProductType
-  specifiedLineTradeAgreement: LineTradeAgreementType
-  specifiedLineTradeDelivery: LineTradeDeliveryType
+  specifiedLineTradeAgreement?: LineTradeAgreementType
+  specifiedLineTradeDelivery?: LineTradeDeliveryType
   specifiedLineTradeSettlement: LineTradeSettlementType
 }

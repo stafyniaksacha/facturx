@@ -13,13 +13,17 @@ import type * as udt from '../models/facturx/unqualifiedTypes'
 import { parseXmlAsync } from 'libxmljs'
 
 /**
- * Converter for FacturX CrossIndustryInvoice model to XML
+ * Converter for FacturX CrossIndustryInvoice model to XML.
+ *
+ * Element emission follows the xs:sequence order of the Factur-X 1.09 (CII D22B)
+ * EXTENDED schema, which is a superset of all lower profiles. Only fields that
+ * are present on the model are emitted, so the same converter produces valid
+ * output for MINIMUM through EXTENDED.
  */
 export async function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<XMLDocument> {
-  // Create XML document with namespaces
   const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice 
-  xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" 
+<rsm:CrossIndustryInvoice
+  xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
   xmlns:qdt="urn:un:unece:uncefact:data:standard:QualifiedDataType:100"
   xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100"
   xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100"
@@ -29,80 +33,102 @@ export async function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<X
   const doc = await parseXmlAsync(xmlString)
   const rootElement = doc.root() as XMLElement
 
-  // Convert ExchangedDocumentContext
   convertExchangedDocumentContext(invoice.exchangedDocumentContext, rootElement)
-
-  // Convert ExchangedDocument
   convertExchangedDocument(invoice.exchangedDocument, rootElement)
-
-  // Convert SupplyChainTradeTransaction
   convertSupplyChainTradeTransaction(invoice.supplyChainTradeTransaction, rootElement)
 
   return doc
 }
 
-/**
- * Convert AmountType to XML
- */
+// ---------------------------------------------------------------------------
+// Primitive (Unqualified / Qualified data type) converters
+// ---------------------------------------------------------------------------
+
 function convertAmount({ value, currencyID }: udt.AmountType, parent: XMLElement): XMLElement {
   parent.text(value.toFixed(2))
-
   if (currencyID) {
     parent.attr({ currencyID })
   }
-
   return parent
 }
 
-/**
- * Convert IDType to XML
- */
 function convertID({ value, schemeID }: udt.IDType, parent: XMLElement): XMLElement {
   parent.text(value)
-
   if (schemeID) {
     parent.attr({ schemeID })
   }
-
   return parent
 }
 
-/**
- * Convert TextType to XML
- */
 function convertText({ value }: udt.TextType, parent: XMLElement): XMLElement {
   parent.text(value)
   return parent
 }
 
-/**
- * Convert DateTimeType to XML
- */
-function convertDateTime({ dateTimeString, format }: udt.DateTimeType, parent: XMLElement): XMLElement {
-  const dateTimeStringElement = parent.node('udt:DateTimeString', dateTimeString)
-  dateTimeStringElement.attr({ format })
-  return parent
-}
-/**
- * Convert DateType to XML
- */
-function convertDate({ dateString, format }: udt.DateType, parent: XMLElement): XMLElement {
-  const dateStringElement = parent.node('udt:DateString', dateString)
-  dateStringElement.attr({ format })
+function convertCode({ value, listID, listVersionID }: udt.CodeType, parent: XMLElement): XMLElement {
+  parent.text(value)
+  if (listID) {
+    parent.attr({ listID })
+  }
+  if (listVersionID) {
+    parent.attr({ listVersionID })
+  }
   return parent
 }
 
-/**
- * Convert IndicatorType to XML
- */
+function convertQuantity({ value, unitCode }: udt.QuantityType, parent: XMLElement): XMLElement {
+  parent.text(String(value))
+  if (unitCode) {
+    parent.attr({ unitCode })
+  }
+  return parent
+}
+
+function convertMeasure({ value, unitCode }: udt.MeasureType, parent: XMLElement): XMLElement {
+  parent.text(String(value))
+  if (unitCode) {
+    parent.attr({ unitCode })
+  }
+  return parent
+}
+
+function convertDateTime({ dateTimeString, format }: udt.DateTimeType, parent: XMLElement): XMLElement {
+  const el = parent.node('udt:DateTimeString', dateTimeString)
+  el.attr({ format })
+  return parent
+}
+
+function convertDate({ dateString, format }: udt.DateType, parent: XMLElement): XMLElement {
+  const el = parent.node('udt:DateString', dateString)
+  el.attr({ format })
+  return parent
+}
+
+/** FormattedDateTimeType uses the qdt:DateTimeString element (qualified namespace). */
+function convertFormattedDateTime(
+  { dateTimeString, format }: { dateTimeString: string, format: string },
+  parent: XMLElement,
+): XMLElement {
+  const el = parent.node('qdt:DateTimeString', dateTimeString)
+  el.attr({ format })
+  return parent
+}
+
 function convertIndicator({ indicator }: udt.IndicatorType, parent: XMLElement): XMLElement {
   parent.node('udt:Indicator', String(indicator))
   return parent
 }
 
-/**
- * Convert ExchangedDocumentContextType to XML
- */
+function convertBinaryObject({ value, mimeCode, filename }: udt.BinaryObjectType, parent: XMLElement): XMLElement {
+  parent.text(value)
+  parent.attr({ mimeCode, filename })
+  return parent
+}
+
+// ---------------------------------------------------------------------------
+// ExchangedDocumentContext
+// ---------------------------------------------------------------------------
+
 function convertExchangedDocumentContext(
   {
     testIndicator,
@@ -114,124 +140,97 @@ function convertExchangedDocumentContext(
   const context = parent.node('rsm:ExchangedDocumentContext')
 
   if (testIndicator) {
-    const testIndicatorEl = context.node('ram:TestIndicator')
-    convertIndicator(testIndicator, testIndicatorEl)
+    convertIndicator(testIndicator, context.node('ram:TestIndicator'))
   }
 
   if (businessProcessSpecifiedDocumentContextParameter) {
-    const businessProcessEl = context.node('ram:BusinessProcessSpecifiedDocumentContextParameter')
-    convertDocumentContextParameter(businessProcessSpecifiedDocumentContextParameter, businessProcessEl)
+    convertDocumentContextParameter(
+      businessProcessSpecifiedDocumentContextParameter,
+      context.node('ram:BusinessProcessSpecifiedDocumentContextParameter'),
+    )
   }
 
-  const guidelineEl = context.node('ram:GuidelineSpecifiedDocumentContextParameter')
-  convertDocumentContextParameter(guidelineSpecifiedDocumentContextParameter, guidelineEl)
+  convertDocumentContextParameter(
+    guidelineSpecifiedDocumentContextParameter,
+    context.node('ram:GuidelineSpecifiedDocumentContextParameter'),
+  )
 }
 
-/**
- * Convert DocumentContextParameterType to XML
- */
-function convertDocumentContextParameter(
-  { id }: ram.DocumentContextParameterType,
-  parent: XMLElement,
-): void {
-  const idEl = parent.node('ram:ID')
-  convertID(id, idEl)
+function convertDocumentContextParameter({ id }: ram.DocumentContextParameterType, parent: XMLElement): void {
+  convertID(id, parent.node('ram:ID'))
 }
 
-/**
- * Convert ExchangedDocumentType to XML
- */
+// ---------------------------------------------------------------------------
+// ExchangedDocument
+// ---------------------------------------------------------------------------
+
 function convertExchangedDocument(
   { id, name, typeCode, issueDateTime, copyIndicator, languageID, includedNote, effectiveSpecifiedPeriod }: ExchangedDocumentType,
   parent: XMLElement,
 ): void {
   const doc = parent.node('rsm:ExchangedDocument')
 
-  const idEl = doc.node('ram:ID')
-  convertID(id, idEl)
+  convertID(id, doc.node('ram:ID'))
 
   if (name) {
-    const nameEl = doc.node('ram:Name')
-    convertText(name, nameEl)
+    convertText(name, doc.node('ram:Name'))
   }
 
-  const typeCodeEl = doc.node('ram:TypeCode')
-  typeCodeEl.text(typeCode.value)
+  doc.node('ram:TypeCode', typeCode.value)
 
-  const issueDateTimeEl = doc.node('ram:IssueDateTime')
-  convertDateTime(issueDateTime, issueDateTimeEl)
+  convertDateTime(issueDateTime, doc.node('ram:IssueDateTime'))
 
   if (copyIndicator) {
-    const copyIndicatorEl = doc.node('ram:CopyIndicator')
-    convertIndicator(copyIndicator, copyIndicatorEl)
+    convertIndicator(copyIndicator, doc.node('ram:CopyIndicator'))
   }
 
   if (languageID && languageID.length > 0) {
-    languageID.forEach((lang) => {
-      const langEl = doc.node('ram:LanguageID')
-      convertID(lang, langEl)
-    })
+    languageID.forEach(lang => convertID(lang, doc.node('ram:LanguageID')))
   }
 
   if (includedNote && includedNote.length > 0) {
-    includedNote.forEach(note => convertNote(note, doc))
+    includedNote.forEach(note => convertNote(note, doc.node('ram:IncludedNote')))
   }
 
   if (effectiveSpecifiedPeriod) {
-    const periodEl = doc.node('ram:EffectiveSpecifiedPeriod')
-    convertSpecifiedPeriod(effectiveSpecifiedPeriod, periodEl)
+    convertSpecifiedPeriod(effectiveSpecifiedPeriod, doc.node('ram:EffectiveSpecifiedPeriod'))
   }
 }
 
-/**
- * Convert NoteType to XML
- */
-function convertNote(
-  { content, subjectCode }: ram.NoteType,
-  parent: XMLElement,
-): void {
-  const noteEl = parent.node('ram:IncludedNote')
-
-  const contentEl = noteEl.node('ram:Content')
-  convertText(content, contentEl)
-
+function convertNote({ contentCode, content, subjectCode }: ram.NoteType, parent: XMLElement): void {
+  if (contentCode) {
+    convertCode(contentCode, parent.node('ram:ContentCode'))
+  }
+  if (content) {
+    convertText(content, parent.node('ram:Content'))
+  }
   if (subjectCode) {
-    const subjectCodeEl = noteEl.node('ram:SubjectCode')
-    convertText(subjectCode, subjectCodeEl)
+    convertCode(subjectCode, parent.node('ram:SubjectCode'))
   }
 }
 
-/**
- * Convert SpecifiedPeriodType to XML
- */
 function convertSpecifiedPeriod(
-  { startDateTime, endDateTime, completeDateTime, description }: ram.SpecifiedPeriodType,
+  { description, startDateTime, endDateTime, completeDateTime }: ram.SpecifiedPeriodType,
   parent: XMLElement,
 ): void {
-  if (startDateTime) {
-    const startDateTimeEl = parent.node('ram:StartDateTime')
-    convertDateTime(startDateTime, startDateTimeEl)
-  }
-
-  if (endDateTime) {
-    const endDateTimeEl = parent.node('ram:EndDateTime')
-    convertDateTime(endDateTime, endDateTimeEl)
-  }
-
-  if (completeDateTime) {
-    const completeDateTimeEl = parent.node('ram:CompleteDateTime')
-    convertDateTime(completeDateTime, completeDateTimeEl)
-  }
-
   if (description) {
-    const descriptionEl = parent.node('ram:Description')
-    convertText(description, descriptionEl)
+    convertText(description, parent.node('ram:Description'))
+  }
+  if (startDateTime) {
+    convertDateTime(startDateTime, parent.node('ram:StartDateTime'))
+  }
+  if (endDateTime) {
+    convertDateTime(endDateTime, parent.node('ram:EndDateTime'))
+  }
+  if (completeDateTime) {
+    convertDateTime(completeDateTime, parent.node('ram:CompleteDateTime'))
   }
 }
 
-/**
- * Convert SupplyChainTradeTransactionType to XML
- */
+// ---------------------------------------------------------------------------
+// SupplyChainTradeTransaction
+// ---------------------------------------------------------------------------
+
 function convertSupplyChainTradeTransaction(
   {
     includedSupplyChainTradeLineItem,
@@ -243,298 +242,601 @@ function convertSupplyChainTradeTransaction(
 ): void {
   const transaction = parent.node('rsm:SupplyChainTradeTransaction')
 
-  // Include line items before the header elements
   if (includedSupplyChainTradeLineItem && includedSupplyChainTradeLineItem.length > 0) {
     includedSupplyChainTradeLineItem.forEach((lineItem) => {
-      const lineItemEl = transaction.node('ram:IncludedSupplyChainTradeLineItem')
-      convertSupplyChainTradeLineItem(lineItem, lineItemEl)
+      convertSupplyChainTradeLineItem(lineItem, transaction.node('ram:IncludedSupplyChainTradeLineItem'))
     })
   }
 
-  // Convert header trade agreement - required element
-  const agreementEl = transaction.node('ram:ApplicableHeaderTradeAgreement')
-  convertHeaderTradeAgreement(applicableHeaderTradeAgreement, agreementEl)
-
-  // Convert header trade delivery - required element
-  const deliveryEl = transaction.node('ram:ApplicableHeaderTradeDelivery')
-  convertHeaderTradeDelivery(applicableHeaderTradeDelivery, deliveryEl)
-
-  // Convert header trade settlement - required element
-  const settlementEl = transaction.node('ram:ApplicableHeaderTradeSettlement')
-  convertHeaderTradeSettlement(applicableHeaderTradeSettlement, settlementEl)
+  convertHeaderTradeAgreement(applicableHeaderTradeAgreement, transaction.node('ram:ApplicableHeaderTradeAgreement'))
+  convertHeaderTradeDelivery(applicableHeaderTradeDelivery, transaction.node('ram:ApplicableHeaderTradeDelivery'))
+  convertHeaderTradeSettlement(applicableHeaderTradeSettlement, transaction.node('ram:ApplicableHeaderTradeSettlement'))
 }
 
-/**
- * Convert SupplyChainTradeLineItemType to XML
- */
-function convertSupplyChainTradeLineItem(
-  lineItem: ram.SupplyChainTradeLineItemType,
-  parent: XMLElement,
-): void {
-  if (lineItem.associatedDocumentLineDocument) {
-    const docLineEl = parent.node('ram:AssociatedDocumentLineDocument')
+// ---------------------------------------------------------------------------
+// Line items
+// ---------------------------------------------------------------------------
 
-    if (lineItem.associatedDocumentLineDocument.lineID) {
-      const lineIDEl = docLineEl.node('ram:LineID')
-      convertID(lineItem.associatedDocumentLineDocument.lineID, lineIDEl)
-    }
-  }
-
-  if (lineItem.specifiedTradeProduct) {
-    const productEl = parent.node('ram:SpecifiedTradeProduct')
-
-    if (lineItem.specifiedTradeProduct.globalID) {
-      const globalIDEl = productEl.node('ram:GlobalID')
-      convertID(lineItem.specifiedTradeProduct.globalID, globalIDEl)
-    }
-
-    if (lineItem.specifiedTradeProduct.name) {
-      const nameEl = productEl.node('ram:Name')
-      convertText(lineItem.specifiedTradeProduct.name, nameEl)
-    }
-
-    if (lineItem.specifiedTradeProduct.description) {
-      const descEl = productEl.node('ram:Description')
-      convertText(lineItem.specifiedTradeProduct.description, descEl)
-    }
-  }
+function convertSupplyChainTradeLineItem(lineItem: ram.SupplyChainTradeLineItemType, parent: XMLElement): void {
+  convertDocumentLineDocument(lineItem.associatedDocumentLineDocument, parent.node('ram:AssociatedDocumentLineDocument'))
+  convertTradeProduct(lineItem.specifiedTradeProduct, parent.node('ram:SpecifiedTradeProduct'))
 
   if (lineItem.specifiedLineTradeAgreement) {
-    const agreementEl = parent.node('ram:SpecifiedLineTradeAgreement')
-    convertLineTradeAgreement(lineItem.specifiedLineTradeAgreement, agreementEl)
+    convertLineTradeAgreement(lineItem.specifiedLineTradeAgreement, parent.node('ram:SpecifiedLineTradeAgreement'))
   }
-
   if (lineItem.specifiedLineTradeDelivery) {
-    const deliveryEl = parent.node('ram:SpecifiedLineTradeDelivery')
-    convertLineTradeDelivery(lineItem.specifiedLineTradeDelivery, deliveryEl)
+    convertLineTradeDelivery(lineItem.specifiedLineTradeDelivery, parent.node('ram:SpecifiedLineTradeDelivery'))
   }
-
   if (lineItem.specifiedLineTradeSettlement) {
-    const settlementEl = parent.node('ram:SpecifiedLineTradeSettlement')
-    convertLineTradeSettlement(lineItem.specifiedLineTradeSettlement, settlementEl)
+    convertLineTradeSettlement(lineItem.specifiedLineTradeSettlement, parent.node('ram:SpecifiedLineTradeSettlement'))
   }
 }
 
-/**
- * Convert HeaderTradeAgreementType to XML
- */
+function convertDocumentLineDocument(
+  { lineID, parentLineID, lineStatusCode, lineStatusReasonCode, includedNote }: ram.DocumentLineDocumentType,
+  parent: XMLElement,
+): void {
+  convertID(lineID, parent.node('ram:LineID'))
+  if (parentLineID) {
+    convertID(parentLineID, parent.node('ram:ParentLineID'))
+  }
+  if (lineStatusCode) {
+    parent.node('ram:LineStatusCode', lineStatusCode.value)
+  }
+  if (lineStatusReasonCode) {
+    convertCode(lineStatusReasonCode, parent.node('ram:LineStatusReasonCode'))
+  }
+  if (includedNote && includedNote.length > 0) {
+    includedNote.forEach(note => convertNote(note, parent.node('ram:IncludedNote')))
+  }
+}
+
+function convertTradeProduct(
+  {
+    id,
+    globalID,
+    sellerAssignedID,
+    buyerAssignedID,
+    industryAssignedID,
+    modelID,
+    name,
+    description,
+    batchID,
+    brandName,
+    modelName,
+    applicableProductCharacteristic,
+    designatedProductClassification,
+    individualTradeProductInstance,
+    originTradeCountry,
+    manufacturerTradeParty,
+    includedReferencedProduct,
+  }: ram.TradeProductType,
+  parent: XMLElement,
+): void {
+  if (id) {
+    convertID(id, parent.node('ram:ID'))
+  }
+  if (globalID) {
+    convertID(globalID, parent.node('ram:GlobalID'))
+  }
+  if (sellerAssignedID) {
+    convertID(sellerAssignedID, parent.node('ram:SellerAssignedID'))
+  }
+  if (buyerAssignedID) {
+    convertID(buyerAssignedID, parent.node('ram:BuyerAssignedID'))
+  }
+  if (industryAssignedID) {
+    convertID(industryAssignedID, parent.node('ram:IndustryAssignedID'))
+  }
+  if (modelID) {
+    convertID(modelID, parent.node('ram:ModelID'))
+  }
+  if (name) {
+    convertText(name, parent.node('ram:Name'))
+  }
+  if (description) {
+    convertText(description, parent.node('ram:Description'))
+  }
+  if (batchID && batchID.length > 0) {
+    batchID.forEach(b => convertID(b, parent.node('ram:BatchID')))
+  }
+  if (brandName) {
+    convertText(brandName, parent.node('ram:BrandName'))
+  }
+  if (modelName) {
+    convertText(modelName, parent.node('ram:ModelName'))
+  }
+  if (applicableProductCharacteristic && applicableProductCharacteristic.length > 0) {
+    applicableProductCharacteristic.forEach(c => convertProductCharacteristic(c, parent.node('ram:ApplicableProductCharacteristic')))
+  }
+  if (designatedProductClassification && designatedProductClassification.length > 0) {
+    designatedProductClassification.forEach(c => convertProductClassification(c, parent.node('ram:DesignatedProductClassification')))
+  }
+  if (individualTradeProductInstance && individualTradeProductInstance.length > 0) {
+    individualTradeProductInstance.forEach(i => convertTradeProductInstance(i, parent.node('ram:IndividualTradeProductInstance')))
+  }
+  if (originTradeCountry?.id) {
+    parent.node('ram:OriginTradeCountry').node('ram:ID', originTradeCountry.id.value)
+  }
+  if (manufacturerTradeParty) {
+    convertTradeParty(manufacturerTradeParty, parent.node('ram:ManufacturerTradeParty'))
+  }
+  if (includedReferencedProduct && includedReferencedProduct.length > 0) {
+    includedReferencedProduct.forEach(p => convertReferencedProduct(p, parent.node('ram:IncludedReferencedProduct')))
+  }
+}
+
+function convertProductCharacteristic(
+  { typeCode, description, valueMeasure, value }: ram.ProductCharacteristicType,
+  parent: XMLElement,
+): void {
+  if (typeCode) {
+    convertCode(typeCode, parent.node('ram:TypeCode'))
+  }
+  if (description) {
+    convertText(description, parent.node('ram:Description'))
+  }
+  if (valueMeasure) {
+    convertMeasure(valueMeasure, parent.node('ram:ValueMeasure'))
+  }
+  if (value) {
+    convertText(value, parent.node('ram:Value'))
+  }
+}
+
+function convertProductClassification(
+  { classCode, className }: ram.ProductClassificationType,
+  parent: XMLElement,
+): void {
+  if (classCode) {
+    convertCode(classCode, parent.node('ram:ClassCode'))
+  }
+  if (className) {
+    convertText(className, parent.node('ram:ClassName'))
+  }
+}
+
+function convertTradeProductInstance(
+  { batchID, supplierAssignedSerialID }: ram.TradeProductInstanceType,
+  parent: XMLElement,
+): void {
+  if (batchID) {
+    convertID(batchID, parent.node('ram:BatchID'))
+  }
+  if (supplierAssignedSerialID) {
+    convertID(supplierAssignedSerialID, parent.node('ram:SupplierAssignedSerialID'))
+  }
+}
+
+function convertReferencedProduct(
+  { id, globalID, sellerAssignedID, buyerAssignedID, industryAssignedID, name, description, unitQuantity }: ram.ReferencedProductType,
+  parent: XMLElement,
+): void {
+  if (id) {
+    convertID(id, parent.node('ram:ID'))
+  }
+  if (globalID && globalID.length > 0) {
+    globalID.forEach(g => convertID(g, parent.node('ram:GlobalID')))
+  }
+  if (sellerAssignedID) {
+    convertID(sellerAssignedID, parent.node('ram:SellerAssignedID'))
+  }
+  if (buyerAssignedID) {
+    convertID(buyerAssignedID, parent.node('ram:BuyerAssignedID'))
+  }
+  if (industryAssignedID) {
+    convertID(industryAssignedID, parent.node('ram:IndustryAssignedID'))
+  }
+  convertText(name, parent.node('ram:Name'))
+  if (description) {
+    convertText(description, parent.node('ram:Description'))
+  }
+  if (unitQuantity) {
+    convertQuantity(unitQuantity, parent.node('ram:UnitQuantity'))
+  }
+}
+
+function convertLineTradeAgreement(
+  {
+    applicableTradeDeliveryTerms,
+    sellerOrderReferencedDocument,
+    buyerOrderReferencedDocument,
+    quotationReferencedDocument,
+    contractReferencedDocument,
+    additionalReferencedDocument,
+    grossPriceProductTradePrice,
+    netPriceProductTradePrice,
+    itemSellerTradeParty,
+    ultimateCustomerOrderReferencedDocument,
+  }: ram.LineTradeAgreementType,
+  parent: XMLElement,
+): void {
+  if (applicableTradeDeliveryTerms) {
+    convertTradeDeliveryTerms(applicableTradeDeliveryTerms, parent.node('ram:ApplicableTradeDeliveryTerms'))
+  }
+  if (sellerOrderReferencedDocument) {
+    convertReferencedDocument(sellerOrderReferencedDocument, parent.node('ram:SellerOrderReferencedDocument'))
+  }
+  if (buyerOrderReferencedDocument) {
+    convertReferencedDocument(buyerOrderReferencedDocument, parent.node('ram:BuyerOrderReferencedDocument'))
+  }
+  if (quotationReferencedDocument) {
+    convertReferencedDocument(quotationReferencedDocument, parent.node('ram:QuotationReferencedDocument'))
+  }
+  if (contractReferencedDocument) {
+    convertReferencedDocument(contractReferencedDocument, parent.node('ram:ContractReferencedDocument'))
+  }
+  if (additionalReferencedDocument && additionalReferencedDocument.length > 0) {
+    additionalReferencedDocument.forEach(d => convertReferencedDocument(d, parent.node('ram:AdditionalReferencedDocument')))
+  }
+  if (grossPriceProductTradePrice) {
+    convertTradePrice(grossPriceProductTradePrice, parent.node('ram:GrossPriceProductTradePrice'))
+  }
+  if (netPriceProductTradePrice) {
+    convertTradePrice(netPriceProductTradePrice, parent.node('ram:NetPriceProductTradePrice'))
+  }
+  if (itemSellerTradeParty) {
+    convertTradeParty(itemSellerTradeParty, parent.node('ram:ItemSellerTradeParty'))
+  }
+  if (ultimateCustomerOrderReferencedDocument && ultimateCustomerOrderReferencedDocument.length > 0) {
+    ultimateCustomerOrderReferencedDocument.forEach(d => convertReferencedDocument(d, parent.node('ram:UltimateCustomerOrderReferencedDocument')))
+  }
+}
+
+function convertTradePrice(
+  { chargeAmount, basisQuantity, appliedTradeAllowanceCharge, includedTradeTax }: ram.TradePriceType,
+  parent: XMLElement,
+): void {
+  if (chargeAmount) {
+    convertAmount(chargeAmount, parent.node('ram:ChargeAmount'))
+  }
+  if (basisQuantity) {
+    convertQuantity(basisQuantity, parent.node('ram:BasisQuantity'))
+  }
+  if (appliedTradeAllowanceCharge && appliedTradeAllowanceCharge.length > 0) {
+    appliedTradeAllowanceCharge.forEach(ac => convertAllowanceCharge(ac, parent.node('ram:AppliedTradeAllowanceCharge')))
+  }
+  if (includedTradeTax) {
+    convertTradeTax(includedTradeTax, parent.node('ram:IncludedTradeTax'))
+  }
+}
+
+function convertLineTradeDelivery(
+  {
+    billedQuantity,
+    chargeFreeQuantity,
+    packageQuantity,
+    perPackageUnitQuantity,
+    shipToTradeParty,
+    ultimateShipToTradeParty,
+    actualDeliverySupplyChainEvent,
+    despatchAdviceReferencedDocument,
+    receivingAdviceReferencedDocument,
+    deliveryNoteReferencedDocument,
+  }: ram.LineTradeDeliveryType,
+  parent: XMLElement,
+): void {
+  if (billedQuantity) {
+    convertQuantity(billedQuantity, parent.node('ram:BilledQuantity'))
+  }
+  if (chargeFreeQuantity) {
+    convertQuantity(chargeFreeQuantity, parent.node('ram:ChargeFreeQuantity'))
+  }
+  if (packageQuantity) {
+    convertQuantity(packageQuantity, parent.node('ram:PackageQuantity'))
+  }
+  if (perPackageUnitQuantity) {
+    convertQuantity(perPackageUnitQuantity, parent.node('ram:PerPackageUnitQuantity'))
+  }
+  if (shipToTradeParty) {
+    convertTradeParty(shipToTradeParty, parent.node('ram:ShipToTradeParty'))
+  }
+  if (ultimateShipToTradeParty) {
+    convertTradeParty(ultimateShipToTradeParty, parent.node('ram:UltimateShipToTradeParty'))
+  }
+  if (actualDeliverySupplyChainEvent) {
+    convertSupplyChainEvent(actualDeliverySupplyChainEvent, parent.node('ram:ActualDeliverySupplyChainEvent'))
+  }
+  if (despatchAdviceReferencedDocument) {
+    convertReferencedDocument(despatchAdviceReferencedDocument, parent.node('ram:DespatchAdviceReferencedDocument'))
+  }
+  if (receivingAdviceReferencedDocument) {
+    convertReferencedDocument(receivingAdviceReferencedDocument, parent.node('ram:ReceivingAdviceReferencedDocument'))
+  }
+  if (deliveryNoteReferencedDocument) {
+    convertReferencedDocument(deliveryNoteReferencedDocument, parent.node('ram:DeliveryNoteReferencedDocument'))
+  }
+}
+
+function convertLineTradeSettlement(
+  {
+    applicableTradeTax,
+    billingSpecifiedPeriod,
+    specifiedTradeAllowanceCharge,
+    specifiedTradeSettlementLineMonetarySummation,
+    invoiceReferencedDocument,
+    additionalReferencedDocument,
+    receivableSpecifiedTradeAccountingAccount,
+  }: ram.LineTradeSettlementType,
+  parent: XMLElement,
+): void {
+  if (applicableTradeTax && applicableTradeTax.length > 0) {
+    applicableTradeTax.forEach(tax => convertTradeTax(tax, parent.node('ram:ApplicableTradeTax')))
+  }
+  if (billingSpecifiedPeriod) {
+    convertSpecifiedPeriod(billingSpecifiedPeriod, parent.node('ram:BillingSpecifiedPeriod'))
+  }
+  if (specifiedTradeAllowanceCharge && specifiedTradeAllowanceCharge.length > 0) {
+    specifiedTradeAllowanceCharge.forEach(ac => convertAllowanceCharge(ac, parent.node('ram:SpecifiedTradeAllowanceCharge')))
+  }
+  if (specifiedTradeSettlementLineMonetarySummation) {
+    convertTradeSettlementLineMonetarySummation(
+      specifiedTradeSettlementLineMonetarySummation,
+      parent.node('ram:SpecifiedTradeSettlementLineMonetarySummation'),
+    )
+  }
+  if (invoiceReferencedDocument) {
+    convertReferencedDocument(invoiceReferencedDocument, parent.node('ram:InvoiceReferencedDocument'))
+  }
+  if (additionalReferencedDocument && additionalReferencedDocument.length > 0) {
+    additionalReferencedDocument.forEach(d => convertReferencedDocument(d, parent.node('ram:AdditionalReferencedDocument')))
+  }
+  if (receivableSpecifiedTradeAccountingAccount && receivableSpecifiedTradeAccountingAccount.length > 0) {
+    receivableSpecifiedTradeAccountingAccount.forEach(a => convertTradeAccountingAccount(a, parent.node('ram:ReceivableSpecifiedTradeAccountingAccount')))
+  }
+}
+
+function convertTradeSettlementLineMonetarySummation(
+  { lineTotalAmount, chargeTotalAmount, allowanceTotalAmount, taxTotalAmount, grandTotalAmount, totalAllowanceChargeAmount }: ram.TradeSettlementLineMonetarySummationType,
+  parent: XMLElement,
+): void {
+  if (lineTotalAmount) {
+    convertAmount(lineTotalAmount, parent.node('ram:LineTotalAmount'))
+  }
+  if (chargeTotalAmount) {
+    convertAmount(chargeTotalAmount, parent.node('ram:ChargeTotalAmount'))
+  }
+  if (allowanceTotalAmount) {
+    convertAmount(allowanceTotalAmount, parent.node('ram:AllowanceTotalAmount'))
+  }
+  if (taxTotalAmount) {
+    convertAmount(taxTotalAmount, parent.node('ram:TaxTotalAmount'))
+  }
+  if (grandTotalAmount) {
+    convertAmount(grandTotalAmount, parent.node('ram:GrandTotalAmount'))
+  }
+  if (totalAllowanceChargeAmount) {
+    convertAmount(totalAllowanceChargeAmount, parent.node('ram:TotalAllowanceChargeAmount'))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Header trade agreement
+// ---------------------------------------------------------------------------
+
 function convertHeaderTradeAgreement(
   {
     buyerReference,
     sellerTradeParty,
     buyerTradeParty,
-    buyerOrderReferencedDocument,
-    additionalReferencedDocument,
-    applicableTradeDeliveryTerms,
-    buyerAgentTradeParty,
-    buyerTaxRepresentativeTradeParty,
-    contractReferencedDocument,
-    productEndUserTradeParty,
-    quotationReferencedDocument,
     salesAgentTradeParty,
-    sellerOrderReferencedDocument,
+    buyerTaxRepresentativeTradeParty,
     sellerTaxRepresentativeTradeParty,
+    productEndUserTradeParty,
+    applicableTradeDeliveryTerms,
+    sellerOrderReferencedDocument,
+    buyerOrderReferencedDocument,
+    quotationReferencedDocument,
+    contractReferencedDocument,
+    additionalReferencedDocument,
+    buyerAgentTradeParty,
     specifiedProcuringProject,
     ultimateCustomerOrderReferencedDocument,
   }: HeaderTradeAgreementType,
   parent: XMLElement,
 ): void {
   if (buyerReference) {
-    const refEl = parent.node('ram:BuyerReference')
-    convertText(buyerReference, refEl)
+    convertText(buyerReference, parent.node('ram:BuyerReference'))
   }
 
-  // Convert seller party
-  const sellerPartyEl = parent.node('ram:SellerTradeParty')
-  convertTradeParty(sellerTradeParty, sellerPartyEl)
-
-  // Convert buyer party
-  const buyerPartyEl = parent.node('ram:BuyerTradeParty')
-  convertTradeParty(buyerTradeParty, buyerPartyEl)
-
-  // Convert buyer order reference document if available
-  if (buyerOrderReferencedDocument) {
-    const docEl = parent.node('ram:BuyerOrderReferencedDocument')
-
-    if (buyerOrderReferencedDocument.issuerAssignedID) {
-      const idEl = docEl.node('ram:IssuerAssignedID')
-      convertID(buyerOrderReferencedDocument.issuerAssignedID, idEl)
-    }
-  }
-
-  if (additionalReferencedDocument) {
-    additionalReferencedDocument.forEach((doc) => {
-      const docEl = parent.node('ram:AdditionalReferencedDocument')
-      convertReferencedDocument(doc, docEl)
-    })
-  }
-
-  if (applicableTradeDeliveryTerms) {
-    // TODO: implement
-  }
+  convertTradeParty(sellerTradeParty, parent.node('ram:SellerTradeParty'))
+  convertTradeParty(buyerTradeParty, parent.node('ram:BuyerTradeParty'))
 
   if (salesAgentTradeParty) {
-    const agentEl = parent.node('ram:SalesAgentTradeParty')
-    convertTradeParty(salesAgentTradeParty, agentEl)
+    convertTradeParty(salesAgentTradeParty, parent.node('ram:SalesAgentTradeParty'))
   }
-
-  if (buyerAgentTradeParty) {
-    const agentEl = parent.node('ram:BuyerAgentTradeParty')
-    convertTradeParty(buyerAgentTradeParty, agentEl)
-  }
-
   if (buyerTaxRepresentativeTradeParty) {
-    const taxEl = parent.node('ram:BuyerTaxRepresentativeTradeParty')
-    convertTradeParty(buyerTaxRepresentativeTradeParty, taxEl)
+    convertTradeParty(buyerTaxRepresentativeTradeParty, parent.node('ram:BuyerTaxRepresentativeTradeParty'))
   }
-
   if (sellerTaxRepresentativeTradeParty) {
-    const taxEl = parent.node('ram:SellerTaxRepresentativeTradeParty')
-    convertTradeParty(sellerTaxRepresentativeTradeParty, taxEl)
+    convertTradeParty(sellerTaxRepresentativeTradeParty, parent.node('ram:SellerTaxRepresentativeTradeParty'))
   }
-
   if (productEndUserTradeParty) {
-    const endUserEl = parent.node('ram:ProductEndUserTradeParty')
-    convertTradeParty(productEndUserTradeParty, endUserEl)
+    convertTradeParty(productEndUserTradeParty, parent.node('ram:ProductEndUserTradeParty'))
   }
-
-  if (quotationReferencedDocument) {
-    const docEl = parent.node('ram:QuotationReferencedDocument')
-    convertReferencedDocument(quotationReferencedDocument, docEl)
+  if (applicableTradeDeliveryTerms) {
+    convertTradeDeliveryTerms(applicableTradeDeliveryTerms, parent.node('ram:ApplicableTradeDeliveryTerms'))
   }
-
-  if (contractReferencedDocument) {
-    const docEl = parent.node('ram:ContractReferencedDocument')
-    convertReferencedDocument(contractReferencedDocument, docEl)
-  }
-
   if (sellerOrderReferencedDocument) {
-    const docEl = parent.node('ram:SellerOrderReferencedDocument')
-    convertReferencedDocument(sellerOrderReferencedDocument, docEl)
+    convertReferencedDocument(sellerOrderReferencedDocument, parent.node('ram:SellerOrderReferencedDocument'))
   }
-
+  if (buyerOrderReferencedDocument) {
+    convertReferencedDocument(buyerOrderReferencedDocument, parent.node('ram:BuyerOrderReferencedDocument'))
+  }
+  if (quotationReferencedDocument) {
+    convertReferencedDocument(quotationReferencedDocument, parent.node('ram:QuotationReferencedDocument'))
+  }
+  if (contractReferencedDocument) {
+    convertReferencedDocument(contractReferencedDocument, parent.node('ram:ContractReferencedDocument'))
+  }
+  if (additionalReferencedDocument && additionalReferencedDocument.length > 0) {
+    additionalReferencedDocument.forEach(d => convertReferencedDocument(d, parent.node('ram:AdditionalReferencedDocument')))
+  }
+  if (buyerAgentTradeParty) {
+    convertTradeParty(buyerAgentTradeParty, parent.node('ram:BuyerAgentTradeParty'))
+  }
   if (specifiedProcuringProject) {
-    // @TODO: implement
+    convertProcuringProject(specifiedProcuringProject, parent.node('ram:SpecifiedProcuringProject'))
   }
-
-  if (ultimateCustomerOrderReferencedDocument) {
-    ultimateCustomerOrderReferencedDocument.forEach((doc) => {
-      const docEl = parent.node('ram:UltimateCustomerOrderReferencedDocument')
-      convertReferencedDocument(doc, docEl)
-    })
+  if (ultimateCustomerOrderReferencedDocument && ultimateCustomerOrderReferencedDocument.length > 0) {
+    ultimateCustomerOrderReferencedDocument.forEach(d => convertReferencedDocument(d, parent.node('ram:UltimateCustomerOrderReferencedDocument')))
   }
 }
-/**
- * Convert TradePartyType to XML
- */
+
+function convertProcuringProject({ id, name }: ram.ProcuringProjectType, parent: XMLElement): void {
+  convertID(id, parent.node('ram:ID'))
+  convertText(name, parent.node('ram:Name'))
+}
+
+function convertTradeDeliveryTerms({ deliveryTypeCode, relevantTradeLocation }: ram.TradeDeliveryTermsType, parent: XMLElement): void {
+  if (deliveryTypeCode) {
+    parent.node('ram:DeliveryTypeCode', deliveryTypeCode.value)
+  }
+  if (relevantTradeLocation) {
+    const el = parent.node('ram:RelevantTradeLocation')
+    if (relevantTradeLocation.countryID) {
+      el.node('ram:CountryID', relevantTradeLocation.countryID.value)
+    }
+    if (relevantTradeLocation.name) {
+      convertText(relevantTradeLocation.name, el.node('ram:Name'))
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Trade party
+// ---------------------------------------------------------------------------
+
 function convertTradeParty(
   {
-    name,
-    specifiedLegalOrganization,
-    postalTradeAddress,
-    specifiedTaxRegistration,
-    definedTradeContact,
-    description,
-    globalID,
     id,
+    globalID,
+    name,
     roleCode,
+    description,
+    specifiedLegalOrganization,
+    definedTradeContact,
+    postalTradeAddress,
     uriUniversalCommunication,
+    specifiedTaxRegistration,
   }: ram.TradePartyType,
   parent: XMLElement,
 ): void {
+  if (id && id.length > 0) {
+    id.forEach(i => convertID(i, parent.node('ram:ID')))
+  }
+  if (globalID && globalID.length > 0) {
+    globalID.forEach(g => convertID(g, parent.node('ram:GlobalID')))
+  }
   if (name) {
-    const nameEl = parent.node('ram:Name')
-    convertText(name, nameEl)
+    convertText(name, parent.node('ram:Name'))
   }
-
+  if (roleCode) {
+    parent.node('ram:RoleCode', roleCode.value)
+  }
+  if (description) {
+    convertText(description, parent.node('ram:Description'))
+  }
   if (specifiedLegalOrganization) {
-    const orgEl = parent.node('ram:SpecifiedLegalOrganization')
-
-    if (specifiedLegalOrganization.id) {
-      const idEl = orgEl.node('ram:ID')
-      convertID(specifiedLegalOrganization.id, idEl)
-    }
+    convertLegalOrganization(specifiedLegalOrganization, parent.node('ram:SpecifiedLegalOrganization'))
   }
-
+  if (definedTradeContact && definedTradeContact.length > 0) {
+    definedTradeContact.forEach(c => convertTradeContact(c, parent.node('ram:DefinedTradeContact')))
+  }
   if (postalTradeAddress) {
-    const addressEl = parent.node('ram:PostalTradeAddress')
-    convertTradeAddress(postalTradeAddress, addressEl)
+    convertTradeAddress(postalTradeAddress, parent.node('ram:PostalTradeAddress'))
   }
-
+  if (uriUniversalCommunication) {
+    convertUniversalCommunication(uriUniversalCommunication, parent.node('ram:URIUniversalCommunication'))
+  }
   if (specifiedTaxRegistration && specifiedTaxRegistration.length > 0) {
     specifiedTaxRegistration.forEach((tax) => {
       const taxEl = parent.node('ram:SpecifiedTaxRegistration')
-
-      if (tax.id) {
-        const idEl = taxEl.node('ram:ID')
-        convertID(tax.id, idEl)
-      }
+      convertID(tax.id, taxEl.node('ram:ID'))
     })
-  }
-
-  if (definedTradeContact) {
-    // @TODO: implement
-  }
-
-  if (description) {
-    const descriptionEl = parent.node('ram:Description')
-    convertText(description, descriptionEl)
-  }
-
-  if (globalID) {
-    globalID.forEach((id) => {
-      const globalIDEl = parent.node('ram:GlobalID')
-      convertID(id, globalIDEl)
-    })
-  }
-
-  if (id) {
-    // @TODO: implement
-  }
-
-  if (roleCode) {
-    const roleCodeEl = parent.node('ram:RoleCode')
-    convertText(roleCode, roleCodeEl)
-  }
-
-  if (uriUniversalCommunication) {
-    // @TODO: implement
   }
 }
 
-/**
- * Convert TradeAddressType to XML
- */
+function convertLegalOrganization(
+  { id, tradingBusinessName, postalTradeAddress }: ram.LegalOrganizationType,
+  parent: XMLElement,
+): void {
+  if (id) {
+    convertID(id, parent.node('ram:ID'))
+  }
+  if (tradingBusinessName) {
+    convertText(tradingBusinessName, parent.node('ram:TradingBusinessName'))
+  }
+  if (postalTradeAddress) {
+    convertTradeAddress(postalTradeAddress, parent.node('ram:PostalTradeAddress'))
+  }
+}
+
+function convertTradeContact(
+  { personName, departmentName, typeCode, telephoneUniversalCommunication, faxUniversalCommunication, emailURIUniversalCommunication }: ram.TradeContactType,
+  parent: XMLElement,
+): void {
+  if (personName) {
+    convertText(personName, parent.node('ram:PersonName'))
+  }
+  if (departmentName) {
+    convertText(departmentName, parent.node('ram:DepartmentName'))
+  }
+  if (typeCode) {
+    parent.node('ram:TypeCode', typeCode.value)
+  }
+  if (telephoneUniversalCommunication) {
+    convertUniversalCommunication(telephoneUniversalCommunication, parent.node('ram:TelephoneUniversalCommunication'))
+  }
+  if (faxUniversalCommunication) {
+    convertUniversalCommunication(faxUniversalCommunication, parent.node('ram:FaxUniversalCommunication'))
+  }
+  if (emailURIUniversalCommunication) {
+    convertUniversalCommunication(emailURIUniversalCommunication, parent.node('ram:EmailURIUniversalCommunication'))
+  }
+}
+
+function convertUniversalCommunication({ uriID, completeNumber }: ram.UniversalCommunicationType, parent: XMLElement): void {
+  if (uriID) {
+    convertID(uriID, parent.node('ram:URIID'))
+  }
+  if (completeNumber) {
+    convertText(completeNumber, parent.node('ram:CompleteNumber'))
+  }
+}
+
 function convertTradeAddress(
-  { countryID, postcodeCode, cityName, lineOne }: ram.TradeAddressType,
+  { postcodeCode, lineOne, lineTwo, lineThree, cityName, countryID, countrySubDivisionName }: ram.TradeAddressType,
   parent: XMLElement,
 ): void {
   if (postcodeCode) {
-    const postcodeEl = parent.node('ram:PostcodeCode')
-    convertText(postcodeCode, postcodeEl)
+    convertCode(postcodeCode, parent.node('ram:PostcodeCode'))
   }
-
   if (lineOne) {
-    const lineOneEl = parent.node('ram:LineOne')
-    convertText(lineOne, lineOneEl)
+    convertText(lineOne, parent.node('ram:LineOne'))
   }
-
+  if (lineTwo) {
+    convertText(lineTwo, parent.node('ram:LineTwo'))
+  }
+  if (lineThree) {
+    convertText(lineThree, parent.node('ram:LineThree'))
+  }
   if (cityName) {
-    const cityNameEl = parent.node('ram:CityName')
-    convertText(cityName, cityNameEl)
+    convertText(cityName, parent.node('ram:CityName'))
   }
-
-  if (countryID) {
-    const countryIDEl = parent.node('ram:CountryID')
-    countryIDEl.text(countryID.value)
+  parent.node('ram:CountryID', countryID.value)
+  if (countrySubDivisionName && countrySubDivisionName.length > 0) {
+    countrySubDivisionName.forEach(n => convertText(n, parent.node('ram:CountrySubDivisionName')))
   }
 }
 
-/**
- * Convert HeaderTradeDeliveryType to XML
- */
+// ---------------------------------------------------------------------------
+// Header trade delivery
+// ---------------------------------------------------------------------------
+
 function convertHeaderTradeDelivery(
   {
+    relatedSupplyChainConsignment,
     shipToTradeParty,
     ultimateShipToTradeParty,
     shipFromTradeParty,
@@ -545,47 +847,50 @@ function convertHeaderTradeDelivery(
   }: HeaderTradeDeliveryType,
   parent: XMLElement,
 ): void {
-  // Follow the exact sequence order defined in the XSD schema for HeaderTradeDeliveryType
+  if (relatedSupplyChainConsignment) {
+    convertSupplyChainConsignment(relatedSupplyChainConsignment, parent.node('ram:RelatedSupplyChainConsignment'))
+  }
   if (shipToTradeParty) {
-    const shipToEl = parent.node('ram:ShipToTradeParty')
-    convertTradeParty(shipToTradeParty, shipToEl)
+    convertTradeParty(shipToTradeParty, parent.node('ram:ShipToTradeParty'))
   }
-
   if (ultimateShipToTradeParty) {
-    const el = parent.node('ram:UltimateShipToTradeParty')
-    convertTradeParty(ultimateShipToTradeParty, el)
+    convertTradeParty(ultimateShipToTradeParty, parent.node('ram:UltimateShipToTradeParty'))
   }
-
   if (shipFromTradeParty) {
-    const el = parent.node('ram:ShipFromTradeParty')
-    convertTradeParty(shipFromTradeParty, el)
+    convertTradeParty(shipFromTradeParty, parent.node('ram:ShipFromTradeParty'))
   }
-
-  // Actual delivery date (BT-72)
   if (actualDeliverySupplyChainEvent) {
-    const el = parent.node('ram:ActualDeliverySupplyChainEvent')
-    convertSupplyChainEvent(actualDeliverySupplyChainEvent, el)
+    convertSupplyChainEvent(actualDeliverySupplyChainEvent, parent.node('ram:ActualDeliverySupplyChainEvent'))
   }
-
   if (despatchAdviceReferencedDocument) {
-    const el = parent.node('ram:DespatchAdviceReferencedDocument')
-    convertReferencedDocument(despatchAdviceReferencedDocument, el)
+    convertReferencedDocument(despatchAdviceReferencedDocument, parent.node('ram:DespatchAdviceReferencedDocument'))
   }
-
   if (receivingAdviceReferencedDocument) {
-    const el = parent.node('ram:ReceivingAdviceReferencedDocument')
-    convertReferencedDocument(receivingAdviceReferencedDocument, el)
+    convertReferencedDocument(receivingAdviceReferencedDocument, parent.node('ram:ReceivingAdviceReferencedDocument'))
   }
-
   if (deliveryNoteReferencedDocument) {
-    const el = parent.node('ram:DeliveryNoteReferencedDocument')
-    convertReferencedDocument(deliveryNoteReferencedDocument, el)
+    convertReferencedDocument(deliveryNoteReferencedDocument, parent.node('ram:DeliveryNoteReferencedDocument'))
   }
 }
 
-/**
- * Convert HeaderTradeSettlementType to XML
- */
+function convertSupplyChainConsignment({ specifiedLogisticsTransportMovement }: ram.SupplyChainConsignmentType, parent: XMLElement): void {
+  if (specifiedLogisticsTransportMovement && specifiedLogisticsTransportMovement.length > 0) {
+    specifiedLogisticsTransportMovement.forEach((m) => {
+      parent.node('ram:SpecifiedLogisticsTransportMovement').node('ram:ModeCode', m.modeCode.value)
+    })
+  }
+}
+
+function convertSupplyChainEvent({ occurrenceDateTime }: ram.SupplyChainEventType, parent: XMLElement): void {
+  if (occurrenceDateTime) {
+    convertDateTime(occurrenceDateTime, parent.node('ram:OccurrenceDateTime'))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Header trade settlement
+// ---------------------------------------------------------------------------
+
 function convertHeaderTradeSettlement(
   {
     creditorReferenceID,
@@ -597,132 +902,161 @@ function convertHeaderTradeSettlement(
     invoiceeTradeParty,
     payeeTradeParty,
     payerTradeParty,
+    taxApplicableTradeCurrencyExchange,
     specifiedTradeSettlementPaymentMeans,
     applicableTradeTax,
     billingSpecifiedPeriod,
     specifiedTradeAllowanceCharge,
+    specifiedLogisticsServiceCharge,
     specifiedTradePaymentTerms,
     specifiedTradeSettlementHeaderMonetarySummation,
+    specifiedFinancialAdjustment,
+    invoiceReferencedDocument,
+    receivableSpecifiedTradeAccountingAccount,
+    specifiedAdvancePayment,
   }: HeaderTradeSettlementType,
   parent: XMLElement,
 ): void {
-  // Follow the exact sequence order defined in the XSD schema (EXTENDED superset)
   if (creditorReferenceID) {
-    const creditorReferenceIDEl = parent.node('ram:CreditorReferenceID')
-    convertID(creditorReferenceID, creditorReferenceIDEl)
+    convertID(creditorReferenceID, parent.node('ram:CreditorReferenceID'))
   }
-
   if (paymentReference) {
-    const paymentReferenceEl = parent.node('ram:PaymentReference')
-    convertText(paymentReference, paymentReferenceEl)
+    convertText(paymentReference, parent.node('ram:PaymentReference'))
   }
-
   if (taxCurrencyCode) {
-    const taxCurrencyCodeEl = parent.node('ram:TaxCurrencyCode')
-    taxCurrencyCodeEl.text(taxCurrencyCode.value)
+    parent.node('ram:TaxCurrencyCode', taxCurrencyCode.value)
   }
 
-  // Required element
-  const currencyEl = parent.node('ram:InvoiceCurrencyCode')
-  currencyEl.text(invoiceCurrencyCode.value)
+  parent.node('ram:InvoiceCurrencyCode', invoiceCurrencyCode.value)
 
-  // The following four parties only exist in the EXTENDED profile
+  // The following are EXTENDED-only header parties
   if (invoiceIssuerReference) {
-    const invoiceIssuerReferenceEl = parent.node('ram:InvoiceIssuerReference')
-    convertText(invoiceIssuerReference, invoiceIssuerReferenceEl)
+    convertText(invoiceIssuerReference, parent.node('ram:InvoiceIssuerReference'))
   }
-
   if (invoicerTradeParty) {
-    const invoicerEl = parent.node('ram:InvoicerTradeParty')
-    convertTradeParty(invoicerTradeParty, invoicerEl)
+    convertTradeParty(invoicerTradeParty, parent.node('ram:InvoicerTradeParty'))
   }
-
   if (invoiceeTradeParty) {
-    const invoiceeEl = parent.node('ram:InvoiceeTradeParty')
-    convertTradeParty(invoiceeTradeParty, invoiceeEl)
+    convertTradeParty(invoiceeTradeParty, parent.node('ram:InvoiceeTradeParty'))
   }
-
   if (payeeTradeParty) {
-    const payeeEl = parent.node('ram:PayeeTradeParty')
-    convertTradeParty(payeeTradeParty, payeeEl)
+    convertTradeParty(payeeTradeParty, parent.node('ram:PayeeTradeParty'))
   }
-
   if (payerTradeParty) {
-    const payerEl = parent.node('ram:PayerTradeParty')
-    convertTradeParty(payerTradeParty, payerEl)
+    convertTradeParty(payerTradeParty, parent.node('ram:PayerTradeParty'))
+  }
+  if (taxApplicableTradeCurrencyExchange) {
+    convertTradeCurrencyExchange(taxApplicableTradeCurrencyExchange, parent.node('ram:TaxApplicableTradeCurrencyExchange'))
   }
 
-  // Handle the payment means
   if (specifiedTradeSettlementPaymentMeans && specifiedTradeSettlementPaymentMeans.length > 0) {
-    specifiedTradeSettlementPaymentMeans.forEach((paymentMeans) => {
-      const paymentMeansEl = parent.node('ram:SpecifiedTradeSettlementPaymentMeans')
-      // Implementation for payment means would be here
-      if (paymentMeans.typeCode) {
-        const typeCodeEl = paymentMeansEl.node('ram:TypeCode')
-        typeCodeEl.text(paymentMeans.typeCode.value)
-      }
-    })
+    specifiedTradeSettlementPaymentMeans.forEach(pm => convertPaymentMeans(pm, parent.node('ram:SpecifiedTradeSettlementPaymentMeans')))
   }
 
-  // Convert applicable trade tax - required in all profiles
   if (applicableTradeTax && applicableTradeTax.length > 0) {
-    applicableTradeTax.forEach((tax) => {
-      const taxEl = parent.node('ram:ApplicableTradeTax')
-      convertTradeTax(tax, taxEl)
-    })
+    applicableTradeTax.forEach(tax => convertTradeTax(tax, parent.node('ram:ApplicableTradeTax')))
   }
 
   if (billingSpecifiedPeriod) {
-    const billingPeriodEl = parent.node('ram:BillingSpecifiedPeriod')
-    convertSpecifiedPeriod(billingSpecifiedPeriod, billingPeriodEl)
+    convertSpecifiedPeriod(billingSpecifiedPeriod, parent.node('ram:BillingSpecifiedPeriod'))
   }
 
   if (specifiedTradeAllowanceCharge && specifiedTradeAllowanceCharge.length > 0) {
-    specifiedTradeAllowanceCharge.forEach((allowanceCharge) => {
-      const allowanceChargeEl = parent.node('ram:SpecifiedTradeAllowanceCharge')
-      convertAllowanceCharge(allowanceCharge, allowanceChargeEl)
-    })
+    specifiedTradeAllowanceCharge.forEach(ac => convertAllowanceCharge(ac, parent.node('ram:SpecifiedTradeAllowanceCharge')))
   }
 
-  // Payment terms (BT-20) - previously destructured but never emitted
+  if (specifiedLogisticsServiceCharge && specifiedLogisticsServiceCharge.length > 0) {
+    specifiedLogisticsServiceCharge.forEach(c => convertLogisticsServiceCharge(c, parent.node('ram:SpecifiedLogisticsServiceCharge')))
+  }
+
   if (specifiedTradePaymentTerms && specifiedTradePaymentTerms.length > 0) {
-    specifiedTradePaymentTerms.forEach((terms) => {
-      const termsEl = parent.node('ram:SpecifiedTradePaymentTerms')
-      convertPaymentTerms(terms, termsEl)
-    })
+    specifiedTradePaymentTerms.forEach(t => convertPaymentTerms(t, parent.node('ram:SpecifiedTradePaymentTerms')))
   }
 
-  // Convert monetary summation - required in all profiles
-  const summationEl = parent.node('ram:SpecifiedTradeSettlementHeaderMonetarySummation')
-  convertTradeSettlementHeaderMonetarySummation(specifiedTradeSettlementHeaderMonetarySummation, summationEl)
+  convertTradeSettlementHeaderMonetarySummation(
+    specifiedTradeSettlementHeaderMonetarySummation,
+    parent.node('ram:SpecifiedTradeSettlementHeaderMonetarySummation'),
+  )
+
+  if (specifiedFinancialAdjustment && specifiedFinancialAdjustment.length > 0) {
+    specifiedFinancialAdjustment.forEach(a => convertFinancialAdjustment(a, parent.node('ram:SpecifiedFinancialAdjustment')))
+  }
+
+  if (invoiceReferencedDocument && invoiceReferencedDocument.length > 0) {
+    invoiceReferencedDocument.forEach(d => convertReferencedDocument(d, parent.node('ram:InvoiceReferencedDocument')))
+  }
+
+  if (receivableSpecifiedTradeAccountingAccount && receivableSpecifiedTradeAccountingAccount.length > 0) {
+    receivableSpecifiedTradeAccountingAccount.forEach(a => convertTradeAccountingAccount(a, parent.node('ram:ReceivableSpecifiedTradeAccountingAccount')))
+  }
+
+  if (specifiedAdvancePayment && specifiedAdvancePayment.length > 0) {
+    specifiedAdvancePayment.forEach(p => convertAdvancePayment(p, parent.node('ram:SpecifiedAdvancePayment')))
+  }
 }
 
-/**
- * Convert TradePaymentTermsType to XML
- */
-function convertPaymentTerms(
-  { description, dueDateDateTime, directDebitMandateID }: ram.TradePaymentTermsType,
+function convertTradeCurrencyExchange(
+  { sourceCurrencyCode, targetCurrencyCode, conversionRate, conversionRateDateTime }: ram.TradeCurrencyExchangeType,
   parent: XMLElement,
 ): void {
-  if (description) {
-    const el = parent.node('ram:Description')
-    convertText(description, el)
-  }
-
-  if (dueDateDateTime) {
-    const el = parent.node('ram:DueDateDateTime')
-    convertDateTime(dueDateDateTime, el)
-  }
-
-  if (directDebitMandateID) {
-    const el = parent.node('ram:DirectDebitMandateID')
-    convertID(directDebitMandateID, el)
+  parent.node('ram:SourceCurrencyCode', sourceCurrencyCode.value)
+  parent.node('ram:TargetCurrencyCode', targetCurrencyCode.value)
+  parent.node('ram:ConversionRate', String(conversionRate.value))
+  if (conversionRateDateTime) {
+    convertDateTime(conversionRateDateTime, parent.node('ram:ConversionRateDateTime'))
   }
 }
 
-/**
- * Convert TradeTaxType to XML
- */
+function convertPaymentMeans(
+  {
+    typeCode,
+    information,
+    applicableTradeSettlementFinancialCard,
+    payerPartyDebtorFinancialAccount,
+    payeePartyCreditorFinancialAccount,
+    payerSpecifiedDebtorFinancialInstitution,
+    payeeSpecifiedCreditorFinancialInstitution,
+  }: ram.TradeSettlementPaymentMeansType,
+  parent: XMLElement,
+): void {
+  parent.node('ram:TypeCode', typeCode.value)
+  if (information) {
+    convertText(information, parent.node('ram:Information'))
+  }
+  if (applicableTradeSettlementFinancialCard) {
+    const el = parent.node('ram:ApplicableTradeSettlementFinancialCard')
+    convertID(applicableTradeSettlementFinancialCard.id, el.node('ram:ID'))
+    if (applicableTradeSettlementFinancialCard.cardholderName) {
+      convertText(applicableTradeSettlementFinancialCard.cardholderName, el.node('ram:CardholderName'))
+    }
+  }
+  if (payerPartyDebtorFinancialAccount) {
+    const el = parent.node('ram:PayerPartyDebtorFinancialAccount')
+    convertID(payerPartyDebtorFinancialAccount.ibanID, el.node('ram:IBANID'))
+    if (payerPartyDebtorFinancialAccount.accountName) {
+      convertText(payerPartyDebtorFinancialAccount.accountName, el.node('ram:AccountName'))
+    }
+  }
+  if (payeePartyCreditorFinancialAccount) {
+    const el = parent.node('ram:PayeePartyCreditorFinancialAccount')
+    if (payeePartyCreditorFinancialAccount.ibanID) {
+      convertID(payeePartyCreditorFinancialAccount.ibanID, el.node('ram:IBANID'))
+    }
+    if (payeePartyCreditorFinancialAccount.accountName) {
+      convertText(payeePartyCreditorFinancialAccount.accountName, el.node('ram:AccountName'))
+    }
+    if (payeePartyCreditorFinancialAccount.proprietaryID) {
+      convertID(payeePartyCreditorFinancialAccount.proprietaryID, el.node('ram:ProprietaryID'))
+    }
+  }
+  if (payerSpecifiedDebtorFinancialInstitution?.bicID) {
+    parent.node('ram:PayerSpecifiedDebtorFinancialInstitution').node('ram:BICID').text(payerSpecifiedDebtorFinancialInstitution.bicID.value)
+  }
+  if (payeeSpecifiedCreditorFinancialInstitution?.bicID) {
+    convertID(payeeSpecifiedCreditorFinancialInstitution.bicID, parent.node('ram:PayeeSpecifiedCreditorFinancialInstitution').node('ram:BICID'))
+  }
+}
+
 function convertTradeTax(
   {
     calculatedAmount,
@@ -739,446 +1073,265 @@ function convertTradeTax(
   }: ram.TradeTaxType,
   parent: XMLElement,
 ): void {
-  // Follow the exact sequence order defined in the XSD schema for TradeTaxType
   if (calculatedAmount) {
-    const calculatedAmountEl = parent.node('ram:CalculatedAmount')
-    convertAmount(calculatedAmount, calculatedAmountEl)
+    convertAmount(calculatedAmount, parent.node('ram:CalculatedAmount'))
   }
-
   if (typeCode) {
-    const typeCodeEl = parent.node('ram:TypeCode')
-    typeCodeEl.text(typeCode.value)
+    parent.node('ram:TypeCode', typeCode.value)
   }
-
   if (exemptionReason) {
-    const exemptionReasonEl = parent.node('ram:ExemptionReason')
-    convertText(exemptionReason, exemptionReasonEl)
+    convertText(exemptionReason, parent.node('ram:ExemptionReason'))
   }
-
   if (basisAmount) {
-    const basisAmountEl = parent.node('ram:BasisAmount')
-    convertAmount(basisAmount, basisAmountEl)
+    convertAmount(basisAmount, parent.node('ram:BasisAmount'))
   }
-
   if (lineTotalBasisAmount) {
-    const lineTotalBasisAmountEl = parent.node('ram:LineTotalBasisAmount')
-    convertAmount(lineTotalBasisAmount, lineTotalBasisAmountEl)
+    convertAmount(lineTotalBasisAmount, parent.node('ram:LineTotalBasisAmount'))
   }
-
   if (allowanceChargeBasisAmount) {
-    const allowanceChargeBasisAmountEl = parent.node('ram:AllowanceChargeBasisAmount')
-    convertAmount(allowanceChargeBasisAmount, allowanceChargeBasisAmountEl)
+    convertAmount(allowanceChargeBasisAmount, parent.node('ram:AllowanceChargeBasisAmount'))
   }
-
   if (categoryCode) {
-    const categoryCodeEl = parent.node('ram:CategoryCode')
-    categoryCodeEl.text(categoryCode.value)
+    parent.node('ram:CategoryCode', categoryCode.value)
   }
-
   if (exemptionReasonCode) {
-    const exemptionReasonCodeEl = parent.node('ram:ExemptionReasonCode')
-    convertText(exemptionReasonCode, exemptionReasonCodeEl)
+    convertCode(exemptionReasonCode, parent.node('ram:ExemptionReasonCode'))
   }
-
   if (taxPointDate) {
-    const taxPointDateEl = parent.node('ram:TaxPointDate')
-    convertDate(taxPointDate, taxPointDateEl)
+    convertDate(taxPointDate, parent.node('ram:TaxPointDate'))
   }
-
   if (dueDateTypeCode) {
-    const dueDateTypeCodeEl = parent.node('ram:DueDateTypeCode')
-    dueDateTypeCodeEl.text(dueDateTypeCode.value)
+    parent.node('ram:DueDateTypeCode', dueDateTypeCode.value)
   }
-
   if (rateApplicablePercent) {
-    const rateEl = parent.node('ram:RateApplicablePercent')
-    rateEl.text(String(rateApplicablePercent.value))
+    parent.node('ram:RateApplicablePercent', String(rateApplicablePercent.value))
   }
 }
 
-/**
- * Convert TradeSettlementHeaderMonetarySummationType to XML
- */
+function convertAllowanceCharge(
+  {
+    chargeIndicator,
+    sequenceNumeric,
+    calculationPercent,
+    basisAmount,
+    basisQuantity,
+    actualAmount,
+    reasonCode,
+    reason,
+    categoryTradeTax,
+  }: ram.TradeAllowanceChargeType,
+  parent: XMLElement,
+): void {
+  convertIndicator(chargeIndicator, parent.node('ram:ChargeIndicator'))
+  if (sequenceNumeric) {
+    parent.node('ram:SequenceNumeric', String(sequenceNumeric.value))
+  }
+  if (calculationPercent) {
+    parent.node('ram:CalculationPercent', String(calculationPercent.value))
+  }
+  if (basisAmount) {
+    convertAmount(basisAmount, parent.node('ram:BasisAmount'))
+  }
+  if (basisQuantity) {
+    convertQuantity(basisQuantity, parent.node('ram:BasisQuantity'))
+  }
+  if (actualAmount) {
+    convertAmount(actualAmount, parent.node('ram:ActualAmount'))
+  }
+  if (reasonCode) {
+    parent.node('ram:ReasonCode', reasonCode.value)
+  }
+  if (reason) {
+    convertText(reason, parent.node('ram:Reason'))
+  }
+  if (categoryTradeTax) {
+    convertTradeTax(categoryTradeTax, parent.node('ram:CategoryTradeTax'))
+  }
+}
+
+function convertLogisticsServiceCharge(
+  { description, appliedAmount, appliedTradeTax }: ram.LogisticsServiceChargeType,
+  parent: XMLElement,
+): void {
+  convertText(description, parent.node('ram:Description'))
+  convertAmount(appliedAmount, parent.node('ram:AppliedAmount'))
+  if (appliedTradeTax && appliedTradeTax.length > 0) {
+    appliedTradeTax.forEach(t => convertTradeTax(t, parent.node('ram:AppliedTradeTax')))
+  }
+}
+
+function convertPaymentTerms(
+  {
+    description,
+    dueDateDateTime,
+    directDebitMandateID,
+    partialPaymentAmount,
+    applicableTradePaymentPenaltyTerms,
+    applicableTradePaymentDiscountTerms,
+    payeeTradeParty,
+  }: ram.TradePaymentTermsType,
+  parent: XMLElement,
+): void {
+  if (description) {
+    convertText(description, parent.node('ram:Description'))
+  }
+  if (dueDateDateTime) {
+    convertDateTime(dueDateDateTime, parent.node('ram:DueDateDateTime'))
+  }
+  if (directDebitMandateID) {
+    convertID(directDebitMandateID, parent.node('ram:DirectDebitMandateID'))
+  }
+  if (partialPaymentAmount) {
+    convertAmount(partialPaymentAmount, parent.node('ram:PartialPaymentAmount'))
+  }
+  if (applicableTradePaymentPenaltyTerms) {
+    convertPaymentPenaltyTerms(applicableTradePaymentPenaltyTerms, parent.node('ram:ApplicableTradePaymentPenaltyTerms'))
+  }
+  if (applicableTradePaymentDiscountTerms) {
+    convertPaymentDiscountTerms(applicableTradePaymentDiscountTerms, parent.node('ram:ApplicableTradePaymentDiscountTerms'))
+  }
+  if (payeeTradeParty) {
+    convertTradeParty(payeeTradeParty, parent.node('ram:PayeeTradeParty'))
+  }
+}
+
+function convertPaymentPenaltyTerms(
+  { basisDateTime, basisPeriodMeasure, basisAmount, calculationPercent, actualPenaltyAmount }: ram.TradePaymentPenaltyTermsType,
+  parent: XMLElement,
+): void {
+  if (basisDateTime) {
+    convertDateTime(basisDateTime, parent.node('ram:BasisDateTime'))
+  }
+  if (basisPeriodMeasure) {
+    convertMeasure(basisPeriodMeasure, parent.node('ram:BasisPeriodMeasure'))
+  }
+  if (basisAmount) {
+    convertAmount(basisAmount, parent.node('ram:BasisAmount'))
+  }
+  if (calculationPercent) {
+    parent.node('ram:CalculationPercent', String(calculationPercent.value))
+  }
+  if (actualPenaltyAmount) {
+    convertAmount(actualPenaltyAmount, parent.node('ram:ActualPenaltyAmount'))
+  }
+}
+
+function convertPaymentDiscountTerms(
+  { basisDateTime, basisPeriodMeasure, basisAmount, calculationPercent, actualDiscountAmount }: ram.TradePaymentDiscountTermsType,
+  parent: XMLElement,
+): void {
+  if (basisDateTime) {
+    convertDateTime(basisDateTime, parent.node('ram:BasisDateTime'))
+  }
+  if (basisPeriodMeasure) {
+    convertMeasure(basisPeriodMeasure, parent.node('ram:BasisPeriodMeasure'))
+  }
+  if (basisAmount) {
+    convertAmount(basisAmount, parent.node('ram:BasisAmount'))
+  }
+  if (calculationPercent) {
+    parent.node('ram:CalculationPercent', String(calculationPercent.value))
+  }
+  if (actualDiscountAmount) {
+    convertAmount(actualDiscountAmount, parent.node('ram:ActualDiscountAmount'))
+  }
+}
+
 function convertTradeSettlementHeaderMonetarySummation(
   {
     lineTotalAmount,
+    chargeTotalAmount,
+    allowanceTotalAmount,
     taxBasisTotalAmount,
     taxTotalAmount,
-    grandTotalAmount,
-    duePayableAmount,
-    allowanceTotalAmount,
-    chargeTotalAmount,
     roundingAmount,
+    grandTotalAmount,
     totalPrepaidAmount,
+    duePayableAmount,
   }: ram.TradeSettlementHeaderMonetarySummationType,
   parent: XMLElement,
 ): void {
   if (lineTotalAmount) {
-    const lineTotalEl = parent.node('ram:LineTotalAmount')
-    convertAmount(lineTotalAmount, lineTotalEl)
+    convertAmount(lineTotalAmount, parent.node('ram:LineTotalAmount'))
   }
-
   if (chargeTotalAmount) {
-    const chargeTotalEl = parent.node('ram:ChargeTotalAmount')
-    convertAmount(chargeTotalAmount, chargeTotalEl)
+    convertAmount(chargeTotalAmount, parent.node('ram:ChargeTotalAmount'))
   }
-
   if (allowanceTotalAmount) {
-    const allowanceTotalEl = parent.node('ram:AllowanceTotalAmount')
-    convertAmount(allowanceTotalAmount, allowanceTotalEl)
+    convertAmount(allowanceTotalAmount, parent.node('ram:AllowanceTotalAmount'))
   }
-
-  if (taxBasisTotalAmount && taxBasisTotalAmount.length > 0) {
-    taxBasisTotalAmount.forEach((amount) => {
-      const taxBasisEl = parent.node('ram:TaxBasisTotalAmount')
-      convertAmount(amount, taxBasisEl)
-    })
-  }
-
+  convertAmount(taxBasisTotalAmount, parent.node('ram:TaxBasisTotalAmount'))
   if (taxTotalAmount && taxTotalAmount.length > 0) {
-    taxTotalAmount.forEach((amount) => {
-      const taxTotalEl = parent.node('ram:TaxTotalAmount')
-      convertAmount(amount, taxTotalEl)
-    })
+    taxTotalAmount.forEach(a => convertAmount(a, parent.node('ram:TaxTotalAmount')))
   }
-
   if (roundingAmount) {
-    const roundingEl = parent.node('ram:RoundingAmount')
-    convertAmount(roundingAmount, roundingEl)
+    convertAmount(roundingAmount, parent.node('ram:RoundingAmount'))
   }
-
-  if (grandTotalAmount && grandTotalAmount.length > 0) {
-    grandTotalAmount.forEach((amount) => {
-      const grandTotalEl = parent.node('ram:GrandTotalAmount')
-      convertAmount(amount, grandTotalEl)
-    })
-  }
-
+  convertAmount(grandTotalAmount, parent.node('ram:GrandTotalAmount'))
   if (totalPrepaidAmount) {
-    const totalPrepaidEl = parent.node('ram:TotalPrepaidAmount')
-    convertAmount(totalPrepaidAmount, totalPrepaidEl)
+    convertAmount(totalPrepaidAmount, parent.node('ram:TotalPrepaidAmount'))
   }
+  convertAmount(duePayableAmount, parent.node('ram:DuePayableAmount'))
+}
 
-  if (duePayableAmount) {
-    const duePayableEl = parent.node('ram:DuePayableAmount')
-    convertAmount(duePayableAmount, duePayableEl)
+function convertFinancialAdjustment({ reason, actualAmount }: ram.FinancialAdjustmentType, parent: XMLElement): void {
+  convertText(reason, parent.node('ram:Reason'))
+  convertAmount(actualAmount, parent.node('ram:ActualAmount'))
+}
+
+function convertTradeAccountingAccount({ id, typeCode }: ram.TradeAccountingAccountType, parent: XMLElement): void {
+  convertID(id, parent.node('ram:ID'))
+  if (typeCode) {
+    parent.node('ram:TypeCode', typeCode.value)
   }
 }
 
-/**
- * Convert LineTradeAgreementType to XML
- */
-function convertLineTradeAgreement(
-  {
-    buyerOrderReferencedDocument,
-    quotationReferencedDocument,
-    contractReferencedDocument,
-    additionalReferencedDocument,
-    grossPriceProductTradePrice,
-    netPriceProductTradePrice,
-    ultimateCustomerOrderReferencedDocument,
-  }: ram.LineTradeAgreementType,
+function convertAdvancePayment(
+  { paidAmount, formattedReceivedDateTime, includedTradeTax, invoiceSpecifiedReferencedDocument }: ram.AdvancePaymentType,
   parent: XMLElement,
 ): void {
-  if (buyerOrderReferencedDocument) {
-    const docEl = parent.node('ram:BuyerOrderReferencedDocument')
-    convertReferencedDocument(buyerOrderReferencedDocument, docEl)
+  convertAmount(paidAmount, parent.node('ram:PaidAmount'))
+  if (formattedReceivedDateTime) {
+    convertFormattedDateTime(formattedReceivedDateTime, parent.node('ram:FormattedReceivedDateTime'))
   }
-
-  if (quotationReferencedDocument) {
-    const docEl = parent.node('ram:QuotationReferencedDocument')
-    convertReferencedDocument(quotationReferencedDocument, docEl)
+  if (includedTradeTax && includedTradeTax.length > 0) {
+    includedTradeTax.forEach(t => convertTradeTax(t, parent.node('ram:IncludedTradeTax')))
   }
-
-  if (contractReferencedDocument) {
-    const docEl = parent.node('ram:ContractReferencedDocument')
-    convertReferencedDocument(contractReferencedDocument, docEl)
-  }
-
-  if (additionalReferencedDocument && additionalReferencedDocument.length > 0) {
-    additionalReferencedDocument.forEach((doc) => {
-      const docEl = parent.node('ram:AdditionalReferencedDocument')
-      convertReferencedDocument(doc, docEl)
-    })
-  }
-
-  if (grossPriceProductTradePrice) {
-    const priceEl = parent.node('ram:GrossPriceProductTradePrice')
-    convertTradePrice(grossPriceProductTradePrice, priceEl)
-  }
-
-  const netPriceEl = parent.node('ram:NetPriceProductTradePrice')
-  convertTradePrice(netPriceProductTradePrice, netPriceEl)
-
-  if (ultimateCustomerOrderReferencedDocument && ultimateCustomerOrderReferencedDocument.length > 0) {
-    ultimateCustomerOrderReferencedDocument.forEach((doc) => {
-      const docEl = parent.node('ram:UltimateCustomerOrderReferencedDocument')
-      convertReferencedDocument(doc, docEl)
-    })
+  if (invoiceSpecifiedReferencedDocument) {
+    convertReferencedDocument(invoiceSpecifiedReferencedDocument, parent.node('ram:InvoiceSpecifiedReferencedDocument'))
   }
 }
 
-/**
- * Convert ReferencedDocumentType to XML
- */
+// ---------------------------------------------------------------------------
+// Referenced document (shared)
+// ---------------------------------------------------------------------------
+
 function convertReferencedDocument(
-  { issuerAssignedID, lineID }: ram.ReferencedDocumentType,
+  { issuerAssignedID, uriID, lineID, typeCode, name, attachmentBinaryObject, referenceTypeCode, formattedIssueDateTime }: ram.ReferencedDocumentType,
   parent: XMLElement,
 ): void {
   if (issuerAssignedID) {
-    const idEl = parent.node('ram:IssuerAssignedID')
-    convertID(issuerAssignedID, idEl)
+    convertID(issuerAssignedID, parent.node('ram:IssuerAssignedID'))
   }
-
+  if (uriID) {
+    convertID(uriID, parent.node('ram:URIID'))
+  }
   if (lineID) {
-    const idEl = parent.node('ram:LineID')
-    convertID(lineID, idEl)
+    convertID(lineID, parent.node('ram:LineID'))
   }
-}
-
-/**
- * Convert TradePriceType to XML
- */
-function convertTradePrice(
-  { chargeAmount, basisQuantity }: ram.TradePriceType,
-  parent: XMLElement,
-): void {
-  if (chargeAmount) {
-    const amountEl = parent.node('ram:ChargeAmount')
-    convertAmount(chargeAmount, amountEl)
+  if (typeCode) {
+    parent.node('ram:TypeCode', typeCode.value)
   }
-
-  if (basisQuantity) {
-    const quantityEl = parent.node('ram:BasisQuantity')
-    convertQuantity(basisQuantity, quantityEl)
+  if (name && name.length > 0) {
+    name.forEach(n => convertText(n, parent.node('ram:Name')))
   }
-}
-
-/**
- * Convert QuantityType to XML
- */
-function convertQuantity(
-  { value, unitCode }: udt.QuantityType,
-  parent: XMLElement,
-): void {
-  parent.text(String(value))
-
-  if (unitCode) {
-    parent.attr({ unitCode })
+  if (attachmentBinaryObject) {
+    convertBinaryObject(attachmentBinaryObject, parent.node('ram:AttachmentBinaryObject'))
   }
-}
-
-/**
- * Convert TradeAllowanceChargeType to XML
- */
-function convertAllowanceCharge(
-  { chargeIndicator, actualAmount, reasonCode, reason }: ram.TradeAllowanceChargeType,
-  parent: XMLElement,
-): void {
-  if (chargeIndicator) {
-    const indicatorEl = parent.node('ram:ChargeIndicator')
-    convertIndicator(chargeIndicator, indicatorEl)
+  if (referenceTypeCode) {
+    parent.node('ram:ReferenceTypeCode', referenceTypeCode.value)
   }
-
-  if (actualAmount) {
-    const amountEl = parent.node('ram:ActualAmount')
-    convertAmount(actualAmount, amountEl)
-  }
-
-  if (reasonCode) {
-    const codeEl = parent.node('ram:ReasonCode')
-    convertText(reasonCode, codeEl)
-  }
-
-  if (reason) {
-    const reasonEl = parent.node('ram:Reason')
-    convertText(reason, reasonEl)
-  }
-}
-
-/**
- * Convert LineTradeDeliveryType to XML
- */
-function convertLineTradeDelivery(
-  {
-    billedQuantity,
-    chargeFreeQuantity,
-    packageQuantity,
-    shipToTradeParty,
-    ultimateShipToTradeParty,
-    actualDeliverySupplyChainEvent,
-    despatchAdviceReferencedDocument,
-    receivingAdviceReferencedDocument,
-    deliveryNoteReferencedDocument,
-  }: ram.LineTradeDeliveryType,
-  parent: XMLElement,
-): void {
-  const billedQuantityEl = parent.node('ram:BilledQuantity')
-  convertQuantity(billedQuantity, billedQuantityEl)
-
-  if (chargeFreeQuantity) {
-    const quantityEl = parent.node('ram:ChargeFreeQuantity')
-    convertQuantity(chargeFreeQuantity, quantityEl)
-  }
-
-  if (packageQuantity) {
-    const quantityEl = parent.node('ram:PackageQuantity')
-    convertQuantity(packageQuantity, quantityEl)
-  }
-
-  if (shipToTradeParty) {
-    const partyEl = parent.node('ram:ShipToTradeParty')
-    convertTradeParty(shipToTradeParty, partyEl)
-  }
-
-  if (ultimateShipToTradeParty) {
-    const partyEl = parent.node('ram:UltimateShipToTradeParty')
-    convertTradeParty(ultimateShipToTradeParty, partyEl)
-  }
-
-  if (actualDeliverySupplyChainEvent) {
-    const eventEl = parent.node('ram:ActualDeliverySupplyChainEvent')
-    convertSupplyChainEvent(actualDeliverySupplyChainEvent, eventEl)
-  }
-
-  if (despatchAdviceReferencedDocument) {
-    const docEl = parent.node('ram:DespatchAdviceReferencedDocument')
-    convertReferencedDocument(despatchAdviceReferencedDocument, docEl)
-  }
-
-  if (receivingAdviceReferencedDocument) {
-    const docEl = parent.node('ram:ReceivingAdviceReferencedDocument')
-    convertReferencedDocument(receivingAdviceReferencedDocument, docEl)
-  }
-
-  if (deliveryNoteReferencedDocument) {
-    const docEl = parent.node('ram:DeliveryNoteReferencedDocument')
-    convertReferencedDocument(deliveryNoteReferencedDocument, docEl)
-  }
-}
-
-/**
- * Convert SupplyChainEventType to XML
- */
-function convertSupplyChainEvent(
-  { occurrenceDateTime }: ram.SupplyChainEventType,
-  parent: XMLElement,
-): void {
-  if (occurrenceDateTime) {
-    const dateTimeEl = parent.node('ram:OccurrenceDateTime')
-    convertDateTime(occurrenceDateTime, dateTimeEl)
-  }
-}
-
-/**
- * Convert LineTradeSettlementType to XML
- */
-function convertLineTradeSettlement(
-  {
-    applicableTradeTax,
-    billingSpecifiedPeriod,
-    specifiedTradeAllowanceCharge,
-    specifiedTradeSettlementLineMonetarySummation,
-    invoiceReferencedDocument,
-    additionalReferencedDocument,
-    receivableSpecifiedTradeAccountingAccount,
-  }: ram.LineTradeSettlementType,
-  parent: XMLElement,
-): void {
-  if (applicableTradeTax && applicableTradeTax.length > 0) {
-    applicableTradeTax.forEach((tax) => {
-      const taxEl = parent.node('ram:ApplicableTradeTax')
-      convertTradeTax(tax, taxEl)
-    })
-  }
-
-  if (billingSpecifiedPeriod) {
-    const periodEl = parent.node('ram:BillingSpecifiedPeriod')
-    convertSpecifiedPeriod(billingSpecifiedPeriod, periodEl)
-  }
-
-  if (specifiedTradeAllowanceCharge && specifiedTradeAllowanceCharge.length > 0) {
-    specifiedTradeAllowanceCharge.forEach((charge) => {
-      const chargeEl = parent.node('ram:SpecifiedTradeAllowanceCharge')
-      convertAllowanceCharge(charge, chargeEl)
-    })
-  }
-
-  const summationEl = parent.node('ram:SpecifiedTradeSettlementLineMonetarySummation')
-  convertTradeSettlementLineMonetarySummation(specifiedTradeSettlementLineMonetarySummation, summationEl)
-
-  if (invoiceReferencedDocument) {
-    const docEl = parent.node('ram:InvoiceReferencedDocument')
-    convertReferencedDocument(invoiceReferencedDocument, docEl)
-  }
-
-  if (additionalReferencedDocument && additionalReferencedDocument.length > 0) {
-    additionalReferencedDocument.forEach((doc) => {
-      const docEl = parent.node('ram:AdditionalReferencedDocument')
-      convertReferencedDocument(doc, docEl)
-    })
-  }
-
-  if (receivableSpecifiedTradeAccountingAccount) {
-    const accountEl = parent.node('ram:ReceivableSpecifiedTradeAccountingAccount')
-    convertTradeAccountingAccount(receivableSpecifiedTradeAccountingAccount, accountEl)
-  }
-}
-
-/**
- * Convert TradeSettlementLineMonetarySummationType to XML
- */
-function convertTradeSettlementLineMonetarySummation(
-  {
-    lineTotalAmount,
-    chargeTotalAmount,
-    allowanceTotalAmount,
-    taxTotalAmount,
-    grandTotalAmount,
-    totalAllowanceChargeAmount,
-  }: ram.TradeSettlementLineMonetarySummationType,
-  parent: XMLElement,
-): void {
-  if (lineTotalAmount) {
-    const amountEl = parent.node('ram:LineTotalAmount')
-    convertAmount(lineTotalAmount, amountEl)
-  }
-
-  if (chargeTotalAmount) {
-    const amountEl = parent.node('ram:ChargeTotalAmount')
-    convertAmount(chargeTotalAmount, amountEl)
-  }
-
-  if (allowanceTotalAmount) {
-    const amountEl = parent.node('ram:AllowanceTotalAmount')
-    convertAmount(allowanceTotalAmount, amountEl)
-  }
-
-  if (taxTotalAmount) {
-    const amountEl = parent.node('ram:TaxTotalAmount')
-    convertAmount(taxTotalAmount, amountEl)
-  }
-
-  if (grandTotalAmount) {
-    const amountEl = parent.node('ram:GrandTotalAmount')
-    convertAmount(grandTotalAmount, amountEl)
-  }
-
-  if (totalAllowanceChargeAmount) {
-    const amountEl = parent.node('ram:TotalAllowanceChargeAmount')
-    convertAmount(totalAllowanceChargeAmount, amountEl)
-  }
-}
-
-/**
- * Convert TradeAccountingAccountType to XML
- */
-function convertTradeAccountingAccount(
-  { id }: ram.TradeAccountingAccountType,
-  parent: XMLElement,
-): void {
-  if (id) {
-    const idEl = parent.node('ram:ID')
-    convertID(id, idEl)
+  if (formattedIssueDateTime) {
+    convertFormattedDateTime(formattedIssueDateTime, parent.node('ram:FormattedIssueDateTime'))
   }
 }

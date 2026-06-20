@@ -1,4 +1,4 @@
-import { check, invoiceToXml } from '@stafyniaksacha/facturx'
+import { check, invoiceToXml, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { describe, expect, it, vi } from 'vitest'
 import { getBasicFacturXModel } from './fixtures/model-basic'
 import { getBasicWLFacturXModel } from './fixtures/model-basicwl'
@@ -125,5 +125,51 @@ describe('invoiceToXml', () => {
     expect(result.errors.length).toBeGreaterThan(0)
     expect(result.flavor).toBe('facturx')
     expect(result.level).toBe('extended')
+  })
+
+  it('should emit the EXTENDED-only aggregates and stay valid', async () => {
+    const xml = (await invoiceToXml(getExtendedFacturXModel())).toString()
+
+    // New 1.09 EXTENDED types added in this upgrade
+    expect(xml).toContain('<ram:SpecifiedFinancialAdjustment>')
+    expect(xml).toContain('<ram:PayerSpecifiedDebtorFinancialInstitution>')
+    expect(xml).toContain('<ram:RelevantTradeLocation>')
+    expect(xml).toContain('<ram:ManufacturerTradeParty>')
+    expect(xml).toContain('<ram:BrandName>')
+    expect(xml).toContain('<ram:ModelName>')
+    expect(xml).toContain('<ram:ItemSellerTradeParty>')
+    expect(xml).toContain('<ram:PerPackageUnitQuantity')
+    expect(xml).toContain('<ram:ApplicableTradeDeliveryTerms>')
+
+    const result = await check({ xml, flavor: 'facturx', level: 'extended' })
+    expect(result.errors).toStrictEqual([])
+    expect(result.valid).toBe(true)
+  })
+})
+
+describe('round-trip fidelity (model → xml → model → xml)', () => {
+  const cases: [string, () => any][] = [
+    ['minimum', getMinimalFacturXModel],
+    ['basicwl', getBasicWLFacturXModel],
+    ['basic', getBasicFacturXModel],
+    ['en16931', getEN16931FacturXModel],
+    ['extended', getExtendedFacturXModel],
+  ]
+
+  const count = (s: string, tag: string): number => (s.match(new RegExp(`<ram:${tag}[ >]`, 'g')) || []).length
+
+  it.each(cases)('round-trips a %s invoice without losing structure', async (level, factory) => {
+    const xml1 = (await invoiceToXml(factory())).toString()
+    const xml2 = (await invoiceToXml(await xmlToInvoice(xml1))).toString()
+
+    // Re-parsed + re-serialised output must still validate at the same level
+    const result = await check({ xml: xml2, flavor: 'facturx', level })
+    expect(result.errors).toStrictEqual([])
+    expect(result.valid).toBe(true)
+
+    // Key repeating aggregates must survive the round-trip
+    for (const tag of ['IncludedSupplyChainTradeLineItem', 'ApplicableTradeTax', 'SpecifiedTradePaymentTerms', 'SpecifiedTradeSettlementPaymentMeans']) {
+      expect(count(xml2, tag)).toBe(count(xml1, tag))
+    }
   })
 })

@@ -103,8 +103,8 @@ describe('facturX XML Parser', () => {
     // Check monetary summation
     const summation = settlement.specifiedTradeSettlementHeaderMonetarySummation
 
-    if (summation.taxBasisTotalAmount && summation.taxBasisTotalAmount.length > 0) {
-      expect(summation.taxBasisTotalAmount[0].value).toBe(624.9)
+    if (summation.taxBasisTotalAmount) {
+      expect(summation.taxBasisTotalAmount.value).toBe(624.9)
     }
 
     if (summation.taxTotalAmount && summation.taxTotalAmount.length > 0) {
@@ -112,8 +112,8 @@ describe('facturX XML Parser', () => {
       // Don't check currencyID as it may not be properly set by the parser
     }
 
-    if (summation.grandTotalAmount && summation.grandTotalAmount.length > 0) {
-      expect(summation.grandTotalAmount[0].value).toBe(671.15)
+    if (summation.grandTotalAmount) {
+      expect(summation.grandTotalAmount.value).toBe(671.15)
     }
 
     expect(summation.duePayableAmount.value).toBe(470.15)
@@ -137,8 +137,8 @@ describe('facturX XML Parser', () => {
       expect(summation.lineTotalAmount.value).toBe(624.9)
     }
 
-    if (summation.taxBasisTotalAmount && summation.taxBasisTotalAmount.length > 0) {
-      expect(summation.taxBasisTotalAmount[0].value).toBe(624.9)
+    if (summation.taxBasisTotalAmount) {
+      expect(summation.taxBasisTotalAmount.value).toBe(624.9)
     }
 
     if (summation.totalPrepaidAmount) {
