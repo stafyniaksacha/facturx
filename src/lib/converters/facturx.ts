@@ -1050,7 +1050,7 @@ function convertPaymentMeans(
     }
   }
   if (payerSpecifiedDebtorFinancialInstitution?.bicID) {
-    parent.node('ram:PayerSpecifiedDebtorFinancialInstitution').node('ram:BICID').text(payerSpecifiedDebtorFinancialInstitution.bicID.value)
+    convertID(payerSpecifiedDebtorFinancialInstitution.bicID, parent.node('ram:PayerSpecifiedDebtorFinancialInstitution').node('ram:BICID'))
   }
   if (payeeSpecifiedCreditorFinancialInstitution?.bicID) {
     convertID(payeeSpecifiedCreditorFinancialInstitution.bicID, parent.node('ram:PayeeSpecifiedCreditorFinancialInstitution').node('ram:BICID'))

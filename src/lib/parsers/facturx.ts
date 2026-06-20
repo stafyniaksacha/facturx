@@ -46,11 +46,17 @@ export async function xmlToInvoice(xml: string | Buffer): Promise<CrossIndustryI
 // Small helpers
 // ---------------------------------------------------------------------------
 
-function get(node: XMLElement, xpath: string): XMLElement | undefined {
+function get(node: XMLElement | undefined, xpath: string): XMLElement | undefined {
+  if (!node) {
+    return undefined
+  }
   return (node.get(xpath, NAMESPACES) as XMLElement) ?? undefined
 }
 
-function findAll(node: XMLElement, xpath: string): XMLElement[] {
+function findAll(node: XMLElement | undefined, xpath: string): XMLElement[] {
+  if (!node) {
+    return []
+  }
   return (node.find(xpath, NAMESPACES) as XMLElement[]) ?? []
 }
 
@@ -247,13 +253,13 @@ function parseLineItem(node: XMLElement): ram.SupplyChainTradeLineItemType {
 
   return new ram.SupplyChainTradeLineItemType({
     associatedDocumentLineDocument: new ram.DocumentLineDocumentType({
-      lineID: new udt.IDType({ value: textOf(get(docLine!, './ram:LineID')) ?? '' }),
-      parentLineID: parseID(get(docLine!, './ram:ParentLineID')),
-      lineStatusCode: textOf(get(docLine!, './ram:LineStatusCode'))
-        ? new qdt.LineStatusCodeType({ value: textOf(get(docLine!, './ram:LineStatusCode'))! })
+      lineID: new udt.IDType({ value: textOf(get(docLine, './ram:LineID')) ?? '' }),
+      parentLineID: parseID(get(docLine, './ram:ParentLineID')),
+      lineStatusCode: textOf(get(docLine, './ram:LineStatusCode'))
+        ? new qdt.LineStatusCodeType({ value: textOf(get(docLine, './ram:LineStatusCode'))! })
         : undefined,
-      lineStatusReasonCode: parseCode(get(docLine!, './ram:LineStatusReasonCode')),
-      includedNote: findAll(docLine!, './ram:IncludedNote').map(parseNote),
+      lineStatusReasonCode: parseCode(get(docLine, './ram:LineStatusReasonCode')),
+      includedNote: findAll(docLine, './ram:IncludedNote').map(parseNote),
     }),
     specifiedTradeProduct: parseTradeProduct(get(node, './ram:SpecifiedTradeProduct')),
     specifiedLineTradeAgreement: parseLineTradeAgreement(get(node, './ram:SpecifiedLineTradeAgreement')),
@@ -605,11 +611,31 @@ function parseAllowanceCharge(node: XMLElement): ram.TradeAllowanceChargeType {
 }
 
 function parsePaymentTerms(node: XMLElement): ram.TradePaymentTermsType {
+  const penalty = get(node, './ram:ApplicableTradePaymentPenaltyTerms')
+  const discount = get(node, './ram:ApplicableTradePaymentDiscountTerms')
   return new ram.TradePaymentTermsType({
     description: parseText(get(node, './ram:Description')),
     dueDateDateTime: parseDateTime(get(node, './ram:DueDateDateTime')),
     directDebitMandateID: parseID(get(node, './ram:DirectDebitMandateID')),
     partialPaymentAmount: parseAmount(get(node, './ram:PartialPaymentAmount')),
+    applicableTradePaymentPenaltyTerms: penalty
+      ? new ram.TradePaymentPenaltyTermsType({
+        basisDateTime: parseDateTime(get(penalty, './ram:BasisDateTime')),
+        basisPeriodMeasure: parseMeasure(get(penalty, './ram:BasisPeriodMeasure')),
+        basisAmount: parseAmount(get(penalty, './ram:BasisAmount')),
+        calculationPercent: parsePercent(get(penalty, './ram:CalculationPercent')),
+        actualPenaltyAmount: parseAmount(get(penalty, './ram:ActualPenaltyAmount')),
+      })
+      : undefined,
+    applicableTradePaymentDiscountTerms: discount
+      ? new ram.TradePaymentDiscountTermsType({
+        basisDateTime: parseDateTime(get(discount, './ram:BasisDateTime')),
+        basisPeriodMeasure: parseMeasure(get(discount, './ram:BasisPeriodMeasure')),
+        basisAmount: parseAmount(get(discount, './ram:BasisAmount')),
+        calculationPercent: parsePercent(get(discount, './ram:CalculationPercent')),
+        actualDiscountAmount: parseAmount(get(discount, './ram:ActualDiscountAmount')),
+      })
+      : undefined,
     payeeTradeParty: parseTradeParty(get(node, './ram:PayeeTradeParty')),
   })
 }

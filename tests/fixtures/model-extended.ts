@@ -41,6 +41,8 @@ import {
   TradeDeliveryTermsType,
   TradeLocationType,
   TradePartyType,
+  TradePaymentDiscountTermsType,
+  TradePaymentPenaltyTermsType,
   TradePaymentTermsType,
   TradePriceType,
   TradeProductType,
@@ -182,7 +184,7 @@ export function getExtendedFacturXModel() {
       accountName: new TextType({ value: 'Buyer Account' }),
     }),
     payerSpecifiedDebtorFinancialInstitution: new DebtorFinancialInstitutionType({
-      bicID: new IDType({ value: 'BNPAFRPP' }),
+      bicID: new IDType({ value: 'BNPAFRPP', schemeID: 'BIC' }),
     }),
   })
 
@@ -246,6 +248,14 @@ export function getExtendedFacturXModel() {
   const paymentTerms = new TradePaymentTermsType({
     description: new TextType({ value: 'Payment due within 30 days' }),
     dueDateDateTime: new DateTimeType({ dateTimeString: '20230515', format: '102' }),
+    applicableTradePaymentPenaltyTerms: new TradePaymentPenaltyTermsType({
+      calculationPercent: { value: 5 },
+      actualPenaltyAmount: new AmountType({ value: 2, currencyID: 'EUR' }),
+    }),
+    applicableTradePaymentDiscountTerms: new TradePaymentDiscountTermsType({
+      calculationPercent: { value: 2 },
+      actualDiscountAmount: new AmountType({ value: 1, currencyID: 'EUR' }),
+    }),
   })
 
   // Advance payment info

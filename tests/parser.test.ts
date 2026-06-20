@@ -11,6 +11,7 @@ import {
 import { parseXmlAsync } from 'libxmljs'
 import { describe, expect, it } from 'vitest'
 
+import { getExtendedFacturXModel } from './fixtures/model-extended'
 import { getEN16931XML, getMinimumXML } from './fixtures/xml'
 
 describe('facturX XML Parser', () => {
@@ -151,5 +152,43 @@ describe('facturX XML Parser', () => {
   it('should handle invalid XML gracefully', async () => {
     const invalidXml = '<invalid>XML</invalid>'
     await expect(xmlToInvoice(invalidXml)).rejects.toThrow()
+  })
+})
+
+describe('facturX XML Parser — robustness & round-trip', () => {
+  it('round-trips payment penalty/discount terms and a BIC schemeID', async () => {
+    const xml = (await invoiceToXml(getExtendedFacturXModel())).toString()
+    const invoice = await xmlToInvoice(xml)
+
+    const terms = invoice.supplyChainTradeTransaction.applicableHeaderTradeSettlement.specifiedTradePaymentTerms?.[0]
+    expect(terms?.applicableTradePaymentPenaltyTerms?.actualPenaltyAmount?.value).toBe(2)
+    expect(terms?.applicableTradePaymentDiscountTerms?.actualDiscountAmount?.value).toBe(1)
+
+    const means = invoice.supplyChainTradeTransaction.applicableHeaderTradeSettlement.specifiedTradeSettlementPaymentMeans ?? []
+    const bic = means.map(m => m.payerSpecifiedDebtorFinancialInstitution?.bicID).find(Boolean)
+    expect(bic?.value).toBe('BNPAFRPP')
+    expect(bic?.schemeID).toBe('BIC')
+  })
+
+  it('does not crash on a line item missing AssociatedDocumentLineDocument', async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
+  <rsm:ExchangedDocumentContext><ram:GuidelineSpecifiedDocumentContextParameter><ram:ID>urn:cen.eu:en16931:2017</ram:ID></ram:GuidelineSpecifiedDocumentContextParameter></rsm:ExchangedDocumentContext>
+  <rsm:ExchangedDocument><ram:ID>X</ram:ID><ram:TypeCode>380</ram:TypeCode><ram:IssueDateTime><udt:DateTimeString format="102">20230101</udt:DateTimeString></ram:IssueDateTime></rsm:ExchangedDocument>
+  <rsm:SupplyChainTradeTransaction>
+    <ram:IncludedSupplyChainTradeLineItem>
+      <ram:SpecifiedTradeProduct><ram:Name>Item</ram:Name></ram:SpecifiedTradeProduct>
+    </ram:IncludedSupplyChainTradeLineItem>
+    <ram:ApplicableHeaderTradeAgreement><ram:SellerTradeParty><ram:Name>S</ram:Name></ram:SellerTradeParty><ram:BuyerTradeParty><ram:Name>B</ram:Name></ram:BuyerTradeParty></ram:ApplicableHeaderTradeAgreement>
+    <ram:ApplicableHeaderTradeDelivery/>
+    <ram:ApplicableHeaderTradeSettlement><ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode><ram:SpecifiedTradeSettlementHeaderMonetarySummation><ram:TaxBasisTotalAmount>0</ram:TaxBasisTotalAmount><ram:GrandTotalAmount>0</ram:GrandTotalAmount><ram:DuePayableAmount>0</ram:DuePayableAmount></ram:SpecifiedTradeSettlementHeaderMonetarySummation></ram:ApplicableHeaderTradeSettlement>
+  </rsm:SupplyChainTradeTransaction>
+</rsm:CrossIndustryInvoice>`
+
+    const invoice = await xmlToInvoice(xml)
+    const line = invoice.supplyChainTradeTransaction.includedSupplyChainTradeLineItem?.[0]
+    // missing AssociatedDocumentLineDocument degrades to an empty lineID instead of throwing
+    expect(line?.associatedDocumentLineDocument.lineID.value).toBe('')
+    expect(line?.specifiedTradeProduct.name.value).toBe('Item')
   })
 })
