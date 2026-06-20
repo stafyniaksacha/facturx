@@ -93,9 +93,9 @@ describe('facturX XML Converter', () => {
 
     const summation = new TradeSettlementHeaderMonetarySummationType({
       lineTotalAmount,
-      taxBasisTotalAmount: [taxBasisAmount],
+      taxBasisTotalAmount: taxBasisAmount,
       taxTotalAmount: [taxAmount],
-      grandTotalAmount: [grandTotalAmount],
+      grandTotalAmount,
       duePayableAmount,
     })
 
@@ -200,9 +200,9 @@ describe('facturX XML Converter', () => {
 
     const summation = new TradeSettlementHeaderMonetarySummationType({
       lineTotalAmount,
-      taxBasisTotalAmount: [taxBasisAmount],
+      taxBasisTotalAmount: taxBasisAmount,
       taxTotalAmount: [taxAmount],
-      grandTotalAmount: [grandTotalAmount],
+      grandTotalAmount,
       duePayableAmount,
     })
 

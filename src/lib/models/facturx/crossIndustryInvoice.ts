@@ -213,6 +213,7 @@ export class HeaderTradeSettlementType {
     specifiedLogisticsServiceCharge,
     specifiedTradePaymentTerms,
     specifiedTradeSettlementHeaderMonetarySummation,
+    specifiedFinancialAdjustment,
     invoiceReferencedDocument,
     receivableSpecifiedTradeAccountingAccount,
     specifiedAdvancePayment,
@@ -234,7 +235,8 @@ export class HeaderTradeSettlementType {
     specifiedLogisticsServiceCharge?: ram.LogisticsServiceChargeType[]
     specifiedTradePaymentTerms?: ram.TradePaymentTermsType[]
     specifiedTradeSettlementHeaderMonetarySummation: ram.TradeSettlementHeaderMonetarySummationType
-    invoiceReferencedDocument?: ram.ReferencedDocumentType
+    specifiedFinancialAdjustment?: ram.FinancialAdjustmentType[]
+    invoiceReferencedDocument?: ram.ReferencedDocumentType[]
     receivableSpecifiedTradeAccountingAccount?: ram.TradeAccountingAccountType[]
     specifiedAdvancePayment?: ram.AdvancePaymentType[]
   }) {
@@ -255,6 +257,7 @@ export class HeaderTradeSettlementType {
     this.specifiedLogisticsServiceCharge = specifiedLogisticsServiceCharge
     this.specifiedTradePaymentTerms = specifiedTradePaymentTerms
     this.specifiedTradeSettlementHeaderMonetarySummation = specifiedTradeSettlementHeaderMonetarySummation
+    this.specifiedFinancialAdjustment = specifiedFinancialAdjustment
     this.invoiceReferencedDocument = invoiceReferencedDocument
     this.receivableSpecifiedTradeAccountingAccount = receivableSpecifiedTradeAccountingAccount
     this.specifiedAdvancePayment = specifiedAdvancePayment
@@ -277,7 +280,8 @@ export class HeaderTradeSettlementType {
   specifiedLogisticsServiceCharge?: ram.LogisticsServiceChargeType[]
   specifiedTradePaymentTerms?: ram.TradePaymentTermsType[]
   specifiedTradeSettlementHeaderMonetarySummation: ram.TradeSettlementHeaderMonetarySummationType
-  invoiceReferencedDocument?: ram.ReferencedDocumentType
+  specifiedFinancialAdjustment?: ram.FinancialAdjustmentType[]
+  invoiceReferencedDocument?: ram.ReferencedDocumentType[]
   receivableSpecifiedTradeAccountingAccount?: ram.TradeAccountingAccountType[]
   specifiedAdvancePayment?: ram.AdvancePaymentType[]
 }

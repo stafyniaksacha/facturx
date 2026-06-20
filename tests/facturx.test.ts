@@ -202,9 +202,9 @@ describe('factur-X model', () => {
 
       const summation = new TradeSettlementHeaderMonetarySummationType({
         lineTotalAmount: totalAmount,
-        taxBasisTotalAmount: [taxBasisAmount],
+        taxBasisTotalAmount: taxBasisAmount,
         taxTotalAmount: [taxAmount],
-        grandTotalAmount: [totalAmount],
+        grandTotalAmount: totalAmount,
         duePayableAmount: totalAmount,
       })
 

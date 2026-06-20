@@ -106,9 +106,9 @@ export function getEN16931FacturXModel() {
 
   const summation = new TradeSettlementHeaderMonetarySummationType({
     lineTotalAmount,
-    taxBasisTotalAmount: [taxBasisTotalAmount],
+    taxBasisTotalAmount: taxBasisTotalAmount,
     taxTotalAmount: [taxTotalAmount],
-    grandTotalAmount: [grandTotalAmount],
+    grandTotalAmount: grandTotalAmount,
     duePayableAmount,
   })
 
