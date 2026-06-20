@@ -4,7 +4,8 @@
  */
 
 /**
- * Accounting account type code content
+ * Code identifying the type of a buyer accounting account.
+ * @profile EXTENDED
  */
 export class AccountingAccountTypeCodeType {
   constructor({ value }: { value: string }) {
@@ -15,7 +16,8 @@ export class AccountingAccountTypeCodeType {
 }
 
 /**
- * Allowance charge reason code
+ * Coded reason for an allowance or charge (UNTDID 5189 for allowances, UNTDID 7161 for charges).
+ * @profile BASIC WL
  */
 export class AllowanceChargeReasonCodeType {
   constructor({ value }: { value: string }) {
@@ -26,7 +28,8 @@ export class AllowanceChargeReasonCodeType {
 }
 
 /**
- * Contact type code
+ * Code identifying the type or role of a trade contact.
+ * @profile EXTENDED
  */
 export class ContactTypeCodeType {
   constructor({ value }: { value: string }) {
@@ -37,7 +40,8 @@ export class ContactTypeCodeType {
 }
 
 /**
- * Country ID code
+ * ISO 3166-1 alpha-2 country code.
+ * @profile MINIMUM
  */
 export class CountryIDType {
   constructor({ value }: { value: string }) {
@@ -48,7 +52,8 @@ export class CountryIDType {
 }
 
 /**
- * Currency code
+ * ISO 4217 currency code.
+ * @profile MINIMUM
  */
 export class CurrencyCodeType {
   constructor({ value }: { value: string }) {
@@ -59,7 +64,8 @@ export class CurrencyCodeType {
 }
 
 /**
- * Delivery terms code
+ * Incoterms code identifying the applicable delivery terms.
+ * @profile EXTENDED
  */
 export class DeliveryTermsCodeType {
   constructor({ value }: { value: string }) {
@@ -70,7 +76,8 @@ export class DeliveryTermsCodeType {
 }
 
 /**
- * Document code
+ * UNTDID 1001 code giving the document / invoice type.
+ * @profile MINIMUM
  */
 export class DocumentCodeType {
   constructor({ value }: { value: string }) {
@@ -81,7 +88,8 @@ export class DocumentCodeType {
 }
 
 /**
- * Formatted date time type
+ * A date/time expressed with an explicit format qualifier.
+ * @profile BASIC WL
  */
 export class FormattedDateTimeType {
   constructor({ dateTimeString, format }: { dateTimeString: string, format: string }) {
@@ -94,7 +102,8 @@ export class FormattedDateTimeType {
 }
 
 /**
- * Line status code
+ * Code giving the status of an invoice line.
+ * @profile EXTENDED
  */
 export class LineStatusCodeType {
   constructor({ value }: { value: string }) {
@@ -105,7 +114,8 @@ export class LineStatusCodeType {
 }
 
 /**
- * Party role code
+ * Code identifying the role a trade party plays.
+ * @profile EXTENDED
  */
 export class PartyRoleCodeType {
   constructor({ value }: { value: string }) {
@@ -116,7 +126,8 @@ export class PartyRoleCodeType {
 }
 
 /**
- * Payment means code
+ * UNTDID 4461 code identifying the means of payment.
+ * @profile BASIC WL
  */
 export class PaymentMeansCodeType {
   constructor({ value }: { value: string }) {
@@ -127,7 +138,8 @@ export class PaymentMeansCodeType {
 }
 
 /**
- * Reference code
+ * UNTDID 1153 code qualifying the type of a referenced document.
+ * @profile EN 16931
  */
 export class ReferenceCodeType {
   constructor({ value }: { value: string }) {
@@ -138,7 +150,8 @@ export class ReferenceCodeType {
 }
 
 /**
- * Tax category code
+ * VAT category code (UNTDID 5305), e.g. standard rate, zero-rated, exempt or reverse charge.
+ * @profile BASIC WL
  */
 export class TaxCategoryCodeType {
   constructor({ value }: { value: string }) {
@@ -149,7 +162,8 @@ export class TaxCategoryCodeType {
 }
 
 /**
- * Tax type code
+ * Code identifying the type of tax, typically VAT (UNTDID 5153).
+ * @profile BASIC WL
  */
 export class TaxTypeCodeType {
   constructor({ value }: { value: string }) {
@@ -160,7 +174,8 @@ export class TaxTypeCodeType {
 }
 
 /**
- * Time reference code
+ * Code identifying the event a date refers to, e.g. the basis for a VAT due date.
+ * @profile BASIC WL
  */
 export class TimeReferenceCodeType {
   constructor({ value }: { value: string }) {
@@ -171,7 +186,8 @@ export class TimeReferenceCodeType {
 }
 
 /**
- * Transport mode code
+ * Code identifying the mode of transport.
+ * @profile EXTENDED
  */
 export class TransportModeCodeType {
   constructor({ value }: { value: string }) {

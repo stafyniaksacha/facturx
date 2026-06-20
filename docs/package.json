@@ -1,0 +1,17 @@
+{
+  "name": "@stafyniaksacha/facturx-docs",
+  "type": "module",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Documentation site for @stafyniaksacha/facturx",
+  "scripts": {
+    "docs:gen": "node scripts/gen-models.mjs",
+    "docs:dev": "pnpm docs:gen && vitepress dev",
+    "docs:build": "pnpm docs:gen && vitepress build",
+    "docs:preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "ts-morph": "^28.0.0",
+    "vitepress": "2.0.0-alpha.17"
+  }
+}

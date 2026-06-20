@@ -2,7 +2,7 @@
   "name": "@stafyniaksacha/facturx",
   "type": "module",
   "version": "0.4.0",
-  "packageManager": "pnpm@9.10.0",
+  "packageManager": "pnpm@11.8.0+sha512.c1f5e7c4cb241c8f174b743851d82f42b802324afc8b0f116b96adb15aa06664948dde36960a3ba1079ba5b4b29dd0140135b94b5b5f5263592249d68e555f26",
   "description": "Factur-X and Order-X generation library for European e-invoicing standard",
   "license": "MIT",
   "repository": "stafyniaksacha/facturx",
@@ -47,24 +47,27 @@
     "build": "unbuild",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "test": "vitest run"
+    "test": "vitest run",
+    "docs": "pnpm --filter @stafyniaksacha/facturx-docs run docs:dev",
+    "docs:build": "pnpm --filter @stafyniaksacha/facturx-docs run docs:build",
+    "docs:preview": "pnpm --filter @stafyniaksacha/facturx-docs run docs:preview"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",
-    "citty": "^0.1.6",
+    "citty": "^0.2.2",
     "date-fns": "^4.1.0",
     "libxmljs": "^1.0.11",
     "pdf-lib": "^1.17.1",
     "saxon-js": "^2.7.0"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^4.18.0",
-    "@types/node": "^22.16.5",
-    "@vitest/coverage-v8": "3.2.4",
-    "eslint": "^9.31.0",
-    "typescript": "^5.8.3",
+    "@antfu/eslint-config": "^9.0.0",
+    "@types/node": "^26.0.0",
+    "@vitest/coverage-v8": "4.1.9",
+    "eslint": "^10.5.0",
+    "typescript": "^6.0.3",
     "unbuild": "^3.6.0",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.9",
     "xslt3": "^2.7.0"
   }
 }

@@ -7,7 +7,8 @@ import type * as qdt from './qualifiedTypes'
 import type * as udt from './unqualifiedTypes'
 
 /**
- * Specified period type
+ * A time period given by start and end (or a single complete) date-time, such as an invoicing or billing period.
+ * @profile BASIC WL
  */
 export class SpecifiedPeriodType {
   constructor({
@@ -34,7 +35,8 @@ export class SpecifiedPeriodType {
 }
 
 /**
- * Referenced document type
+ * A reference to a related document such as an order, contract, despatch advice or supporting attachment, with its identifier, type and optional embedded binary content.
+ * @profile MINIMUM
  */
 export class ReferencedDocumentType {
   constructor({
@@ -77,7 +79,8 @@ export class ReferencedDocumentType {
 }
 
 /**
- * Trade delivery terms type
+ * The applicable delivery terms, given as an Incoterms-style code and an optional relevant location.
+ * @profile EXTENDED
  */
 export class TradeDeliveryTermsType {
   constructor({
@@ -96,7 +99,8 @@ export class TradeDeliveryTermsType {
 }
 
 /**
- * Trade location type (EXTENDED)
+ * A geographic location, identified by country code and/or name.
+ * @profile EXTENDED
  */
 export class TradeLocationType {
   constructor({
@@ -115,7 +119,8 @@ export class TradeLocationType {
 }
 
 /**
- * Procuring project type
+ * The procurement project or contract reference the invoice relates to, identified by its identifier and name.
+ * @profile EN 16931
  */
 export class ProcuringProjectType {
   constructor({
@@ -134,7 +139,8 @@ export class ProcuringProjectType {
 }
 
 /**
- * Advance payment type
+ * An advance (prepaid) payment: its paid amount, receipt date, included VAT and the prepayment invoice it refers to.
+ * @profile EXTENDED
  */
 export class AdvancePaymentType {
   constructor({
@@ -161,7 +167,8 @@ export class AdvancePaymentType {
 }
 
 /**
- * Financial adjustment type (EXTENDED)
+ * A financial adjustment to the settlement, given as a reason and an amount.
+ * @profile EXTENDED
  */
 export class FinancialAdjustmentType {
   constructor({
@@ -180,7 +187,8 @@ export class FinancialAdjustmentType {
 }
 
 /**
- * Creditor financial account type
+ * The payee's receiving bank account, identified by IBAN or a proprietary number, with an optional account name.
+ * @profile BASIC WL
  */
 export class CreditorFinancialAccountType {
   constructor({
@@ -203,7 +211,8 @@ export class CreditorFinancialAccountType {
 }
 
 /**
- * Creditor financial institution type
+ * The payee's bank, identified by its BIC.
+ * @profile EN 16931
  */
 export class CreditorFinancialInstitutionType {
   constructor({ bicID }: { bicID: udt.IDType }) {
@@ -214,7 +223,8 @@ export class CreditorFinancialInstitutionType {
 }
 
 /**
- * Debtor financial account type
+ * The payer's bank account, identified by IBAN, used notably for direct debit.
+ * @profile BASIC WL
  */
 export class DebtorFinancialAccountType {
   constructor({ ibanID, accountName }: { ibanID: udt.IDType, accountName?: udt.TextType }) {
@@ -227,7 +237,8 @@ export class DebtorFinancialAccountType {
 }
 
 /**
- * Debtor financial institution type (EXTENDED)
+ * The payer's bank, identified by its BIC.
+ * @profile EXTENDED
  */
 export class DebtorFinancialInstitutionType {
   constructor({ bicID }: { bicID?: udt.IDType }) {
@@ -238,7 +249,8 @@ export class DebtorFinancialInstitutionType {
 }
 
 /**
- * Document context parameter type
+ * A context parameter carrying the identifier of a guideline or business process.
+ * @profile MINIMUM
  */
 export class DocumentContextParameterType {
   constructor({ id }: { id: udt.IDType }) {
@@ -249,7 +261,8 @@ export class DocumentContextParameterType {
 }
 
 /**
- * Note type
+ * A free-text note, optionally qualified by subject and content codes.
+ * @profile BASIC WL
  */
 export class NoteType {
   constructor({
@@ -272,7 +285,8 @@ export class NoteType {
 }
 
 /**
- * Document line document type
+ * Line-level document header: the line number, optional parent line, status code and free-text notes.
+ * @profile BASIC
  */
 export class DocumentLineDocumentType {
   constructor({
@@ -303,7 +317,8 @@ export class DocumentLineDocumentType {
 }
 
 /**
- * Trade tax type
+ * A VAT breakdown entry for one combination of category and rate: the taxable basis, the resulting tax amount and an optional exemption reason.
+ * @profile BASIC WL
  */
 export class TradeTaxType {
   constructor({
@@ -358,7 +373,8 @@ export class TradeTaxType {
 }
 
 /**
- * Trade address type
+ * A postal address: street lines, city, post code, ISO 3166-1 country code and country sub-division.
+ * @profile MINIMUM
  */
 export class TradeAddressType {
   constructor({
@@ -397,7 +413,8 @@ export class TradeAddressType {
 }
 
 /**
- * Universal communication type
+ * A communication channel, holding either a URI/email address or a phone or fax number.
+ * @profile BASIC WL
  */
 export class UniversalCommunicationType {
   constructor({
@@ -416,7 +433,8 @@ export class UniversalCommunicationType {
 }
 
 /**
- * Trade contact type
+ * A contact person for a party: name, department and telephone, fax and email channels.
+ * @profile EN 16931
  */
 export class TradeContactType {
   constructor({
@@ -451,7 +469,8 @@ export class TradeContactType {
 }
 
 /**
- * Legal organization type
+ * A party's legal registration: its legal identifier, trading name and registered address.
+ * @profile MINIMUM
  */
 export class LegalOrganizationType {
   constructor({
@@ -474,7 +493,8 @@ export class LegalOrganizationType {
 }
 
 /**
- * Tax registration type
+ * A party's tax registration identifier, such as its VAT identifier.
+ * @profile MINIMUM
  */
 export class TaxRegistrationType {
   constructor({ id }: { id: udt.IDType }) {
@@ -485,7 +505,8 @@ export class TaxRegistrationType {
 }
 
 /**
- * Trade party type
+ * A party involved in the trade (seller, buyer, payee, ship-to, tax representative, …): its identifiers, name, role, legal organization, address, contacts and tax registrations.
+ * @profile MINIMUM
  */
 export class TradePartyType {
   constructor({
@@ -536,7 +557,8 @@ export class TradePartyType {
 }
 
 /**
- * Supply chain event type
+ * A supply-chain event, such as the actual delivery, given by its occurrence date-time.
+ * @profile BASIC WL
  */
 export class SupplyChainEventType {
   constructor({
@@ -551,7 +573,8 @@ export class SupplyChainEventType {
 }
 
 /**
- * Supply chain consignment type
+ * A consignment within the delivery, carrying its specified transport movements.
+ * @profile EXTENDED
  */
 export class SupplyChainConsignmentType {
   constructor({
@@ -566,7 +589,8 @@ export class SupplyChainConsignmentType {
 }
 
 /**
- * Logistics transport movement type
+ * A transport movement, identified by its mode of transport.
+ * @profile EXTENDED
  */
 export class LogisticsTransportMovementType {
   constructor({
@@ -581,7 +605,8 @@ export class LogisticsTransportMovementType {
 }
 
 /**
- * Trade accounting account type
+ * A buyer accounting reference, such as a cost-centre code, with an optional account type code.
+ * @profile BASIC WL
  */
 export class TradeAccountingAccountType {
   constructor({
@@ -600,7 +625,8 @@ export class TradeAccountingAccountType {
 }
 
 /**
- * Trade currency exchange type
+ * A currency conversion between source and target currencies, with the conversion rate and its date.
+ * @profile EXTENDED
  */
 export class TradeCurrencyExchangeType {
   constructor({
@@ -627,7 +653,8 @@ export class TradeCurrencyExchangeType {
 }
 
 /**
- * Trade allowance charge type
+ * An allowance (deduction) or charge: a charge indicator, an amount or percentage with its basis, a reason and the applicable VAT category.
+ * @profile BASIC WL
  */
 export class TradeAllowanceChargeType {
   constructor({
@@ -674,7 +701,8 @@ export class TradeAllowanceChargeType {
 }
 
 /**
- * Logistics service charge type
+ * A logistics service charge, given by its description, amount and applicable tax.
+ * @profile EXTENDED
  */
 export class LogisticsServiceChargeType {
   constructor({
@@ -697,7 +725,8 @@ export class LogisticsServiceChargeType {
 }
 
 /**
- * Trade payment penalty terms type
+ * Late-payment penalty terms: the basis date, period and amount together with the penalty percentage or amount.
+ * @profile EXTENDED
  */
 export class TradePaymentPenaltyTermsType {
   constructor({
@@ -728,7 +757,8 @@ export class TradePaymentPenaltyTermsType {
 }
 
 /**
- * Trade payment discount terms type
+ * Early-payment discount terms: the basis date, period and amount together with the discount percentage or amount.
+ * @profile EXTENDED
  */
 export class TradePaymentDiscountTermsType {
   constructor({
@@ -759,7 +789,8 @@ export class TradePaymentDiscountTermsType {
 }
 
 /**
- * Trade payment terms type
+ * Payment terms: textual description, due date, direct-debit mandate, partial-payment amount and the applicable penalty and discount terms.
+ * @profile BASIC WL
  */
 export class TradePaymentTermsType {
   constructor({
@@ -798,7 +829,8 @@ export class TradePaymentTermsType {
 }
 
 /**
- * Trade settlement financial card type
+ * A payment card used for settlement, identified by a (masked) card number and cardholder name.
+ * @profile EN 16931
  */
 export class TradeSettlementFinancialCardType {
   constructor({
@@ -817,7 +849,8 @@ export class TradeSettlementFinancialCardType {
 }
 
 /**
- * Trade settlement payment means type
+ * A means of payment: its UNTDID 4461 type code plus the card, debtor/creditor accounts and financial institutions involved.
+ * @profile BASIC WL
  */
 export class TradeSettlementPaymentMeansType {
   constructor({
@@ -856,7 +889,8 @@ export class TradeSettlementPaymentMeansType {
 }
 
 /**
- * Trade settlement header monetary summation type
+ * Document-level monetary totals: line, charge and allowance totals, tax basis and VAT amount, grand total, prepaid amount and the amount due for payment.
+ * @profile MINIMUM
  */
 export class TradeSettlementHeaderMonetarySummationType {
   constructor({
@@ -905,7 +939,8 @@ export class TradeSettlementHeaderMonetarySummationType {
 }
 
 /**
- * Product characteristic type
+ * A product attribute, given as a description and value, optionally with a measured value and type code.
+ * @profile EN 16931
  */
 export class ProductCharacteristicType {
   constructor({
@@ -932,7 +967,8 @@ export class ProductCharacteristicType {
 }
 
 /**
- * Product classification type
+ * A product classification, given as a classification code and/or class name.
+ * @profile EN 16931
  */
 export class ProductClassificationType {
   constructor({
@@ -951,7 +987,8 @@ export class ProductClassificationType {
 }
 
 /**
- * Trade product instance type
+ * A specific instance of an item, identified by batch and/or supplier-assigned serial number.
+ * @profile EXTENDED
  */
 export class TradeProductInstanceType {
   constructor({
@@ -970,7 +1007,8 @@ export class TradeProductInstanceType {
 }
 
 /**
- * Trade country type
+ * The country of origin of an item, given as an ISO 3166-1 country code.
+ * @profile EN 16931
  */
 export class TradeCountryType {
   constructor({
@@ -985,7 +1023,8 @@ export class TradeCountryType {
 }
 
 /**
- * Referenced product type
+ * A component or included product, with its identifiers, name, description and unit quantity.
+ * @profile EXTENDED
  */
 export class ReferencedProductType {
   constructor({
@@ -1028,7 +1067,8 @@ export class ReferencedProductType {
 }
 
 /**
- * Trade product type
+ * The invoiced item: its identifiers, name, description, attributes, classifications, country of origin and manufacturer.
+ * @profile BASIC
  */
 export class TradeProductType {
   constructor({
@@ -1107,7 +1147,8 @@ export class TradeProductType {
 }
 
 /**
- * Trade price type
+ * An item price (gross or net): the price amount, its basis quantity and any applied allowances/charges or included tax.
+ * @profile BASIC
  */
 export class TradePriceType {
   constructor({
@@ -1134,7 +1175,8 @@ export class TradePriceType {
 }
 
 /**
- * Line trade agreement type
+ * Line-level trade agreement (price details): the gross and net unit prices and references to the related order, contract and quotation.
+ * @profile BASIC
  */
 export class LineTradeAgreementType {
   constructor({
@@ -1185,7 +1227,8 @@ export class LineTradeAgreementType {
 }
 
 /**
- * Line trade delivery type
+ * Line-level delivery: the billed and packaging quantities, ship-to party, delivery event and despatch/receiving/delivery-note references.
+ * @profile BASIC
  */
 export class LineTradeDeliveryType {
   constructor({
@@ -1236,7 +1279,8 @@ export class LineTradeDeliveryType {
 }
 
 /**
- * Trade settlement line monetary summation type
+ * Line-level monetary totals: the net line amount plus any charge, allowance and tax totals.
+ * @profile BASIC
  */
 export class TradeSettlementLineMonetarySummationType {
   constructor({
@@ -1271,7 +1315,8 @@ export class TradeSettlementLineMonetarySummationType {
 }
 
 /**
- * Line trade settlement type
+ * Line-level settlement: the applicable VAT, invoice line period, line allowances/charges, line totals and accounting reference.
+ * @profile BASIC
  */
 export class LineTradeSettlementType {
   constructor({
@@ -1310,7 +1355,8 @@ export class LineTradeSettlementType {
 }
 
 /**
- * Supply chain trade line item type
+ * An invoice line: its line document, the specified item, and the line-level agreement, delivery and settlement.
+ * @profile BASIC
  */
 export class SupplyChainTradeLineItemType {
   constructor({

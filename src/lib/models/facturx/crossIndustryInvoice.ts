@@ -8,7 +8,8 @@ import type * as ram from './reusableTypes'
 import type * as udt from './unqualifiedTypes'
 
 /**
- * Exchanged document context type
+ * Business context of the invoice, naming the Factur-X guideline (profile) it conforms to and the business process it belongs to.
+ * @profile MINIMUM
  */
 export class ExchangedDocumentContextType {
   constructor({
@@ -31,7 +32,8 @@ export class ExchangedDocumentContextType {
 }
 
 /**
- * Exchanged document type
+ * Document-level header of the invoice: its number, UNTDID 1001 type code, issue date and optional name, notes and language.
+ * @profile MINIMUM
  */
 export class ExchangedDocumentType {
   constructor({
@@ -74,7 +76,8 @@ export class ExchangedDocumentType {
 }
 
 /**
- * Header trade agreement type
+ * Document-level trade agreement covering the seller and buyer, their tax representatives and agents, and references to the order, contract, quotation and procuring project.
+ * @profile MINIMUM
  */
 export class HeaderTradeAgreementType {
   constructor({
@@ -149,7 +152,8 @@ export class HeaderTradeAgreementType {
 }
 
 /**
- * Header trade delivery type
+ * Document-level delivery information stating where and when the goods or services are delivered: ship-to/ship-from parties, the actual delivery event and despatch, receiving and delivery-note references.
+ * @profile MINIMUM
  */
 export class HeaderTradeDeliveryType {
   constructor({
@@ -192,7 +196,8 @@ export class HeaderTradeDeliveryType {
 }
 
 /**
- * Header trade settlement type
+ * Document-level settlement covering invoice and VAT accounting currencies, payee/payer parties, payment means, the VAT breakdown, document-level allowances and charges, payment terms and the monetary totals.
+ * @profile MINIMUM
  */
 export class HeaderTradeSettlementType {
   constructor({
@@ -287,7 +292,8 @@ export class HeaderTradeSettlementType {
 }
 
 /**
- * Supply chain trade transaction type
+ * The trade transaction bundling the invoice line items with the document-level agreement, delivery and settlement headers.
+ * @profile MINIMUM
  */
 export class SupplyChainTradeTransactionType {
   constructor({
@@ -314,7 +320,8 @@ export class SupplyChainTradeTransactionType {
 }
 
 /**
- * Cross industry invoice type - the main class for Factur-X
+ * Root of a Factur-X / UN/CEFACT CII invoice, bundling the document context, the document header and the trade transaction.
+ * @profile MINIMUM
  */
 export class CrossIndustryInvoiceType {
   constructor({

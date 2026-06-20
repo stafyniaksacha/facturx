@@ -1,0 +1,15 @@
+{
+  "name": "@stafyniaksacha/facturx-examples",
+  "type": "module",
+  "private": true,
+  "description": "Runnable usage examples for @stafyniaksacha/facturx, embedded into the docs via VitePress code snippets.",
+  "scripts": {
+    "examples": "jiti run-all.ts"
+  },
+  "dependencies": {
+    "@stafyniaksacha/facturx": "workspace:*"
+  },
+  "devDependencies": {
+    "jiti": "^2.0.0"
+  }
+}
