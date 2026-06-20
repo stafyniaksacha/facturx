@@ -4,6 +4,7 @@ import { extract } from './lib/extract'
 import { generate } from './lib/generate'
 import * as Models from './lib/models/facturx'
 import { xmlToInvoice } from './lib/parsers/facturx'
+import { validateSchematron } from './lib/schematron'
 
 export {
   check,
@@ -11,5 +12,6 @@ export {
   generate,
   invoiceToXml,
   Models,
+  validateSchematron,
   xmlToInvoice,
 }
