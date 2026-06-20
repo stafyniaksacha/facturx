@@ -46,14 +46,15 @@ npx @stafyniaksacha/facturx generate \
 # Extract a Factur-X/Order-X XML from a PDF
 npx @stafyniaksacha/facturx extract input.pdf > output.xml
 
-# Check a Factur-X/Order-X XML file (XSD), display validation errors
+# Check a Factur-X/Order-X XML file, display validation errors
 npx @stafyniaksacha/facturx check input.xml \
   --flavor facturx \ # autodetects the flavor if not provided
-  --level en16931 # autodetects the level if not provided
+  --level en16931 \ # autodetects the level if not provided
+  --schematron # also run EN 16931 / Factur-X business rules (-s, Factur-X only)
 ```
 
-> The CLI `check` command runs XSD validation. Schematron (business-rule) validation is
-> available through the library API — see [Validation](#validation) below.
+> `check` runs XSD validation by default; add `--schematron` (`-s`) to also run the EN 16931
+> / Factur-X business-rule and code-list validation. See [Validation](#validation) below.
 
 ### Node.js
 
