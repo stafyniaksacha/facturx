@@ -16,6 +16,7 @@ import {
   LineTradeAgreementType,
   LineTradeDeliveryType,
   LineTradeSettlementType,
+  SupplyChainEventType,
   SupplyChainTradeLineItemType,
   SupplyChainTradeTransactionType,
   TaxCategoryCodeType,
@@ -80,14 +81,20 @@ export function getEN16931FacturXModel() {
     buyerTradeParty: buyerParty,
   })
 
-  // Trade delivery
-  const tradeDelivery = new HeaderTradeDeliveryType({})
+  // Trade delivery (with actual delivery date BT-72)
+  const tradeDelivery = new HeaderTradeDeliveryType({
+    actualDeliverySupplyChainEvent: new SupplyChainEventType({
+      occurrenceDateTime: new DateTimeType({ dateTimeString: '20230415', format: '102' }),
+    }),
+  })
 
   // Trade settlement
   const currencyCode = new CurrencyCodeType({ value: 'EUR' })
   const tradeTax = new TradeTaxType({
+    calculatedAmount: new AmountType({ value: 20, currencyID: 'EUR' }),
     categoryCode: new TaxCategoryCodeType({ value: 'S' }),
     typeCode: new TaxTypeCodeType({ value: 'VAT' }),
+    basisAmount: new AmountType({ value: 100, currencyID: 'EUR' }),
     rateApplicablePercent: { value: 20 },
   })
 

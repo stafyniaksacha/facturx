@@ -90,6 +90,27 @@ describe('invoiceToXml', () => {
     expect(result.level).toBe('minimum')
   })
 
+  it('should emit fields that were previously silently dropped (en16931)', async () => {
+    const model = getEN16931FacturXModel()
+    const xml = (await invoiceToXml(model)).toString()
+
+    // Payment terms (BT-20) — was destructured but never emitted
+    expect(xml).toContain('<ram:SpecifiedTradePaymentTerms>')
+    expect(xml).toContain('Payment due within 30 days')
+
+    // Actual delivery date (BT-72) — delivery section only emitted ShipToTradeParty before
+    expect(xml).toContain('<ram:ActualDeliverySupplyChainEvent>')
+    expect(xml).toContain('<ram:OccurrenceDateTime>')
+
+    // Tax BasisAmount (BT-116) — was explicitly omitted with a @TODO
+    expect(xml).toContain('<ram:BasisAmount')
+
+    // And the whole thing must still be schema-valid
+    const result = await check({ xml, flavor: 'facturx', level: 'en16931' })
+    expect(result.errors).toStrictEqual([])
+    expect(result.valid).toBe(true)
+  })
+
   it('should not validate invalid extended model', async () => {
     const model = getMinimalFacturXModel()
     const xml = await invoiceToXml(model)
