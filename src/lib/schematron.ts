@@ -39,27 +39,30 @@ interface SchematronConfig {
 
 const dir = (level: string): string => `./xsd/facturx/${level}`
 
-export const FACTURX_SCHEMATRON: Record<string, SchematronConfig> = {
-  minimum: { sef: `${dir('minimum')}/FACTUR-X_MINIMUM.sef.json.gz`, codedb: `${dir('minimum')}/FACTUR-X_MINIMUM_codedb.xml`, codedbName: 'FACTUR-X_MINIMUM_codedb.xml' },
-  basicwl: { sef: `${dir('basicwl')}/FACTUR-X_BASIC-WL.sef.json.gz`, codedb: `${dir('basicwl')}/FACTUR-X_BASIC-WL_codedb.xml`, codedbName: 'FACTUR-X_BASIC-WL_codedb.xml' },
-  basic: { sef: `${dir('basic')}/FACTUR-X_BASIC.sef.json.gz`, codedb: `${dir('basic')}/FACTUR-X_BASIC_codedb.xml`, codedbName: 'FACTUR-X_BASIC_codedb.xml' },
-  en16931: { sef: `${dir('en16931')}/FACTUR-X_EN16931.sef.json.gz`, codedb: `${dir('en16931')}/FACTUR-X_EN16931_codedb.xml`, codedbName: 'FACTUR-X_EN16931_codedb.xml' },
-  extended: { sef: `${dir('extended')}/Factur-X_EXTENDED.sef.json.gz`, codedb: `${dir('extended')}/FACTUR-X_EXTENDED_codedb.xml`, codedbName: 'FACTUR-X_EXTENDED_codedb.xml' },
-}
+// Map (not a plain object) so that level lookups can't reach inherited keys
+// like "__proto__"/"constructor" and bypass the availability guard.
+export const FACTURX_SCHEMATRON: Map<string, SchematronConfig> = new Map([
+  ['minimum', { sef: `${dir('minimum')}/FACTUR-X_MINIMUM.sef.json.gz`, codedb: `${dir('minimum')}/FACTUR-X_MINIMUM_codedb.xml`, codedbName: 'FACTUR-X_MINIMUM_codedb.xml' }],
+  ['basicwl', { sef: `${dir('basicwl')}/FACTUR-X_BASIC-WL.sef.json.gz`, codedb: `${dir('basicwl')}/FACTUR-X_BASIC-WL_codedb.xml`, codedbName: 'FACTUR-X_BASIC-WL_codedb.xml' }],
+  ['basic', { sef: `${dir('basic')}/FACTUR-X_BASIC.sef.json.gz`, codedb: `${dir('basic')}/FACTUR-X_BASIC_codedb.xml`, codedbName: 'FACTUR-X_BASIC_codedb.xml' }],
+  ['en16931', { sef: `${dir('en16931')}/FACTUR-X_EN16931.sef.json.gz`, codedb: `${dir('en16931')}/FACTUR-X_EN16931_codedb.xml`, codedbName: 'FACTUR-X_EN16931_codedb.xml' }],
+  ['extended', { sef: `${dir('extended')}/Factur-X_EXTENDED.sef.json.gz`, codedb: `${dir('extended')}/FACTUR-X_EXTENDED_codedb.xml`, codedbName: 'FACTUR-X_EXTENDED_codedb.xml' }],
+])
 
 // Per-process cache of prepared stylesheet locations (decompressed SEF + codedb).
-const _prepared: Record<string, string> = {}
+const _prepared = new Map<string, string>()
 
 /**
  * Decompress the SEF and place it next to its codedb in a temp directory so that
  * the transform's relative `document()` call resolves. Cached per process.
  */
 function prepareStylesheet(level: string): string {
-  if (_prepared[level]) {
-    return _prepared[level]
+  const cached = _prepared.get(level)
+  if (cached) {
+    return cached
   }
 
-  const config = FACTURX_SCHEMATRON[level]
+  const config = FACTURX_SCHEMATRON.get(level)
   if (!config) {
     throw new Error(`No Factur-X Schematron available for level: "${level}"`)
   }
@@ -69,7 +72,7 @@ function prepareStylesheet(level: string): string {
   writeFileSync(sefPath, gunzipSync(readFileSync(resolve(import.meta.dirname, config.sef))))
   copyFileSync(resolve(import.meta.dirname, config.codedb), join(workDir, config.codedbName))
 
-  _prepared[level] = sefPath
+  _prepared.set(level, sefPath)
   return sefPath
 }
 

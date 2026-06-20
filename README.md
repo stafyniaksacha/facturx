@@ -84,9 +84,11 @@ const { valid, errors, flavor, level, schematronValid, schematronErrors } = awai
 })
 ```
 
-`check` validates the XML structure against the Factur-X 1.09 (ZUGFeRD 2.5) XSD. With
-`schematron: true` it additionally runs the official compiled Schematron (EN16931 `BR-*`
-business rules and code-list checks), returning `schematronValid` and `schematronErrors`.
+`check` validates the XML structure against the Factur-X 1.09 (ZUGFeRD 2.5) XSD for any
+flavor (`facturx` / `orderx`). With `schematron: true` it additionally runs the official
+compiled Schematron (EN16931 `BR-*` business rules and code-list checks), returning
+`schematronValid` and `schematronErrors`. **Schematron is Factur-X only** — passing
+`schematron: true` for a non-`facturx` flavor throws (no Order-X Schematron is shipped).
 You can also call `validateSchematron({ xml, flavor: 'facturx', level })` directly.
 
 ```typescript

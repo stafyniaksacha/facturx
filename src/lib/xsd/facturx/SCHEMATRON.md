@@ -20,6 +20,11 @@ SaxonJS-HE static-typing bug (`XPTY0004`) where `round(sum(untyped)) op xs:decim
 decimal arithmetic but `sum()` returns `xs:double` at runtime — it surfaced on the EXTENDED profile's
 FLWOR-based BR-CO rules. The patch does not change rule semantics (monetary sums are decimals).
 
+The `*_codedb.xml` files are vendored **verbatim** from the spec. Some country-code lists contain
+duplicate `<enumeration>` entries (e.g. `1A`, `XI`) — this is a spec-level artifact and is harmless:
+the Schematron checks set membership (`cl[@id=N]/enumeration[@value=$x]`), for which duplicates are
+inconsequential. They are intentionally left unmodified to keep the files identical to the spec.
+
 ## Regenerating the SEF (e.g. when upgrading the spec)
 
 ```bash
