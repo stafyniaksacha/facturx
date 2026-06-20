@@ -32,7 +32,7 @@ The model is grouped into four families (mirroring the CII namespaces):
 
 The document tree, roughly:
 
-```
+```text
 CrossIndustryInvoiceType
 ├─ exchangedDocumentContext      (ExchangedDocumentContextType)  → guideline ID = profile
 ├─ exchangedDocument             (ExchangedDocumentType)         → id, typeCode, issueDateTime

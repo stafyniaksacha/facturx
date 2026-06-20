@@ -96,14 +96,14 @@ which makes it easy to look up exactly what failed.
 
 ## Validation during generate / extract
 
-Both [`generate()`](/api/generate) and [`extract()`](/api/extract) run an XSD `check` by default
-(`check: true`) and throw on invalid XML, so you can't accidentally embed or trust a malformed
-invoice. Pass `check: false` to skip it (e.g. when you've already validated, or are working with a
-known-imperfect document).
+Both [`generate()`](/api/generate) and [`extract()`](/api/extract) can run an XSD `check` and throw
+on invalid XML, so you don't accidentally embed or trust a malformed invoice. Validation is **off by
+default** — pass `check: true` to opt in (e.g. skip it when you've already validated, or are working
+with a known-imperfect document).
 
 ```ts
-// Skip the built-in XSD check
-await generate({ pdf, xml, check: false })
+// Validate the XML before embedding it
+await generate({ pdf, xml, check: true })
 ```
 
 ## From the CLI

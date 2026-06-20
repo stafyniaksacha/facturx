@@ -22,7 +22,7 @@ function generate(options: {
 | --- | --- | --- | --- |
 | `pdf` | `string \| Buffer \| PDFDocument` | — | **Required.** Source PDF (path/bytes already read, or a `pdf-lib` document). |
 | `xml` | `string \| Buffer \| XMLDocument` | — | **Required.** Invoice XML to embed. |
-| `check` | `boolean` | `true` | Run XSD validation before embedding; throws on invalid XML. |
+| `check` | `boolean` | `false` | Set `true` to run XSD validation before embedding; throws on invalid XML. |
 | `flavor` | `string` | autodetect | `facturx`, `orderx` or `zugferd`. |
 | `level` | `string` | autodetect | Schema level (e.g. `en16931`). |
 | `language` | `string` | — | PDF language code (RFC 3066), e.g. `en-GB`. |

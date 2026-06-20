@@ -17,7 +17,7 @@ file embedded inside it as an attachment.
 Because both live in a single file, there is nothing to keep in sync and nothing extra to send.
 The visual document and the machine-readable data are guaranteed to travel together.
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │  invoice.pdf  (PDF/A-3)                   │
 │                                           │

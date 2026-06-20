@@ -8,10 +8,10 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# Least privilege at the workflow level; the deploy job grants itself the
+# pages/id-token writes it needs.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Allow one concurrent deployment, cancelling in-progress runs for the same group.
 concurrency:
@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       # pnpm version is taken from the root package.json "packageManager" field.
       - name: Setup pnpm
@@ -53,6 +55,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
