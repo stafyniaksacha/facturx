@@ -10,7 +10,10 @@ export default defineBuildConfig({
     {
       input: 'src/lib/xsd/',
       outDir: 'dist/shared/xsd',
-      pattern: ['**/*.xsd'],
+      // XSDs for structural validation + compiled Schematron (gzipped SEF) and
+      // code lists for business-rule validation. The .xslt sources are kept in
+      // the repo for provenance but are not shipped (not needed at runtime).
+      pattern: ['**/*.xsd', '**/*.sef.json.gz', '**/*_codedb.xml'],
     },
   ],
   rollup: {

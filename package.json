@@ -35,8 +35,7 @@
   },
   "files": [
     "bin",
-    "dist",
-    "schema"
+    "dist"
   ],
   "engines": {
     "node": ">=20.11.0"
@@ -55,7 +54,8 @@
     "citty": "^0.1.6",
     "date-fns": "^4.1.0",
     "libxmljs": "^1.0.11",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "saxon-js": "^2.7.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.18.0",
@@ -64,6 +64,7 @@
     "eslint": "^9.31.0",
     "typescript": "^5.8.3",
     "unbuild": "^3.6.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "xslt3": "^2.7.0"
   }
 }

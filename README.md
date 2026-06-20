@@ -73,15 +73,23 @@ const { filename, xml, flavor, level } = await extract({
   level: 'en16931', // autodetects the level if not provided
 })
 
-// Extract a Factur-X/Order-X XML from a PDF
-const { valid, errors, flavor, level } = await check({
+// Validate a Factur-X/Order-X XML against the XSD (and optionally Schematron)
+const { valid, errors, flavor, level, schematronValid, schematronErrors } = await check({
   xml, // string, buffer or XMLDocument
 
   // Optional
   flavor: 'facturx', // autodetects the flavor if not provided
   level: 'en16931', // autodetects the level if not provided
+  schematron: true, // also run EN16931/Factur-X business rules (facturx only); default false
 })
 ```
+
+`check` validates the XML structure against the Factur-X 1.09 (ZUGFeRD 2.5) XSD for any
+flavor (`facturx` / `orderx`). With `schematron: true` it additionally runs the official
+compiled Schematron (EN16931 `BR-*` business rules and code-list checks), returning
+`schematronValid` and `schematronErrors`. **Schematron is Factur-X only** — passing
+`schematron: true` for a non-`facturx` flavor throws (no Order-X Schematron is shipped).
+You can also call `validateSchematron({ xml, flavor: 'facturx', level })` directly.
 
 ```typescript
 import { invoiceToXml } from '@stafyniaksacha/facturx'
@@ -169,9 +177,9 @@ const duePayableAmount = new AmountType({ value: 120, currencyID: 'EUR' })
 
 const summation = new TradeSettlementHeaderMonetarySummationType({
   lineTotalAmount: new AmountType({ value: 100, currencyID: 'EUR' }),
-  taxBasisTotalAmount: [taxBasisTotalAmount],
-  taxTotalAmount: [taxTotalAmount],
-  grandTotalAmount: [grandTotalAmount],
+  taxBasisTotalAmount, // single amount (BT-109)
+  taxTotalAmount: [taxTotalAmount], // 0..2 amounts (BT-110/111)
+  grandTotalAmount, // single amount (BT-112)
   duePayableAmount
 })
 
