@@ -60,7 +60,7 @@ export default defineCommand({
       }
 
       for (const error of result.schematronErrors ?? []) {
-        console.error(`  [${error.id ?? 'Schematron'}] ${error.message}`)
+        console.error(`  [Schematron] ${error.message}`)
       }
 
       process.exit(1)
