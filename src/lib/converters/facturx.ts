@@ -534,13 +534,52 @@ function convertTradeAddress(
  * Convert HeaderTradeDeliveryType to XML
  */
 function convertHeaderTradeDelivery(
-  delivery: HeaderTradeDeliveryType,
+  {
+    shipToTradeParty,
+    ultimateShipToTradeParty,
+    shipFromTradeParty,
+    actualDeliverySupplyChainEvent,
+    despatchAdviceReferencedDocument,
+    receivingAdviceReferencedDocument,
+    deliveryNoteReferencedDocument,
+  }: HeaderTradeDeliveryType,
   parent: XMLElement,
 ): void {
-  // Basic implementation - can be expanded as needed
-  if (delivery.shipToTradeParty) {
+  // Follow the exact sequence order defined in the XSD schema for HeaderTradeDeliveryType
+  if (shipToTradeParty) {
     const shipToEl = parent.node('ram:ShipToTradeParty')
-    convertTradeParty(delivery.shipToTradeParty, shipToEl)
+    convertTradeParty(shipToTradeParty, shipToEl)
+  }
+
+  if (ultimateShipToTradeParty) {
+    const el = parent.node('ram:UltimateShipToTradeParty')
+    convertTradeParty(ultimateShipToTradeParty, el)
+  }
+
+  if (shipFromTradeParty) {
+    const el = parent.node('ram:ShipFromTradeParty')
+    convertTradeParty(shipFromTradeParty, el)
+  }
+
+  // Actual delivery date (BT-72)
+  if (actualDeliverySupplyChainEvent) {
+    const el = parent.node('ram:ActualDeliverySupplyChainEvent')
+    convertSupplyChainEvent(actualDeliverySupplyChainEvent, el)
+  }
+
+  if (despatchAdviceReferencedDocument) {
+    const el = parent.node('ram:DespatchAdviceReferencedDocument')
+    convertReferencedDocument(despatchAdviceReferencedDocument, el)
+  }
+
+  if (receivingAdviceReferencedDocument) {
+    const el = parent.node('ram:ReceivingAdviceReferencedDocument')
+    convertReferencedDocument(receivingAdviceReferencedDocument, el)
+  }
+
+  if (deliveryNoteReferencedDocument) {
+    const el = parent.node('ram:DeliveryNoteReferencedDocument')
+    convertReferencedDocument(deliveryNoteReferencedDocument, el)
   }
 }
 
@@ -549,26 +588,25 @@ function convertHeaderTradeDelivery(
  */
 function convertHeaderTradeSettlement(
   {
-    invoiceCurrencyCode,
-    applicableTradeTax,
-    specifiedTradeSettlementHeaderMonetarySummation,
-    specifiedTradeSettlementPaymentMeans,
-    billingSpecifiedPeriod,
-    specifiedTradeAllowanceCharge,
     creditorReferenceID,
     paymentReference,
     taxCurrencyCode,
+    invoiceCurrencyCode,
     invoiceIssuerReference,
     invoicerTradeParty,
     invoiceeTradeParty,
     payeeTradeParty,
     payerTradeParty,
+    specifiedTradeSettlementPaymentMeans,
+    applicableTradeTax,
+    billingSpecifiedPeriod,
+    specifiedTradeAllowanceCharge,
+    specifiedTradePaymentTerms,
+    specifiedTradeSettlementHeaderMonetarySummation,
   }: HeaderTradeSettlementType,
   parent: XMLElement,
 ): void {
-  // Follow the exact sequence order defined in the XSD schema
-
-  // Process optional elements first
+  // Follow the exact sequence order defined in the XSD schema (EXTENDED superset)
   if (creditorReferenceID) {
     const creditorReferenceIDEl = parent.node('ram:CreditorReferenceID')
     convertID(creditorReferenceID, creditorReferenceIDEl)
@@ -588,9 +626,10 @@ function convertHeaderTradeSettlement(
   const currencyEl = parent.node('ram:InvoiceCurrencyCode')
   currencyEl.text(invoiceCurrencyCode.value)
 
+  // The following four parties only exist in the EXTENDED profile
   if (invoiceIssuerReference) {
     const invoiceIssuerReferenceEl = parent.node('ram:InvoiceIssuerReference')
-    convertID(invoiceIssuerReference, invoiceIssuerReferenceEl)
+    convertText(invoiceIssuerReference, invoiceIssuerReferenceEl)
   }
 
   if (invoicerTradeParty) {
@@ -645,9 +684,40 @@ function convertHeaderTradeSettlement(
     })
   }
 
+  // Payment terms (BT-20) - previously destructured but never emitted
+  if (specifiedTradePaymentTerms && specifiedTradePaymentTerms.length > 0) {
+    specifiedTradePaymentTerms.forEach((terms) => {
+      const termsEl = parent.node('ram:SpecifiedTradePaymentTerms')
+      convertPaymentTerms(terms, termsEl)
+    })
+  }
+
   // Convert monetary summation - required in all profiles
   const summationEl = parent.node('ram:SpecifiedTradeSettlementHeaderMonetarySummation')
   convertTradeSettlementHeaderMonetarySummation(specifiedTradeSettlementHeaderMonetarySummation, summationEl)
+}
+
+/**
+ * Convert TradePaymentTermsType to XML
+ */
+function convertPaymentTerms(
+  { description, dueDateDateTime, directDebitMandateID }: ram.TradePaymentTermsType,
+  parent: XMLElement,
+): void {
+  if (description) {
+    const el = parent.node('ram:Description')
+    convertText(description, el)
+  }
+
+  if (dueDateDateTime) {
+    const el = parent.node('ram:DueDateDateTime')
+    convertDateTime(dueDateDateTime, el)
+  }
+
+  if (directDebitMandateID) {
+    const el = parent.node('ram:DirectDebitMandateID')
+    convertID(directDebitMandateID, el)
+  }
 }
 
 /**
@@ -655,43 +725,39 @@ function convertHeaderTradeSettlement(
  */
 function convertTradeTax(
   {
+    calculatedAmount,
     typeCode,
-    categoryCode,
-    rateApplicablePercent,
-    allowanceChargeBasisAmount,
+    exemptionReason,
     basisAmount,
     lineTotalBasisAmount,
-    exemptionReason,
+    allowanceChargeBasisAmount,
+    categoryCode,
     exemptionReasonCode,
     taxPointDate,
     dueDateTypeCode,
-    calculatedAmount,
+    rateApplicablePercent,
   }: ram.TradeTaxType,
   parent: XMLElement,
 ): void {
+  // Follow the exact sequence order defined in the XSD schema for TradeTaxType
+  if (calculatedAmount) {
+    const calculatedAmountEl = parent.node('ram:CalculatedAmount')
+    convertAmount(calculatedAmount, calculatedAmountEl)
+  }
+
   if (typeCode) {
     const typeCodeEl = parent.node('ram:TypeCode')
     typeCodeEl.text(typeCode.value)
   }
 
-  if (categoryCode) {
-    const categoryCodeEl = parent.node('ram:CategoryCode')
-    categoryCodeEl.text(categoryCode.value)
-  }
-
-  if (rateApplicablePercent) {
-    const rateEl = parent.node('ram:RateApplicablePercent')
-    rateEl.text(String(rateApplicablePercent.value))
-  }
-
-  if (allowanceChargeBasisAmount) {
-    const basisAmountEl = parent.node('ram:AllowanceChargeBasisAmount')
-    convertAmount(allowanceChargeBasisAmount, basisAmountEl)
+  if (exemptionReason) {
+    const exemptionReasonEl = parent.node('ram:ExemptionReason')
+    convertText(exemptionReason, exemptionReasonEl)
   }
 
   if (basisAmount) {
-    // @TODO: We'll omit BasisAmount as it's causing validation errors
-    // This element is likely only valid in certain contexts or profiles
+    const basisAmountEl = parent.node('ram:BasisAmount')
+    convertAmount(basisAmount, basisAmountEl)
   }
 
   if (lineTotalBasisAmount) {
@@ -699,9 +765,14 @@ function convertTradeTax(
     convertAmount(lineTotalBasisAmount, lineTotalBasisAmountEl)
   }
 
-  if (exemptionReason) {
-    const exemptionReasonEl = parent.node('ram:ExemptionReason')
-    convertText(exemptionReason, exemptionReasonEl)
+  if (allowanceChargeBasisAmount) {
+    const allowanceChargeBasisAmountEl = parent.node('ram:AllowanceChargeBasisAmount')
+    convertAmount(allowanceChargeBasisAmount, allowanceChargeBasisAmountEl)
+  }
+
+  if (categoryCode) {
+    const categoryCodeEl = parent.node('ram:CategoryCode')
+    categoryCodeEl.text(categoryCode.value)
   }
 
   if (exemptionReasonCode) {
@@ -719,9 +790,9 @@ function convertTradeTax(
     dueDateTypeCodeEl.text(dueDateTypeCode.value)
   }
 
-  if (calculatedAmount) {
-    const calculatedAmountEl = parent.node('ram:CalculatedAmount')
-    convertAmount(calculatedAmount, calculatedAmountEl)
+  if (rateApplicablePercent) {
+    const rateEl = parent.node('ram:RateApplicablePercent')
+    rateEl.text(String(rateApplicablePercent.value))
   }
 }
 

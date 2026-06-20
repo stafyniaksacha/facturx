@@ -11,11 +11,11 @@ export async function check(options: {
   flavor?: string
   level?: string
 }): Promise<{
-    valid: boolean
-    errors: any[]
-    flavor: string
-    level: string
-  }> {
+  valid: boolean
+  errors: any[]
+  flavor: string
+  level: string
+}> {
   const xml = await resolveXml(options.xml)
 
   const flavor = options.flavor || getFlavor(xml)
