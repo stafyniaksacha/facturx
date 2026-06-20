@@ -1,6 +1,28 @@
 # Factur-X and Order-X JS library
 
-Generate and extract Factur-X and Order-X invoices in TypeScript, using [pdf-lib](https://github.com/Hopding/pdf-lib) and [libxmljs](https://github.com/libxmljs/libxmljs).
+Generate, extract, parse and validate Factur-X / ZUGFeRD and Order-X e-invoices in TypeScript, using [pdf-lib](https://github.com/Hopding/pdf-lib) and [libxmljs](https://github.com/libxmljs/libxmljs).
+
+Conforms to **Factur-X 1.09 / ZUGFeRD 2.5** (the EN 16931 European e-invoicing standard, CII D22B).
+
+## Features
+
+- 📎 **Generate** a PDF-A/3 invoice by embedding the XML into a PDF — `generate`
+- 📤 **Extract** the XML back out of a Factur-X / Order-X / ZUGFeRD PDF — `extract`
+- 🔁 **Parse** an XML invoice into a fully-typed model — `xmlToInvoice`
+- 🧱 **Build** a Cross Industry Invoice model and serialize it to XML — `invoiceToXml`
+- ✅ **Validate** against the official 1.09 **XSD**, and optionally the **Schematron** EN 16931 `BR-*` business rules and code lists — `check` (`schematron: true`) / `validateSchematron`
+- 🗂 All five Factur-X profiles: `minimum`, `basicwl`, `basic`, `en16931`, `extended`
+
+## Supported flavors & levels
+
+| Flavor | Levels | Notes |
+| --- | --- | --- |
+| `facturx` | `minimum`, `basicwl`, `basic`, `en16931`, `extended` | XSD + Schematron validation |
+| `orderx` | `basic`, `comfort`, `extended` | XSD validation |
+| `zugferd` | — | extraction only |
+
+The `flavor` and `level` are autodetected from the XML (via the root element and the
+`GuidelineSpecifiedDocumentContextParameter` ID) when not provided.
 
 ## Usage
 
@@ -27,14 +49,20 @@ npx @stafyniaksacha/facturx extract input.pdf > output.xml
 # Check a Factur-X/Order-X XML file, display validation errors
 npx @stafyniaksacha/facturx check input.xml \
   --flavor facturx \ # autodetects the flavor if not provided
-  --level en16931 # autodetects the level if not provided
+  --level en16931 \ # autodetects the level if not provided
+  --schematron # also run EN 16931 / Factur-X business rules (-s, Factur-X only)
 ```
+
+> `check` runs XSD validation by default; add `--schematron` (`-s`) to also run the EN 16931
+> / Factur-X business-rule and code-list validation. See [Validation](#validation) below.
 
 ### Node.js
 
 ```bash
 npm install @stafyniaksacha/facturx
 ```
+
+#### Generate / extract / validate
 
 ```typescript
 import { readFile } from 'node:fs/promises'
@@ -64,7 +92,7 @@ const buffer = await generate({
 })
 
 // Extract a Factur-X/Order-X XML from a PDF
-const { filename, xml, flavor, level } = await extract({
+const { filename, xml: extractedXml, flavor, level } = await extract({
   pdf, // string, buffer or PDFDocument
 
   // Optional
@@ -74,22 +102,34 @@ const { filename, xml, flavor, level } = await extract({
 })
 
 // Validate a Factur-X/Order-X XML against the XSD (and optionally Schematron)
-const { valid, errors, flavor, level, schematronValid, schematronErrors } = await check({
+const { valid, errors, schematronValid, schematronErrors } = await check({
   xml, // string, buffer or XMLDocument
 
   // Optional
   flavor: 'facturx', // autodetects the flavor if not provided
   level: 'en16931', // autodetects the level if not provided
-  schematron: true, // also run EN16931/Factur-X business rules (facturx only); default false
+  schematron: true, // also run EN 16931 / Factur-X business rules (facturx only); default false
 })
 ```
 
-`check` validates the XML structure against the Factur-X 1.09 (ZUGFeRD 2.5) XSD for any
-flavor (`facturx` / `orderx`). With `schematron: true` it additionally runs the official
-compiled Schematron (EN16931 `BR-*` business rules and code-list checks), returning
-`schematronValid` and `schematronErrors`. **Schematron is Factur-X only** — passing
-`schematron: true` for a non-`facturx` flavor throws (no Order-X Schematron is shipped).
-You can also call `validateSchematron({ xml, flavor: 'facturx', level })` directly.
+#### Parse an XML invoice into a typed model
+
+```typescript
+import { readFile } from 'node:fs/promises'
+import { invoiceToXml, xmlToInvoice } from '@stafyniaksacha/facturx'
+
+// Returns a CrossIndustryInvoiceType instance (see ./models)
+const invoice = await xmlToInvoice(await readFile('/path/to/factur-x.xml'))
+
+const agreement = invoice.supplyChainTradeTransaction.applicableHeaderTradeAgreement
+console.log(agreement.sellerTradeParty.name?.value)
+console.log(invoice.supplyChainTradeTransaction.includedSupplyChainTradeLineItem?.length)
+
+// Round-trip: model back to XML
+const xml = (await invoiceToXml(invoice)).toString()
+```
+
+#### Build a model and serialize it to XML
 
 ```typescript
 import { invoiceToXml } from '@stafyniaksacha/facturx'
@@ -117,7 +157,7 @@ import {
   TradeTaxType,
 } from '@stafyniaksacha/facturx/models'
 
-// Create a FacturX model (minimum version)
+// Create a FacturX model (minimum profile)
 const guidelineID = new IDType({ value: 'urn:factur-x.eu:1p0:minimum' })
 const guidelineParameter = new DocumentContextParameterType({ id: guidelineID })
 const documentContext = new ExchangedDocumentContextType({
@@ -206,7 +246,45 @@ const xml = await invoiceToXml(invoice)
 const xmlString = xml.toString()
 ```
 
-## Usefull links
+The model classes cover the full **EXTENDED** profile (Cross Industry Invoice, CII D22B):
+parties, addresses and contacts, referenced documents and attachments, delivery, payment
+means (IBAN/BIC), allowances/charges, payment terms, taxes, line items and product details.
+Only the fields relevant to the targeted profile need to be populated.
+
+## Validation
+
+`check` validates the XML **structure** against the Factur-X 1.09 (ZUGFeRD 2.5) XSD for any
+flavor. With `schematron: true` it additionally runs the official compiled **Schematron**
+(EN 16931 `BR-*` business rules and code-list checks), returning `schematronValid` and
+`schematronErrors`. Because the 1.09 XSDs no longer enumerate code lists, Schematron is what
+enforces valid codes and the EN 16931 business rules.
+
+> **Schematron is Factur-X only** — passing `schematron: true` (or calling `validateSchematron`)
+> for a non-`facturx` flavor throws, as no Order-X Schematron is shipped.
+
+```typescript
+import { validateSchematron } from '@stafyniaksacha/facturx'
+
+const { valid, errors } = await validateSchematron({
+  xml, // string, buffer or XMLDocument
+  flavor: 'facturx',
+  level: 'en16931',
+})
+
+for (const e of errors) {
+  // e.g. id: "BR-16", message: "[BR-16]-An Invoice shall have ...", test, location, flag
+  console.log(e.id, e.message)
+}
+```
+
+## Breaking changes
+
+Since the 1.09 update, `TradeSettlementHeaderMonetarySummationType.taxBasisTotalAmount` (BT-109)
+and `grandTotalAmount` (BT-112) are **single `AmountType` values** (previously arrays), matching
+the schema cardinality. `taxTotalAmount` (BT-110/111) remains an array (`0..2`). See the model
+example above.
+
+## Useful links
 
 - https://fnfe-mpe.org/factur-x/
 - https://fnfe-mpe.org/factur-x/order-x/

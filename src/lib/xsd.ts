@@ -42,7 +42,7 @@ export async function getXsd(flavor: string, level: string, cache = true): Promi
 }
 export async function getFacturxXsd(level: FACTURX_SCHEMA_TYPE): Promise<XMLDocument> {
   if (!level || !(level in FACTURX_SCHEMA)) {
-    throw new Error(`Unknown Factur-X level: "${level}"`)
+    throw new Error(`Unknown Factur-X level: "${level}", expected: "${Object.keys(FACTURX_SCHEMA).join('", "')}"`)
   }
 
   const url = resolve(join(import.meta.dirname, FACTURX_SCHEMA[level]))
@@ -54,7 +54,7 @@ export async function getFacturxXsd(level: FACTURX_SCHEMA_TYPE): Promise<XMLDocu
 }
 export async function getOrderxXsd(level: ORDERX_SCHEMA_TYPE): Promise<XMLDocument> {
   if (!level || !(level in ORDERX_SCHEMA)) {
-    throw new Error(`Unknown Order-X level: "${level}"`)
+    throw new Error(`Unknown Order-X level: "${level}", expected: "${Object.keys(ORDERX_SCHEMA).join('", "')}"`)
   }
 
   const url = resolve(join(import.meta.dirname, ORDERX_SCHEMA[level]))
