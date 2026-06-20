@@ -1,3 +1,9 @@
 packages:
   - .
+  - docs
+  - examples
   - tests
+
+allowBuilds:
+  esbuild: true
+  libxmljs: true

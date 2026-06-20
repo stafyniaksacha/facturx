@@ -1,0 +1,5 @@
+node_modules
+
+# Output artifacts produced by the examples
+facturx.pdf
+factur-x.xml

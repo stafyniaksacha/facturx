@@ -4,7 +4,8 @@
  */
 
 /**
- * Represents a monetary amount with optional currency
+ * A monetary amount, optionally tagged with its ISO 4217 currency.
+ * @profile MINIMUM
  */
 export class AmountType {
   constructor({ value, currencyID }: { value: number, currencyID?: string }) {
@@ -17,7 +18,8 @@ export class AmountType {
 }
 
 /**
- * Represents binary data with required MIME type and filename
+ * An embedded binary attachment (e.g. a supporting document or image) with its MIME type and filename.
+ * @profile EN 16931
  */
 export class BinaryObjectType {
   constructor({ value, mimeCode, filename }: { value: string, mimeCode: string, filename: string }) {
@@ -32,7 +34,8 @@ export class BinaryObjectType {
 }
 
 /**
- * Represents a code with optional list identification
+ * A coded value drawn from a code list, optionally identifying the list and its version.
+ * @profile BASIC WL
  */
 export class CodeType {
   constructor({ value, listID, listVersionID }: { value: string, listID?: string, listVersionID?: string }) {
@@ -47,7 +50,8 @@ export class CodeType {
 }
 
 /**
- * Represents a datetime with format
+ * A date/time value paired with a format code describing how its string is encoded.
+ * @profile MINIMUM
  */
 export class DateTimeType {
   constructor({ dateTimeString, format }: { dateTimeString: string, format: string }) {
@@ -60,7 +64,8 @@ export class DateTimeType {
 }
 
 /**
- * Represents a date with format
+ * A date value paired with a format code describing how its string is encoded.
+ * @profile EN 16931
  */
 export class DateType {
   constructor({ dateString, format }: { dateString: string, format: string }) {
@@ -73,7 +78,8 @@ export class DateType {
 }
 
 /**
- * Represents an identifier with optional scheme
+ * An identifier value, optionally qualified by the scheme under which it is issued.
+ * @profile MINIMUM
  */
 export class IDType {
   constructor({ value, schemeID }: { value: string, schemeID?: string }) {
@@ -86,7 +92,8 @@ export class IDType {
 }
 
 /**
- * Represents a boolean indicator
+ * A boolean flag.
+ * @profile BASIC WL
  */
 export class IndicatorType {
   constructor({ indicator }: { indicator: boolean }) {
@@ -97,7 +104,8 @@ export class IndicatorType {
 }
 
 /**
- * Represents a measure with optional unit code
+ * A measured physical quantity, optionally tagged with its unit of measure.
+ * @profile EXTENDED
  */
 export class MeasureType {
   constructor({ value, unitCode }: { value: number, unitCode?: string }) {
@@ -110,7 +118,8 @@ export class MeasureType {
 }
 
 /**
- * Represents a numeric value
+ * A plain numeric value.
+ * @profile EXTENDED
  */
 export class NumericType {
   constructor({ value }: { value: number }) {
@@ -121,7 +130,8 @@ export class NumericType {
 }
 
 /**
- * Represents a percentage value
+ * A percentage value.
+ * @profile BASIC WL
  */
 export class PercentType {
   constructor({ value }: { value: number }) {
@@ -132,7 +142,8 @@ export class PercentType {
 }
 
 /**
- * Represents a quantity with optional unit code
+ * A counted quantity, optionally tagged with its unit of measure.
+ * @profile BASIC
  */
 export class QuantityType {
   constructor({ value, unitCode }: { value: number, unitCode?: string }) {
@@ -145,7 +156,8 @@ export class QuantityType {
 }
 
 /**
- * Represents a rate value
+ * A rate value, such as a currency conversion rate.
+ * @profile EXTENDED
  */
 export class RateType {
   constructor({ value }: { value: number }) {
@@ -156,7 +168,8 @@ export class RateType {
 }
 
 /**
- * Represents text content
+ * A free-text string value.
+ * @profile MINIMUM
  */
 export class TextType {
   constructor({ value }: { value: string }) {
