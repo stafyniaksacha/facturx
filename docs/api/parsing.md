@@ -42,6 +42,23 @@ const doc = await invoiceToXml(invoice)
 const xmlString = doc.toString()
 ```
 
+The returned `XmlDocument` holds WebAssembly-allocated memory that is not
+garbage-collected. Free it explicitly when you are done:
+
+```ts
+doc.dispose()
+```
+
+Or use a TypeScript 5.2 `using` declaration to dispose it automatically at the
+end of the block:
+
+```ts
+using doc = await invoiceToXml(invoice)
+// doc is automatically disposed at the end of this block
+```
+
+See the [libxml2-wasm memory management docs](https://jameslan.github.io/libxml2-wasm/v0.7/documents/Memory_Management.html#object-disposal) for details.
+
 ## Round-trip
 
 Because the parser and converter mirror each other, you can read, modify and re-serialize:

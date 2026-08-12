@@ -1,10 +1,11 @@
-import type { XmlDocument, XmlElement } from 'libxml2-wasm'
+import type { XmlElement } from 'libxml2-wasm'
 import type { Buffer } from 'node:buffer'
 import type { BaseInfo } from '../types'
 import type {
   DOC_TYPE_KEY,
 } from './constants'
 import { parse } from 'date-fns'
+import { XmlDocument } from 'libxml2-wasm'
 import {
   FACTURX_SCHEMA,
   ORDERX_SCHEMA,
@@ -96,6 +97,11 @@ export async function extractBaseInfo(xml: string | Buffer | XmlDocument): Promi
 
   const docTypeEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:TypeCode', namespaces)
   const docType = docTypeEl.content as DOC_TYPE_KEY || ''
+
+  if (!(xml instanceof XmlDocument)) {
+    // Dispose the XmlDocument instance if we created it within this function
+    xmlDoc.dispose()
+  }
 
   return {
     seller,

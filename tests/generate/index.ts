@@ -50,7 +50,7 @@ async function main(): Promise<void> {
   const invoice = getMinimalFacturXModel()
   const xml = await invoiceToXml(invoice)
 
-  await writeFile(resolve(import.meta.dirname, './output.xml'), xml.toString({ format: false, whitespace: true }))
+  await writeFile(resolve(import.meta.dirname, './output.xml'), xml.toString({ format: false }))
 
   // const output = await pdf.save()
   const output = await generate({

@@ -1,12 +1,12 @@
-import type { XmlDocument } from 'libxml2-wasm'
 import type { Buffer } from 'node:buffer'
 import type {
   PDFDocument,
 } from 'pdf-lib'
-
 import type { PdfMetadata } from '../types'
 
 import { randomBytes } from 'node:crypto'
+
+import { XmlDocument } from 'libxml2-wasm'
 import {
   AFRelationship,
   PDFHexString,
@@ -91,6 +91,11 @@ export async function generate(options: {
 
   const encoder = new TextEncoder()
   const uint8Array = encoder.encode(xml.toString())
+
+  if (!(options.xml instanceof XmlDocument)) {
+    // Dispose the XmlDocument instance if we created it within this function
+    xml.dispose()
+  }
 
   await pdf.attach(uint8Array, filename, {
     afRelationship: AFRelationship.Data,

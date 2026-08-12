@@ -1,9 +1,6 @@
-import type { XmlDocument } from 'libxml2-wasm'
-
 import type { Buffer } from 'node:buffer'
 import type { SchematronError } from './schematron'
-
-import { XmlValidateError, XsdValidator } from 'libxml2-wasm'
+import { XmlDocument, XmlValidateError, XsdValidator } from 'libxml2-wasm'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
 import { getFlavor, getLevel } from './xml'
@@ -62,6 +59,11 @@ export async function check(options: {
   }
 
   const schematron = await validateSchematron({ xml: xml.toString(), flavor, level })
+
+  if (!(options.xml instanceof XmlDocument)) {
+    // Dispose the XmlDocument instance if we created it within this function
+    xml.dispose()
+  }
 
   return {
     valid: xsdValid && schematron.valid,
