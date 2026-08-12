@@ -1,4 +1,4 @@
-import type { XMLDocument, XMLElement } from 'libxmljs'
+import type { XmlDocument, XmlElement } from 'libxml2-wasm'
 import type { Buffer } from 'node:buffer'
 import type { BaseInfo } from '../types'
 import type {
@@ -11,25 +11,11 @@ import {
 } from './constants'
 import { resolveXml } from './resolve'
 
-export function extractNamespaces(fileDoc: XMLDocument): Record<string, string> {
-  // segfault - https://github.com/libxmljs/libxmljs/issues/649
-  // const namespaces = fileDoc.namespaces()
-  const str = fileDoc.toString()
-
-  const namespaces: Record<string, string> = {}
-
-  let match: RegExpExecArray | null
-
-  const xmlnsRe = /xmlns:([^=]+)="([^"]+)"/g
-  // eslint-disable-next-line no-cond-assign
-  while ((match = xmlnsRe.exec(str)) !== null) {
-    namespaces[match[1]] = match[2]
-  }
-
-  return namespaces
+export function extractNamespaces(fileDoc: XmlDocument): Record<string, string> {
+  return fileDoc.root.namespaces
 }
 
-export function getLevel(xmlDoc: XMLDocument): string {
+export function getLevel(xmlDoc: XmlDocument): string {
   const namespaces = extractNamespaces(xmlDoc)
 
   // Factur-X and Order-X
@@ -52,11 +38,11 @@ export function getLevel(xmlDoc: XMLDocument): string {
   }
   const xpathNode = doc_id_xpath[0]
 
-  if (!('text' in xpathNode)) {
+  if (!xpathNode.content) {
     throw new Error('No text found in the ID node')
   }
 
-  const doc_id = xpathNode?.text()?.split(':')
+  const doc_id = xpathNode?.content?.split(':')
   let level = doc_id[doc_id.length - 1]
 
   const possibleValues = new Set([...Object.keys(FACTURX_SCHEMA), ...Object.keys(ORDERX_SCHEMA)])
@@ -70,8 +56,8 @@ export function getLevel(xmlDoc: XMLDocument): string {
   return level
 }
 
-export function getFlavor(fileDoc: XMLDocument): string {
-  const tag = fileDoc.root()?.name()
+export function getFlavor(fileDoc: XmlDocument): string {
+  const tag = fileDoc.root?.name
   switch (tag) {
     case 'SCRDMCCBDACIOMessageStructure':
       return 'orderx'
@@ -83,14 +69,14 @@ export function getFlavor(fileDoc: XMLDocument): string {
   throw new Error(`XML not recognized as Factur-X, Order-X or ZUGFeRD`)
 }
 
-export async function extractBaseInfo(xml: string | Buffer | XMLDocument): Promise<BaseInfo> {
+export async function extractBaseInfo(xml: string | Buffer | XmlDocument): Promise<BaseInfo> {
   const xmlDoc = await resolveXml(xml)
 
   const namespaces = extractNamespaces(xmlDoc)
 
   const dateEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString', namespaces)
-  const dateStr = dateEl.text()
-  const dateFormat = dateEl.getAttribute('format')?.value() || '102'
+  const dateStr = dateEl.content
+  const dateFormat = dateEl.attr('format')?.value || '102'
   const formatMap = {
     // eslint-disable-next-line style/quote-props
     '102': 'yyyyMMdd',
@@ -100,16 +86,16 @@ export async function extractBaseInfo(xml: string | Buffer | XMLDocument): Promi
   const date = dateStr ? parse(dateStr, formatMap[dateFormat as keyof typeof formatMap], new Date()) : new Date()
 
   const numberEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:ID', namespaces)
-  const number = numberEl.text() || ''
+  const number = numberEl.content || ''
 
   const sellerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name', namespaces)
-  const seller = sellerEl.text() || ''
+  const seller = sellerEl.content || ''
 
   const buyerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:Name', namespaces)
-  const buyer = buyerEl.text() || ''
+  const buyer = buyerEl.content || ''
 
   const docTypeEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:TypeCode', namespaces)
-  const docType = docTypeEl.text() as DOC_TYPE_KEY || ''
+  const docType = docTypeEl.content as DOC_TYPE_KEY || ''
 
   return {
     seller,
@@ -160,10 +146,10 @@ export async function extractBaseInfo(xml: string | Buffer | XMLDocument): Promi
 //   return level
 // }
 
-function findXPath(fileDoc: XMLDocument, xpath: string, namespaces: Record<string, string>): XMLElement {
+function findXPath(fileDoc: XmlDocument, xpath: string, namespaces: Record<string, string>): XmlElement {
   const xpathNode = fileDoc.find(xpath, namespaces)
   if (!xpathNode.length) {
     throw new Error(`No ${xpath} found in the document`)
   }
-  return xpathNode[0] as XMLElement
+  return xpathNode[0] as XmlElement
 }

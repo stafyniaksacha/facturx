@@ -1,4 +1,4 @@
-import type { XMLDocument } from 'libxmljs'
+import type { XmlDocument } from 'libxml2-wasm'
 import type {
   FACTURX_SCHEMA_TYPE,
   ORDERX_SCHEMA_TYPE,
@@ -6,15 +6,18 @@ import type {
 
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { xmlRegisterFsInputProviders } from 'libxml2-wasm/lib/nodejs.mjs'
 import {
   FACTURX_SCHEMA,
   ORDERX_SCHEMA,
 } from './constants'
 import { resolveXml } from './resolve'
 
-const _cache = {} as Record<string, Record<string, XMLDocument>>
+xmlRegisterFsInputProviders()
 
-export async function getXsd(flavor: string, level: string, cache = true): Promise<XMLDocument> {
+const _cache = {} as Record<string, Record<string, XmlDocument>>
+
+export async function getXsd(flavor: string, level: string, cache = true): Promise<XmlDocument> {
   if (cache && flavor in _cache && level in _cache[flavor]) {
     return _cache[flavor][level]
   }
@@ -40,7 +43,7 @@ export async function getXsd(flavor: string, level: string, cache = true): Promi
       throw new Error(`Unknown schema flavor: "${flavor}"`)
   }
 }
-export async function getFacturxXsd(level: FACTURX_SCHEMA_TYPE): Promise<XMLDocument> {
+export async function getFacturxXsd(level: FACTURX_SCHEMA_TYPE): Promise<XmlDocument> {
   if (!level || !(level in FACTURX_SCHEMA)) {
     throw new Error(`Unknown Factur-X level: "${level}", expected: "${Object.keys(FACTURX_SCHEMA).join('", "')}"`)
   }
@@ -52,7 +55,7 @@ export async function getFacturxXsd(level: FACTURX_SCHEMA_TYPE): Promise<XMLDocu
     url,
   })
 }
-export async function getOrderxXsd(level: ORDERX_SCHEMA_TYPE): Promise<XMLDocument> {
+export async function getOrderxXsd(level: ORDERX_SCHEMA_TYPE): Promise<XmlDocument> {
   if (!level || !(level in ORDERX_SCHEMA)) {
     throw new Error(`Unknown Order-X level: "${level}", expected: "${Object.keys(ORDERX_SCHEMA).join('", "')}"`)
   }

@@ -1,4 +1,4 @@
-import type { XMLDocument } from 'libxmljs'
+import type { XmlDocument } from 'libxml2-wasm'
 import type { Buffer } from 'node:buffer'
 import type {
   PDFDocument,
@@ -23,7 +23,7 @@ import { setPDFA3BMetadata } from './xmp'
 
 export async function generate(options: {
   pdf: string | Buffer | PDFDocument
-  xml: string | Buffer | XMLDocument
+  xml: string | Buffer | XmlDocument
   check?: boolean
   flavor?: string
   level?: string

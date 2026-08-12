@@ -7,7 +7,7 @@ Embed an XML invoice into a PDF and return a compliant **PDF/A-3** as bytes.
 ```ts
 function generate(options: {
   pdf: string | Buffer | PDFDocument
-  xml: string | Buffer | XMLDocument
+  xml: string | Buffer | XmlDocument
   check?: boolean
   flavor?: string
   level?: string
@@ -21,7 +21,7 @@ function generate(options: {
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `pdf` | `string \| Buffer \| PDFDocument` | — | **Required.** Source PDF (path/bytes already read, or a `pdf-lib` document). |
-| `xml` | `string \| Buffer \| XMLDocument` | — | **Required.** Invoice XML to embed. |
+| `xml` | `string \| Buffer \| XmlDocument` | — | **Required.** Invoice XML to embed. |
 | `check` | `boolean` | `false` | Set `true` to run XSD validation before embedding; throws on invalid XML. |
 | `flavor` | `string` | autodetect | `facturx`, `orderx` or `zugferd`. |
 | `level` | `string` | autodetect | Schema level (e.g. `en16931`). |

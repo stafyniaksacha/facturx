@@ -7,7 +7,7 @@ business rules.
 
 ```ts
 function check(options: {
-  xml: string | Buffer | XMLDocument
+  xml: string | Buffer | XmlDocument
   flavor?: string
   level?: string
   schematron?: boolean
@@ -25,7 +25,7 @@ function check(options: {
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `xml` | `string \| Buffer \| XMLDocument` | — | **Required.** The invoice XML. |
+| `xml` | `string \| Buffer \| XmlDocument` | — | **Required.** The invoice XML. |
 | `flavor` | `string` | autodetect | `facturx`, `orderx` or `zugferd`. |
 | `level` | `string` | autodetect | Schema level (e.g. `en16931`). |
 | `schematron` | `boolean` | `false` | Also run Schematron business-rule validation. **Factur-X only** — throws otherwise. |

@@ -25,7 +25,7 @@ Throws `Invalid XML: no root element` if the input has no document root.
 ## `invoiceToXml()`
 
 ```ts
-function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<XMLDocument>
+function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<XmlDocument>
 ```
 
 Serializes a `CrossIndustryInvoiceType` model back to XML. Element order follows the `xs:sequence`
@@ -33,7 +33,7 @@ of the Factur-X 1.09 (CII D22B) **EXTENDED** schema — a superset of all lower 
 fields present on the model are emitted, so the same converter produces valid output for every
 profile from `MINIMUM` to `EXTENDED`.
 
-The return value is a `libxmljs` `XMLDocument`; call `.toString()` for the serialized XML.
+The return value is a `libxml2-wasm` `XmlDocument`; call `.toString()` for the serialized XML.
 
 ```ts
 import { invoiceToXml } from '@stafyniaksacha/facturx'

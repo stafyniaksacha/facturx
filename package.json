@@ -56,7 +56,7 @@
     "@pdf-lib/fontkit": "^1.1.1",
     "citty": "^0.2.2",
     "date-fns": "^4.1.0",
-    "libxmljs": "^1.0.11",
+    "libxml2-wasm": "^0.7.1",
     "pdf-lib": "^1.17.1",
     "saxon-js": "^2.7.0"
   },

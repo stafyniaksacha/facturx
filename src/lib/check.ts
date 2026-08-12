@@ -1,15 +1,16 @@
-import type { XMLDocument } from 'libxmljs'
+import type { XmlDocument } from 'libxml2-wasm'
 
 import type { Buffer } from 'node:buffer'
 import type { SchematronError } from './schematron'
 
+import { XmlValidateError, XsdValidator } from 'libxml2-wasm'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
 import { getFlavor, getLevel } from './xml'
 import { getXsd } from './xsd'
 
 export async function check(options: {
-  xml: string | Buffer | XMLDocument
+  xml: string | Buffer | XmlDocument
   flavor?: string
   level?: string
   /**
@@ -31,9 +32,22 @@ export async function check(options: {
   const level = options.level || getLevel(xml)
 
   const xsd = await getXsd(flavor, level)
+  const validator = XsdValidator.fromDoc(xsd)
 
-  const xsdValid = xml.validate(xsd) as boolean
-  const errors = xml.validationErrors
+  let xsdValid = false
+  let errors: any[] = []
+  try {
+    validator.validate(xml)
+    xsdValid = true
+  }
+  catch (error) {
+    if (error instanceof XmlValidateError) {
+      errors = error.details
+    }
+  }
+  finally {
+    validator.dispose()
+  }
 
   if (!options.schematron) {
     return {

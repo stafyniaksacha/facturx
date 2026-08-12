@@ -1,6 +1,6 @@
-import type { XMLElement } from 'libxmljs'
+import type { XmlElement } from 'libxml2-wasm'
 import type { Buffer } from 'node:buffer'
-import { parseXmlAsync } from 'libxmljs'
+import { XmlDocument } from 'libxml2-wasm'
 import {
   CrossIndustryInvoiceType,
   ExchangedDocumentContextType,
@@ -28,8 +28,8 @@ const NAMESPACES: NS = {
  * Mirrors the converter: every aggregate emitted by invoiceToXml is read back here.
  */
 export async function xmlToInvoice(xml: string | Buffer): Promise<CrossIndustryInvoiceType> {
-  const doc = await parseXmlAsync(xml)
-  const root = doc.root()
+  const doc = XmlDocument.fromString(xml.toString())
+  const root = doc.root
 
   if (!root) {
     throw new Error('Invalid XML: no root element')
@@ -46,79 +46,79 @@ export async function xmlToInvoice(xml: string | Buffer): Promise<CrossIndustryI
 // Small helpers
 // ---------------------------------------------------------------------------
 
-function get(node: XMLElement | undefined, xpath: string): XMLElement | undefined {
+function get(node: XmlElement | undefined, xpath: string): XmlElement | undefined {
   if (!node) {
     return undefined
   }
-  return (node.get(xpath, NAMESPACES) as XMLElement) ?? undefined
+  return (node.get(xpath, NAMESPACES) as XmlElement) ?? undefined
 }
 
-function findAll(node: XMLElement | undefined, xpath: string): XMLElement[] {
+function findAll(node: XmlElement | undefined, xpath: string): XmlElement[] {
   if (!node) {
     return []
   }
-  return (node.find(xpath, NAMESPACES) as XMLElement[]) ?? []
+  return (node.find(xpath, NAMESPACES) as XmlElement[]) ?? []
 }
 
-function attr(node: XMLElement | undefined, name: string): string | undefined {
-  return node?.getAttribute(name)?.value() ?? undefined
+function attr(node: XmlElement | undefined, name: string): string | undefined {
+  return node?.attr(name)?.value ?? undefined
 }
 
-function textOf(node: XMLElement | undefined): string | undefined {
-  const t = node?.text()
+function textOf(node: XmlElement | undefined): string | undefined {
+  const t = node?.content
   return t === undefined || t === '' ? undefined : t
 }
 
-function parseID(node: XMLElement | undefined): udt.IDType | undefined {
+function parseID(node: XmlElement | undefined): udt.IDType | undefined {
   if (!node) {
     return undefined
   }
-  return new udt.IDType({ value: node.text() ?? '', schemeID: attr(node, 'schemeID') })
+  return new udt.IDType({ value: node.content ?? '', schemeID: attr(node, 'schemeID') })
 }
 
-function parseText(node: XMLElement | undefined): udt.TextType | undefined {
+function parseText(node: XmlElement | undefined): udt.TextType | undefined {
   if (!node) {
     return undefined
   }
-  return new udt.TextType({ value: node.text() ?? '' })
+  return new udt.TextType({ value: node.content ?? '' })
 }
 
-function parseCode(node: XMLElement | undefined): udt.CodeType | undefined {
+function parseCode(node: XmlElement | undefined): udt.CodeType | undefined {
   if (!node) {
     return undefined
   }
-  return new udt.CodeType({ value: node.text() ?? '', listID: attr(node, 'listID'), listVersionID: attr(node, 'listVersionID') })
+  return new udt.CodeType({ value: node.content ?? '', listID: attr(node, 'listID'), listVersionID: attr(node, 'listVersionID') })
 }
 
-function parseAmount(node: XMLElement | undefined): udt.AmountType | undefined {
+function parseAmount(node: XmlElement | undefined): udt.AmountType | undefined {
   if (!node) {
     return undefined
   }
-  return new udt.AmountType({ value: Number.parseFloat(node.text() || '0'), currencyID: attr(node, 'currencyID') })
+  return new udt.AmountType({ value: Number.parseFloat(node.content || '0'), currencyID: attr(node, 'currencyID') })
 }
 
-function parseQuantity(node: XMLElement | undefined): udt.QuantityType | undefined {
+function parseQuantity(node: XmlElement | undefined): udt.QuantityType | undefined {
   if (!node) {
     return undefined
   }
-  return new udt.QuantityType({ value: Number.parseFloat(node.text() || '0'), unitCode: attr(node, 'unitCode') })
+  return new udt.QuantityType({ value: Number.parseFloat(node.content || '0'), unitCode: attr(node, 'unitCode') })
 }
 
-function parseMeasure(node: XMLElement | undefined): udt.MeasureType | undefined {
+function parseMeasure(node: XmlElement | undefined): udt.MeasureType | undefined {
   if (!node) {
     return undefined
   }
-  return new udt.MeasureType({ value: Number.parseFloat(node.text() || '0'), unitCode: attr(node, 'unitCode') })
+  return new udt.MeasureType({ value: Number.parseFloat(node.content || '0'), unitCode: attr(node, 'unitCode') })
 }
 
-function parsePercent(node: XMLElement | undefined): udt.PercentType | undefined {
+function parsePercent(node: XmlElement | undefined): udt.PercentType | undefined {
   if (!node) {
     return undefined
   }
-  return new udt.PercentType({ value: Number.parseFloat(node.text() || '0') })
+  return new udt.PercentType({ value: Number.parseFloat(node.content || '0') })
 }
 
-function parseIndicator(node: XMLElement | undefined): udt.IndicatorType | undefined {
+function parseIndicator(node: XmlElement | undefined): udt.IndicatorType | undefined {
   if (!node) {
     return undefined
   }
@@ -126,38 +126,38 @@ function parseIndicator(node: XMLElement | undefined): udt.IndicatorType | undef
 }
 
 /** udt:DateTimeString child with a format attribute. */
-function parseDateTime(node: XMLElement | undefined): udt.DateTimeType | undefined {
+function parseDateTime(node: XmlElement | undefined): udt.DateTimeType | undefined {
   if (!node) {
     return undefined
   }
   const inner = get(node, './udt:DateTimeString')
-  return new udt.DateTimeType({ dateTimeString: inner?.text() ?? '', format: attr(inner, 'format') ?? '102' })
+  return new udt.DateTimeType({ dateTimeString: inner?.content ?? '', format: attr(inner, 'format') ?? '102' })
 }
 
 /** udt:DateString child with a format attribute. */
-function parseDate(node: XMLElement | undefined): udt.DateType | undefined {
+function parseDate(node: XmlElement | undefined): udt.DateType | undefined {
   if (!node) {
     return undefined
   }
   const inner = get(node, './udt:DateString')
-  return new udt.DateType({ dateString: inner?.text() ?? '', format: attr(inner, 'format') ?? '102' })
+  return new udt.DateType({ dateString: inner?.content ?? '', format: attr(inner, 'format') ?? '102' })
 }
 
 /** qdt:DateTimeString child (FormattedDateTimeType). */
-function parseFormattedDateTime(node: XMLElement | undefined): qdt.FormattedDateTimeType | undefined {
+function parseFormattedDateTime(node: XmlElement | undefined): qdt.FormattedDateTimeType | undefined {
   if (!node) {
     return undefined
   }
   const inner = get(node, './qdt:DateTimeString')
-  return new qdt.FormattedDateTimeType({ dateTimeString: inner?.text() ?? '', format: attr(inner, 'format') ?? '208' })
+  return new qdt.FormattedDateTimeType({ dateTimeString: inner?.content ?? '', format: attr(inner, 'format') ?? '208' })
 }
 
-function parseBinaryObject(node: XMLElement | undefined): udt.BinaryObjectType | undefined {
+function parseBinaryObject(node: XmlElement | undefined): udt.BinaryObjectType | undefined {
   if (!node) {
     return undefined
   }
   return new udt.BinaryObjectType({
-    value: node.text() ?? '',
+    value: node.content ?? '',
     mimeCode: attr(node, 'mimeCode') ?? '',
     filename: attr(node, 'filename') ?? '',
   })
@@ -167,7 +167,7 @@ function parseBinaryObject(node: XMLElement | undefined): udt.BinaryObjectType |
 // Document context / document
 // ---------------------------------------------------------------------------
 
-function parseExchangedDocumentContext(root: XMLElement): ExchangedDocumentContextType {
+function parseExchangedDocumentContext(root: XmlElement): ExchangedDocumentContextType {
   const contextNode = get(root, './rsm:ExchangedDocumentContext')
   if (!contextNode) {
     throw new Error('Invalid XML: no ExchangedDocumentContext element')
@@ -187,7 +187,7 @@ function parseExchangedDocumentContext(root: XMLElement): ExchangedDocumentConte
   })
 }
 
-function parseExchangedDocument(root: XMLElement): ExchangedDocumentType {
+function parseExchangedDocument(root: XmlElement): ExchangedDocumentType {
   const node = get(root, './rsm:ExchangedDocument')
   if (!node) {
     throw new Error('Invalid XML: no ExchangedDocument element')
@@ -205,7 +205,7 @@ function parseExchangedDocument(root: XMLElement): ExchangedDocumentType {
   })
 }
 
-function parseNote(node: XMLElement): ram.NoteType {
+function parseNote(node: XmlElement): ram.NoteType {
   return new ram.NoteType({
     contentCode: parseCode(get(node, './ram:ContentCode')),
     content: parseText(get(node, './ram:Content')) ?? new udt.TextType({ value: '' }),
@@ -213,7 +213,7 @@ function parseNote(node: XMLElement): ram.NoteType {
   })
 }
 
-function parseSpecifiedPeriod(node: XMLElement | undefined): ram.SpecifiedPeriodType | undefined {
+function parseSpecifiedPeriod(node: XmlElement | undefined): ram.SpecifiedPeriodType | undefined {
   if (!node) {
     return undefined
   }
@@ -229,7 +229,7 @@ function parseSpecifiedPeriod(node: XMLElement | undefined): ram.SpecifiedPeriod
 // Transaction
 // ---------------------------------------------------------------------------
 
-function parseSupplyChainTradeTransaction(root: XMLElement): SupplyChainTradeTransactionType {
+function parseSupplyChainTradeTransaction(root: XmlElement): SupplyChainTradeTransactionType {
   const node = get(root, './rsm:SupplyChainTradeTransaction')
   if (!node) {
     throw new Error('Invalid XML: no SupplyChainTradeTransaction element')
@@ -247,7 +247,7 @@ function parseSupplyChainTradeTransaction(root: XMLElement): SupplyChainTradeTra
 // Line items
 // ---------------------------------------------------------------------------
 
-function parseLineItem(node: XMLElement): ram.SupplyChainTradeLineItemType {
+function parseLineItem(node: XmlElement): ram.SupplyChainTradeLineItemType {
   const docLine = get(node, './ram:AssociatedDocumentLineDocument')
   const lineSettlement = get(node, './ram:SpecifiedLineTradeSettlement')
 
@@ -268,7 +268,7 @@ function parseLineItem(node: XMLElement): ram.SupplyChainTradeLineItemType {
   })
 }
 
-function parseTradeProduct(node: XMLElement | undefined): ram.TradeProductType {
+function parseTradeProduct(node: XmlElement | undefined): ram.TradeProductType {
   if (!node) {
     return new ram.TradeProductType({ name: new udt.TextType({ value: '' }) })
   }
@@ -301,7 +301,7 @@ function parseTradeProduct(node: XMLElement | undefined): ram.TradeProductType {
   })
 }
 
-function parseLineTradeAgreement(node: XMLElement | undefined): ram.LineTradeAgreementType | undefined {
+function parseLineTradeAgreement(node: XmlElement | undefined): ram.LineTradeAgreementType | undefined {
   if (!node) {
     return undefined
   }
@@ -319,7 +319,7 @@ function parseLineTradeAgreement(node: XMLElement | undefined): ram.LineTradeAgr
   })
 }
 
-function parseTradePrice(node: XMLElement | undefined): ram.TradePriceType | undefined {
+function parseTradePrice(node: XmlElement | undefined): ram.TradePriceType | undefined {
   if (!node) {
     return undefined
   }
@@ -331,7 +331,7 @@ function parseTradePrice(node: XMLElement | undefined): ram.TradePriceType | und
   })
 }
 
-function parseLineTradeDelivery(node: XMLElement | undefined): ram.LineTradeDeliveryType | undefined {
+function parseLineTradeDelivery(node: XmlElement | undefined): ram.LineTradeDeliveryType | undefined {
   if (!node) {
     return undefined
   }
@@ -349,7 +349,7 @@ function parseLineTradeDelivery(node: XMLElement | undefined): ram.LineTradeDeli
   })
 }
 
-function parseLineTradeSettlement(node: XMLElement | undefined): ram.LineTradeSettlementType {
+function parseLineTradeSettlement(node: XmlElement | undefined): ram.LineTradeSettlementType {
   if (!node) {
     return new ram.LineTradeSettlementType({ applicableTradeTax: [] })
   }
@@ -360,13 +360,13 @@ function parseLineTradeSettlement(node: XMLElement | undefined): ram.LineTradeSe
     specifiedTradeAllowanceCharge: findAll(node, './ram:SpecifiedTradeAllowanceCharge').map(parseAllowanceCharge),
     specifiedTradeSettlementLineMonetarySummation: sum
       ? new ram.TradeSettlementLineMonetarySummationType({
-        lineTotalAmount: parseAmount(get(sum, './ram:LineTotalAmount')) ?? new udt.AmountType({ value: 0 }),
-        chargeTotalAmount: parseAmount(get(sum, './ram:ChargeTotalAmount')),
-        allowanceTotalAmount: parseAmount(get(sum, './ram:AllowanceTotalAmount')),
-        taxTotalAmount: parseAmount(get(sum, './ram:TaxTotalAmount')),
-        grandTotalAmount: parseAmount(get(sum, './ram:GrandTotalAmount')),
-        totalAllowanceChargeAmount: parseAmount(get(sum, './ram:TotalAllowanceChargeAmount')),
-      })
+          lineTotalAmount: parseAmount(get(sum, './ram:LineTotalAmount')) ?? new udt.AmountType({ value: 0 }),
+          chargeTotalAmount: parseAmount(get(sum, './ram:ChargeTotalAmount')),
+          allowanceTotalAmount: parseAmount(get(sum, './ram:AllowanceTotalAmount')),
+          taxTotalAmount: parseAmount(get(sum, './ram:TaxTotalAmount')),
+          grandTotalAmount: parseAmount(get(sum, './ram:GrandTotalAmount')),
+          totalAllowanceChargeAmount: parseAmount(get(sum, './ram:TotalAllowanceChargeAmount')),
+        })
       : undefined,
     invoiceReferencedDocument: parseReferencedDocument(get(node, './ram:InvoiceReferencedDocument')),
     additionalReferencedDocument: findAll(node, './ram:AdditionalReferencedDocument').map(n => parseReferencedDocument(n)!),
@@ -378,7 +378,7 @@ function parseLineTradeSettlement(node: XMLElement | undefined): ram.LineTradeSe
 // Header agreement / delivery / settlement
 // ---------------------------------------------------------------------------
 
-function parseHeaderTradeAgreement(node: XMLElement): HeaderTradeAgreementType {
+function parseHeaderTradeAgreement(node: XmlElement): HeaderTradeAgreementType {
   const agreement = get(node, './ram:ApplicableHeaderTradeAgreement')
   if (!agreement) {
     throw new Error('Invalid XML: no ApplicableHeaderTradeAgreement element')
@@ -401,15 +401,15 @@ function parseHeaderTradeAgreement(node: XMLElement): HeaderTradeAgreementType {
     buyerAgentTradeParty: parseTradeParty(get(agreement, './ram:BuyerAgentTradeParty')),
     specifiedProcuringProject: get(agreement, './ram:SpecifiedProcuringProject')
       ? new ram.ProcuringProjectType({
-        id: new udt.IDType({ value: textOf(get(agreement, './ram:SpecifiedProcuringProject/ram:ID')) ?? '' }),
-        name: new udt.TextType({ value: textOf(get(agreement, './ram:SpecifiedProcuringProject/ram:Name')) ?? '' }),
-      })
+          id: new udt.IDType({ value: textOf(get(agreement, './ram:SpecifiedProcuringProject/ram:ID')) ?? '' }),
+          name: new udt.TextType({ value: textOf(get(agreement, './ram:SpecifiedProcuringProject/ram:Name')) ?? '' }),
+        })
       : undefined,
     ultimateCustomerOrderReferencedDocument: findAll(agreement, './ram:UltimateCustomerOrderReferencedDocument').map(n => parseReferencedDocument(n)!),
   })
 }
 
-function parseHeaderTradeDelivery(node: XMLElement): HeaderTradeDeliveryType {
+function parseHeaderTradeDelivery(node: XmlElement): HeaderTradeDeliveryType {
   const delivery = get(node, './ram:ApplicableHeaderTradeDelivery')
   if (!delivery) {
     return new HeaderTradeDeliveryType({})
@@ -425,7 +425,7 @@ function parseHeaderTradeDelivery(node: XMLElement): HeaderTradeDeliveryType {
   })
 }
 
-function parseSupplyChainEvent(node: XMLElement | undefined): ram.SupplyChainEventType | undefined {
+function parseSupplyChainEvent(node: XmlElement | undefined): ram.SupplyChainEventType | undefined {
   if (!node) {
     return undefined
   }
@@ -436,7 +436,7 @@ function parseSupplyChainEvent(node: XMLElement | undefined): ram.SupplyChainEve
   return new ram.SupplyChainEventType({ occurrenceDateTime: dt })
 }
 
-function parseHeaderTradeSettlement(node: XMLElement): HeaderTradeSettlementType {
+function parseHeaderTradeSettlement(node: XmlElement): HeaderTradeSettlementType {
   const settlement = get(node, './ram:ApplicableHeaderTradeSettlement')
   if (!settlement) {
     throw new Error('Invalid XML: no ApplicableHeaderTradeSettlement element')
@@ -472,7 +472,7 @@ function parseHeaderTradeSettlement(node: XMLElement): HeaderTradeSettlementType
   })
 }
 
-function parseHeaderMonetarySummation(node: XMLElement | undefined, currency: string): ram.TradeSettlementHeaderMonetarySummationType {
+function parseHeaderMonetarySummation(node: XmlElement | undefined, currency: string): ram.TradeSettlementHeaderMonetarySummationType {
   const zero = (): udt.AmountType => new udt.AmountType({ value: 0, currencyID: currency })
   if (!node) {
     return new ram.TradeSettlementHeaderMonetarySummationType({
@@ -498,7 +498,7 @@ function parseHeaderMonetarySummation(node: XMLElement | undefined, currency: st
 // Shared aggregates
 // ---------------------------------------------------------------------------
 
-function parseTradeParty(node: XMLElement | undefined): ram.TradePartyType | undefined {
+function parseTradeParty(node: XmlElement | undefined): ram.TradePartyType | undefined {
   if (!node) {
     return undefined
   }
@@ -511,10 +511,10 @@ function parseTradeParty(node: XMLElement | undefined): ram.TradePartyType | und
     description: parseText(get(node, './ram:Description')),
     specifiedLegalOrganization: legalOrg
       ? new ram.LegalOrganizationType({
-        id: parseID(get(legalOrg, './ram:ID')),
-        tradingBusinessName: parseText(get(legalOrg, './ram:TradingBusinessName')),
-        postalTradeAddress: parseTradeAddress(get(legalOrg, './ram:PostalTradeAddress')),
-      })
+          id: parseID(get(legalOrg, './ram:ID')),
+          tradingBusinessName: parseText(get(legalOrg, './ram:TradingBusinessName')),
+          postalTradeAddress: parseTradeAddress(get(legalOrg, './ram:PostalTradeAddress')),
+        })
       : undefined,
     definedTradeContact: findAll(node, './ram:DefinedTradeContact').map(parseTradeContact),
     postalTradeAddress: parseTradeAddress(get(node, './ram:PostalTradeAddress')),
@@ -528,7 +528,7 @@ function parseTradeParty(node: XMLElement | undefined): ram.TradePartyType | und
   })
 }
 
-function parseTradeContact(node: XMLElement): ram.TradeContactType {
+function parseTradeContact(node: XmlElement): ram.TradeContactType {
   return new ram.TradeContactType({
     personName: parseText(get(node, './ram:PersonName')),
     departmentName: parseText(get(node, './ram:DepartmentName')),
@@ -539,7 +539,7 @@ function parseTradeContact(node: XMLElement): ram.TradeContactType {
   })
 }
 
-function parseUniversalCommunication(node: XMLElement | undefined): ram.UniversalCommunicationType | undefined {
+function parseUniversalCommunication(node: XmlElement | undefined): ram.UniversalCommunicationType | undefined {
   if (!node) {
     return undefined
   }
@@ -549,7 +549,7 @@ function parseUniversalCommunication(node: XMLElement | undefined): ram.Universa
   })
 }
 
-function parseTradeAddress(node: XMLElement | undefined): ram.TradeAddressType | undefined {
+function parseTradeAddress(node: XmlElement | undefined): ram.TradeAddressType | undefined {
   if (!node) {
     return undefined
   }
@@ -564,7 +564,7 @@ function parseTradeAddress(node: XMLElement | undefined): ram.TradeAddressType |
   })
 }
 
-function parseTradeDeliveryTerms(node: XMLElement | undefined): ram.TradeDeliveryTermsType | undefined {
+function parseTradeDeliveryTerms(node: XmlElement | undefined): ram.TradeDeliveryTermsType | undefined {
   if (!node) {
     return undefined
   }
@@ -573,14 +573,14 @@ function parseTradeDeliveryTerms(node: XMLElement | undefined): ram.TradeDeliver
     deliveryTypeCode: new qdt.DeliveryTermsCodeType({ value: textOf(get(node, './ram:DeliveryTypeCode')) ?? '' }),
     relevantTradeLocation: loc
       ? new ram.TradeLocationType({
-        countryID: textOf(get(loc, './ram:CountryID')) ? new qdt.CountryIDType({ value: textOf(get(loc, './ram:CountryID'))! }) : undefined,
-        name: parseText(get(loc, './ram:Name')),
-      })
+          countryID: textOf(get(loc, './ram:CountryID')) ? new qdt.CountryIDType({ value: textOf(get(loc, './ram:CountryID'))! }) : undefined,
+          name: parseText(get(loc, './ram:Name')),
+        })
       : undefined,
   })
 }
 
-function parseTradeTax(node: XMLElement): ram.TradeTaxType {
+function parseTradeTax(node: XmlElement): ram.TradeTaxType {
   return new ram.TradeTaxType({
     calculatedAmount: parseAmount(get(node, './ram:CalculatedAmount')),
     typeCode: textOf(get(node, './ram:TypeCode')) ? new qdt.TaxTypeCodeType({ value: textOf(get(node, './ram:TypeCode'))! }) : undefined,
@@ -596,7 +596,7 @@ function parseTradeTax(node: XMLElement): ram.TradeTaxType {
   })
 }
 
-function parseAllowanceCharge(node: XMLElement): ram.TradeAllowanceChargeType {
+function parseAllowanceCharge(node: XmlElement): ram.TradeAllowanceChargeType {
   return new ram.TradeAllowanceChargeType({
     chargeIndicator: parseIndicator(get(node, './ram:ChargeIndicator')) ?? new udt.IndicatorType({ indicator: false }),
     sequenceNumeric: textOf(get(node, './ram:SequenceNumeric')) ? new udt.NumericType({ value: Number.parseFloat(textOf(get(node, './ram:SequenceNumeric'))!) }) : undefined,
@@ -610,7 +610,7 @@ function parseAllowanceCharge(node: XMLElement): ram.TradeAllowanceChargeType {
   })
 }
 
-function parsePaymentTerms(node: XMLElement): ram.TradePaymentTermsType {
+function parsePaymentTerms(node: XmlElement): ram.TradePaymentTermsType {
   const penalty = get(node, './ram:ApplicableTradePaymentPenaltyTerms')
   const discount = get(node, './ram:ApplicableTradePaymentDiscountTerms')
   return new ram.TradePaymentTermsType({
@@ -620,27 +620,27 @@ function parsePaymentTerms(node: XMLElement): ram.TradePaymentTermsType {
     partialPaymentAmount: parseAmount(get(node, './ram:PartialPaymentAmount')),
     applicableTradePaymentPenaltyTerms: penalty
       ? new ram.TradePaymentPenaltyTermsType({
-        basisDateTime: parseDateTime(get(penalty, './ram:BasisDateTime')),
-        basisPeriodMeasure: parseMeasure(get(penalty, './ram:BasisPeriodMeasure')),
-        basisAmount: parseAmount(get(penalty, './ram:BasisAmount')),
-        calculationPercent: parsePercent(get(penalty, './ram:CalculationPercent')),
-        actualPenaltyAmount: parseAmount(get(penalty, './ram:ActualPenaltyAmount')),
-      })
+          basisDateTime: parseDateTime(get(penalty, './ram:BasisDateTime')),
+          basisPeriodMeasure: parseMeasure(get(penalty, './ram:BasisPeriodMeasure')),
+          basisAmount: parseAmount(get(penalty, './ram:BasisAmount')),
+          calculationPercent: parsePercent(get(penalty, './ram:CalculationPercent')),
+          actualPenaltyAmount: parseAmount(get(penalty, './ram:ActualPenaltyAmount')),
+        })
       : undefined,
     applicableTradePaymentDiscountTerms: discount
       ? new ram.TradePaymentDiscountTermsType({
-        basisDateTime: parseDateTime(get(discount, './ram:BasisDateTime')),
-        basisPeriodMeasure: parseMeasure(get(discount, './ram:BasisPeriodMeasure')),
-        basisAmount: parseAmount(get(discount, './ram:BasisAmount')),
-        calculationPercent: parsePercent(get(discount, './ram:CalculationPercent')),
-        actualDiscountAmount: parseAmount(get(discount, './ram:ActualDiscountAmount')),
-      })
+          basisDateTime: parseDateTime(get(discount, './ram:BasisDateTime')),
+          basisPeriodMeasure: parseMeasure(get(discount, './ram:BasisPeriodMeasure')),
+          basisAmount: parseAmount(get(discount, './ram:BasisAmount')),
+          calculationPercent: parsePercent(get(discount, './ram:CalculationPercent')),
+          actualDiscountAmount: parseAmount(get(discount, './ram:ActualDiscountAmount')),
+        })
       : undefined,
     payeeTradeParty: parseTradeParty(get(node, './ram:PayeeTradeParty')),
   })
 }
 
-function parsePaymentMeans(node: XMLElement): ram.TradeSettlementPaymentMeansType {
+function parsePaymentMeans(node: XmlElement): ram.TradeSettlementPaymentMeansType {
   const card = get(node, './ram:ApplicableTradeSettlementFinancialCard')
   const debtor = get(node, './ram:PayerPartyDebtorFinancialAccount')
   const creditor = get(node, './ram:PayeePartyCreditorFinancialAccount')
@@ -652,22 +652,22 @@ function parsePaymentMeans(node: XMLElement): ram.TradeSettlementPaymentMeansTyp
     information: parseText(get(node, './ram:Information')),
     applicableTradeSettlementFinancialCard: card
       ? new ram.TradeSettlementFinancialCardType({
-        id: new udt.IDType({ value: textOf(get(card, './ram:ID')) ?? '' }),
-        cardholderName: parseText(get(card, './ram:CardholderName')),
-      })
+          id: new udt.IDType({ value: textOf(get(card, './ram:ID')) ?? '' }),
+          cardholderName: parseText(get(card, './ram:CardholderName')),
+        })
       : undefined,
     payerPartyDebtorFinancialAccount: debtor
       ? new ram.DebtorFinancialAccountType({
-        ibanID: new udt.IDType({ value: textOf(get(debtor, './ram:IBANID')) ?? '' }),
-        accountName: parseText(get(debtor, './ram:AccountName')),
-      })
+          ibanID: new udt.IDType({ value: textOf(get(debtor, './ram:IBANID')) ?? '' }),
+          accountName: parseText(get(debtor, './ram:AccountName')),
+        })
       : undefined,
     payeePartyCreditorFinancialAccount: creditor
       ? new ram.CreditorFinancialAccountType({
-        ibanID: parseID(get(creditor, './ram:IBANID')),
-        accountName: parseText(get(creditor, './ram:AccountName')),
-        proprietaryID: parseID(get(creditor, './ram:ProprietaryID')),
-      })
+          ibanID: parseID(get(creditor, './ram:IBANID')),
+          accountName: parseText(get(creditor, './ram:AccountName')),
+          proprietaryID: parseID(get(creditor, './ram:ProprietaryID')),
+        })
       : undefined,
     payerSpecifiedDebtorFinancialInstitution: payerInst
       ? new ram.DebtorFinancialInstitutionType({ bicID: parseID(get(payerInst, './ram:BICID')) })
@@ -678,14 +678,14 @@ function parsePaymentMeans(node: XMLElement): ram.TradeSettlementPaymentMeansTyp
   })
 }
 
-function parseAccountingAccount(node: XMLElement): ram.TradeAccountingAccountType {
+function parseAccountingAccount(node: XmlElement): ram.TradeAccountingAccountType {
   return new ram.TradeAccountingAccountType({
     id: new udt.IDType({ value: textOf(get(node, './ram:ID')) ?? '' }),
     typeCode: textOf(get(node, './ram:TypeCode')) ? new qdt.AccountingAccountTypeCodeType({ value: textOf(get(node, './ram:TypeCode'))! }) : undefined,
   })
 }
 
-function parseReferencedDocument(node: XMLElement | undefined): ram.ReferencedDocumentType | undefined {
+function parseReferencedDocument(node: XmlElement | undefined): ram.ReferencedDocumentType | undefined {
   if (!node) {
     return undefined
   }
