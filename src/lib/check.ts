@@ -46,6 +46,13 @@ export async function check(options: {
     }
   }
 
+  const xmlString = xml.toString()
+
+  if (!(options.xml instanceof XmlDocument)) {
+    // Dispose the XmlDocument instance if we created it within this function
+    xml.dispose()
+  }
+
   if (!options.schematron) {
     return {
       valid: xsdValid,
@@ -55,12 +62,7 @@ export async function check(options: {
     }
   }
 
-  const schematron = await validateSchematron({ xml: xml.toString(), flavor, level })
-
-  if (!(options.xml instanceof XmlDocument)) {
-    // Dispose the XmlDocument instance if we created it within this function
-    xml.dispose()
-  }
+  const schematron = await validateSchematron({ xml: xmlString, flavor, level })
 
   return {
     valid: xsdValid && schematron.valid,
