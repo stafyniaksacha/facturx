@@ -28,7 +28,9 @@ const NAMESPACES: NS = {
  * Mirrors the converter: every aggregate emitted by invoiceToXml is read back here.
  */
 export async function xmlToInvoice(xml: string | Buffer): Promise<CrossIndustryInvoiceType> {
-  using doc = XmlDocument.fromString(xml.toString())
+  using doc = typeof xml === 'string'
+    ? XmlDocument.fromString(xml)
+    : XmlDocument.fromBuffer(xml)
   const root = doc.root
 
   if (!root) {
