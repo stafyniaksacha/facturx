@@ -29,7 +29,7 @@ export async function check(options: {
   const level = options.level || getLevel(xml)
 
   const xsd = await getXsd(flavor, level)
-  const validator = XsdValidator.fromDoc(xsd)
+  using validator = XsdValidator.fromDoc(xsd)
 
   let xsdValid = false
   let errors: any[] = []
@@ -44,9 +44,6 @@ export async function check(options: {
     else {
       throw error
     }
-  }
-  finally {
-    validator.dispose()
   }
 
   if (!options.schematron) {
