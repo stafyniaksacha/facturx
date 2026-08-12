@@ -48,7 +48,7 @@ async function main(): Promise<void> {
   })
 
   const invoice = getMinimalFacturXModel()
-  const xml = await invoiceToXml(invoice)
+  using xml = await invoiceToXml(invoice)
 
   await writeFile(resolve(import.meta.dirname, './output.xml'), xml.toString({ format: false }))
 
