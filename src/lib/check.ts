@@ -44,6 +44,9 @@ export async function check(options: {
     if (error instanceof XmlValidateError) {
       errors = error.details
     }
+    else {
+      throw error
+    }
   }
   finally {
     validator.dispose()
