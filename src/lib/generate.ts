@@ -11,7 +11,7 @@ import {
   AFRelationship,
   PDFHexString,
 } from 'pdf-lib'
-import pkg from '../../package.json' assert { type: 'json' }
+import pkg from '../../package.json' with { type: 'json' }
 
 import { check } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
