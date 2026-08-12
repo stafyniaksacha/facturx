@@ -73,42 +73,45 @@ export function getFlavor(fileDoc: XmlDocument): string {
 export async function extractBaseInfo(xml: string | Buffer | XmlDocument): Promise<BaseInfo> {
   const xmlDoc = await resolveXml(xml)
 
-  const namespaces = extractNamespaces(xmlDoc)
+  try {
+    const namespaces = extractNamespaces(xmlDoc)
 
-  const dateEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString', namespaces)
-  const dateStr = dateEl.content
-  const dateFormat = dateEl.attr('format')?.value || '102'
-  const formatMap = {
-    // eslint-disable-next-line style/quote-props
-    '102': 'yyyyMMdd',
-    // eslint-disable-next-line style/quote-props
-    '203': 'yyyyMMddHHmm',
-  } as const
-  const date = dateStr ? parse(dateStr, formatMap[dateFormat as keyof typeof formatMap], new Date()) : new Date()
+    const dateEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString', namespaces)
+    const dateStr = dateEl.content
+    const dateFormat = dateEl.attr('format')?.value || '102'
+    const formatMap = {
+      // eslint-disable-next-line style/quote-props
+      '102': 'yyyyMMdd',
+      // eslint-disable-next-line style/quote-props
+      '203': 'yyyyMMddHHmm',
+    } as const
+    const date = dateStr ? parse(dateStr, formatMap[dateFormat as keyof typeof formatMap], new Date()) : new Date()
 
-  const numberEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:ID', namespaces)
-  const number = numberEl.content || ''
+    const numberEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:ID', namespaces)
+    const number = numberEl.content || ''
 
-  const sellerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name', namespaces)
-  const seller = sellerEl.content || ''
+    const sellerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name', namespaces)
+    const seller = sellerEl.content || ''
 
-  const buyerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:Name', namespaces)
-  const buyer = buyerEl.content || ''
+    const buyerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:Name', namespaces)
+    const buyer = buyerEl.content || ''
 
-  const docTypeEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:TypeCode', namespaces)
-  const docType = docTypeEl.content as DOC_TYPE_KEY || ''
+    const docTypeEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:TypeCode', namespaces)
+    const docType = docTypeEl.content as DOC_TYPE_KEY || ''
 
-  if (!(xml instanceof XmlDocument)) {
-    // Dispose the XmlDocument instance if we created it within this function
-    xmlDoc.dispose()
+    return {
+      seller,
+      buyer,
+      number,
+      date,
+      docType,
+    }
   }
-
-  return {
-    seller,
-    buyer,
-    number,
-    date,
-    docType,
+  finally {
+    if (!(xml instanceof XmlDocument)) {
+      // Dispose the XmlDocument instance if we created it within this function
+      xmlDoc.dispose()
+    }
   }
 }
 // export function getOrderXLevel(fileDoc) {

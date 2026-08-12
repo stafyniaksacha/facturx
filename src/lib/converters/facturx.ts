@@ -31,11 +31,19 @@ export async function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<X
 </rsm:CrossIndustryInvoice>`
 
   const doc = XmlDocument.fromString(xmlString)
-  const rootElement = doc.root
 
-  convertExchangedDocumentContext(invoice.exchangedDocumentContext, rootElement)
-  convertExchangedDocument(invoice.exchangedDocument, rootElement)
-  convertSupplyChainTradeTransaction(invoice.supplyChainTradeTransaction, rootElement)
+  try {
+    const rootElement = doc.root
+
+    convertExchangedDocumentContext(invoice.exchangedDocumentContext, rootElement)
+    convertExchangedDocument(invoice.exchangedDocument, rootElement)
+    convertSupplyChainTradeTransaction(invoice.supplyChainTradeTransaction, rootElement)
+  }
+  catch (error) {
+    // The caller owns the returned document, but only on success
+    doc.dispose()
+    throw error
+  }
 
   return doc
 }
