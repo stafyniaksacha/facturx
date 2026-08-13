@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.6.0](https://github.com/stafyniaksacha/facturx/compare/v0.4.0...v0.6.0) (2026-08-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* replace `libxmljs` with `libxml2-wasm` (#14)
+
+### Features
+
+* **cli:** add `check --schematron` + document 1.09 features in README ([#11](https://github.com/stafyniaksacha/facturx/issues/11)) ([f117d39](https://github.com/stafyniaksacha/facturx/commit/f117d39736c2b587410d9c6d4ae0a266d3c3e3fc))
+* **docs:** VitePress documentation site with runnable example snippets ([#12](https://github.com/stafyniaksacha/facturx/issues/12)) ([3bbb556](https://github.com/stafyniaksacha/facturx/commit/3bbb5569e2b17e236cce8b65f1c7eb113904650b))
+* **facturx:** add Schematron (business-rule) validation ([#10](https://github.com/stafyniaksacha/facturx/issues/10)) ([6bcd2a3](https://github.com/stafyniaksacha/facturx/commit/6bcd2a3e75039867c221038bb826b2583d59017f))
+* **facturx:** full EXTENDED 1.09 parity for models, converter and parser ([#9](https://github.com/stafyniaksacha/facturx/issues/9)) ([87199cf](https://github.com/stafyniaksacha/facturx/commit/87199cfe62219db1c39b48b3b7b35281264a4b56))
+* **facturx:** refresh XSDs to 1.09 (ZUGFeRD 2.5) + fix converter data-loss bugs ([#8](https://github.com/stafyniaksacha/facturx/issues/8)) ([0e72973](https://github.com/stafyniaksacha/facturx/commit/0e7297329ceeca14c6f6b033305ba3fce26bfa9e))
+* replace `libxmljs` with `libxml2-wasm` ([#14](https://github.com/stafyniaksacha/facturx/issues/14)) ([9cd7e15](https://github.com/stafyniaksacha/facturx/commit/9cd7e15576fd8a059a850fa10b89e4126433a140))
+
+
+### Bug Fixes
+
+* **ci:** remove node-version specification in setup-node step ([0062024](https://github.com/stafyniaksacha/facturx/commit/00620249c08d1a2eaaec0de23a9d1969642c5e86))
+
 ## [0.5.0](https://github.com/stafyniaksacha/facturx/compare/v0.4.0...v0.5.0) (2026-06-20)
 
 
