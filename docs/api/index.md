@@ -35,7 +35,7 @@ import { AmountType, CrossIndustryInvoiceType, IDType /* … */ } from '@stafyni
 | [`check(options)`](/api/check) | `() => Promise<CheckResult>` | XSD (+ optional Schematron) validation. |
 | [`validateSchematron(options)`](/api/validate-schematron) | `() => Promise<{ valid, errors }>` | EN 16931 business-rule validation (Factur-X only). |
 | [`xmlToInvoice(xml)`](/api/parsing) | `() => Promise<CrossIndustryInvoiceType>` | Parse XML into a typed model. |
-| [`invoiceToXml(invoice)`](/api/parsing) | `() => Promise<XMLDocument>` | Serialize a model back to XML. |
+| [`invoiceToXml(invoice)`](/api/parsing) | `() => Promise<XmlDocument>` | Serialize a model back to XML. |
 | [`Models`](/api/models) | namespace | All Cross Industry Invoice model classes & types. |
 
 ## Typical flows
@@ -71,6 +71,6 @@ const seller = invoice.supplyChainTradeTransaction
 
 - **`flavor` / `level`** are optional on every function that takes XML — they're
   [autodetected](/guide/profiles-and-flavors#autodetection) from the document when omitted.
-- **Inputs** accept `string | Buffer` (and `generate`/`check` also accept a parsed `XMLDocument`;
+- **Inputs** accept `string | Buffer` (and `generate`/`check` also accept a parsed `XmlDocument`;
   `generate`/`extract` also accept a `PDFDocument`).
 - **Errors** are thrown as standard `Error`s (e.g. `No attachment found`, `Invalid XML`).

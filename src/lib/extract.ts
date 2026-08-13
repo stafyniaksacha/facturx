@@ -68,7 +68,7 @@ export async function extract(options: {
     throw new Error('No attachment found')
   }
 
-  const xml = await resolveXml(Buffer.from(file.data))
+  using xml = await resolveXml(Buffer.from(file.data))
 
   if (options.check === true) {
     const result = await check({

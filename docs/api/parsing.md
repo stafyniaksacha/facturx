@@ -25,7 +25,7 @@ Throws `Invalid XML: no root element` if the input has no document root.
 ## `invoiceToXml()`
 
 ```ts
-function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<XMLDocument>
+function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<XmlDocument>
 ```
 
 Serializes a `CrossIndustryInvoiceType` model back to XML. Element order follows the `xs:sequence`
@@ -33,7 +33,7 @@ of the Factur-X 1.09 (CII D22B) **EXTENDED** schema — a superset of all lower 
 fields present on the model are emitted, so the same converter produces valid output for every
 profile from `MINIMUM` to `EXTENDED`.
 
-The return value is a `libxmljs` `XMLDocument`; call `.toString()` for the serialized XML.
+The return value is a `libxml2-wasm` `XmlDocument`; call `.toString()` for the serialized XML.
 
 ```ts
 import { invoiceToXml } from '@stafyniaksacha/facturx'
@@ -41,6 +41,23 @@ import { invoiceToXml } from '@stafyniaksacha/facturx'
 const doc = await invoiceToXml(invoice)
 const xmlString = doc.toString()
 ```
+
+The returned `XmlDocument` holds WebAssembly-allocated memory that is not
+garbage-collected. Free it explicitly when you are done:
+
+```ts
+doc.dispose()
+```
+
+Or use a TypeScript 5.2 `using` declaration to dispose it automatically at the
+end of the block:
+
+```ts
+using doc = await invoiceToXml(invoice)
+// doc is automatically disposed at the end of this block
+```
+
+See the [libxml2-wasm memory management docs](https://jameslan.github.io/libxml2-wasm/v0.7/documents/Memory_Management.html#object-disposal) for details.
 
 ## Round-trip
 

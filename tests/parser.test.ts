@@ -8,7 +8,7 @@ import {
   HeaderTradeSettlementType,
   SupplyChainTradeTransactionType,
 } from '@stafyniaksacha/facturx/models'
-import { parseXmlAsync } from 'libxmljs'
+import { XmlDocument } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
 
 import { getExtendedFacturXModel } from './fixtures/model-extended'
@@ -29,11 +29,11 @@ describe('facturX XML Parser', () => {
   it.skip('should be similar to the minimum XML', async () => {
     const xml = getMinimumXML()
 
-    const parsed = await parseXmlAsync(xml)
-    const xmlString = parsed.toString({ format: true, whitespace: false })
+    const parsed = XmlDocument.fromString(xml)
+    const xmlString = parsed.toString({ format: true })
 
     const invoice = await xmlToInvoice(xml)
-    const invoiceString = (await invoiceToXml(invoice)).toString({ format: true, whitespace: false })
+    const invoiceString = (await invoiceToXml(invoice)).toString({ format: true })
 
     expect(invoiceString).toBeTypeOf('string')
     expect(xmlString).toBeTypeOf('string')

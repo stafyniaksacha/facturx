@@ -1,15 +1,13 @@
-import type { XMLDocument } from 'libxmljs'
-
 import type { Buffer } from 'node:buffer'
 import type { SchematronError } from './schematron'
-
+import { XmlDocument, XmlValidateError, XsdValidator } from 'libxml2-wasm'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
 import { getFlavor, getLevel } from './xml'
 import { getXsd } from './xsd'
 
 export async function check(options: {
-  xml: string | Buffer | XMLDocument
+  xml: string | Buffer | XmlDocument
   flavor?: string
   level?: string
   /**
@@ -31,9 +29,29 @@ export async function check(options: {
   const level = options.level || getLevel(xml)
 
   const xsd = await getXsd(flavor, level)
+  using validator = XsdValidator.fromDoc(xsd)
 
-  const xsdValid = xml.validate(xsd) as boolean
-  const errors = xml.validationErrors
+  let xsdValid = false
+  let errors: any[] = []
+  try {
+    validator.validate(xml)
+    xsdValid = true
+  }
+  catch (error) {
+    if (error instanceof XmlValidateError) {
+      errors = error.details
+    }
+    else {
+      throw error
+    }
+  }
+
+  const xmlString = xml.toString()
+
+  if (!(options.xml instanceof XmlDocument)) {
+    // Dispose the XmlDocument instance if we created it within this function
+    xml.dispose()
+  }
 
   if (!options.schematron) {
     return {
@@ -44,7 +62,7 @@ export async function check(options: {
     }
   }
 
-  const schematron = await validateSchematron({ xml: xml.toString(), flavor, level })
+  const schematron = await validateSchematron({ xml: xmlString, flavor, level })
 
   return {
     valid: xsdValid && schematron.valid,

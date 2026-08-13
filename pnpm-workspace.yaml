@@ -6,4 +6,3 @@ packages:
 
 allowBuilds:
   esbuild: true
-  libxmljs: true

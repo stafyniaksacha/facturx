@@ -1,5 +1,5 @@
 import { runMain as _runMain, defineCommand } from 'citty'
-import pkg from '../package.json' assert { type: 'json' }
+import pkg from '../package.json' with { type: 'json' }
 
 export const main = defineCommand({
   meta: {

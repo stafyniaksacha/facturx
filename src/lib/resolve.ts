@@ -1,20 +1,24 @@
-import type { XMLParseOptions } from 'libxmljs'
-import type { Buffer } from 'node:buffer'
+import type { ParseOptions } from 'libxml2-wasm'
 import type { LoadOptions } from 'pdf-lib'
-import { parseXmlAsync, XMLDocument } from 'libxmljs'
+import { Buffer } from 'node:buffer'
+import { XmlDocument } from 'libxml2-wasm'
 import { PDFDocument } from 'pdf-lib'
 
 export async function resolveXml(
-  xml: string | Buffer | XMLDocument,
-  options: XMLParseOptions = {
-    encoding: 'utf8',
+  xml: string | Buffer | XmlDocument,
+  options: ParseOptions = {
+    encoding: 'utf-8',
   },
-): Promise<XMLDocument> {
-  if (xml instanceof XMLDocument) {
+): Promise<XmlDocument> {
+  if (xml instanceof XmlDocument) {
     return xml
   }
 
-  return await parseXmlAsync(xml, options)
+  if (Buffer.isBuffer(xml)) {
+    return XmlDocument.fromBuffer(xml, options)
+  }
+
+  return XmlDocument.fromString(xml, options)
 }
 
 export async function resolvePdf(
