@@ -28,20 +28,26 @@ const NAMESPACES: NS = {
  * Mirrors the converter: every aggregate emitted by invoiceToXml is read back here.
  */
 export async function xmlToInvoice(xml: string | Buffer): Promise<CrossIndustryInvoiceType> {
-  using doc = typeof xml === 'string'
+  const doc = typeof xml === 'string'
     ? XmlDocument.fromString(xml)
     : XmlDocument.fromBuffer(xml)
-  const root = doc.root
+  
+  try {
+    const root = doc.root
 
-  if (!root) {
-    throw new Error('Invalid XML: no root element')
+    if (!root) {
+      throw new Error('Invalid XML: no root element')
+    }
+
+    return new CrossIndustryInvoiceType({
+      exchangedDocumentContext: parseExchangedDocumentContext(root),
+      exchangedDocument: parseExchangedDocument(root),
+      supplyChainTradeTransaction: parseSupplyChainTradeTransaction(root),
+    })
   }
-
-  return new CrossIndustryInvoiceType({
-    exchangedDocumentContext: parseExchangedDocumentContext(root),
-    exchangedDocument: parseExchangedDocument(root),
-    supplyChainTradeTransaction: parseSupplyChainTradeTransaction(root),
-  })
+  finally {
+    doc.dispose()
+  }
 }
 
 // ---------------------------------------------------------------------------
