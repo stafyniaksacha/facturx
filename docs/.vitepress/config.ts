@@ -25,7 +25,7 @@ export default defineConfig({
       { text: 'CLI', link: '/cli/', activeMatch: '/cli/' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
       {
-        text: 'v0.4.0',
+        text: 'v0.6.1',
         items: [
           { text: 'Changelog', link: 'https://github.com/stafyniaksacha/facturx/blob/main/CHANGELOG.md' },
           { text: 'npm', link: 'https://www.npmjs.com/package/@stafyniaksacha/facturx' },
