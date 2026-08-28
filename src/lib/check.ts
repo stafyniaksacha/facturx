@@ -29,7 +29,7 @@ export async function check(options: {
   const level = options.level || getLevel(xml)
 
   const xsd = await getXsd(flavor, level)
-  using validator = XsdValidator.fromDoc(xsd)
+  const validator = XsdValidator.fromDoc(xsd)
 
   let xsdValid = false
   let errors: any[] = []
@@ -42,8 +42,12 @@ export async function check(options: {
       errors = error.details
     }
     else {
+      validator.dispose()
       throw error
     }
+  }
+  finally {
+    validator.dispose()
   }
 
   const xmlString = xml.toString()

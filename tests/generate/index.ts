@@ -48,19 +48,24 @@ async function main(): Promise<void> {
   })
 
   const invoice = getMinimalFacturXModel()
-  using xml = await invoiceToXml(invoice)
+  const xml = await invoiceToXml(invoice)
 
-  await writeFile(resolve(import.meta.dirname, './output.xml'), xml.toString({ format: false }))
+  try {
+    await writeFile(resolve(import.meta.dirname, './output.xml'), xml.toString({ format: false }))
 
-  // const output = await pdf.save()
-  const output = await generate({
-    pdf,
-    // @Todo: check why xpath is not working with direct xml object
-    // xml,
-    xml: xml.toString(),
-  })
+    // const output = await pdf.save()
+    const output = await generate({
+      pdf,
+      // @Todo: check why xpath is not working with direct xml object
+      // xml,
+      xml: xml.toString(),
+    })
 
-  await writeFile(resolve(import.meta.dirname, './output.pdf'), output)
+    await writeFile(resolve(import.meta.dirname, './output.pdf'), output)
+  }
+  finally {
+    xml.dispose()
+  }
 }
 
 main().catch(console.error)

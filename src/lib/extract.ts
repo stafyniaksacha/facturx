@@ -68,23 +68,28 @@ export async function extract(options: {
     throw new Error('No attachment found')
   }
 
-  using xml = await resolveXml(Buffer.from(file.data))
+  const xml = await resolveXml(Buffer.from(file.data))
 
-  if (options.check === true) {
-    const result = await check({
-      xml,
+  try {
+    if (options.check === true) {
+      const result = await check({
+        xml,
+        flavor,
+        level,
+      })
+      if (!result.valid) {
+        throw new Error('Invalid XML')
+      }
+    }
+
+    return {
+      filename: file.name,
+      xml: xml.toString(),
       flavor,
       level,
-    })
-    if (!result.valid) {
-      throw new Error('Invalid XML')
     }
   }
-
-  return {
-    filename: file.name,
-    xml: xml.toString(),
-    flavor,
-    level,
+  finally {
+    xml.dispose()
   }
 }
