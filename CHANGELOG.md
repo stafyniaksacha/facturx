@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.6.1](https://github.com/stafyniaksacha/facturx/compare/v0.6.0...v0.6.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **compatibility:** replace using with const for IBM i compatibility ([#15](https://github.com/stafyniaksacha/facturx/issues/15)) ([a5259ee](https://github.com/stafyniaksacha/facturx/commit/a5259ee049d12241895ca96b22c77ec8b4b3b6b9))
+
 ## [0.6.0](https://github.com/stafyniaksacha/facturx/compare/v0.4.0...v0.6.0) (2026-08-13)
 
 
