@@ -1,7 +1,7 @@
 {
   "name": "@stafyniaksacha/facturx-docs",
   "type": "module",
-  "version": "0.4.0",
+  "version": "0.6.1",
   "private": true,
   "description": "Documentation site for @stafyniaksacha/facturx",
   "scripts": {
