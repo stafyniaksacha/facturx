@@ -4,3 +4,7 @@ coverage
 
 tests/generate/output.pdf
 tests/generate/output.xml
+
+# Claude Code: personal settings and worktrees stay local; .claude/agents/ is shared
+.claude/settings.local.json
+.claude/worktrees/
