@@ -48,6 +48,7 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "test": "vitest run",
+    "spec:verify": "node scripts/verify-spec-assets.mjs --sef",
     "docs": "pnpm --filter @stafyniaksacha/facturx-docs run docs:dev",
     "docs:build": "pnpm --filter @stafyniaksacha/facturx-docs run docs:build",
     "docs:preview": "pnpm --filter @stafyniaksacha/facturx-docs run docs:preview"
