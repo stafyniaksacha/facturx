@@ -258,8 +258,9 @@ jobs:
           arch=${PLATFORM#linux/}
           [ "$arch" = amd64 ] && arch=x64
           dist="node-$version-linux-$arch"
-          curl -fsSLO "https://nodejs.org/dist/$version/$dist.tar.xz"
-          curl -fsSL "https://nodejs.org/dist/$version/SHASUMS256.txt" | grep " $dist.tar.xz\$" | sha256sum -c -
+          # nodejs.org occasionally resets connections: retry rather than fail the lane.
+          curl -fsSLO --retry 5 --retry-all-errors "https://nodejs.org/dist/$version/$dist.tar.xz"
+          curl -fsSL --retry 5 --retry-all-errors "https://nodejs.org/dist/$version/SHASUMS256.txt" | grep " $dist.tar.xz\$" | sha256sum -c -
           mkdir node-target
           tar -xJf "$dist.tar.xz" -C node-target --strip-components=1
 
