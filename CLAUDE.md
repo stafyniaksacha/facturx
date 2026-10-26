@@ -2,8 +2,9 @@
 
 ## Claude Code
 
-- **Node 22:** run `nvm use` (reads `.nvmrc`) before `pnpm install` / `pnpm build`. If the shell's
-  default is Node 24, the libxmljs native build fails partway through `pnpm install`.
+- **Node 22:** each Bash call is a fresh shell, so select Node in the *same* command, e.g.
+  `nvm use >/dev/null && pnpm install && pnpm build` (`nvm use` reads `.nvmrc`). If the default is
+  Node 24, the libxmljs native build fails partway through `pnpm install`.
 - **Conformance review:** after changing anything under `src/lib/`, `src/lib/xsd/`, or a conformance
   claim in README/`docs/`, run the `spec-conformance-reviewer` subagent on the change (give it the diff
   range or the files) before reporting the work as done. It is read-only, so it can run alongside other

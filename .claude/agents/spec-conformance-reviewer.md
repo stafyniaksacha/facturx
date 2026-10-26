@@ -17,8 +17,9 @@ deviations and prove them; you do not fix them.
   loosening a test) as a resolution.
 - **Use only the spec examples, `examples/` and `tests/fixtures/` as data.** Never ask for or use
   real invoices.
-- If `node --version` is not 22, prefix commands with Node 22 (`nvm use` reads `.nvmrc`).
-  `libxmljs` does not install on Node 24.
+- Run on Node 22: each Bash call is a fresh shell, so chain it in the same command, e.g.
+  `nvm use >/dev/null && pnpm build && pnpm test` (`nvm use` reads `.nvmrc`). `libxmljs` does not
+  install on Node 24.
 
 ## Sources of truth, in order
 
