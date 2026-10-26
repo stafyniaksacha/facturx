@@ -1,0 +1,61 @@
+version: 2
+
+updates:
+  # A single root entry covers the whole pnpm workspace: Dependabot reads
+  # pnpm-workspace.yaml and picks up docs/, examples/ and tests/ on its own.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Paris
+    # Supply-chain guard: skip releases younger than a week, so a compromised
+    # version has time to be caught and unpublished. Security updates ignore it.
+    cooldown:
+      default-days: 7
+    # Raise the lower bound (^1.2.0 -> ^1.3.0) like previous manual bumps; the
+    # default "auto" would pick "widen" for a library and emit >=x <y ranges.
+    versioning-strategy: increase
+    # Yields "chore(deps): ..." / "chore(deps-dev): ...".
+    commit-message:
+      prefix: chore
+      include: scope
+    # First matching group wins. Majors not caught by the vitest group fall
+    # through and get their own PR.
+    groups:
+      # @vitest/coverage-v8 peer-depends on the exact vitest version, so majors
+      # stay grouped too: split into separate PRs, each one would fail install.
+      vitest:
+        patterns:
+          - vitest
+          - '@vitest/*'
+      dev-dependencies:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      production-dependencies:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+
+  # Actions are pinned to commit SHAs; Dependabot bumps the SHA and its # vX comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Paris
+    cooldown:
+      default-days: 7
+    # Yields "ci(deps): ...".
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - '*'
