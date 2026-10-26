@@ -1,0 +1,5 @@
+UBL and UN/EDIFACT,UBL and UN/EDIFACT,UN/CEFACT Cross Industry Invoice,UN/CEFACT Cross Industry Invoice
+2005 Code,Value,2475 Code,Value
+3,Invoice document issue date time,5,Date of invoice
+35,"Delivery date/time, actual",29,Date of delivery of goods to establishments/domicile/site
+432,Paid to date,72,Payment date

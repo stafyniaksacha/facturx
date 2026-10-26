@@ -1,0 +1,316 @@
+Code list,Code,Code name,Description
+6313,A,Consolidated weight,The measured consolidated weight.
+6313,AAA,Net weight,Weight of goods including any packaging that normally going with the goods.
+6313,AAB,Goods item gross weight,Weight (mass) of goods including packing but excluding the carrier's equipment.
+6313,AAC,Total net weight,Total weight of goods excluding packaging.
+6313,AAD,Consignment gross weight,Total gross weight (mass) of all goods items referred to as one consignment including packaging but excluding any transport equipment.
+6313,AAF,Net net weight,Weight (mass) if goods without any packaging.
+6313,AAG,Stern thrust,Force exerted by a thruster installed at the stern of a vessel.
+6313,AAH,Bow thrust,Force exerted by a thruster installed at the bow of a vessel.
+6313,AAI,Hydrate content of an alcoholic product at bottling,The hydrate content of an alcoholic product at the moment of bottling.
+6313,AAJ,Number of units per pallet,The number of units contained on a pallet.
+6313,AAK,Fat content,An indication of the fat content of a product.
+6313,AAM,Transport means gross weight,The measure of the overall size of a ship determined in accordance with the provisions of the International Convention on Tonnage Measurement of Ships.
+6313,AAN,Net tonnage of the vessel,The measure of the useful capacity of a ship determined in accordance with the provisions of the International Convention on Tonnage Measurement of Ships.
+6313,AAO,Humidity,Degree of moisture.
+6313,AAP,Voltage,"Electromotive force, or difference of electronic potential between two points."
+6313,AAQ,Power consumption,Value of energy consumption.
+6313,AAR,Heat dissipation,Measurement of the rate of dispersal of heat.
+6313,AAS,Air flow,Measurement of the flow of air.
+6313,AAT,Shock impact,Measurement of the impact of a shock.
+6313,AAU,Operative temperature,Temperature identified system or process works according to specifications.
+6313,AAV,Non operative temperature,Temperature identified system or process does not work according to specifications.
+6313,AAW,Gross volume,The volume unadjusted for factors such as temperature or gravity.
+6313,AAX,Net volume,The volume after adjustment for factors such as temperature or gravity.
+6313,AAY,Water content,Water content in product.
+6313,AAZ,Tensile stress,The measured tensile stress.
+6313,ABA,Fibrosity,The measured fibrosity.
+6313,ABB,Gauge length,The measured gauge length.
+6313,ABC,Radius,The measured radius.
+6313,ABD,Straightness,Straightness of the item.
+6313,ABE,Strain,The measured strain.
+6313,ABF,Item width when unrolled,The width of an item when unrolled.
+6313,ABG,Item length when unrolled,The length of an item when unrolled.
+6313,ABH,Item area when unrolled,The area occupied by an item when unrolled.
+6313,ABI,Original wort,"Measure of the malt and hops content of beer, before fermentation has taken place."
+6313,ABJ,Volume,The amount of air space taken up by the entity identified in the 6311 qualifier.
+6313,ABK,Angle,The angle of an object.
+6313,ABL,Peg hole horizontal distance from package leftmost edge,Horizontal distance from the left most edge of the package to the center of the hole into which the peg is inserted.
+6313,ABM,Peg hole vertical distance from package top,Vertical distance from the top of the package to the top of the hole into which the peg is inserted.
+6313,ABN,Number of layers per pallet,The number of layers per pallet.
+6313,ABO,"Product strengh, chemical",The amount of the single active chemical ingredient within a product.
+6313,ABP,"Product strength basis, chemical",Amount of product used as the basis for the specification of the chemical product strenght.
+6313,ABS,Item weight,Weight at line item level.
+6313,ABT,"Payload weight, maximum",The maximum weight of a payload.
+6313,ABX,Weight of conveyance,Tonnage of conveyance.
+6313,ABY,Conveyance summer dead weight,Registered summer dead weight total tonnage of the vessel.
+6313,ABZ,Containerized cargo on vessel's weight,Total weight of containerized cargo on vessel.
+6313,ACA,Non-containerized cargo on vessel's weight,Total weight of non-containerized cargo on vessel.
+6313,ACE,Ascertained weight,Endorsement of the true weight (mass) as ascertained or verified.
+6313,ACG,Chargeable weight,The weight on which charges are based.
+6313,ACN,Estimated gross weight,"Estimated weight (mass) of goods, including packing and excluding carrier's."
+6313,ACP,Estimated volume,Estimated size or measure of anything in three dimensions.
+6313,ACS,Vessel overall length,Total overall length of the vessel.
+6313,ACV,Loading meters,"The length in a vehicle, whereby the complete width and height over that length is needed for the goods."
+6313,ACW,Number of axles,Number of axles of movable equipment or means of transport on wheels.
+6313,ACX,Payload,The revenue-producing load carried by a means of transport.
+6313,ADR,Start position in the length,The starting position from the beginning of an item located in the length direction.
+6313,ADS,End position in the length,The end position from the beginning of an item located in the length direction.
+6313,ADT,Start position in the width,The start position from the beginning of an item located in the width direction.
+6313,ADU,End position in the width,The end position from the beginning of an item located in the width direction.
+6313,ADV,Start position in the thickness,The start position from the beginning of an item located in the thickness direction.
+6313,ADW,End position in the thickness,The end position from the beginning of an item located in the thickness direction.
+6313,ADX,Transport container actual filling weight,Actual filling weight of a transport container.
+6313,ADY,Transport container maximum capacity,Maximum capacity of a transport container.
+6313,ADZ,Declared net weight,"The declared net weight of a product or products used for invoicing, customs or transport purposes."
+6313,AEA,Loading height,Maximum height of products or packages loaded onto a given transportation device or equipment such as a pallet.
+6313,AEB,Stacking height,Maximum height up to which the same product or package may be placed one upon the other for storage purposes.
+6313,AEC,Calculated weight,The calculated weight of the item based on the ordered dimensions.
+6313,AED,Ferrite,The chemical composition ferrite.
+6313,AEE,Impurity,The impurity of the product i.e. the measurement of other chemical elements not normally appearing in a product.
+6313,AEF,Grain size,The grain size.
+6313,AEG,Lanthanides,The chemical element Lanthanides.
+6313,AEH,Elasticity,The value of the elasticity.
+6313,AEI,Drained weight,The weight of a product when all liquids used in the packaging of the product have been removed.
+6313,AEJ,Gallium,Measurement of the gallium component.
+6313,AEK,Strontium,Measurement of the strontium component.
+6313,AEL,Area,Extent or measure of a surface.
+6313,AEM,Equipment storage limitation,Maximum storage limit of the equipment.
+6313,AEN,Radioactive index of transport,The index of transport determines the maximum radiation level at a distance of 1m from the external surface.
+6313,AEO,Radioactivity,Activity of radioactive material.
+6313,AEP,Average gross weight,Weight which is the outcome of the division of the total gross weight by the number of units.
+6313,AEQ,Forward draft,Depth of water from the surface of water to the bottom of the vessel measured at the draft mark of the bow.
+6313,AER,After draft,Depth of water from the surface of water to the bottom of the vessel measured at the draft mark of the stern.
+6313,AES,Acidity,"The quality, state, or degree of being acid."
+6313,AET,Transport equipment gross weight,Weight of a transport equipment including the cargo and carrier's equipment.
+6313,AEU,Total transport equipment gross weight,Total weight of all transport equipment including the cargo and carrier's equipment.
+6313,AEV,Acidity of juice,Acid measurement of juice.
+6313,AEW,Penetrometry,Measurement of force required to drive a standard penetrating stamp.
+6313,AEX,Durofel,Measurement of the elastic force using a standard penetrating stamp.
+6313,AEY,Juice weight per 100 grams,"Measurement of weight of juice, based on 100 grams of the entire weight."
+6313,AEZ,Fruit skin colour,Measurement of the colouring of the epidermis of a fruit.
+6313,AF,Angle of bend,The measured angle of bend.
+6313,AFA,Fixed incremental measurement,The measurement of the fixed increment.
+6313,AFB,Durofel D10,Measure of the elastic force of the pulp of a fruit. It is measured with a penetrating stamp with diameter 10.
+6313,AFC,Durofel D25,Measure of the elastic force of the pulp of a fruit. It is measured with a penetrating stamp with diameter 25.
+6313,AFD,Durofel D50,Measure of the elastic force of the pulp of a fruit. It is measured with a penetrating stamp with diameter 50.
+6313,AFE,Maximum stacking weight,The maximum weight which may be stacked upon a product or package without the product or packaging being crushed.
+6313,AFF,Gross measure cube,"The total cubic space occupied by an item, taking into account any protruding components, arrived at by multiplying the maximum length, width and height."
+6313,AFG,Percentage fat content in dry matter,The percentage of fat content in dry matter.
+6313,AFH,Saccharometric content,Measurement of the sugar content of a solution.
+6313,AFI,Hydrate content of an alcoholic product after bottling,The hydrate content which occurs in an alcoholic product after bottling.
+6313,AFJ,Anhydrous content,The non-water content.
+6313,AFK,Certified weight,Weight which has been certified.
+6313,AFL,Freeboard,The vertical distance between the waterline and the upper edge of the deck line.
+6313,AFM,Maximum vessel draught,"The depth of water needed to float the ship (Maximum vessel draught according to Load Line Certificate IMO, MSC/Circ. 920 15 June 1999)."
+6313,AFN,Net explosive weight,Mass of the explosive part or substance of goods without any packing.
+6313,AFO,Radioactive criticality safety index,"A number, assigned to fissile material i.e. material capable of sustaining a nuclear chain reaction, which is used to provide control over the accumulation of packages containing such material."
+6313,AFP,Waste currently on board,Amount of waste on board at the moment of the notification.
+6313,AFQ,Waste to be delivered at waste reception facility,"Amount of waste to be delivered to a waste reception facility, e.g. in the port of call."
+6313,AFR,"Waste to be generated until next port of call, estimated","Estimated amount of waste to be generated between creation of the current notification and arrival in the next port of call, irrespective of use of incinerator or compactor or disposal at sea."
+6313,AFS,Waste remaining on board at departure,Amount of waste remaining on board when leaving the port of call.
+6313,AFT,Colour depth,"The number of distinct colours represented, e.g. in an image or in a display."
+6313,AFU,"Colour depth, maximum","The maximum number of distinct colours that can be represented, e.g. in an image or in a display."
+6313,AFV,Image resolution,The level of detail of an image.
+6313,AFW,"Device resolution, maximum",The maximum level of detail produced by a device.
+6313,AFX,Acoustic absorption coefficient,"The portion of sound energy a surface absorbs, measured at different frequencies."
+6313,B,Billed weight,The measured billed weight.
+6313,BL,Breaking load,The measured breaking load.
+6313,BMY,Platinum,The measurement of the platinum component.
+6313,BMZ,Silver,The measurement of the silver component.
+6313,BNA,List,The leaning or inclination of a vessel expressed in degrees port or starboard.
+6313,BNB,Trim,The condition of a vessel with reference to its longitudinal axis.
+6313,BNC,Free water,The volume of water present in a container that is not in suspension in the contained liquid.
+6313,BND,Bands,The measured bands.
+6313,BNE,API (American Petroleum Institute) gravity,The relative density of petroleum liquids as specified by a standard developed by the API.
+6313,BNF,Petroleum gross observed volume,"The total volume of all petroleum liquids and sediment and water, excluding free water, at observed temperature and pressure."
+6313,BNG,Petroleum gross standard volume,"The total volume of all petroleum liquids, sediment, and water excluding free water, corrected by the appropriate volume correction factor for the observed temperature and American Petroleum Institute relative density, or density to a standard temperature."
+6313,BNH,Volume variance,The change in the volume measurement.
+6313,BNI,Petroleum net standard volume,"The total volume of all petroleum liquids, excluding sediment and water and free water, corrected by the appropriate volume correction factor for the observed temperature and American Petroleum Institute gravity relative to density or to a standard temperature."
+6313,BNJ,"Material on-board quantity, after discharge","The material in vessel tanks, void spaces, and pipelines after discharge."
+6313,BNK,Petroleum total calculated volume,"The total volume of all petroleum liquids, sediment and water corrected by the appropriate volume correction factor for the observed temperature and American Petroleum Institute (API) gravity, relative density, or density to a standard temperature."
+6313,BNL,Petroleum total observed volume,"The total volume of all petroleum liquids, sediment and water and free water at observed temperature and pressure."
+6313,BNM,Innage gauge distance,The measured distance from the surface of the liquid to a fixed datum plate or to the tank bottom.
+6313,BNN,Petroleum net standard weight,"The total weight of all petroleum liquids excluding sediments, water and free water."
+6313,BNO,Sediment and water in petroleum,The measurement of non-hydrocarbon solid material and water in suspension in petroleum liquid.
+6313,BNP,"Observed reference height, tank",The observed distance from the tank bottom or datum plate to the established reference point.
+6313,BNQ,"Reference height, tank",The measured distance from the tank bottom or datum plate to the established reference point.
+6313,BNR,Ullage gauge distance,The measured distance from the cargo liquid surface to the reference point.
+6313,BNS,Trim correction,The correction applied to the observed gauge or observed volume when a vessel is not on an even keel.
+6313,BNT,Bow to bridge distance,The distance between the bow and the bridge of a vessel.
+6313,BNU,Peg hole number,Used to identify the peg hole if more than one hole is present in the product or packaging.
+6313,BNV,Number of inner packs,Indicates the number of non coded physical groupings (inner packs) of next lower level trade items within the current trade item level.
+6313,BNW,Number of next level trade items within inner pack,The number of next lower level trade items contained within the physical non-coded grouping (inner pack).
+6313,BNX,Number of trade items per pallet layer,The number of trade items contained on a single layer of a pallet.
+6313,BNY,Packed items layer height,The height of a single layer of packed items.
+6313,BNZ,"Packing material weight, skin tight covering","The weight measurement of the packing material used for skin tight covering (e.g. when packaging prepared meats, poultry, cheese, and other food products)."
+6313,BR,Brightness,The measured brightness.
+6313,BRA,Brakes,The measured brakes.
+6313,BRB,Components labelled for recycling percentage,Percentage of trade item components that clearly label how to facilitate product disassembly and recycling.
+6313,BRC,"Renewable plastic components percentage, by net weight",The percentage of the plastic components only made from rapidly renewable plant-based material by net weight of product.
+6313,BRD,"Clamp pressure, required",The pressure that should be applied by a clamp.
+6313,BRE,Break,The measured break.
+6313,BRF,Ascertained volume,Endorsement of the true volume as ascertained or verified.
+6313,BRG,Unit weight,The weight of a unit.
+6313,BRH,Total volume,Total volume of goods and/or parcels.
+6313,BRI,Unit volume,The volume of a unit.
+6313,BRJ,Vertical center of gravity,Distance of vertical center of gravity relative to item's base.
+6313,BRK,Maximum allowable transport stacking weight,Maximum weight allowed to be stowed on top of an item during transport.
+6313,BRL,Carbon Dioxide,Measurement of the carbon dioxide (C02) component.
+6313,BRM,Number of base units per pallet,The number of base units contained on a pallet.
+6313,BRN,Colony forming unit,Micro-organism colonies that are to be counted under determined conditions.
+6313,BRO,Diluted liquid volume,"The volume of liquid which results after a dilution agent has been added, e.g. undiluted orange juice of 200ml, after dilution with water the volume of diluted liquid equals 1 litre."
+6313,BRP,Energy efficiency,A measurement of the energy efficiency of an article.
+6313,BRQ,Number of layers,"Number of layers of a product or products within a package, container, etc."
+6313,BRR,Maximum demand,The highest demand recorded during the period of recording of usage of the supply.
+6313,BRS,Number of pallet places,The number of pallet places needed to store or to transport pallets (can be stacked).
+6313,BRT,"Package net measurement, cubed",An indication of the net cubed measurement of a package.
+6313,BRU,Power factor,The ratio of the power dissipated (active power in kW) to the total power (which is the product of the input volts times amps given in kVa). When equipment which uses reactive power is being operated the power factor will be less than one.
+6313,BRV,Stacking factor excluding bottom item,Maximum number of identical items stackable on top of item.
+6313,BS,Breaking strength,The measured breaking strength.
+6313,BSW,Breaking strength wet,The measured breaking strength when wet.
+6313,BSX,Step size,"An indication of measurements in which options contained within a Customer Specific Article are available, e.g. 10 metre planks of wood may be sold in step sizes of 2 metres."
+6313,BSY,Number of units per package,The number of identified units per package.
+6313,BSZ,Number of units per layer,"Number of units of a product or package within one layer of a package, container, etc."
+6313,BTA,Weight per running metre,A code used to indicate the weight per running metre of floor coverings over floor area.
+6313,BTB,Weight per square metre,A code used to indicate the weight per square metre of floor coverings over floor area.
+6313,BTC,Acidity of meat,The meat's acid quality or condition.
+6313,BTD,Slaughtering weight,Weight immediately after slaughter.
+6313,BTE,Stacking factor including bottom item,"Maximum number of items stackable upon each other, including the bottom item."
+6313,BTF,Number of units in the width of a layer,"Number of units of a product or package which make up the width of a layer in a package, container, pallet, etc."
+6313,BTG,Number of units in the depth of a layer,"Number of units of a product or package which make up the depth of a layer in a package, container, pallet, etc."
+6313,BTH,Nestable percentage,"Extent expressed as a percentage to which an item can be nested within an identical item, e.g. paper cups."
+6313,BTI,Gross weight including carrier's equipment,"Weight (mass) of goods including packaging and the carrier's equipment. In this context 'carrier's equipment' means any material resources necessary to facilitate the transport and handling of the goods without having the ability to move by its own propulsion, e.g. pallet, container, etc."
+6313,BTJ,Sugar content,The rate of sugar.
+6313,BTK,Self-accelerating polymerization temperature (SAPT),The lowest temperature at which polymerization may occur for a substance as packed for transport.
+6313,BTL,Self-accelerating decomposition temperature (SADT),The lowest temperature at which self-accelerating decomposition may occur for a substance as packed for transport.
+6313,BTM,Control temperature,The controlled transport temperature to avoid decomposition of self-reactive substances and organic peroxides.
+6313,BW,Basis weight,The measured basis weight.
+6313,CHN,Change,The measured change.
+6313,CHO,Emergency temperature,The temperature at which emergency response is required for self-reactive substances and organic peroxides.
+6313,CM,Colour,The measured colour.
+6313,CT,Contents of package,In combination with the other data elements of the actual segment this code indicates the measured content of a package.
+6313,CV,Commercial weight,Item weight considering its maximum possible humidity.
+6313,CZ,Core length,To specify length of core on which product is to be placed.
+6313,D,Destination weight agreement,The agreed weight of despatched goods whose weight may change during transport.
+6313,DI,Diameter,Diameter of an article.
+6313,DL,Delta value L,The measured delta value L.
+6313,DN,Density,The measured density.
+6313,DP,Depth,The measured depth.
+6313,DR,Denier,The measured fineness of a material.
+6313,DS,Distance between points,The measured distance between points.
+6313,DW,"Width, boxcar door",The measured width of a boxcar door.
+6313,E,Estimated new weight,The measured estimated new weight.
+6313,EA,Elongation,The measured elongation.
+6313,F,Deficit weight,The measured deficit weight.
+6313,FI,Filament count,"Used e.g. in textile, print industries."
+6313,FL,Longitudinal flatness,The measured longitudinal flatness.
+6313,FN,Flatness,The measured flatness.
+6313,FV,Transverse flatness,The measured transverse flatness.
+6313,GG,Gauge,The measured gauge.
+6313,GW,"Gross weight, maximum",The measured maximum gross weight.
+6313,HF,Hardness,The measured hardness.
+6313,HM,"Height, maximum",The measured maximum height.
+6313,HT,Height dimension,Numeric value of height.
+6313,IB,Impact energy,The measured impact energy.
+6313,ID,Inside diameter,The measured inside diameter.
+6313,L,Legal weight,The measured legal weight.
+6313,LM,"Length, maximum",The measured maximum length.
+6313,LN,Length,To specify the value of a length dimension.
+6313,LND,Lost end,The measured lost end.
+6313,M,Minimum weight,The measured minimum weight.
+6313,MO,Moisture,Measurement application is the moisture content of the item.
+6313,MW,Maximum weight,The measured maximum weight.
+6313,N,Actual net weight,The actual weight of the goods excluding packaging.
+6313,OD,Outside diameter,The measured outside diameter.
+6313,PRS,Pre stretch,Measurement identifying the amount an item has been stretched prior to use.
+6313,PTN,Per tonne,A measurement per tonne.
+6313,RA,Relative humidity,The measured relative humidity.
+6313,RF,Resistivity,The measured resistivity.
+6313,RJ,Rockwell C,Hardness in the Rockwell C scale.
+6313,RMW,Ream weight,Measurement indication for paper.
+6313,RP,Reduction of area,The measured reduction of area.
+6313,RUN,Run (process),The measured run (process).
+6313,RY,Ratio,The measured ratio.
+6313,SQ,Shipped quantity,The measured shipped quantity.
+6313,T,Tare weight,Weight excluding goods and loose accessories.
+6313,TC,Temperature,A measurement in relation to temperature.
+6313,TH,Thickness,The measured thickness.
+6313,TN,Time period,Measurement of a specific length of time.
+6313,TT,Time,The measured time.
+6313,VGM,Transport equipment verified gross mass (weight),"The gross mass (weight) of the transport equipment verified according to SOLAS Chapter VI, Regulation 2, paragraphs 4-6."
+6313,VH,"Height, van door",The height of the door of a van or container.
+6313,VW,"Width, van door",The width of the door of a van or container.
+6313,WA,Weight per unit of area,The weight per unit of an area.
+6313,WD,Width dimension,Numeric value of width.
+6313,WM,"Width, maximum",The maximum distance from side to side.
+6313,WU,Weight per unit of length,The weight per unit of length.
+6313,XH,"Side height, flat bed with removable sides",The height of the removable sides of a flat bed truck.
+6313,XQ,Squareness,The measured squareness.
+6313,XZ,Spool size,The measured spool size.
+6313,YS,Yield stress,The measured yield stress.
+6313,ZAL,Aluminium,The measured chemical element aluminium.
+6313,ZAS,Arsenic,The measured chemical element arsenic.
+6313,ZB,Boron,The measured chemical element boron.
+6313,ZBI,Bismuth,The measured chemical element bismuth.
+6313,ZC,Carbon,The measured chemical element carbon.
+6313,ZCA,Calcium,The measured chemical element calcium.
+6313,ZCB,Columbium,The measured chemical element columbium.
+6313,ZCE,Cerium,The measured chemical element cerium.
+6313,ZCL,Chlorine,The measured chemical element chlorine.
+6313,ZCO,Cobalt,The measured chemical element cobalt.
+6313,ZCR,Chromium,The measured chemical element chromium.
+6313,ZCU,Copper,The measured chemical element copper.
+6313,ZFE,Iron,The measured chemical element iron.
+6313,ZFS,Iron plus silicon,The measured substance iron plus silicon.
+6313,ZGE,Germanium,The measured chemical element germanium.
+6313,ZH,Hydrogen,The measured chemical element hydrogen.
+6313,ZK,Potassium,The measured chemical element potassium.
+6313,ZMG,Magnesium,The measured chemical element magnesium.
+6313,ZMN,Manganese,The measured chemical element manganese.
+6313,ZMO,Molybdenum,The measured chemical element molybdenum.
+6313,ZN,Nitrogen,The measured chemical element nitrogen.
+6313,ZNA,Sodium,The measured chemical element sodium.
+6313,ZNB,Niobium,The chemical element niobium.
+6313,ZNI,Nickel,The measured chemical element nickel.
+6313,ZO,Oxygen,The measured chemical element oxygen.
+6313,ZP,Phosphorus,The measured chemical element phosphorus.
+6313,ZPB,Lead,The measured chemical element lead.
+6313,ZS,Sulphur,The measured chemical element sulphur.
+6313,ZSB,Antimony,The measured chemical element antimony.
+6313,ZSE,Selenium,The measured chemical element selenium.
+6313,ZSI,Silicon,The measured chemical element silicon.
+6313,ZSL,Silicium oxyd,The measured substance silicium oxyd.
+6313,ZSN,Tin,The measured chemical element tin.
+6313,ZTA,Tantalium,The measured chemical element tantalium.
+6313,ZTE,Tellurium,The measured chemical element tellurium.
+6313,ZTI,Titanium,The measured chemical element titanium.
+6313,ZV,Vanadium,The measured chemical element vanadium.
+6313,ZW,Tungsten,The measured chemical element tungsten.
+6313,ZWA,Waste content,The measured waste content.
+6313,ZZN,Zinc,The measured chemical element zinc.
+6313,ZZR,Zirconium,The measured chemical element zirconium.
+6313,ZZZ,Mutually defined,A code assigned within a code list to be used on an interim basis and as defined among trading partners until a precise code can be assigned to the code list.
+Factur-X,BEST_BEFORE_DATE,Best before date
+Factur-X,COLOR_TEXT,Colour as text
+Factur-X,COMMISSION,Commission indicator,true / false
+Factur-X,DEPOSIT_SYSTEM,Deposit system,Permitted values:  DISPOSABLE RETURNABLE
+Factur-X,DEPOSIT_TYPE,Deposit type,Permitted values:  PRODUCT_PACKAGING TRANSPORT_EQUIPMENT
+Factur-X,ENERGY_CLASS,Energy efficiency class
+Factur-X,EXPIRATION_DATE,Expiration date
+Factur-X,FEE,Fee indicator,true = item is a fee
+Factur-X,KIND_OF_ARTICLE,Type of article,Allowed values: GOODS OTHER_SERVICES
+Factur-X,MATERIAL,Material of the product
+Factur-X,METER_LOCATION,"Metering point designation, e.g. for electricity or gas"
+Factur-X,METER_NUMBER,"Meter number, e.g. for electricity or gas"
+Factur-X,ORGANIC_CONTROL_BODY,Organic control body number
+Factur-X,PACKAGING_MATERIAL,Packaging material
+Factur-X,PACKAGING_TYPE,Type of packaging (code),Type of packaging in coded form. The packaging units from Rec 20 / Rec 21 are used as the code list. Example XBO=bottle
+Factur-X,PROMOTIONAL_VARIANT,Number of the action variant
+Factur-X,SEAL_NUMBER,Seal number
+Factur-X,SIZE_CODE,Size code,Size information in coded form
+Factur-X,SIZE_TEXT,Size designation,Size specifications in text form
+Factur-X,TRADING_UNIT,Type of trading unit,Permitted values: MIXED_ASSORTMENT = Assortment UNMIXED_UNIT = Container
+Factur-X,WASTE_CODE,Waste code (EWC),Waste code according to the European Waste Catalogue (EWC)
+Factur-X,WASTE_FRACTION,Waste fraction
+Factur-X,WEEE_NUMBER,WEEE registration number,WEEE registration number of the manufacturer of the product

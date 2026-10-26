@@ -1,0 +1,2163 @@
+Source,Code,Name,Change
+rec20,10,group
+rec20,11,outfit
+rec20,13,ration
+rec20,14,shot
+rec20,15,"stick, military"
+rec20,20,twenty foot container
+rec20,21,forty foot container
+rec20,22,decilitre per gram
+rec20,23,gram per cubic centimetre
+rec20,24,theoretical pound
+rec20,25,gram per square centimetre
+rec20,27,theoretical ton
+rec20,28,kilogram per square metre
+rec20,33,kilopascal square metre per gram
+rec20,34,kilopascal per millimetre
+rec20,35,millilitre per square centimetre second
+rec20,37,ounce per square foot
+rec20,38,"ounce per square foot per 0,01inch"
+rec20,40,millilitre per second
+rec20,41,millilitre per minute
+rec20,56,sitas
+rec20,57,mesh
+rec20,58,net kilogram
+rec20,59,part per million
+rec20,60,percent weight
+rec20,61,part per billion (US)
+rec20,74,millipascal
+rec20,77,milli-inch
+rec20,80,pound per square inch absolute
+rec20,81,henry
+rec20,85,foot pound-force
+rec20,87,pound per cubic foot
+rec20,89,poise
+rec20,91,stokes
+rec20,1I,fixed rate
+rec20,2A,radian per second
+rec20,2B,radian per second squared
+rec20,2C,roentgen
+rec20,2G,volt AC
+rec20,2H,volt DC
+rec20,2I,British thermal unit (international table) per hour
+rec20,2J,cubic centimetre per second
+rec20,2K,cubic foot per hour
+rec20,2L,cubic foot per minute
+rec20,2M,centimetre per second
+rec20,2N,decibel
+rec20,2P,kilobyte
+rec20,2Q,kilobecquerel
+rec20,2R,kilocurie
+rec20,2U,megagram
+rec20,2X,metre per minute
+rec20,2Y,milliroentgen
+rec20,2Z,millivolt
+rec20,3B,megajoule
+rec20,3C,manmonth
+rec20,4C,centistokes
+rec20,4G,microlitre
+rec20,4H,micrometre (micron)
+rec20,4K,milliampere
+rec20,4L,megabyte
+rec20,4M,milligram per hour
+rec20,4N,megabecquerel
+rec20,4O,microfarad
+rec20,4P,newton per metre
+rec20,4Q,ounce inch
+rec20,4R,ounce foot
+rec20,4T,picofarad
+rec20,4U,pound per hour
+rec20,4W,ton (US) per hour
+rec20,4X,kilolitre per hour
+rec20,5A,barrel (US) per minute
+rec20,5B,batch
+rec20,5E,MMSCF/day
+rec20,5J,hydraulic horse power
+rec20,A10,ampere square metre per joule second
+rec20,A11,angstrom
+rec20,A12,astronomical unit
+rec20,A13,attojoule
+rec20,A14,barn
+rec20,A15,barn per electronvolt
+rec20,A16,barn per steradian electronvolt
+rec20,A17,barn per steradian
+rec20,A18,becquerel per kilogram
+rec20,A19,becquerel per cubic metre
+rec20,A2,ampere per centimetre
+rec20,A20,British thermal unit (international table) per second square foot degree Rankine
+rec20,A21,British thermal unit (international table) per pound degree Rankine
+rec20,A22,British thermal unit (international table) per second foot degree Rankine
+rec20,A23,British thermal unit (international table) per hour square foot degree Rankine
+rec20,A24,candela per square metre
+rec20,A26,coulomb metre
+rec20,A27,coulomb metre squared per volt
+rec20,A28,coulomb per cubic centimetre
+rec20,A29,coulomb per cubic metre
+rec20,A3,ampere per millimetre
+rec20,A30,coulomb per cubic millimetre
+rec20,A31,coulomb per kilogram second
+rec20,A32,coulomb per mole
+rec20,A33,coulomb per square centimetre
+rec20,A34,coulomb per square metre
+rec20,A35,coulomb per square millimetre
+rec20,A36,cubic centimetre per mole
+rec20,A37,cubic decimetre per mole
+rec20,A38,cubic metre per coulomb
+rec20,A39,cubic metre per kilogram
+rec20,A4,ampere per square centimetre
+rec20,A40,cubic metre per mole
+rec20,A41,ampere per square metre
+rec20,A42,curie per kilogram
+rec20,A43,deadweight tonnage
+rec20,A44,decalitre
+rec20,A45,decametre
+rec20,A47,decitex
+rec20,A48,degree Rankine
+rec20,A49,denier
+rec20,A5,ampere square metre
+rec20,A53,electronvolt
+rec20,A54,electronvolt per metre
+rec20,A55,electronvolt square metre
+rec20,A56,electronvolt square metre per kilogram
+rec20,A59,8-part cloud cover
+rec20,A6,ampere per square metre kelvin squared
+rec20,A68,exajoule
+rec20,A69,farad per metre
+rec20,A7,ampere per square millimetre
+rec20,A70,femtojoule
+rec20,A71,femtometre
+rec20,A73,foot per second squared
+rec20,A74,foot pound-force per second
+rec20,A75,freight ton
+rec20,A76,gal
+rec20,A8,ampere second
+rec20,A84,gigacoulomb per cubic metre
+rec20,A85,gigaelectronvolt
+rec20,A86,gigahertz
+rec20,A87,gigaohm
+rec20,A88,gigaohm metre
+rec20,A89,gigapascal
+rec20,A9,rate
+rec20,A90,gigawatt
+rec20,A91,gon
+rec20,A93,gram per cubic metre
+rec20,A94,gram per mole
+rec20,A95,gray
+rec20,A96,gray per second
+rec20,A97,hectopascal
+rec20,A98,henry per metre
+rec20,A99,bit
+rec20,AA,ball
+rec20,AB,bulk pack
+rec20,ACR,acre
+rec20,ACT,activity
+rec20,AD,byte
+rec20,AE,ampere per metre
+rec20,AH,additional minute
+rec20,AI,average minute per call
+rec20,AK,fathom
+rec20,AL,access line
+rec20,AMH,ampere hour
+rec20,AMP,ampere
+rec20,ANN,year
+rec20,APZ,troy ounce or apothecary ounce
+rec20,AQ,anti-hemophilic factor (AHF) unit
+rec20,AS,assortment
+rec20,ASM,alcoholic strength by mass
+rec20,ASU,alcoholic strength by volume
+rec20,ATM,standard atmosphere
+rec20,AWG,american wire gauge
+rec20,AY,assembly
+rec20,AZ,British thermal unit (international table) per pound
+rec20,B1,barrel (US) per day
+rec20,B10,bit per second
+rec20,B11,joule per kilogram kelvin
+rec20,B12,joule per metre
+rec20,B13,joule per square metre
+rec20,B14,joule per metre to the fourth power
+rec20,B15,joule per mole
+rec20,B16,joule per mole kelvin
+rec20,B17,credit
+rec20,B18,joule second
+rec20,B19,digit
+rec20,B20,joule square metre per kilogram
+rec20,B21,kelvin per watt
+rec20,B22,kiloampere
+rec20,B23,kiloampere per square metre
+rec20,B24,kiloampere per metre
+rec20,B25,kilobecquerel per kilogram
+rec20,B26,kilocoulomb
+rec20,B27,kilocoulomb per cubic metre
+rec20,B28,kilocoulomb per square metre
+rec20,B29,kiloelectronvolt
+rec20,B3,batting pound
+rec20,B30,gibibit
+rec20,B31,kilogram metre per second
+rec20,B32,kilogram metre squared
+rec20,B33,kilogram metre squared per second
+rec20,B34,kilogram per cubic decimetre
+rec20,B35,kilogram per litre
+rec20,B4,"barrel, imperial"
+rec20,B41,kilojoule per kelvin
+rec20,B42,kilojoule per kilogram
+rec20,B43,kilojoule per kilogram kelvin
+rec20,B44,kilojoule per mole
+rec20,B45,kilomole
+rec20,B46,kilomole per cubic metre
+rec20,B47,kilonewton
+rec20,B48,kilonewton metre
+rec20,B49,kiloohm
+rec20,B50,kiloohm metre
+rec20,B52,kilosecond
+rec20,B53,kilosiemens
+rec20,B54,kilosiemens per metre
+rec20,B55,kilovolt per metre
+rec20,B56,kiloweber per metre
+rec20,B57,light year
+rec20,B58,litre per mole
+rec20,B59,lumen hour
+rec20,B60,lumen per square metre
+rec20,B61,lumen per watt
+rec20,B62,lumen second
+rec20,B63,lux hour
+rec20,B64,lux second
+rec20,B66,megaampere per square metre
+rec20,B67,megabecquerel per kilogram
+rec20,B68,gigabit
+rec20,B69,megacoulomb per cubic metre
+rec20,B7,cycle
+rec20,B70,megacoulomb per square metre
+rec20,B71,megaelectronvolt
+rec20,B72,megagram per cubic metre
+rec20,B73,meganewton
+rec20,B74,meganewton metre
+rec20,B75,megaohm
+rec20,B76,megaohm metre
+rec20,B77,megasiemens per metre
+rec20,B78,megavolt
+rec20,B79,megavolt per metre
+rec20,B8,joule per cubic metre
+rec20,B80,gigabit per second
+rec20,B81,reciprocal metre squared reciprocal second
+rec20,B82,inch per linear foot
+rec20,B83,metre to the fourth power
+rec20,B84,microampere
+rec20,B85,microbar
+rec20,B86,microcoulomb
+rec20,B87,microcoulomb per cubic metre
+rec20,B88,microcoulomb per square metre
+rec20,B89,microfarad per metre
+rec20,B90,microhenry
+rec20,B91,microhenry per metre
+rec20,B92,micronewton
+rec20,B93,micronewton metre
+rec20,B94,microohm
+rec20,B95,microohm metre
+rec20,B96,micropascal
+rec20,B97,microradian
+rec20,B98,microsecond
+rec20,B99,microsiemens
+rec20,BAR,bar [unit of pressure]
+rec20,BB,base box
+rec20,BFT,board foot
+rec20,BHP,brake horse power
+rec20,BIL,billion (EUR)
+rec20,BLD,dry barrel (US)
+rec20,BLL,barrel (US)
+rec20,BP,hundred board foot
+rec20,BPM,beats per minute
+rec20,BQL,becquerel
+rec20,BTU,British thermal unit (international table)
+rec20,BUA,bushel (US)
+rec20,BUI,bushel (UK)
+rec20,C0,call
+rec20,C10,millifarad
+rec20,C11,milligal
+rec20,C12,milligram per metre
+rec20,C13,milligray
+rec20,C14,millihenry
+rec20,C15,millijoule
+rec20,C16,millimetre per second
+rec20,C17,millimetre squared per second
+rec20,C18,millimole
+rec20,C19,mole per kilogram
+rec20,C20,millinewton
+rec20,C21,kibibit
+rec20,C22,millinewton per metre
+rec20,C23,milliohm metre
+rec20,C24,millipascal second
+rec20,C25,milliradian
+rec20,C26,millisecond
+rec20,C27,millisiemens
+rec20,C28,millisievert
+rec20,C29,millitesla
+rec20,C3,microvolt per metre
+rec20,C30,millivolt per metre
+rec20,C31,milliwatt
+rec20,C32,milliwatt per square metre
+rec20,C33,milliweber
+rec20,C34,mole
+rec20,C35,mole per cubic decimetre
+rec20,C36,mole per cubic metre
+rec20,C37,kilobit
+rec20,C38,mole per litre
+rec20,C39,nanoampere
+rec20,C40,nanocoulomb
+rec20,C41,nanofarad
+rec20,C42,nanofarad per metre
+rec20,C43,nanohenry
+rec20,C44,nanohenry per metre
+rec20,C45,nanometre
+rec20,C46,nanoohm metre
+rec20,C47,nanosecond
+rec20,C48,nanotesla
+rec20,C49,nanowatt
+rec20,C50,neper
+rec20,C51,neper per second
+rec20,C52,picometre
+rec20,C53,newton metre second
+rec20,C54,newton metre squared per kilogram squared
+rec20,C55,newton per square metre
+rec20,C56,newton per square millimetre
+rec20,C57,newton second
+rec20,C58,newton second per metre
+rec20,C59,octave
+rec20,C60,ohm centimetre
+rec20,C61,ohm metre
+rec20,C62,one
+rec20,C63,parsec
+rec20,C64,pascal per kelvin
+rec20,C65,pascal second
+rec20,C66,pascal second per cubic metre
+rec20,C67,pascal second per metre
+rec20,C68,petajoule
+rec20,C69,phon
+rec20,C7,centipoise
+rec20,C70,picoampere
+rec20,C71,picocoulomb
+rec20,C72,picofarad per metre
+rec20,C73,picohenry
+rec20,C74,kilobit per second
+rec20,C75,picowatt
+rec20,C76,picowatt per square metre
+rec20,C78,pound-force
+rec20,C79,kilovolt ampere hour
+rec20,C8,millicoulomb per kilogram
+rec20,C80,rad
+rec20,C81,radian
+rec20,C82,radian square metre per mole
+rec20,C83,radian square metre per kilogram
+rec20,C84,radian per metre
+rec20,C85,reciprocal angstrom
+rec20,C86,reciprocal cubic metre
+rec20,C87,reciprocal cubic metre per second
+rec20,C88,reciprocal electron volt per cubic metre
+rec20,C89,reciprocal henry
+rec20,C9,coil group
+rec20,C90,reciprocal joule per cubic metre
+rec20,C91,reciprocal kelvin or kelvin to the power minus one
+rec20,C92,reciprocal metre
+rec20,C93,reciprocal square metre
+rec20,C94,reciprocal minute
+rec20,C95,reciprocal mole
+rec20,C96,reciprocal pascal or pascal to the power minus one
+rec20,C97,reciprocal second
+rec20,C99,reciprocal second per metre squared
+rec20,CCT,carrying capacity in metric ton
+rec20,CDL,candela
+rec20,CEL,degree Celsius
+rec20,CEN,hundred
+rec20,CG,card
+rec20,CGM,centigram
+rec20,CKG,coulomb per kilogram
+rec20,CLF,hundred leave
+rec20,CLT,centilitre
+rec20,CMK,square centimetre
+rec20,CMQ,cubic centimetre
+rec20,CMT,centimetre
+rec20,CNP,hundred pack
+rec20,CNT,cental (UK)
+rec20,COU,coulomb
+rec20,CTG,content gram
+rec20,CTM,metric carat
+rec20,CTN,content ton (metric)
+rec20,CUR,curie
+rec20,CWA,hundred pound (cwt) / hundred weight (US)
+rec20,CWI,hundred weight (UK)
+rec20,D03,kilowatt hour per hour
+rec20,D04,lot  [unit of weight]
+rec20,D1,reciprocal second per steradian
+rec20,D10,siemens per metre
+rec20,D11,mebibit
+rec20,D12,siemens square metre per mole
+rec20,D13,sievert
+rec20,D15,sone
+rec20,D16,square centimetre per erg
+rec20,D17,square centimetre per steradian erg
+rec20,D18,metre kelvin
+rec20,D19,square metre kelvin per watt
+rec20,D2,reciprocal second per steradian metre squared
+rec20,D20,square metre per joule
+rec20,D21,square metre per kilogram
+rec20,D22,square metre per mole
+rec20,D23,pen gram (protein)
+rec20,D24,square metre per steradian
+rec20,D25,square metre per steradian joule
+rec20,D26,square metre per volt second
+rec20,D27,steradian
+rec20,D29,terahertz
+rec20,D30,terajoule
+rec20,D31,terawatt
+rec20,D32,terawatt hour
+rec20,D33,tesla
+rec20,D34,tex
+rec20,D36,megabit
+rec20,D41,tonne per cubic metre
+rec20,D42,tropical year
+rec20,D43,unified atomic mass unit
+rec20,D44,var
+rec20,D45,volt squared per kelvin squared
+rec20,D46,volt - ampere
+rec20,D47,volt per centimetre
+rec20,D48,volt per kelvin
+rec20,D49,millivolt per kelvin
+rec20,D5,kilogram per square centimetre
+rec20,D50,volt per metre
+rec20,D51,volt per millimetre
+rec20,D52,watt per kelvin
+rec20,D53,watt per metre kelvin
+rec20,D54,watt per square metre
+rec20,D55,watt per square metre kelvin
+rec20,D56,watt per square metre kelvin to the fourth power
+rec20,D57,watt per steradian
+rec20,D58,watt per steradian square metre
+rec20,D59,weber per metre
+rec20,D6,roentgen per second
+rec20,D60,weber per millimetre
+rec20,D61,minute [unit of angle]
+rec20,D62,second [unit of angle]
+rec20,D63,book
+rec20,D65,round
+rec20,D68,number of words
+rec20,D69,inch to the fourth power
+rec20,D73,joule square metre
+rec20,D74,kilogram per mole
+rec20,D77,megacoulomb
+rec20,D78,megajoule per second
+rec20,D80,microwatt
+rec20,D81,microtesla
+rec20,D82,microvolt
+rec20,D83,millinewton metre
+rec20,D85,microwatt per square metre
+rec20,D86,millicoulomb
+rec20,D87,millimole per kilogram
+rec20,D88,millicoulomb per cubic metre
+rec20,D89,millicoulomb per square metre
+rec20,D91,rem
+rec20,D93,second per cubic metre
+rec20,D94,second per cubic metre radian
+rec20,D95,joule per gram
+rec20,DAA,decare
+rec20,DAD,ten day
+rec20,DAY,day
+rec20,DB,dry pound
+Rec20,DBM,Decibel-milliwatts
+Rec20,DBW,Decibel watt
+rec20,DD,degree [unit of angle]
+rec20,DEC,decade
+rec20,DG,decigram
+rec20,DJ,decagram
+rec20,DLT,decilitre
+rec20,DMA,cubic decametre
+rec20,DMK,square decimetre
+rec20,DMO,standard kilolitre
+rec20,DMQ,cubic decimetre
+rec20,DMT,decimetre
+rec20,DN,decinewton metre
+rec20,DPC,dozen piece
+rec20,DPR,dozen pair
+rec20,DPT,displacement tonnage
+rec20,DRA,dram (US)
+rec20,DRI,dram (UK)
+rec20,DRL,dozen roll
+rec20,DT,dry ton
+rec20,DTN,decitonne
+rec20,DWT,pennyweight
+rec20,DZN,dozen
+rec20,DZP,dozen pack
+rec20,E01,newton per square centimetre
+rec20,E07,megawatt hour per hour
+rec20,E08,megawatt per hertz
+rec20,E09,milliampere hour
+rec20,E10,degree day
+rec20,E12,mille
+rec20,E14,kilocalorie (international table)
+rec20,E15,kilocalorie (thermochemical) per hour
+rec20,E16,million Btu(IT) per hour
+rec20,E17,cubic foot per second
+rec20,E18,tonne per hour
+rec20,E19,ping
+rec20,E20,megabit per second
+rec20,E21,shares
+rec20,E22,TEU
+rec20,E23,tyre
+rec20,E25,active unit
+rec20,E27,dose
+rec20,E28,air dry ton
+rec20,E30,strand
+rec20,E31,square metre per litre
+rec20,E32,litre per hour
+rec20,E33,foot per thousand
+rec20,E34,gigabyte
+rec20,E35,terabyte
+rec20,E36,petabyte
+rec20,E37,pixel
+rec20,E38,megapixel
+rec20,E39,dots per inch
+rec20,E4,gross kilogram
+rec20,E40,part per hundred thousand
+rec20,E41,kilogram-force per square millimetre
+rec20,E42,kilogram-force per square centimetre
+rec20,E43,joule per square centimetre
+rec20,E44,kilogram-force metre per square centimetre
+rec20,E45,milliohm
+rec20,E46,kilowatt hour per cubic metre
+rec20,E47,kilowatt hour per kelvin
+rec20,E48,service unit
+rec20,E49,working day
+rec20,E50,accounting unit
+rec20,E51,job
+rec20,E52,run foot
+rec20,E53,test
+rec20,E54,trip
+rec20,E55,use
+rec20,E56,well
+rec20,E57,zone
+rec20,E58,exabit per second
+rec20,E59,exbibyte
+rec20,E60,pebibyte
+rec20,E61,tebibyte
+rec20,E62,gibibyte
+rec20,E63,mebibyte
+rec20,E64,kibibyte
+rec20,E65,exbibit per metre
+rec20,E66,exbibit per square metre
+rec20,E67,exbibit per cubic metre
+rec20,E68,gigabyte per second
+rec20,E69,gibibit per metre
+rec20,E70,gibibit per square metre
+rec20,E71,gibibit per cubic metre
+rec20,E72,kibibit per metre
+rec20,E73,kibibit per square metre
+rec20,E74,kibibit per cubic metre
+rec20,E75,mebibit per metre
+rec20,E76,mebibit per square metre
+rec20,E77,mebibit per cubic metre
+rec20,E78,petabit
+rec20,E79,petabit per second
+rec20,E80,pebibit per metre
+rec20,E81,pebibit per square metre
+rec20,E82,pebibit per cubic metre
+rec20,E83,terabit
+rec20,E84,terabit per second
+rec20,E85,tebibit per metre
+rec20,E86,tebibit per cubic metre
+rec20,E87,tebibit per square metre
+rec20,E88,bit per metre
+rec20,E89,bit per square metre
+rec20,E90,reciprocal centimetre
+rec20,E91,reciprocal day
+rec20,E92,cubic decimetre per hour
+rec20,E93,kilogram per hour
+rec20,E94,kilomole per second
+rec20,E95,mole per second
+rec20,E96,degree per second
+rec20,E97,millimetre per degree Celcius metre
+rec20,E98,degree Celsius per kelvin
+rec20,E99,hectopascal per bar
+rec20,EA,each
+rec20,EB,electronic mail box
+rec20,EQ,equivalent gallon
+rec20,F01,bit per cubic metre
+rec20,F02,kelvin per kelvin
+rec20,F03,kilopascal per bar
+rec20,F04,millibar per bar
+rec20,F05,megapascal per bar
+rec20,F06,poise per bar
+rec20,F07,pascal per bar
+rec20,F08,milliampere per inch
+rec20,F10,kelvin per hour
+rec20,F11,kelvin per minute
+rec20,F12,kelvin per second
+rec20,F13,slug
+rec20,F14,gram per kelvin
+rec20,F15,kilogram per kelvin
+rec20,F16,milligram per kelvin
+rec20,F17,pound-force per foot
+rec20,F18,kilogram square centimetre
+rec20,F19,kilogram square millimetre
+rec20,F20,pound inch squared
+rec20,F21,pound-force inch
+rec20,F22,pound-force foot per ampere
+rec20,F23,gram per cubic decimetre
+rec20,F24,kilogram per kilomol
+rec20,F25,gram per hertz
+rec20,F26,gram per day
+rec20,F27,gram per hour
+rec20,F28,gram per minute
+rec20,F29,gram per second
+rec20,F30,kilogram per day
+rec20,F31,kilogram per minute
+rec20,F32,milligram per day
+rec20,F33,milligram per minute
+rec20,F34,milligram per second
+rec20,F35,gram per day kelvin
+rec20,F36,gram per hour kelvin
+rec20,F37,gram per minute kelvin
+rec20,F38,gram per second kelvin
+rec20,F39,kilogram per day kelvin
+rec20,F40,kilogram per hour kelvin
+rec20,F41,kilogram per minute kelvin
+rec20,F42,kilogram per second kelvin
+rec20,F43,milligram per day kelvin
+rec20,F44,milligram per hour kelvin
+rec20,F45,milligram per minute kelvin
+rec20,F46,milligram per second kelvin
+rec20,F47,newton per millimetre
+rec20,F48,pound-force per inch
+rec20,F49,rod [unit of distance]
+rec20,F50,micrometre per kelvin
+rec20,F51,centimetre per kelvin
+rec20,F52,metre per kelvin
+rec20,F53,millimetre per kelvin
+rec20,F54,milliohm per metre
+rec20,F55,ohm per mile (statute mile)
+rec20,F56,ohm per kilometre
+rec20,F57,milliampere per pound-force per square inch
+rec20,F58,reciprocal bar
+rec20,F59,milliampere per bar
+rec20,F60,degree Celsius per bar
+rec20,F61,kelvin per bar
+rec20,F62,gram per day bar
+rec20,F63,gram per hour bar
+rec20,F64,gram per minute bar
+rec20,F65,gram per second bar
+rec20,F66,kilogram per day bar
+rec20,F67,kilogram per hour bar
+rec20,F68,kilogram per minute bar
+rec20,F69,kilogram per second bar
+rec20,F70,milligram per day bar
+rec20,F71,milligram per hour bar
+rec20,F72,milligram per minute bar
+rec20,F73,milligram per second bar
+rec20,F74,gram per bar
+rec20,F75,milligram per bar
+rec20,F76,milliampere per millimetre
+rec20,F77,pascal second per kelvin
+rec20,F78,inch of water
+rec20,F79,inch of mercury
+rec20,F80,water horse power
+rec20,F81,bar per kelvin
+rec20,F82,hectopascal per kelvin
+rec20,F83,kilopascal per kelvin
+rec20,F84,millibar per kelvin
+rec20,F85,megapascal per kelvin
+rec20,F86,poise per kelvin
+rec20,F87,volt per litre minute
+rec20,F88,newton centimetre
+rec20,F89,newton metre per degree
+rec20,F90,newton metre per ampere
+rec20,F91,bar litre per second
+rec20,F92,bar cubic metre per second
+rec20,F93,hectopascal litre per second
+rec20,F94,hectopascal cubic metre per second
+rec20,F95,millibar litre per second
+rec20,F96,millibar cubic metre per second
+rec20,F97,megapascal litre per second
+rec20,F98,megapascal cubic metre per second
+rec20,F99,pascal litre per second
+rec20,FAH,degree Fahrenheit
+rec20,FAR,farad
+rec20,FBM,fibre metre
+rec20,FC,thousand cubic foot
+rec20,FF,hundred cubic metre
+rec20,FH,micromole
+rec20,FIT,failures in time
+rec20,FL,flake ton
+Rec20,FNU,Formazin nephelometric unit
+rec20,FOT,foot
+rec20,FP,pound per square foot
+rec20,FR,foot per minute
+rec20,FS,foot per second
+rec20,FTK,square foot
+rec20,FTQ,cubic foot
+rec20,G01,pascal cubic metre per second
+rec20,G04,centimetre per bar
+rec20,G05,metre per bar
+rec20,G06,millimetre per bar
+rec20,G08,square inch per second
+rec20,G09,square metre per second kelvin
+rec20,G10,stokes per kelvin
+rec20,G11,gram per cubic centimetre bar
+rec20,G12,gram per cubic decimetre bar
+rec20,G13,gram per litre bar
+rec20,G14,gram per cubic metre bar
+rec20,G15,gram per millilitre bar
+rec20,G16,kilogram per cubic centimetre bar
+rec20,G17,kilogram per litre bar
+rec20,G18,kilogram per cubic metre bar
+rec20,G19,newton metre per kilogram
+rec20,G2,US gallon per minute
+rec20,G20,pound-force foot per pound
+rec20,G21,cup [unit of volume]
+rec20,G23,peck
+rec20,G24,tablespoon (US)
+rec20,G25,teaspoon (US)
+rec20,G26,stere
+rec20,G27,cubic centimetre per kelvin
+rec20,G28,litre per kelvin
+rec20,G29,cubic metre per kelvin
+rec20,G3,Imperial gallon per minute
+rec20,G30,millilitre per kelvin
+rec20,G31,kilogram per cubic centimetre
+rec20,G32,ounce (avoirdupois) per cubic yard
+rec20,G33,gram per cubic centimetre kelvin
+rec20,G34,gram per cubic decimetre kelvin
+rec20,G35,gram per litre kelvin
+rec20,G36,gram per cubic metre kelvin
+rec20,G37,gram per millilitre kelvin
+rec20,G38,kilogram per cubic centimetre kelvin
+rec20,G39,kilogram per litre kelvin
+rec20,G40,kilogram per cubic metre kelvin
+rec20,G41,square metre per second bar
+rec20,G42,microsiemens per centimetre
+rec20,G43,microsiemens per metre
+rec20,G44,nanosiemens per centimetre
+rec20,G45,nanosiemens per metre
+rec20,G46,stokes per bar
+rec20,G47,cubic centimetre per day
+rec20,G48,cubic centimetre per hour
+rec20,G49,cubic centimetre per minute
+rec20,G50,gallon (US) per hour
+rec20,G51,litre per second
+rec20,G52,cubic metre per day
+rec20,G53,cubic metre per minute
+rec20,G54,millilitre per day
+rec20,G55,millilitre per hour
+rec20,G56,cubic inch per hour
+rec20,G57,cubic inch per minute
+rec20,G58,cubic inch per second
+rec20,G59,milliampere per litre minute
+rec20,G60,volt per bar
+rec20,G61,cubic centimetre per day kelvin
+rec20,G62,cubic centimetre per hour kelvin
+rec20,G63,cubic centimetre per minute kelvin
+rec20,G64,cubic centimetre per second kelvin
+rec20,G65,litre per day kelvin
+rec20,G66,litre per hour kelvin
+rec20,G67,litre per minute kelvin
+rec20,G68,litre per second kelvin
+rec20,G69,cubic metre per day kelvin
+rec20,G70,cubic metre per hour kelvin
+rec20,G71,cubic metre per minute kelvin
+rec20,G72,cubic metre per second kelvin
+rec20,G73,millilitre per day kelvin
+rec20,G74,millilitre per hour kelvin
+rec20,G75,millilitre per minute kelvin
+rec20,G76,millilitre per second kelvin
+rec20,G77,millimetre to the fourth power
+rec20,G78,cubic centimetre per day bar
+rec20,G79,cubic centimetre per hour bar
+rec20,G80,cubic centimetre per minute bar
+rec20,G81,cubic centimetre per second bar
+rec20,G82,litre per day bar
+rec20,G83,litre per hour bar
+rec20,G84,litre per minute bar
+rec20,G85,litre per second bar
+rec20,G86,cubic metre per day bar
+rec20,G87,cubic metre per hour bar
+rec20,G88,cubic metre per minute bar
+rec20,G89,cubic metre per second bar
+rec20,G90,millilitre per day bar
+rec20,G91,millilitre per hour bar
+rec20,G92,millilitre per minute bar
+rec20,G93,millilitre per second bar
+rec20,G94,cubic centimetre per bar
+rec20,G95,litre per bar
+rec20,G96,cubic metre per bar
+rec20,G97,millilitre per bar
+rec20,G98,microhenry per kiloohm
+rec20,G99,microhenry per ohm
+rec20,GB,gallon (US) per day
+rec20,GBQ,gigabecquerel
+rec20,GDW,"gram, dry weight"
+rec20,GE,pound per gallon (US)
+rec20,GF,gram per metre (gram per 100 centimetres)
+rec20,GFI,gram of fissile isotope
+rec20,GGR,great gross
+rec20,GIA,gill (US)
+rec20,GIC,"gram, including container"
+rec20,GII,gill (UK)
+rec20,GIP,"gram, including inner packaging"
+rec20,GJ,gram per millilitre
+rec20,GL,gram per litre
+rec20,GLD,dry gallon (US)
+rec20,GLI,gallon (UK)
+rec20,GLL,gallon (US)
+rec20,GM,gram per square metre
+rec20,GO,milligram per square metre
+rec20,GP,milligram per cubic metre
+rec20,GQ,microgram per cubic metre
+rec20,GRM,gram
+rec20,GRN,grain
+rec20,GRO,gross
+rec20,GV,gigajoule
+rec20,GWH,gigawatt hour
+rec20,H03,henry per kiloohm
+rec20,H04,henry per ohm
+rec20,H05,millihenry per kiloohm
+rec20,H06,millihenry per ohm
+rec20,H07,pascal second per bar
+rec20,H08,microbecquerel
+rec20,H09,reciprocal year
+rec20,H10,reciprocal hour
+rec20,H11,reciprocal month
+rec20,H12,degree Celsius per hour
+rec20,H13,degree Celsius per minute
+rec20,H14,degree Celsius per second
+rec20,H15,square centimetre per gram
+rec20,H16,square decametre
+rec20,H18,square hectometre
+rec20,H19,cubic hectometre
+rec20,H20,cubic kilometre
+rec20,H21,blank
+rec20,H22,volt square inch per pound-force
+rec20,H23,volt per inch
+rec20,H24,volt per microsecond
+rec20,H25,percent per kelvin
+rec20,H26,ohm per metre
+rec20,H27,degree per metre
+rec20,H28,microfarad per kilometre
+rec20,H29,microgram per litre
+rec20,H30,square micrometre (square micron)
+rec20,H31,ampere per kilogram
+rec20,H32,ampere squared second
+rec20,H33,farad per kilometre
+rec20,H34,hertz metre
+rec20,H35,kelvin metre per watt
+rec20,H36,megaohm per kilometre
+rec20,H37,megaohm per metre
+rec20,H38,megaampere
+rec20,H39,megahertz kilometre
+rec20,H40,newton per ampere
+rec20,H41,"newton metre watt to the power minus 0,5"
+rec20,H42,pascal per metre
+rec20,H43,siemens per centimetre
+rec20,H44,teraohm
+rec20,H45,volt second per metre
+rec20,H46,volt per second
+rec20,H47,watt per cubic metre
+rec20,H48,attofarad
+rec20,H49,centimetre per hour
+rec20,H50,reciprocal cubic centimetre
+rec20,H51,decibel per kilometre
+rec20,H52,decibel per metre
+rec20,H53,kilogram per bar
+rec20,H54,kilogram per cubic decimetre kelvin
+rec20,H55,kilogram per cubic decimetre bar
+rec20,H56,kilogram per square metre second
+rec20,H57,inch per two pi radiant
+rec20,H58,metre per volt second
+rec20,H59,square metre per newton
+rec20,H60,cubic metre per cubic metre
+rec20,H61,millisiemens per centimetre
+rec20,H62,millivolt per minute
+rec20,H63,milligram per square centimetre
+rec20,H64,milligram per gram
+rec20,H65,millilitre per cubic metre
+rec20,H66,millimetre per year
+rec20,H67,millimetre per hour
+rec20,H68,millimole per gram
+rec20,H69,picopascal per kilometre
+rec20,H70,picosecond
+rec20,H71,percent per month
+rec20,H72,percent per hectobar
+rec20,H73,percent per decakelvin
+rec20,H74,watt per metre
+rec20,H75,decapascal
+rec20,H76,gram per millimetre
+rec20,H77,module width
+rec20,H79,French gauge
+rec20,H80,rack unit
+rec20,H81,millimetre per minute
+rec20,H82,big point
+rec20,H83,litre per kilogram
+rec20,H84,gram millimetre
+rec20,H85,reciprocal week
+rec20,H87,piece
+rec20,H88,megaohm kilometre
+rec20,H89,percent per ohm
+rec20,H90,percent per degree
+rec20,H91,percent per ten thousand
+rec20,H92,percent per one hundred thousand
+rec20,H93,percent per hundred
+rec20,H94,percent per thousand
+rec20,H95,percent per volt
+rec20,H96,percent per bar
+rec20,H98,percent per inch
+rec20,H99,percent per metre
+rec20,HA,hank
+Rec20,HAD,Piece Day
+rec20,HBA,hectobar
+rec20,HBX,hundred boxes
+rec20,HC,hundred count
+rec20,HDW,"hundred kilogram, dry weight"
+rec20,HEA,head
+rec20,HGM,hectogram
+rec20,HH,hundred cubic foot
+rec20,HIU,hundred international unit
+rec20,HKM,"hundred kilogram, net mass"
+rec20,HLT,hectolitre
+rec20,HM,mile per hour (statute mile)
+Rec20,HMO,Piece Month
+rec20,HMQ,million cubic metre
+rec20,HMT,hectometre
+rec20,HPA,hectolitre of pure alcohol
+rec20,HTZ,hertz
+rec20,HUR,hour
+Rec20,HWE,Piece Week
+rec20,IA,inch pound (pound inch)
+rec20,IE,person
+rec20,INH,inch
+rec20,INK,square inch
+rec20,INQ,cubic inch
+rec20,ISD,international sugar degree
+rec20,IU,inch per second
+rec20,IUG,international unit per gram
+rec20,IV,inch per second squared
+rec20,J10,percent per millimetre
+rec20,J12,per mille per psi
+rec20,J13,degree API
+rec20,J14,degree Baume (origin scale)
+rec20,J15,degree Baume (US heavy)
+rec20,J16,degree Baume (US light)
+rec20,J17,degree Balling
+rec20,J18,degree Brix
+rec20,J19,degree Fahrenheit hour square foot per British thermal unit (thermochemical)
+rec20,J2,joule per kilogram
+rec20,J20,degree Fahrenheit per kelvin
+rec20,J21,degree Fahrenheit per bar
+rec20,J22,degree Fahrenheit hour square foot per British thermal unit (international table)
+rec20,J23,degree Fahrenheit per hour
+rec20,J24,degree Fahrenheit per minute
+rec20,J25,degree Fahrenheit per second
+rec20,J26,reciprocal degree Fahrenheit
+rec20,J27,degree Oechsle
+rec20,J28,degree Rankine per hour
+rec20,J29,degree Rankine per minute
+rec20,J30,degree Rankine per second
+rec20,J31,degree Twaddell
+rec20,J32,micropoise
+rec20,J33,microgram per kilogram
+rec20,J34,microgram per cubic metre kelvin
+rec20,J35,microgram per cubic metre bar
+rec20,J36,microlitre per litre
+rec20,J38,baud
+rec20,J39,British thermal unit (mean)
+rec20,J40,British thermal unit (international table) foot per hour square foot degree Fahrenheit
+rec20,J41,British thermal unit (international table) inch per hour square foot degree Fahrenheit
+rec20,J42,British thermal unit (international table) inch per second square foot degree Fahrenheit
+rec20,J43,British thermal unit (international table) per pound degree Fahrenheit
+rec20,J44,British thermal unit (international table) per minute
+rec20,J45,British thermal unit (international table) per second
+rec20,J46,British thermal unit (thermochemical) foot per hour square foot degree Fahrenheit
+rec20,J47,British thermal unit (thermochemical) per hour
+rec20,J48,British thermal unit (thermochemical) inch per hour square foot degree Fahrenheit
+rec20,J49,British thermal unit (thermochemical) inch per second square foot degree Fahrenheit
+rec20,J50,British thermal unit (thermochemical) per pound degree Fahrenheit
+rec20,J51,British thermal unit (thermochemical) per minute
+rec20,J52,British thermal unit (thermochemical) per second
+rec20,J53,coulomb square metre per kilogram
+rec20,J54,megabaud
+rec20,J55,watt second
+rec20,J56,bar per bar
+rec20,J57,barrel (UK petroleum)
+rec20,J58,barrel (UK petroleum) per minute
+rec20,J59,barrel (UK petroleum) per day
+rec20,J60,barrel (UK petroleum) per hour
+rec20,J61,barrel (UK petroleum) per second
+rec20,J62,barrel (US petroleum) per hour
+rec20,J63,barrel (US petroleum) per second
+rec20,J64,bushel (UK) per day
+rec20,J65,bushel (UK) per hour
+rec20,J66,bushel (UK) per minute
+rec20,J67,bushel (UK) per second
+rec20,J68,bushel (US dry) per day
+rec20,J69,bushel (US dry) per hour
+rec20,J70,bushel (US dry) per minute
+rec20,J71,bushel (US dry) per second
+rec20,J72,centinewton metre
+rec20,J73,centipoise per kelvin
+rec20,J74,centipoise per bar
+rec20,J75,calorie (mean)
+rec20,J76,calorie (international table) per gram degree Celsius
+rec20,J78,calorie (thermochemical) per centimetre second degree Celsius
+rec20,J79,calorie (thermochemical) per gram degree Celsius
+rec20,J81,calorie (thermochemical) per minute
+rec20,J82,calorie (thermochemical) per second
+rec20,J83,clo
+rec20,J84,centimetre per second kelvin
+rec20,J85,centimetre per second bar
+rec20,J87,cubic centimetre per cubic metre
+rec20,J90,cubic decimetre per day
+rec20,J91,cubic decimetre per cubic metre
+rec20,J92,cubic decimetre per minute
+rec20,J93,cubic decimetre per second
+rec20,J95,ounce (UK fluid) per day
+rec20,J96,ounce (UK fluid) per hour
+rec20,J97,ounce (UK fluid) per minute
+rec20,J98,ounce (UK fluid) per second
+rec20,J99,ounce (US fluid) per day
+rec20,JE,joule per kelvin
+rec20,JK,megajoule per kilogram
+rec20,JM,megajoule per cubic metre
+rec20,JNT,pipeline joint
+rec20,JOU,joule
+rec20,JPS,hundred metre
+rec20,JWL,number of jewels
+rec20,K1,kilowatt demand
+rec20,K10,ounce (US fluid) per hour
+rec20,K11,ounce (US fluid) per minute
+rec20,K12,ounce (US fluid) per second
+rec20,K13,foot per degree Fahrenheit
+rec20,K14,foot per hour
+rec20,K15,foot pound-force per hour
+rec20,K16,foot pound-force per minute
+rec20,K17,foot per psi
+rec20,K18,foot per second degree Fahrenheit
+rec20,K19,foot per second psi
+rec20,K2,kilovolt ampere reactive demand
+rec20,K20,reciprocal cubic foot
+rec20,K21,cubic foot per degree Fahrenheit
+rec20,K22,cubic foot per day
+rec20,K23,cubic foot per psi
+rec20,K26,gallon (UK) per day
+rec20,K27,gallon (UK) per hour
+rec20,K28,gallon (UK) per second
+rec20,K3,kilovolt ampere reactive hour
+rec20,K30,gallon (US liquid) per second
+rec20,K31,gram-force per square centimetre
+rec20,K32,gill (UK) per day
+rec20,K33,gill (UK) per hour
+rec20,K34,gill (UK) per minute
+rec20,K35,gill (UK) per second
+rec20,K36,gill (US) per day
+rec20,K37,gill (US) per hour
+rec20,K38,gill (US) per minute
+rec20,K39,gill (US) per second
+rec20,K40,standard acceleration of free fall
+rec20,K41,grain per gallon (US)
+rec20,K42,horsepower (boiler)
+rec20,K43,horsepower (electric)
+rec20,K45,inch per degree Fahrenheit
+rec20,K46,inch per psi
+rec20,K47,inch per second degree Fahrenheit
+rec20,K48,inch per second psi
+rec20,K49,reciprocal cubic inch
+rec20,K50,kilobaud
+rec20,K51,kilocalorie (mean)
+rec20,K52,kilocalorie (international table) per hour metre degree Celsius
+rec20,K53,kilocalorie (thermochemical)
+rec20,K54,kilocalorie (thermochemical) per minute
+rec20,K55,kilocalorie (thermochemical) per second
+rec20,K58,kilomole per hour
+rec20,K59,kilomole per cubic metre kelvin
+rec20,K6,kilolitre
+rec20,K60,kilomole per cubic metre bar
+rec20,K61,kilomole per minute
+rec20,K62,litre per litre
+rec20,K63,reciprocal litre
+rec20,K64,pound (avoirdupois) per degree Fahrenheit
+rec20,K65,pound (avoirdupois) square foot
+rec20,K66,pound (avoirdupois) per day
+rec20,K67,pound per foot hour
+rec20,K68,pound per foot second
+rec20,K69,pound (avoirdupois) per cubic foot degree Fahrenheit
+rec20,K70,pound (avoirdupois) per cubic foot psi
+rec20,K71,pound (avoirdupois) per gallon (UK)
+rec20,K73,pound (avoirdupois) per hour degree Fahrenheit
+rec20,K74,pound (avoirdupois) per hour psi
+rec20,K75,pound (avoirdupois) per cubic inch degree Fahrenheit
+rec20,K76,pound (avoirdupois) per cubic inch psi
+rec20,K77,pound (avoirdupois) per psi
+rec20,K78,pound (avoirdupois) per minute
+rec20,K79,pound (avoirdupois) per minute degree Fahrenheit
+rec20,K80,pound (avoirdupois) per minute psi
+rec20,K81,pound (avoirdupois) per second
+rec20,K82,pound (avoirdupois) per second degree Fahrenheit
+rec20,K83,pound (avoirdupois) per second psi
+rec20,K84,pound per cubic yard
+rec20,K85,pound-force per square foot
+rec20,K86,pound-force per square inch degree Fahrenheit
+rec20,K87,psi cubic inch per second
+rec20,K88,psi litre per second
+rec20,K89,psi cubic metre per second
+rec20,K90,psi cubic yard per second
+rec20,K91,pound-force second per square foot
+rec20,K92,pound-force second per square inch
+rec20,K93,reciprocal psi
+rec20,K94,quart (UK liquid) per day
+rec20,K95,quart (UK liquid) per hour
+rec20,K96,quart (UK liquid) per minute
+rec20,K97,quart (UK liquid) per second
+rec20,K98,quart (US liquid) per day
+rec20,K99,quart (US liquid) per hour
+rec20,KA,cake
+rec20,KAT,katal
+rec20,KB,kilocharacter
+rec20,KBA,kilobar
+rec20,KCC,kilogram of choline chloride
+rec20,KDW,kilogram drained net weight
+rec20,KEL,kelvin
+rec20,KGM,kilogram
+rec20,KGS,kilogram per second
+rec20,KHY,kilogram of hydrogen peroxide
+rec20,KHZ,kilohertz
+rec20,KI,kilogram per millimetre width
+rec20,KIC,"kilogram, including container"
+rec20,KIP,"kilogram, including inner packaging"
+rec20,KJ,kilosegment
+rec20,KJO,kilojoule
+rec20,KL,kilogram per metre
+rec20,KLK,lactic dry material percentage
+rec20,KLX,kilolux
+rec20,KMA,kilogram of methylamine
+rec20,KMH,kilometre per hour
+rec20,KMK,square kilometre
+rec20,KMQ,kilogram per cubic metre
+rec20,KMT,kilometre
+rec20,KNI,kilogram of nitrogen
+rec20,KNM,kilonewton per square metre
+rec20,KNS,kilogram named substance
+rec20,KNT,knot
+rec20,KO,milliequivalence caustic potash per gram of product
+rec20,KPA,kilopascal
+rec20,KPH,kilogram of potassium hydroxide (caustic potash)
+rec20,KPO,kilogram of potassium oxide
+rec20,KPP,kilogram of phosphorus pentoxide (phosphoric anhydride)
+rec20,KR,kiloroentgen
+rec20,KSD,kilogram of substance 90 % dry
+rec20,KSH,kilogram of sodium hydroxide (caustic soda)
+rec20,KT,kit
+rec20,KTN,kilotonne
+rec20,KUR,kilogram of uranium
+rec20,KVA,kilovolt - ampere
+rec20,KVR,kilovar
+rec20,KVT,kilovolt
+rec20,KW,kilogram per millimetre
+rec20,KWH,kilowatt hour
+rec20,KWN,Kilowatt hour per normalized cubic metre
+rec20,KWO,kilogram of tungsten trioxide
+rec20,KWS,Kilowatt hour per standard cubic metre
+rec20,KWT,kilowatt
+Rec20,KWY,kilowatt year
+rec20,KX,millilitre per kilogram
+rec20,L10,quart (US liquid) per minute
+rec20,L11,quart (US liquid) per second
+rec20,L12,metre per second kelvin
+rec20,L13,metre per second bar
+rec20,L14,square metre hour degree Celsius per kilocalorie (international table)
+rec20,L15,millipascal second per kelvin
+rec20,L16,millipascal second per bar
+rec20,L17,milligram per cubic metre kelvin
+rec20,L18,milligram per cubic metre bar
+rec20,L19,millilitre per litre
+rec20,L2,litre per minute
+rec20,L20,reciprocal cubic millimetre
+rec20,L21,cubic millimetre per cubic metre
+rec20,L23,mole per hour
+rec20,L24,mole per kilogram kelvin
+rec20,L25,mole per kilogram bar
+rec20,L26,mole per litre kelvin
+rec20,L27,mole per litre bar
+rec20,L28,mole per cubic metre kelvin
+rec20,L29,mole per cubic metre bar
+rec20,L30,mole per minute
+rec20,L31,milliroentgen aequivalent men
+rec20,L32,nanogram per kilogram
+rec20,L33,ounce (avoirdupois) per day
+rec20,L34,ounce (avoirdupois) per hour
+rec20,L35,ounce (avoirdupois) per minute
+rec20,L36,ounce (avoirdupois) per second
+rec20,L37,ounce (avoirdupois) per gallon (UK)
+rec20,L38,ounce (avoirdupois) per gallon (US)
+rec20,L39,ounce (avoirdupois) per cubic inch
+rec20,L40,ounce (avoirdupois)-force
+rec20,L41,ounce (avoirdupois)-force inch
+rec20,L42,picosiemens per metre
+rec20,L43,peck (UK)
+rec20,L44,peck (UK) per day
+rec20,L45,peck (UK) per hour
+rec20,L46,peck (UK) per minute
+rec20,L47,peck (UK) per second
+rec20,L48,peck (US dry) per day
+rec20,L49,peck (US dry) per hour
+rec20,L50,peck (US dry) per minute
+rec20,L51,peck (US dry) per second
+rec20,L52,psi per psi
+rec20,L53,pint (UK) per day
+rec20,L54,pint (UK) per hour
+rec20,L55,pint (UK) per minute
+rec20,L56,pint (UK) per second
+rec20,L57,pint (US liquid) per day
+rec20,L58,pint (US liquid) per hour
+rec20,L59,pint (US liquid) per minute
+rec20,L60,pint (US liquid) per second
+rec20,L63,slug per day
+rec20,L64,slug per foot second
+rec20,L65,slug per cubic foot
+rec20,L66,slug per hour
+rec20,L67,slug per minute
+rec20,L68,slug per second
+rec20,L69,tonne per kelvin
+rec20,L70,tonne per bar
+rec20,L71,tonne per day
+rec20,L72,tonne per day kelvin
+rec20,L73,tonne per day bar
+rec20,L74,tonne per hour kelvin
+rec20,L75,tonne per hour bar
+rec20,L76,tonne per cubic metre kelvin
+rec20,L77,tonne per cubic metre bar
+rec20,L78,tonne per minute
+rec20,L79,tonne per minute kelvin
+rec20,L80,tonne per minute bar
+rec20,L81,tonne per second
+rec20,L82,tonne per second kelvin
+rec20,L83,tonne per second bar
+rec20,L84,ton (UK shipping)
+rec20,L85,ton long per day
+rec20,L86,ton (US shipping)
+rec20,L87,ton short per degree Fahrenheit
+rec20,L88,ton short per day
+rec20,L89,ton short per hour degree Fahrenheit
+rec20,L90,ton short per hour psi
+rec20,L91,ton short per psi
+rec20,L92,ton (UK long) per cubic yard
+rec20,L93,ton (US short) per cubic yard
+rec20,L94,ton-force (US short)
+rec20,L95,common year
+rec20,L96,sidereal year
+rec20,L98,yard per degree Fahrenheit
+rec20,L99,yard per psi
+rec20,LA,pound per cubic inch
+rec20,LAC,lactose excess percentage
+rec20,LBR,pound
+rec20,LBT,troy pound (US)
+rec20,LD,litre per day
+rec20,LEF,leaf
+rec20,LF,linear foot
+rec20,LH,labour hour
+rec20,LK,link
+rec20,LM,linear metre
+rec20,LN,length
+rec20,LO,lot  [unit of procurement]
+rec20,LP,liquid pound
+rec20,LPA,litre of pure alcohol
+rec20,LR,layer
+rec20,LS,lump sum
+rec20,LTN,ton (UK) or long ton (US)
+rec20,LTR,litre
+rec20,LUB,"metric ton, lubricating oil"
+rec20,LUM,lumen
+rec20,LUX,lux
+rec20,LY,linear yard
+rec20,M1,milligram per litre
+rec20,M10,reciprocal cubic yard
+rec20,M11,cubic yard per degree Fahrenheit
+rec20,M12,cubic yard per day
+rec20,M13,cubic yard per hour
+rec20,M14,cubic yard per psi
+rec20,M15,cubic yard per minute
+rec20,M16,cubic yard per second
+rec20,M17,kilohertz metre
+rec20,M18,gigahertz metre
+rec20,M19,Beaufort
+rec20,M20,reciprocal megakelvin or megakelvin to the power minus one
+rec20,M21,reciprocal kilovolt - ampere reciprocal hour
+rec20,M22,millilitre per square centimetre minute
+rec20,M23,newton per centimetre
+rec20,M24,ohm kilometre
+rec20,M25,percent per degree Celsius
+rec20,M26,gigaohm per metre
+rec20,M27,megahertz metre
+rec20,M29,kilogram per kilogram
+rec20,M30,reciprocal volt - ampere reciprocal second
+rec20,M31,kilogram per kilometre
+rec20,M32,pascal second per litre
+rec20,M33,millimole per litre
+rec20,M34,newton metre per square metre
+rec20,M35,millivolt - ampere
+rec20,M36,30-day month
+rec20,M37,actual/360
+rec20,M38,kilometre per second squared
+rec20,M39,centimetre per second squared
+rec20,M4,monetary value
+rec20,M40,yard per second squared
+rec20,M41,millimetre per second squared
+rec20,M42,mile (statute mile) per second squared
+rec20,M43,mil
+rec20,M44,revolution
+rec20,M45,degree [unit of angle] per second squared
+rec20,M46,revolution per minute 
+rec20,M47,circular mil 
+rec20,M48,square mile (based on U.S. survey foot) 
+rec20,M49,chain (based on U.S. survey foot)
+rec20,M5,microcurie
+rec20,M50,furlong
+rec20,M51,foot (U.S. survey) 
+rec20,M52,mile (based on U.S. survey foot) 
+rec20,M53,metre per pascal
+rec20,M55,metre per radiant
+rec20,M56,shake
+rec20,M57,mile per minute 
+rec20,M58,mile per second 
+rec20,M59,metre per second pascal
+rec20,M60,metre per hour
+rec20,M61,inch per year
+rec20,M62,kilometre per second 
+rec20,M63,inch per minute
+rec20,M64,yard per second
+rec20,M65,yard per minute
+rec20,M66,yard per hour
+rec20,M67,acre-foot (based on U.S. survey foot)
+rec20,M68,cord (128 ft3)
+rec20,M69,cubic mile (UK statute)
+rec20,M7,micro-inch
+rec20,M70,"ton, register "
+rec20,M71,cubic metre per pascal
+rec20,M72,bel
+rec20,M73,kilogram per cubic metre pascal
+rec20,M74,kilogram per pascal
+rec20,M75,kilopound-force
+rec20,M76,poundal
+rec20,M77,kilogram metre per second squared
+rec20,M78,pond
+rec20,M79,square foot per hour 
+rec20,M80,stokes per pascal
+rec20,M81,square centimetre per second
+rec20,M82,square metre per second pascal
+rec20,M83,denier 
+rec20,M84,pound per yard 
+rec20,M85,"ton, assay"
+rec20,M86,pfund
+rec20,M87,kilogram per second pascal
+rec20,M88,tonne per month
+rec20,M89,tonne per year
+rec20,M9,million Btu per 1000 cubic foot
+rec20,M90,kilopound per hour
+rec20,M91,pound per pound
+rec20,M92,pound-force foot
+rec20,M93,newton metre per radian
+rec20,M94,kilogram metre
+rec20,M95,poundal foot
+rec20,M96,poundal inch
+rec20,M97,dyne metre
+rec20,M98,kilogram centimetre per second
+rec20,M99,gram centimetre per second
+rec20,MAH,megavolt ampere reactive hour
+rec20,MAL,megalitre
+rec20,MAM,megametre
+rec20,MAR,megavar
+rec20,MAW,megawatt
+rec20,MBE,thousand standard brick equivalent
+rec20,MBF,thousand board foot
+rec20,MBR,millibar
+rec20,MC,microgram
+rec20,MCU,millicurie
+rec20,MD,air dry metric ton
+rec20,MGM,milligram
+rec20,MHZ,megahertz
+rec20,MIK,square mile (statute mile)
+rec20,MIL,thousand
+rec20,MIN,minute [unit of time]
+rec20,MIO,million
+rec20,MIU,million international unit
+Rec20,MKD,Square Metre Day
+Rec20,MKM,Square Metre Month
+Rec20,MKW,Square Metre Week
+rec20,MLD,milliard
+rec20,MLT,millilitre
+rec20,MMK,square millimetre
+rec20,MMQ,cubic millimetre
+rec20,MMT,millimetre
+rec20,MND,"kilogram, dry weight"
+Rec20,MNJ,Mega Joule per Normalised cubic Metre
+rec20,MON,month
+rec20,MPA,megapascal
+Rec20,MQD,Cubic Metre Day
+rec20,MQH,cubic metre per hour
+Rec20,MQM,Cubic Metre Month
+rec20,MQS,cubic metre per second
+Rec20,MQW,Cubic Metre Week
+Rec20,MRD,Metre Day
+Rec20,MRM,Metre Month
+Rec20,MRW,Metre Week
+rec20,MSK,metre per second squared
+rec20,MTK,square metre
+rec20,MTQ,cubic metre
+rec20,MTR,metre
+rec20,MTS,metre per second
+Rec20,MTZ,milihertz
+rec20,MVA,megavolt - ampere
+rec20,MWH,megawatt hour (1000 kW.h)
+rec20,N1,pen calorie
+rec20,N10,pound foot per second
+rec20,N11,pound inch per second
+rec20,N12,Pferdestaerke
+rec20,N13,centimetre of mercury (0 ºC)
+rec20,N14,centimetre of water (4 ºC)
+rec20,N15,foot of water (39.2 ºF)
+rec20,N16,inch of mercury (32 ºF)
+rec20,N17,inch of mercury (60 ºF)
+rec20,N18,inch of water (39.2 ºF)
+rec20,N19,inch of water (60 ºF)
+rec20,N20,kip per square inch
+rec20,N21,poundal per square foot 
+rec20,N22,ounce (avoirdupois) per square inch 
+rec20,N23,conventional metre of water
+rec20,N24,gram per square millimetre
+rec20,N25,pound per square yard
+rec20,N26,poundal per square inch
+rec20,N27,foot to the fourth power 
+rec20,N28,cubic decimetre per kilogram
+rec20,N29,cubic foot per pound
+rec20,N3,print point
+rec20,N30,cubic inch per pound
+rec20,N31,kilonewton per metre
+rec20,N32,poundal per inch
+rec20,N33,pound-force per yard
+rec20,N34,poundal second per square foot 
+rec20,N35,poise per pascal
+rec20,N36,newton second per square metre
+rec20,N37,kilogram per metre second
+rec20,N38,kilogram per metre minute
+rec20,N39,kilogram per metre day
+rec20,N40,kilogram per metre hour
+rec20,N41,gram per centimetre second
+rec20,N42,poundal second per square inch
+rec20,N43,pound per foot minute
+rec20,N44,pound per foot day
+rec20,N45,cubic metre per second pascal
+rec20,N46,foot poundal
+rec20,N47,inch poundal
+rec20,N48,watt per square centimetre 
+rec20,N49,watt per square inch 
+rec20,N50,British thermal unit (international table) per square foot hour
+rec20,N51,British thermal unit (thermochemical) per square foot hour
+rec20,N52,British thermal unit (thermochemical) per square foot minute
+rec20,N53,British thermal unit (international table) per square foot second
+rec20,N54,British thermal unit (thermochemical) per square foot second
+rec20,N55,British thermal unit (international table) per square inch second
+rec20,N56,calorie (thermochemical) per square centimetre minute
+rec20,N57,calorie (thermochemical) per square centimetre second
+rec20,N58,British thermal unit (international table) per cubic foot 
+rec20,N59,British thermal unit (thermochemical) per cubic foot
+rec20,N60,British thermal unit (international table) per degree Fahrenheit
+rec20,N61,British thermal unit (thermochemical) per degree Fahrenheit
+rec20,N62,British thermal unit (international table) per degree Rankine
+rec20,N63,British thermal unit (thermochemical) per degree Rankine
+rec20,N64,British thermal unit (thermochemical) per pound degree Rankine
+rec20,N65,kilocalorie (international table) per gram kelvin
+rec20,N66,British thermal unit (39 ºF) 
+rec20,N67,British thermal unit (59 ºF)
+rec20,N68,British thermal unit (60 ºF) 
+rec20,N69,calorie (20 ºC) 
+rec20,N70,quad (1015 BtuIT)
+rec20,N71,therm (EC)
+rec20,N72,therm (U.S.)
+rec20,N73,British thermal unit (thermochemical) per pound
+rec20,N74,British thermal unit (international table) per hour square foot degree Fahrenheit
+rec20,N75,British thermal unit (thermochemical) per hour square foot degree Fahrenheit
+rec20,N76,British thermal unit (international table) per second square foot degree Fahrenheit
+rec20,N77,British thermal unit (thermochemical) per second square foot degree Fahrenheit
+rec20,N78,kilowatt per square metre kelvin
+rec20,N79,kelvin per pascal
+rec20,N80,watt per metre degree Celsius
+rec20,N81,kilowatt per metre kelvin
+rec20,N82,kilowatt per metre degree Celsius
+rec20,N83,metre per degree Celcius metre
+rec20,N84,degree Fahrenheit hour per British thermal unit (international table)
+rec20,N85,degree Fahrenheit hour per British thermal unit (thermochemical)
+rec20,N86,degree Fahrenheit second per British thermal unit (international table)
+rec20,N87,degree Fahrenheit second per British thermal unit (thermochemical)
+rec20,N88,degree Fahrenheit hour square foot per British thermal unit (international table) inch
+rec20,N89,degree Fahrenheit hour square foot per British thermal unit (thermochemical) inch
+rec20,N90,kilofarad
+rec20,N91,reciprocal joule
+rec20,N92,picosiemens
+rec20,N93,ampere per pascal
+rec20,N94,franklin
+rec20,N95,ampere minute
+rec20,N96,biot
+rec20,N97,gilbert
+rec20,N98,volt per pascal
+rec20,N99,picovolt
+rec20,NA,milligram per kilogram
+rec20,NAR,number of articles
+rec20,NCL,number of cells
+rec20,NEW,newton
+rec20,NF,message
+rec20,NIL,nil
+rec20,NIU,number of international units
+rec20,NL,load
+rec20,NM3,Normalised cubic metre
+rec20,NMI,nautical mile
+rec20,NMP,number of packs
+rec20,NPT,number of parts
+rec20,NT,net ton
+Rec20,NTU,Nephelometric turbidity unit
+rec20,NU,newton metre
+rec20,NX,part per thousand
+rec20,OA,panel
+rec20,ODE,ozone depletion equivalent
+rec20,ODG,ODS Grams
+rec20,ODK,ODS Kilograms
+rec20,ODM,ODS Milligrams
+rec20,OHM,ohm
+rec20,ON,ounce per square yard
+rec20,ONZ,ounce (avoirdupois)
+rec20,OPM,oscillations per minute
+rec20,OT,overtime hour
+rec20,OZA,fluid ounce (US)
+rec20,OZI,fluid ounce (UK)
+rec20,P1,percent
+rec20,P10,coulomb per metre
+rec20,P11,kiloweber
+rec20,P12,gamma
+rec20,P13,kilotesla
+rec20,P14,joule per second
+rec20,P15,joule per minute
+rec20,P16,joule per hour
+rec20,P17,joule per day
+rec20,P18,kilojoule per second
+rec20,P19,kilojoule per minute
+rec20,P2,pound per foot
+rec20,P20,kilojoule per hour
+rec20,P21,kilojoule per day
+rec20,P22,nanoohm
+rec20,P23,ohm circular-mil per foot 
+rec20,P24,kilohenry
+rec20,P25,lumen per square foot 
+rec20,P26,phot
+rec20,P27,footcandle
+rec20,P28,candela per square inch 
+rec20,P29,footlambert
+rec20,P30,lambert
+rec20,P31,stilb
+rec20,P32,candela per square foot
+rec20,P33,kilocandela
+rec20,P34,millicandela
+rec20,P35,Hefner-Kerze
+rec20,P36,international candle 
+rec20,P37,British thermal unit (international table) per square foot
+rec20,P38,British thermal unit (thermochemical) per square foot
+rec20,P39,calorie (thermochemical) per square centimetre 
+rec20,P40,langley
+rec20,P41,decade (logarithmic)
+rec20,P42,pascal squared second
+rec20,P43,bel per metre
+rec20,P44,pound mole
+rec20,P45,pound mole per second
+rec20,P46,pound mole per minute
+rec20,P47,kilomole per kilogram
+rec20,P48,pound mole per pound
+rec20,P49,newton square metre per ampere
+rec20,P5,five pack
+rec20,P50,weber metre
+rec20,P51,mol per kilogram pascal
+rec20,P52,mol per cubic metre pascal
+rec20,P53,unit pole 
+rec20,P54,milligray per second
+rec20,P55,microgray per second
+rec20,P56,nanogray per second
+rec20,P57,gray per minute
+rec20,P58,milligray per minute
+rec20,P59,microgray per minute
+rec20,P60,nanogray per minute
+rec20,P61,gray per hour
+rec20,P62,milligray per hour
+rec20,P63,microgray per hour
+rec20,P64,nanogray per hour
+rec20,P65,sievert per second
+rec20,P66,millisievert per second
+rec20,P67,microsievert per second
+rec20,P68,nanosievert per second
+rec20,P69,rem per second
+rec20,P70,sievert per hour
+rec20,P71,millisievert per hour
+rec20,P72,microsievert per hour
+rec20,P73,nanosievert per hour
+rec20,P74,sievert per minute
+rec20,P75,millisievert per minute
+rec20,P76,microsievert per minute
+rec20,P77,nanosievert per minute
+rec20,P78,reciprocal square inch
+rec20,P79,pascal square metre per kilogram
+rec20,P80,millipascal per metre
+rec20,P81,kilopascal per metre
+rec20,P82,hectopascal per metre
+rec20,P83,standard atmosphere per metre
+rec20,P84,technical atmosphere per metre
+rec20,P85,torr per metre
+rec20,P86,psi per inch
+rec20,P87,cubic metre per second square metre
+rec20,P88,rhe
+rec20,P89,pound-force foot per inch
+rec20,P90,pound-force inch per inch 
+rec20,P91,perm (0 ºC) 
+rec20,P92,perm (23 ºC) 
+rec20,P93,byte per second
+rec20,P94,kilobyte per second
+rec20,P95,megabyte per second
+rec20,P96,reciprocal volt
+rec20,P97,reciprocal radian
+rec20,P98,pascal to the power sum of stoichiometric numbers
+rec20,P99,mole per cubiv metre to the power sum of stoichiometric numbers
+rec20,PAL,pascal
+rec20,PD,pad
+rec20,PFL,proof litre
+rec20,PGL,proof gallon
+rec20,PI,pitch
+rec20,PLA,degree Plato
+rec20,PO,pound per inch of length
+rec20,PQ,page per inch
+rec20,PR,pair
+rec20,PS,pound-force per square inch
+rec20,PTD,dry pint (US)
+rec20,PTI,pint (UK)
+rec20,PTL,liquid pint (US)
+rec20,PTN,portion
+rec20,Q10,joule per tesla
+rec20,Q11,erlang
+rec20,Q12,octet
+rec20,Q13,octet per second
+rec20,Q14,shannon
+rec20,Q15,hartley
+rec20,Q16,natural unit of information
+rec20,Q17,shannon per second
+rec20,Q18,hartley per second
+rec20,Q19,natural unit of information per second
+rec20,Q20,second per kilogramm
+rec20,Q21,watt square metre
+rec20,Q22,second per radian cubic metre
+rec20,Q23,weber to the power minus one
+rec20,Q24,reciprocal inch
+rec20,Q25,dioptre
+rec20,Q26,one per one
+rec20,Q27,newton metre per metre
+rec20,Q28,kilogram per square metre pascal second
+rec20,Q29,microgram per hectogram
+rec20,Q3,meal
+rec20,Q30,pH (potential of Hydrogen)
+rec20,Q31,kilojoule per gram
+rec20,Q32,femtolitre
+rec20,Q33,picolitre
+rec20,Q34,nanolitre
+rec20,Q35,megawatts per minute
+rec20,Q36,square metre per cubic metre
+rec20,Q37,Standard cubic metre per day
+rec20,Q38,Standard cubic metre per hour
+rec20,Q39,Normalized cubic metre per day
+rec20,Q40,Normalized cubic metre per hour
+rec20,Q41,Joule per normalised cubic metre
+rec20,Q42,Joule per standard cubic metre
+rec20,QA,page - facsimile
+rec20,QAN,quarter (of a year)
+rec20,QB,page - hardcopy
+rec20,QR,quire
+rec20,QTD,dry quart (US)
+rec20,QTI,quart (UK)
+rec20,QTL,liquid quart (US)
+rec20,QTR,quarter (UK)
+rec20,R1,pica
+rec20,R9,thousand cubic metre
+rec20,RH,running or operating hour
+rec20,RM,ream
+rec20,ROM,room
+rec20,RP,pound per ream
+rec20,RPM,revolutions per minute
+rec20,RPS,revolutions per second
+rec20,RT,revenue ton mile
+rec20,S3,square foot per second
+rec20,S4,square metre per second
+rec20,SAN,half year (6 months)
+rec20,SCO,score
+rec20,SCR,scruple
+rec20,SEC,second [unit of time]
+rec20,SET,set
+rec20,SG,segment
+rec20,SIE,siemens
+rec20,SM3,Standard cubic metre
+rec20,SMI,mile (statute mile)
+rec20,SQ,square
+rec20,SQR,"square, roofing"
+rec20,SR,strip
+rec20,STC,stick
+rec20,STI,stone (UK)
+rec20,STK,"stick, cigarette"
+rec20,STL,standard litre
+rec20,STN,ton (US) or short ton (UK/US)
+rec20,STW,straw
+rec20,SW,skein
+rec20,SX,shipment
+rec20,SYR,syringe
+rec20,T0,telecommunication line in service
+rec20,T3,thousand piece
+rec20,TAH,kiloampere hour (thousand ampere hour)
+rec20,TAN,total acid number
+rec20,TI,thousand square inch
+rec20,TIC,"metric ton, including container"
+rec20,TIP,"metric ton, including inner packaging"
+rec20,TKM,tonne kilometre
+rec20,TMS,"kilogram of imported meat, less offal"
+rec20,TNE,tonne (metric ton)
+rec20,TP,ten pack
+rec20,TPI,teeth per inch
+rec20,TPR,ten pair
+rec20,TQD,thousand cubic metre per day
+rec20,TRL,trillion (EUR)
+rec20,TST,ten set
+rec20,TTS,ten thousand sticks
+rec20,U1,treatment
+rec20,U2,tablet
+rec20,UB,telecommunication line in service average
+rec20,UC,telecommunication port
+rec20,VA,volt - ampere per kilogram
+rec20,VLT,volt
+rec20,VP,percent volume
+rec20,W2,wet kilo
+rec20,WA,watt per kilogram
+rec20,WB,wet pound
+rec20,WCD,cord
+rec20,WE,wet ton
+rec20,WEB,weber
+rec20,WEE,week
+rec20,WG,wine gallon
+rec20,WHR,watt hour
+rec20,WM,working month
+rec20,WSD,standard
+rec20,WTT,watt
+rec20,X1,Gunter's chain
+rec20,YDK,square yard
+rec20,YDQ,cubic yard
+rec20,YRD,yard
+rec20,Z11,hanging container
+Rec20,Z9,nanomole
+rec20,ZP,page
+rec20,ZZ,mutually defined
+rec21,X1A,"Drum, steel"
+rec21,X1B,"Drum, aluminium"
+rec21,X1D,"Drum, plywood"
+rec21,X1F,"Container, flexible"
+rec21,X1G,"Drum, fibre"
+rec21,X1W,"Drum, wooden"
+rec21,X2C,"Barrel, wooden"
+rec21,X3A,"Jerrican, steel"
+rec21,X3H,"Jerrican, plastic"
+rec21,X43,"Bag, super bulk"
+rec21,X44,"Bag, polybag"
+rec21,X4A,"Box, steel"
+rec21,X4B,"Box, aluminium"
+rec21,X4C,"Box, natural wood"
+rec21,X4D,"Box, plywood"
+rec21,X4F,"Box, reconstituted wood"
+rec21,X4G,"Box, fibreboard"
+rec21,X4H,"Box, plastic"
+rec21,X5H,"Bag, woven plastic"
+rec21,X5L,"Bag, textile "
+rec21,X5M,"Bag, paper "
+rec21,X6H,"Composite packaging, plastic receptacle"
+rec21,X6P,"Composite packaging, glass receptacle"
+rec21,X7A,"Case, car"
+rec21,X7B,"Case, wooden"
+rec21,X8A,"Pallet, wooden"
+rec21,X8B,"Crate, wooden"
+rec21,X8C,"Bundle, wooden"
+rec21,XAA,"Intermediate bulk container, rigid plastic"
+rec21,XAB,"Receptacle, fibre "
+rec21,XAC,"Receptacle, paper "
+rec21,XAD,"Receptacle, wooden "
+rec21,XAE,Aerosol
+rec21,XAF,"Pallet, modular, collars 80cms * 60cms "
+rec21,XAG,"Pallet, shrinkwrapped "
+rec21,XAH,"Pallet, 100cms * 110cms "
+rec21,XAI,Clamshell
+rec21,XAJ,Cone
+rec21,XAL,Ball
+rec21,XAM,"Ampoule, non-protected "
+rec21,XAP,"Ampoule, protected "
+rec21,XAT,Atomizer 
+rec21,XAV,Capsule
+rec21,XB4,Belt
+rec21,XBA,Barrel 
+rec21,XBB,Bobbin 
+rec21,XBC,Bottlecrate / bottlerack 
+rec21,XBD,Board
+rec21,XBE,Bundle 
+rec21,XBF,"Balloon, non-protected "
+rec21,XBG,Bag
+rec21,XBH,Bunch
+rec21,XBI,Bin
+rec21,XBJ,Bucket 
+rec21,XBK,Basket 
+rec21,XBL,"Bale, compressed "
+rec21,XBM,Basin
+rec21,XBN,"Bale, non-compressed "
+rec21,XBO,"Bottle, non-protected, cylindrical "
+rec21,XBP,"Balloon, protected "
+rec21,XBQ,"Bottle, protected cylindrical"
+rec21,XBR,Bar
+rec21,XBS,"Bottle, non-protected, bulbous "
+rec21,XBT,Bolt 
+rec21,XBU,Butt 
+rec21,XBV,"Bottle, protected bulbous"
+rec21,XBW,"Box, for liquids"
+rec21,XBX,Box
+rec21,XBY,"Board, in bundle/bunch/truss "
+rec21,XBZ,"Bars, in bundle/bunch/truss"
+rec21,XCA,"Can, rectangular "
+rec21,XCB,"Crate, beer"
+rec21,XCC,Churn
+rec21,XCD,"Can, with handle and spout "
+rec21,XCE,Creel
+rec21,XCF,Coffer 
+rec21,XCG,Cage 
+rec21,XCH,Chest
+rec21,XCI,Canister 
+rec21,XCJ,Coffin 
+rec21,XCK,Cask 
+rec21,XCL,Coil 
+rec21,XCM,Card
+rec21,XCN,"Container, not otherwise specified as transport equipment"
+rec21,XCO,"Carboy, non-protected"
+rec21,XCP,"Carboy, protected"
+rec21,XCQ,Cartridge
+rec21,XCR,Crate
+rec21,XCS,Case 
+rec21,XCT,Carton 
+rec21,XCU,Cup
+rec21,XCV,Cover
+rec21,XCW,"Cage, roll "
+rec21,XCX,"Can, cylindrical "
+rec21,XCY,Cylinder 
+rec21,XCZ,Canvas 
+rec21,XDA,"Crate, multiple layer, plastic "
+rec21,XDB,"Crate, multiple layer, wooden"
+rec21,XDC,"Crate, multiple layer, cardboard "
+rec21,XDG,"Cage, Commonwealth Handling Equipment Pool  (CHEP)"
+rec21,XDH,"Box, Commonwealth Handling Equipment Pool (CHEP), Eurobox"
+rec21,XDI,"Drum, iron "
+rec21,XDJ,"Demijohn, non-protected"
+rec21,XDK,"Crate, bulk, cardboard "
+rec21,XDL,"Crate, bulk, plastic "
+rec21,XDM,"Crate, bulk, wooden"
+rec21,XDN,Dispenser
+rec21,XDP,"Demijohn, protected"
+rec21,XDR,Drum 
+rec21,XDS,"Tray, one layer no cover, plastic"
+rec21,XDT,"Tray, one layer no cover, wooden "
+rec21,XDU,"Tray, one layer no cover, polystyrene"
+rec21,XDV,"Tray, one layer no cover, cardboard"
+rec21,XDW,"Tray, two layers no cover, plastic tray"
+rec21,XDX,"Tray, two layers no cover, wooden"
+rec21,XDY,"Tray, two layers no cover, cardboard "
+rec21,XEC,"Bag, plastic "
+rec21,XED,"Case, with pallet base "
+rec21,XEE,"Case, with pallet base, wooden "
+rec21,XEF,"Case, with pallet base, cardboard"
+rec21,XEG,"Case, with pallet base, plastic"
+rec21,XEH,"Case, with pallet base, metal"
+rec21,XEI,"Case, isothermic "
+rec21,XEN,Envelope 
+rec21,XFB,Flexibag
+rec21,XFC,"Crate, fruit "
+rec21,XFD,"Crate, framed"
+rec21,XFE,Flexitank
+rec21,XFI,Firkin 
+rec21,XFL,Flask
+rec21,XFO,Footlocker 
+rec21,XFP,Filmpack 
+rec21,XFR,Frame
+rec21,XFT,Foodtainer
+rec21,XFW,"Cart, flatbed"
+rec21,XFX,"Bag, flexible container"
+rec21,XGB,"Bottle, gas"
+rec21,XGI,Girder 
+rec21,XGL,"Container, gallon"
+rec21,XGR,"Receptacle, glass "
+rec21,XGU,"Tray, containing horizontally stacked flat items"
+rec21,XGY,"Bag, gunny"
+rec21,XGZ,"Girders, in bundle/bunch/truss "
+rec21,XHA,"Basket, with handle, plastic "
+rec21,XHB,"Basket, with handle, wooden"
+rec21,XHC,"Basket, with handle, cardboard "
+rec21,XHG,Hogshead 
+rec21,XHN,Hanger
+rec21,XHR,Hamper 
+rec21,XIA,"Package, display, wooden "
+rec21,XIB,"Package, display, cardboard"
+rec21,XIC,"Package, display, plastic"
+rec21,XID,"Package, display, metal"
+rec21,XIE,"Package, show"
+rec21,XIF,"Package, flow "
+rec21,XIG,"Package, paper wrapped"
+rec21,XIH,"Drum, plastic"
+rec21,XIK,"Package, cardboard, with bottle grip-holes "
+rec21,XIL,"Tray, rigid, lidded stackable (CEN TS 14482:2002)"
+rec21,XIN,Ingot
+rec21,XIZ,"Ingots, in bundle/bunch/truss"
+rec21,XJB,"Bag, jumbo"
+rec21,XJC,"Jerrican, rectangular"
+rec21,XJG,Jug
+rec21,XJR,Jar
+rec21,XJT,Jutebag
+rec21,XJY,"Jerrican, cylindrical"
+rec21,XKG,Keg
+rec21,XKI,Kit
+rec21,XLE,Luggage
+rec21,XLG,Log
+rec21,XLT,Lot
+rec21,XLU,Lug
+rec21,XLV,Liftvan
+rec21,XLZ,"Logs, in bundle/bunch/truss"
+rec21,XMA,"Crate, metal"
+rec21,XMB,"Bag, multiply"
+rec21,XMC,"Crate, milk"
+rec21,XME,"Container, metal"
+rec21,XMR,"Receptacle, metal "
+rec21,XMS,"Sack, multi-wall "
+rec21,XMT,Mat
+rec21,XMW,"Receptacle, plastic wrapped "
+rec21,XMX,Matchbox 
+rec21,XNA,Not available
+rec21,XNE,Unpacked or unpackaged 
+rec21,XNF,"Unpacked or unpackaged, single unit"
+rec21,XNG,"Unpacked or unpackaged, multiple units"
+rec21,XNS,Nest 
+rec21,XNT,Net
+rec21,XNU,"Net, tube, plastic "
+rec21,XNV,"Net, tube, textile "
+Rec21,XO1,Two sided cage on wheels with fixing strap
+Rec21,XO2,Trolley
+Rec21,XO3,Oneway pallet ISO 0 - 1/2 EURO Pallet
+Rec21,XO4,Oneway pallet ISO 1 - 1/1 EURO Pallet
+Rec21,XO5,Oneway pallet ISO 2 - 2/1 EURO Pallet
+Rec21,XO6,Pallet with exceptional dimensions
+Rec21,XO7,Wooden pallet  40 cm x 80 cm
+Rec21,XO8,Plastic pallet SRS 60 cm x 80 cm
+Rec21,XO9,Plastic pallet SRS 80 cm x 120 cm
+rec21,XOA,"Pallet, CHEP 40 cm x 60 cm"
+rec21,XOB,"Pallet, CHEP 80 cm x 120 cm"
+rec21,XOC,"Pallet, CHEP 100 cm x 120 cm"
+rec21,XOD,"Pallet, AS 4068-1993"
+rec21,XOE,"Pallet, ISO T11"
+rec21,XOF,"Platform, unspecified weight or dimension"
+Rec21,XOG,Pallet ISO 0 - 1/2 EURO Pallet
+Rec21,XOH,Pallet ISO 1 - 1/1 EURO Pallet
+Rec21,XOI,Pallet ISO 2 – 2/1 EURO Pallet
+Rec21,XOJ,1/4 EURO Pallet
+rec21,XOK,Block
+Rec21,XOL,1/8 EURO Pallet
+Rec21,XOM,Synthetic pallet ISO 1
+Rec21,XON,Synthetic pallet ISO 2
+Rec21,XOP,Wholesaler pallet
+Rec21,XOQ,Pallet 80 X 100 cm
+Rec21,XOR,Pallet 60 X 100 cm
+Rec21,XOS,Oneway pallet
+rec21,XOT,Octabin
+rec21,XOU,"Container, outer"
+Rec21,XOV,Returnable pallet
+Rec21,XOW,"Large bag, pallet sized"
+Rec21,XOX,A wheeled pallet with raised rim (81 x 67 x 135)
+Rec21,XOY,A Wheeled pallet with raised rim (81 x 72 x 135)
+Rec21,XOZ,Wheeled pallet with raised rim ( 81 x 60 x 16)
+Rec21,XP1,CHEP pallet 60 cm x 80 cm 
+rec21,XP2,Pan
+Rec21,XP3,LPR pallet 60 cm x 80 cm
+Rec21,XP4,LPR pallet 80 cm x 120 cm
+rec21,XPA,Packet 
+rec21,XPB,"Pallet, box Combined open-ended box and pallet"
+rec21,XPC,Parcel 
+rec21,XPD,"Pallet, modular, collars 80cms * 100cms "
+rec21,XPE,"Pallet, modular, collars 80cms * 120cms "
+rec21,XPF,Pen 
+rec21,XPG,Plate
+rec21,XPH,Pitcher
+rec21,XPI,Pipe 
+rec21,XPJ,Punnet
+rec21,XPK,Package
+rec21,XPL,Pail 
+rec21,XPN,Plank
+rec21,XPO,Pouch
+rec21,XPP,Piece
+rec21,XPR,"Receptacle, plastic "
+rec21,XPT,Pot
+rec21,XPU,Tray 
+rec21,XPV,"Pipes, in bundle/bunch/truss "
+rec21,XPX,Pallet 
+rec21,XPY,"Plates, in bundle/bunch/truss"
+rec21,XPZ,"Planks, in bundle/bunch/truss"
+rec21,XQA,"Drum, steel, non-removable head"
+rec21,XQB,"Drum, steel, removable head"
+rec21,XQC,"Drum, aluminium, non-removable head"
+rec21,XQD,"Drum, aluminium, removable head"
+rec21,XQF,"Drum, plastic, non-removable head"
+rec21,XQG,"Drum, plastic, removable head"
+rec21,XQH,"Barrel, wooden, bung type"
+rec21,XQJ,"Barrel, wooden, removable head "
+rec21,XQK,"Jerrican, steel, non-removable head"
+rec21,XQL,"Jerrican, steel, removable head"
+rec21,XQM,"Jerrican, plastic, non-removable head"
+rec21,XQN,"Jerrican, plastic, removable head"
+rec21,XQP,"Box, wooden, natural wood, ordinary"
+rec21,XQQ,"Box, wooden, natural wood, with sift proof walls"
+rec21,XQR,"Box, plastic, expanded "
+rec21,XQS,"Box, plastic, solid"
+rec21,XRD,Rod
+rec21,XRG,Ring 
+rec21,XRJ,"Rack, clothing hanger"
+rec21,XRK,Rack 
+rec21,XRL,Reel 
+rec21,XRO,Roll 
+rec21,XRT,Rednet 
+rec21,XRZ,"Rods, in bundle/bunch/truss"
+rec21,XSA,Sack 
+rec21,XSB,Slab
+rec21,XSC,"Crate, shallow "
+rec21,XSD,Spindle
+rec21,XSE,Sea-chest
+rec21,XSH,Sachet 
+rec21,XSI,Skid 
+rec21,XSK,"Case, skeleton "
+rec21,XSL,Slipsheet 
+rec21,XSM,Sheetmetal 
+rec21,XSO,Spool 
+rec21,XSP,"Sheet, plastic wrapping"
+rec21,XSS,"Case, steel"
+rec21,XST,Sheet
+rec21,XSU,Suitcase 
+rec21,XSV,"Envelope, steel"
+rec21,XSW,Shrinkwrapped  
+Rec21,XSX,Set
+rec21,XSY,Sleeve
+rec21,XSZ,"Sheets, in bundle/bunch/truss"
+rec21,XT1,Tablet
+rec21,XTB,Tub
+rec21,XTC,Tea-chest
+rec21,XTD,"Tube, collapsible"
+rec21,XTE,Tyre
+rec21,XTG,"Tank container, generic"
+rec21,XTI,Tierce
+rec21,XTK,"Tank, rectangular"
+rec21,XTL,"Tub, with lid"
+rec21,XTN,Tin
+rec21,XTO,Tun
+rec21,XTR,Trunk
+rec21,XTS,Truss
+rec21,XTT,"Bag, tote"
+rec21,XTU,Tube 
+rec21,XTV,"Tube, with nozzle "
+rec21,XTW,"Pallet, triwall"
+rec21,XTY,"Tank, cylindrical"
+rec21,XTZ,"Tubes, in bundle/bunch/truss "
+rec21,XUC,Uncaged 
+rec21,XUN,Unit
+rec21,XVA,Vat
+rec21,XVG,"Bulk, gas (at 1031 mbar and 15°C)"
+rec21,XVI,Vial 
+rec21,XVK,Vanpack 
+rec21,XVL,"Bulk, liquid "
+rec21,XVN,Vehicle
+rec21,XVO,"Bulk, solid, large particles (“nodules”) "
+rec21,XVP,Vacuum-packed
+rec21,XVQ,"Bulk, liquefied gas (at abnormal temperature/pressure) "
+rec21,XVR,"Bulk, solid, granular particles (“grains”) "
+rec21,XVS,"Bulk, scrap metal"
+rec21,XVY,"Bulk, solid, fine particles (“powders”)"
+rec21,XWA,Intermediate bulk container
+rec21,XWB,Wickerbottle 
+rec21,XWC,"Intermediate bulk container, steel "
+rec21,XWD,"Intermediate bulk container, aluminium "
+rec21,XWF,"Intermediate bulk container, metal "
+rec21,XWG,"Intermediate bulk container, steel, pressurised > 10 kpa"
+rec21,XWH,"Intermediate bulk container, aluminium, pressurised > 10 kpa"
+rec21,XWJ,"Intermediate bulk container, metal, pressure 10 kpa "
+rec21,XWK,"Intermediate bulk container, steel, liquid "
+rec21,XWL,"Intermediate bulk container, aluminium, liquid "
+rec21,XWM,"Intermediate bulk container, metal, liquid "
+rec21,XWN,"Intermediate bulk container, woven plastic, without coat/liner "
+rec21,XWP,"Intermediate bulk container, woven plastic, coated "
+rec21,XWQ,"Intermediate bulk container, woven plastic, with liner "
+rec21,XWR,"Intermediate bulk container, woven plastic, coated and liner "
+rec21,XWS,"Intermediate bulk container, plastic film"
+rec21,XWT,"Intermediate bulk container, textile with out coat/liner "
+rec21,XWU,"Intermediate bulk container, natural wood, with inner liner"
+rec21,XWV,"Intermediate bulk container, textile, coated "
+rec21,XWW,"Intermediate bulk container, textile, with liner "
+rec21,XWX,"Intermediate bulk container, textile, coated and liner "
+rec21,XWY,"Intermediate bulk container, plywood, with inner liner "
+rec21,XWZ,"Intermediate bulk container, reconstituted wood, with inner liner"
+rec21,XXA,"Bag, woven plastic, without inner coat/liner "
+rec21,XXB,"Bag, woven plastic, sift proof "
+rec21,XXC,"Bag, woven plastic, water resistant"
+rec21,XXD,"Bag, plastics film "
+rec21,XXF,"Bag, textile, without inner coat/liner "
+rec21,XXG,"Bag, textile, sift proof "
+rec21,XXH,"Bag, textile, water resistant"
+rec21,XXJ,"Bag, paper, multi-wall "
+rec21,XXK,"Bag, paper, multi-wall, water resistant"
+rec21,XYA,"Composite packaging, plastic receptacle in steel drum"
+rec21,XYB,"Composite packaging, plastic receptacle in steel crate box"
+rec21,XYC,"Composite packaging, plastic receptacle in aluminium drum"
+rec21,XYD,"Composite packaging, plastic receptacle in aluminium crate"
+rec21,XYF,"Composite packaging, plastic receptacle in wooden box"
+rec21,XYG,"Composite packaging, plastic receptacle in plywood drum"
+rec21,XYH,"Composite packaging, plastic receptacle in plywood box "
+rec21,XYJ,"Composite packaging, plastic receptacle in fibre drum"
+rec21,XYK,"Composite packaging, plastic receptacle in fibreboard box"
+rec21,XYL,"Composite packaging, plastic receptacle in plastic drum"
+rec21,XYM,"Composite packaging, plastic receptacle in solid plastic box"
+rec21,XYN,"Composite packaging, glass receptacle in steel drum"
+rec21,XYP,"Composite packaging, glass receptacle in steel crate box"
+rec21,XYQ,"Composite packaging, glass receptacle in aluminium drum"
+rec21,XYR,"Composite packaging, glass receptacle in aluminium crate"
+rec21,XYS,"Composite packaging, glass receptacle in wooden box"
+rec21,XYT,"Composite packaging, glass receptacle in plywood drum"
+rec21,XYV,"Composite packaging, glass receptacle in wickerwork hamper"
+rec21,XYW,"Composite packaging, glass receptacle in fibre drum"
+rec21,XYX,"Composite packaging, glass receptacle in fibreboard box "
+rec21,XYY,"Composite packaging, glass receptacle in expandable plastic pack"
+rec21,XYZ,"Composite packaging, glass receptacle in solid plastic pack"
+rec21,XZA,"Intermediate bulk container, paper, multi-wall "
+rec21,XZB,"Bag, large "
+rec21,XZC,"Intermediate bulk container, paper, multi-wall, water resistant"
+rec21,XZD,"Intermediate bulk container, rigid plastic, with structural equipment, solids"
+rec21,XZF,"Intermediate bulk container, rigid plastic, freestanding, solids"
+rec21,XZG,"Intermediate bulk container, rigid plastic, with structural equipment, pressurised"
+rec21,XZH,"Intermediate bulk container, rigid plastic, freestanding, pressurised"
+rec21,XZJ,"Intermediate bulk container, rigid plastic, with structural equipment, liquids "
+rec21,XZK,"Intermediate bulk container, rigid plastic, freestanding, liquids"
+rec21,XZL,"Intermediate bulk container, composite, rigid plastic, solids"
+rec21,XZM,"Intermediate bulk container, composite, flexible plastic, solids"
+rec21,XZN,"Intermediate bulk container, composite, rigid plastic, pressurised "
+rec21,XZP,"Intermediate bulk container, composite, flexible plastic, pressurised"
+rec21,XZQ,"Intermediate bulk container, composite, rigid plastic, liquids"
+rec21,XZR,"Intermediate bulk container, composite, flexible plastic, liquids "
+rec21,XZS,"Intermediate bulk container, composite"
+rec21,XZT,"Intermediate bulk container, fibreboard"
+rec21,XZU,"Intermediate bulk container, flexible"
+rec21,XZV,"Intermediate bulk container, metal, other than steel"
+rec21,XZW,"Intermediate bulk container, natural wood"
+rec21,XZX,"Intermediate bulk container, plywood"
+rec21,XZY,"Intermediate bulk container, reconstituted wood"
+rec21,XZZ,Mutually defined 
