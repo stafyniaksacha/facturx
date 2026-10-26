@@ -6,14 +6,15 @@ import type {
 
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { xmlRegisterFsInputProviders } from 'libxml2-wasm/lib/nodejs.mjs'
+import { xmlRegisterInputProvider } from 'libxml2-wasm'
 import {
   FACTURX_SCHEMA,
   ORDERX_SCHEMA,
 } from './constants'
+import { fileInputProvider } from './input-provider'
 import { resolveXml } from './resolve'
 
-xmlRegisterFsInputProviders()
+xmlRegisterInputProvider(fileInputProvider)
 
 const _cache = {} as Record<string, Record<string, XmlDocument>>
 
