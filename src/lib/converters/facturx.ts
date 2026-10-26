@@ -293,7 +293,7 @@ function convertDocumentLineDocument(
     convertID(parentLineID, parent.addElement('ram:ParentLineID'))
   }
   if (lineStatusCode) {
-    parent.addElement('ram:LineStatusCode', lineStatusCode.value)
+    parent.addElement('ram:LineStatusCode').addText(lineStatusCode.value)
   }
   if (lineStatusReasonCode) {
     convertCode(lineStatusReasonCode, parent.addElement('ram:LineStatusReasonCode'))
@@ -744,7 +744,7 @@ function convertTradeParty(
     convertText(name, parent.addElement('ram:Name'))
   }
   if (roleCode) {
-    parent.addElement('ram:RoleCode', roleCode.value)
+    parent.addElement('ram:RoleCode').addText(roleCode.value)
   }
   if (description) {
     convertText(description, parent.addElement('ram:Description'))
@@ -795,7 +795,7 @@ function convertTradeContact(
     convertText(departmentName, parent.addElement('ram:DepartmentName'))
   }
   if (typeCode) {
-    parent.addElement('ram:TypeCode', typeCode.value)
+    parent.addElement('ram:TypeCode').addText(typeCode.value)
   }
   if (telephoneUniversalCommunication) {
     convertUniversalCommunication(telephoneUniversalCommunication, parent.addElement('ram:TelephoneUniversalCommunication'))
