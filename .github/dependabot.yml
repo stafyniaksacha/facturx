@@ -21,9 +21,11 @@ updates:
     commit-message:
       prefix: chore
       include: scope
-    # First matching group wins. Majors fall through and get their own PR.
+    # First matching group wins. Majors not caught by the vitest group fall
+    # through and get their own PR.
     groups:
-      # @vitest/coverage-v8 is pinned exactly and must match vitest's version.
+      # @vitest/coverage-v8 peer-depends on the exact vitest version, so majors
+      # stay grouped too: split into separate PRs, each one would fail install.
       vitest:
         patterns:
           - vitest
