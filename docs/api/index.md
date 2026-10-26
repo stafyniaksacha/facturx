@@ -64,7 +64,10 @@ const { xml, flavor, level } = await extract({ pdf })
 
 const invoice = await xmlToInvoice(xml)
 const seller = invoice.supplyChainTradeTransaction
-  .applicableHeaderTradeAgreement.sellerTradeParty.name?.value
+  .applicableHeaderTradeAgreement
+  .sellerTradeParty
+  .name
+  ?.value
 ```
 
 ## Conventions

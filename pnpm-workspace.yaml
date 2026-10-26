@@ -1,8 +1,12 @@
+allowBuilds:
+  esbuild: true
+
+shellEmulator: true
+
+trustPolicy: no-downgrade
+
 packages:
   - .
   - docs
   - examples
   - tests
-
-allowBuilds:
-  esbuild: true

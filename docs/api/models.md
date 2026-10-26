@@ -13,10 +13,11 @@ The classes are exposed two ways:
 ```ts
 // 1. As a namespace from the main entry
 import { Models } from '@stafyniaksacha/facturx'
-const id = new Models.IDType({ value: 'INV-2023-001' })
 
 // 2. Individually from the /models subpath
 import { CrossIndustryInvoiceType, IDType } from '@stafyniaksacha/facturx/models'
+
+const id = new Models.IDType({ value: 'INV-2023-001' })
 ```
 
 ## Structure
