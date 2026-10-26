@@ -1,0 +1,6 @@
+Code,Definition,Usage Rule
+1.0,The hybrid document is a Factur-X 1.0* compliant document,Default value for current specification
+1p0,The hybrid document is a ZUGFeRD 1p0 compliant document,Legacy use only. A warning is given if used for a document in the validity period of the current specification 
+2p0,The hybrid document is a ZUGFeRD 2p0 compliant document,Legacy use only. A warning is given if used for a document in the validity period of the current specification 
+2p1,The hybrid document is a ZUGFeRD 2p1 compliant document,Legacy use only. A warning is given if used for a document in the validity period of the current specification 
+2p2,The hybrid document is a ZUGFeRD 2p2 compliant document,Legacy use only. A warning is given if used for a document in the validity period of the current specification 

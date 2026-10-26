@@ -1,0 +1,186 @@
+Code,Code name
+AA,Product version number
+AB,Assembly
+AC,HIBC (Health Industry Bar Code)
+AD,Cold roll number
+AE,Hot roll number
+AF,Slab number
+AG,Software revision number
+AH,UPC (Universal Product Code) Consumer package code (1-5-5)
+AI,UPC (Universal Product Code) Consumer package code (1-5-5-
+AJ,Sample number
+AK,Pack number
+AL,UPC (Universal Product Code) Shipping container code (1-2-
+AM,UPC (Universal Product Code)/EAN (European article number)
+AN,UPC (Universal Product Code) suffix
+AO,State label code
+AP,Heat number
+AQ,Coupon number
+AR,Resource number
+AS,Work task number
+AT,Price look up number
+AU,NSN (North Atlantic Treaty Organization Stock Number)
+AV,Refined product code
+AW,Exhibit
+AX,End item
+AY,Federal supply classification
+AZ,Engineering data list
+BA,Milestone event number
+BB,Lot number
+BC,National drug code 4-4-2 format
+BD,National drug code 5-3-2 format
+BE,National drug code 5-4-1 format
+BF,National drug code 5-4-2 format
+BG,National drug code
+BH,Part number
+BI,Local Stock Number (LSN)
+BJ,Next higher assembly number
+BK,Data category
+BL,Control number
+BM,Special material identification code
+BN,Locally assigned control number
+BO,Buyer's colour
+BP,Buyer's part number
+BQ,Variable measure product code
+BR,Financial phase
+BS,Contract breakdown
+BT,Technical phase
+BU,Dye lot number
+BV,Daily statement of activities
+BW,Periodical statement of activities within a bilaterally
+BX,Calendar week statement of activities
+BY,Calendar month statement of activities
+BZ,Original equipment number
+CC,Industry commodity code
+CG,Commodity grouping
+CL,Colour number
+CR,Contract number
+CV,Customs article number
+DR,Drawing revision number
+DW,Drawing
+EC,Engineering change level
+EF,Material code
+EMD,EMDN (European Medical Device Nomenclature)
+EN,International Article Numbering Association (EAN)
+FS,Fish species
+GB,Buyer's internal product group code
+GMN,Global model number
+GN,National product group code
+GS,General specification number
+HS,Harmonised system
+IB,ISBN (International Standard Book Number)
+IN,Buyer's item number
+IS,ISSN (International Standard Serial Number)
+IT,Buyer's style number
+IZ,Buyer's size code
+MA,Machine number
+MF,Manufacturer's (producer's) article number
+MN,Model number
+MP,Product/service identification number
+NB,Batch number
+ON,Customer order number
+PD,Part number description
+PL,Purchaser's order line number
+PO,Purchase order number
+PPI,Phytosanitary Passport identifier
+PV,Promotional variant number
+QS,Buyer's qualifier for size
+RC,Returnable container number
+RN,Release number
+RU,Run number
+RY,Record keeping of model year
+SA,Supplier's article number
+SG,Standard group of products (mixed assortment)
+SK,SKU (Stock keeping unit)
+SN,Serial number
+SRS,RSK number
+SRT,IFLS (Institut Francais du Libre Service) 5 digit product
+SRU,IFLS (Institut Francais du Libre Service) 9 digit product
+SRV,GS1 Global Trade Item Number
+SRW,EDIS (Energy Data Identification System)
+SRX,Slaughter number
+SRY,Official animal number
+SRZ,Harmonized tariff schedule
+SS,Supplier's supplier article number
+SSA,46 Level DOT Code
+SSB,Airline Tariff 6D
+SSC,Title 49 Code of Federal Regulations
+SSD,International Civil Aviation Administration code
+SSE,Hazardous Materials ID DOT
+SSF,Endorsement
+SSG,Air Force Regulation 71-4
+SSH,Breed
+SSI,Chemical Abstract Service (CAS) registry number
+SSJ,Engine model designation
+SSK,Institutional Meat Purchase Specifications (IMPS) Number
+SSL,Price Look-Up code (PLU)
+SSM,International Maritime Organization (IMO) Code
+SSN,Bureau of Explosives 600-A (rail)
+SSO,United Nations Dangerous Goods List
+SSP,International Code of Botanical Nomenclature (ICBN)
+SSQ,International Code of Zoological Nomenclature (ICZN)
+SSR,International Code of Nomenclature for Cultivated Plants
+SSS,Distributor’s article identifier
+SST,Norwegian Classification system ENVA
+SSU,Supplier assigned classification
+SSV,Mexican classification system AMECE
+SSW,German classification system CCG
+SSX,Finnish classification system EANFIN
+SSY,Canadian classification system ICC
+SSZ,French classification system IFLS5
+ST,Style number
+STA,Dutch classification system CBL
+STB,Japanese classification system JICFS
+STC,European Union dairy subsidy eligibility classification
+STD,GS1 Spain classification system
+STE,GS1 Poland classification system
+STF,Federal Agency on Technical Regulating and Metrology of the
+STG,Efficient Consumer Response (ECR) Austria classification
+STH,GS1 Italy classification system
+STI,CPV (Common Procurement Vocabulary)
+STJ,IFDA (International Foodservice Distributors Association)
+STK,AHFS (American Hospital Formulary Service) pharmacologic -
+STL,ATC (Anatomical Therapeutic Chemical) classification system
+STM,CLADIMED (Classification des Dispositifs Médicaux)
+STN,CMDR (Canadian Medical Device Regulations) classification
+STO,CNDM (Classificazione Nazionale dei Dispositivi Medici)
+STP,UK DM&D (Dictionary of Medicines & Devices) standard coding
+STQ,eCl@ss
+STR,EDMA (European Diagnostic Manufacturers Association)
+STS,EGAR (European Generic Article Register)
+STT,GMDN (Global Medical Devices Nomenclature)
+STU,GPI (Generic Product Identifier)
+STV,HCPCS (Healthcare Common Procedure Coding System)
+STW,ICPS (International Classification for Patient Safety)
+STX,MedDRA (Medical Dictionary for Regulatory Activities)
+STY,Medical Columbus
+STZ,NAPCS (North American Product Classification System)
+SUA,NHS (National Health Services) eClass
+SUB,US FDA (Food and Drug Administration) Product Code
+SUC,SNOMED CT (Systematized Nomenclature of Medicine-Clinical
+SUD,UMDNS (Universal Medical Device Nomenclature System)
+SUE,"GS1 Global Returnable Asset Identifier, non-serialised"
+SUF,IMEI
+SUG,Waste Type (EMSA)
+SUH,Ship's store classification type
+SUI,Emergency fire code
+SUJ,Emergency spillage code
+SUK,IMDG packing group
+SUL,MARPOL Code IBC
+SUM,IMDG subsidiary risk class
+TG,Transport group number
+TSN,Taxonomic Serial Number
+TSO,IMDG main hazard class
+TSP,EU Combined Nomenclature
+TSQ,Therapeutic classification number
+TSR,European Waste Catalogue
+TSS,Price grouping code
+TST,UNSPSC
+TSU,EU RoHS Directive
+UA,Ultimate customer's article number
+UP,UPC (Universal product code)
+VN,Vendor item number
+VP,Vendor's (seller's) part number
+VS,Vendor's supplemental item number
+VX,Vendor specification number
+ZZZ,Mutually defined

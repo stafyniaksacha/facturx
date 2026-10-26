@@ -1,0 +1,3 @@
+Code,Code name,Description
+102,CCYYMMDD,Calendar date: C = Century ; Y = Year ; M = Month ; D = Day.
+205,CCYYMMDDHHMMZHHMM,Calendar date including time and time zone expressed in hours and minutes. ZHHMM = time zone given as offset from Coordinated Universal Time (UTC).

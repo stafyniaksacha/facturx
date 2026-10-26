@@ -1,0 +1,5 @@
+Code,Definition,Usage Rule
+INVOICE,The hybrid document contains an invoice or credit note,Only applicable in Factur-X / ZUGFeRD
+ORDER,The hybrid document contains an order,Only applicable in Order-X
+ORDER_RESPONSE,The hybrid document contains an order response,Only applicable in Order-X
+ORDER_CHANGE,Thy hybrid document contains an order change,Only applicable in Order-X

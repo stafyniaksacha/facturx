@@ -5,6 +5,8 @@ export default antfu({
   stylistic: true,
   ignores: [
     '**/fixtures',
+    // Vendored verbatim from the official distribution: `lint:fix` must never rewrite it.
+    'spec/factur-x-*/**',
     // ...globs
   ],
 })
