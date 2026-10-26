@@ -47,6 +47,7 @@
     "build": "unbuild",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "spec:verify": "node scripts/verify-spec-assets.mjs --sef",
     "docs": "pnpm --filter @stafyniaksacha/facturx-docs run docs:dev",
