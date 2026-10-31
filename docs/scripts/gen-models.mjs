@@ -165,10 +165,8 @@ for (const f of FILES) {
 
   writeFileSync(resolve(outDir, `${f.out}.md`), `${lines.join('\n').trimEnd()}\n`)
   total += classes.length
-  // eslint-disable-next-line no-console
   console.log(`  ${f.out}.md — ${classes.length} classes`)
 }
 
-// eslint-disable-next-line no-console
 console.log(`Generated ${FILES.length} model reference pages (${total} classes) in docs/api/models/`)
 process.exitCode = 0

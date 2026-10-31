@@ -31,7 +31,7 @@ export async function xmlToInvoice(xml: string | Buffer): Promise<CrossIndustryI
   const doc = typeof xml === 'string'
     ? XmlDocument.fromString(xml)
     : XmlDocument.fromBuffer(xml)
-  
+
   try {
     const root = doc.root
 
