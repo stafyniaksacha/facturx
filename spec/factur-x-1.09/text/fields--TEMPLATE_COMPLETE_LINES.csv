@@ -1,0 +1,13 @@
+,LOGO Seller,LOGO Seller,LOGO Seller,,,,,,,,,,Invoice / Credit Note N°,Invoice / Credit Note N°,BT-1 : Invoice Identifier,BT-1 : Invoice Identifier
+,LOGO Seller,LOGO Seller,LOGO Seller,,,,,,,,,,Date,Date,BT-2 : invoice date,BT-2 : invoice date
+,LOGO Seller,LOGO Seller,LOGO Seller
+,Invoice lines (details),,,,,,,,,,,,,,Page x / xx,Page x / xx
+,Line number BT-126,Order line number BT-132,References,Article ID,Invoicing period,Item name BT-153,Item description BT-154,Item Attributes,Unit Price details,Item Net price (EUROS) BT-146,Invoiced quantity unit of measure BT-130,Invoiced quantity BT-129,Line level allowances,Line level charges,Net Amount (EUROS) BT-131,VAT code
+,,, - Invoice line object ID (given by the seller) : BT-128  -  Invoice line Buyer accounting reference : BT-133,- Item standard ID (BT-157)  - Item Seller's ID (BT-155)  - Item Buyer's ID (BT-156),Start date (BT-134)  End Date (BT-135),,,"- Item attribute name (BT-160) : attribute value (BT-161)  - Item classification ID (unspsc, ….) : BT-158  - Item country of origin : BT-159",- Item price base quantity (BT-149)  - Item gross price (BT-148)  - Item price discount (BT-147),,,, - Montant de remise  (BT-136)  - Assiette de remise  (BT-137) - Taux de remise  (BT-138)  - Code (BT-140) et Motif (BT-139) de remise, - Montant de charges et frais (BT-141)   - Assiette de charges et frais (BT-142) - Taux de charges et frais (BT-143)  - Code (BT-145) et Motif (BT-144) de charges et frais
+,1,4,,,from 12.12.2017 to 12.12.2017,Produit 1,Produit 1 Livré le 12.12.2017,Taille : Moyen UNSPSC : 80543215,Boite de 10,,,,5% on 40 € Allowance on volume,Packing costs
+,,,,,,,,,,4,PCE,10,-2,2,40,1
+,2,5,,,from 15.12.2017 to 15.12.2017,Product 2,Product 1 delivered on 12.12.2017,Color : red UNSPSC : 80543215,Box of 10,,,,,Packing costs
+,,,,,,,,,,58,PCE,3,,6,180,1
+,3,3,SUBSC Line 1,,from 01.12.2017 to 31.12.2017,Service 1,,,,80,PCE,2,,,160,1
+,4,1,ABO Line 2,,du 01.12.2017 au 31.12.2017,Service 2,,,,150,PCE,1,,,150,1
+,,,,,,,,,,,,,,Total NET : ,530

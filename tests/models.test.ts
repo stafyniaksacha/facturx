@@ -1,4 +1,5 @@
 import { check, invoiceToXml, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { ContactTypeCodeType, LineStatusCodeType, PartyRoleCodeType, TextType, TradeContactType } from '@stafyniaksacha/facturx/models'
 import { describe, expect, it, vi } from 'vitest'
 import { getBasicFacturXModel } from './fixtures/model-basic'
 import { getBasicWLFacturXModel } from './fixtures/model-basicwl'
@@ -144,6 +145,36 @@ describe('invoiceToXml', () => {
     const result = await check({ xml, flavor: 'facturx', level: 'extended' })
     expect(result.errors).toStrictEqual([])
     expect(result.valid).toBe(true)
+  })
+
+  it('should emit party role, contact type and line status codes as element text (EXTENDED)', async () => {
+    // Regression: these were passed as the 2nd argument of libxml2-wasm's
+    // addElement(name, prefix), i.e. as a namespace prefix, which threw
+    // `Namespace prefix "DL" not found` (e.g. on a factor party, BT-X-541).
+    const model = getExtendedFacturXModel()
+    const transaction = model.supplyChainTradeTransaction
+    const seller = transaction.applicableHeaderTradeAgreement.sellerTradeParty
+    seller.roleCode = new PartyRoleCodeType({ value: 'SE' }) // BT-X-543, UNTDID 3035
+    seller.definedTradeContact = [new TradeContactType({
+      personName: new TextType({ value: 'Jane Doe' }),
+      typeCode: new ContactTypeCodeType({ value: 'SR' }), // BT-X-317, UNTDID 3139
+    })]
+    transaction.includedSupplyChainTradeLineItem![0].associatedDocumentLineDocument.lineStatusCode
+      = new LineStatusCodeType({ value: '4' }) // BT-X-7, UNTDID 1229
+
+    const xml = (await invoiceToXml(model)).toString()
+    expect(xml).toContain('<ram:RoleCode>SE</ram:RoleCode>')
+    expect(xml).toContain('<ram:TypeCode>SR</ram:TypeCode>')
+    expect(xml).toContain('<ram:LineStatusCode>4</ram:LineStatusCode>')
+
+    const result = await check({ xml, flavor: 'facturx', level: 'extended' })
+    expect(result.errors).toStrictEqual([])
+
+    const parsed = await xmlToInvoice(xml)
+    const parsedSeller = parsed.supplyChainTradeTransaction.applicableHeaderTradeAgreement.sellerTradeParty
+    expect(parsedSeller.roleCode?.value).toBe('SE')
+    expect(parsedSeller.definedTradeContact?.[0].typeCode?.value).toBe('SR')
+    expect(parsed.supplyChainTradeTransaction.includedSupplyChainTradeLineItem![0].associatedDocumentLineDocument.lineStatusCode?.value).toBe('4')
   })
 })
 

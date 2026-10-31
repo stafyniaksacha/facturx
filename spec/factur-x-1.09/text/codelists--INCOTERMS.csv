@@ -1,0 +1,14 @@
+Code,Code name
+1,Delivery arranged by supplier
+2,Delivery arranged by logistic service provider
+CFR,Cost and Freight
+CIF,"Cost, Insurance and Freight"
+CIP,Carriage and Insurance Paid to (insert named place of destination)
+CPT,Carriage Paid To (insert named place of destination)
+DAP,Delivered At Place (insert named place of destination)
+DDP,Delivered Duty Paid (insert named place of destination)
+DPU,Delivered At Place Unloaded (insert named place of unloading)
+EXW,Ex Works (insert named place of delivery)
+FAS,Free Alongside Ship (insert named port of shipment)
+FCA,Free Carrier (insert named place of delivery)
+FOB, Free On Board (insert named port of shipment)

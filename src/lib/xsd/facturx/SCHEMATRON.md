@@ -27,6 +27,9 @@ inconsequential. They are intentionally left unmodified to keep the files identi
 
 ## Regenerating the SEF (e.g. when upgrading the spec)
 
+The official distribution is versioned under [`spec/`](../../../../spec/README.md);
+`<spec>` below is `spec/factur-x-1.09/distribution/4. FACTUR-X_1.09_XSD_SCHEMATRON_2026-06-10`.
+
 ```bash
 # from the repo root, per profile (example: en16931); start from the spec's _XSLT_ transform
 cp "<spec>/3. Factur-X_1.09_EN16931/_XSLT_EN16931/FACTUR-X_EN16931.xslt"       src/lib/xsd/facturx/en16931/
@@ -43,3 +46,9 @@ gzip -9 -c /tmp/FACTUR-X_EN16931.sef.json > src/lib/xsd/facturx/en16931/FACTUR-X
 
 `-relocate:on` is required so `document('…codedb.xml')` resolves relative to the SEF's runtime
 location rather than its compile-time path.
+
+Then run `pnpm spec:verify`: it checks every `.xsd` / `_codedb.xml` is byte-identical to the spec,
+every `.xslt` / `.xsl` is identical after the `sum()` patch, and every `.sef.json.gz` matches a fresh
+compilation (ignoring build timestamp, checksum and absolute base URIs). Note the SEF embeds the
+absolute path of the XSLT it was compiled from (`base`), so compile from a neutral location if that
+path should not leak into the published package.

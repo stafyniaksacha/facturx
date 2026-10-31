@@ -1,0 +1,13 @@
+,LOGO Vendeur,LOGO Vendeur,LOGO Vendeur,,,,,,,,,,Facture / Avoir N°,Facture / Avoir N°,BT-1 : N° Facture,BT-1 : N° Facture
+,LOGO Vendeur,LOGO Vendeur,LOGO Vendeur,,,,,,,,,,Date,Date,BT-2 : date de facture,BT-2 : date de facture
+,LOGO Vendeur,LOGO Vendeur,LOGO Vendeur
+,Lignes de facturation (détail),,,,,,,,,,,,,,Page x / xx,Page x / xx
+,N° de Ligne BT-126,N° de ligne  de BC BT-132,Références,ID de l'article,Période de facturation,Nom de l'article BT-153,Description de l'article BT-154,Attribut(s) de l'article,Détermination  du prix,Prix Unitaire Net (EUROS) BT-146,Unité de mesure BT-130,Quantité facturée BT-129,Remise(s) de ligne,Charge(s) de ligne,Montant Net (EUROS) BT-131,Code TVA
+,,, - ID de l'objet à la ligne (atribué par le Vendeur) : BT-128  -  Référence comptable de l'acheteur : BT-133,- ID Standard article (BT-157)  - ID article du Vendeur (BT-155)  - ID article de l'acheteur (BT-156),Date début (BT-134)  Date de fin  (BT-135),,,"- Nom d'attribut (BT-160 : Valeur de l'attribut (BT-161)  - Code de Classification de l'article (unspsc, ….) : BT-158  - Pays d'origine de l'article : BT-159",- Quantité de base du prix (BT-149)  - Prix Unitaire Brut (BT-148)  - Rabais du prix brut (BT-147),,,, - Montant de remise  (BT-136)  - Assiette de remise  (BT-137) - Taux de remise  (BT-138)  - Code (BT-140) et Motif (BT-139) de remise, - Montant de charges et frais (BT-141)   - Assiette de charges et frais (BT-142) - Taux de charges et frais (BT-143)  - Code (BT-145) et Motif (BT-144) de charges et frais
+,1,4,,,du 12.12.2017 au 12.12.2017,Produit 1,Produit 1 Livré le 12.12.2017,Taille : Moyen UNSPSC : 80543215,Boites de 10,,,,5% sur 40 € Remise sur volume,Frais d'emballage
+,,,,,,,,,,4,PCE,10,-2,2,40,1
+,2,5,,,du 15.12.2017 au 15.12.2017,Produit 2,Produit 1 Livré le 12.12.2017,Couleur : rouge UNSPSC : 80543215,,,,,,Frais d'emballage
+,,,,,,,,,,58,PCE,3,,6,180,1
+,3,3,ABO Ligne 1,,du 01.12.2017 au 31.12.2017,Service 1,,,,80,PCE,2,,,160,1
+,4,1,ABO Ligne 2,,du 01.12.2017 au 31.12.2017,Service 2,,,,150,PCE,1,,,150,1
+,,,,,,,,,,,,,,Total HT : ,530

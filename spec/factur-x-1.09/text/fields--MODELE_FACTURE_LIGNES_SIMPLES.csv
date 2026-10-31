@@ -1,0 +1,56 @@
+,LOGO Vendeur,LOGO Vendeur,,,Facture / Avoir N°,Facture / Avoir N°,BT-1 : N° Facture,BT-1 : N° Facture,,,Code couleur et motif pour les données: . Couleur : donnée obligatoire quand … . Motif : profil
+,LOGO Vendeur,LOGO Vendeur,,,Date,Date,BT-2 : date de facture,BT-2 : date de facture,,,Code couleur et motif pour les données: . Couleur : donnée obligatoire quand … . Motif : profil
+,LOGO Vendeur,LOGO Vendeur,,,,,,,,,Code couleur et motif pour les données: . Couleur : donnée obligatoire quand … . Motif : profil
+,BT-28 : Appelation Commerciale du vendeur,,,,Adresse du Client,,,,,,Code couleur et motif pour les données: . Couleur : donnée obligatoire quand … . Motif : profil
+,BT-27 : Raison Sociale du vendeur,,,,BT-49 : email@delacheteur.fr,,,,,,Code couleur et motif pour les données: . Couleur : donnée obligatoire quand … . Motif : profil
+,"BG-5 : xxx, ma rue",,,,BT-44 : Raison sociale de l'acheteur,,,,,,Mention Obligatoire fiscale
+,BG-5 : 12345 Ville - Pays,,,,BT-45 : nom commercial de l'acheteur,,,,,,Mention Obligatoire sous condition
+,"BG-6 : contact vendeur: nom,  :) +33 6 07 53 32 85, email",,,,BG-8 : adresse acheteur,,,,,,Mention Obligatoire commerciale
+,BT34 : email vendeur :   admin@macompagnie.fr,,,,BG-8 : adresse acheteur,,,,,,Minimum
+,"BT29 : ID privé (GLN, DUUNS, ...)",,,,BG-8 : adresse acheteur,,,,,,Basic / Basic WL
+,BT30 : SIRET 123 456 789 00015,,,,BG-8 : Code postal Ville,,,,,,EN16931
+,BT31 : N° TVA : FR 32 123 456 789,,,,BG-8 : Pays
+,Si représentant fiscal
+,BT-62 : Nom du représentant fiscal,,,,"BG-9 : contact acheteur: nom,  :) +33 6 10 34 56 78, email"
+,BG-12 : adresse
+,"BG-12 : code postal ville, pays"
+,BT-63 : N° de TVA du représentant fiscal
+,Nos références,,,,Vos identifiants
+,"BT-18 : REF Client : numéro de client, de compteur, d'abonnement",,,,"BT46 : ID privé (GLN, DUNS, ...)"
+,BT-14 : N° de bon de vente : n° de bon de commande du vendeur,,,,BT47 : RCS / SIRET 987 654 321 00017
+,,,,,BT48 : N° TVA : FR 32 123 456 789
+,Vos références,,,,Livraison
+,"BT-10: REF ACHETEUR : Cost center, BU, pour routage",,,,BT-71 : Identifiant du lieu de livraison
+,BT-17 : REF Appel d'offres : référence à un appel d'offres,,,,BT-70 : Nom du contact de livraison chez le client
+,BT-11 : REF au projet auquel la facture se réfère,,,,"BG-15 : xxx, ma rue"
+,BT-19 : REF comptable pour l'acheteur,,,,BG-15 : Complément
+,BT-12 : REF CONTRAT : numéro de contrat,,,,BG-15 : 12345 Ville
+,BT-13 : N° de Bon de COMMANDE : numero de BC,,,,BG-15 : Pays
+,Références sur la facture,,,,"BT-16 : N° de Bon de livraison, bon d'expédition"
+,BT-73 : Période de facturation début : date de début de prestation,,,,BT-72 : Date de livraison : date de livraison
+,BT-74 : Période de facturation fin : date de fin de prestation,,,,BT-15 : N° de Bon de réception
+,BT-25 : N° de facture antérieure: avoir sur facture xxxxx
+,BT-26 : Date de facture antérieure : avoir sur facture du xxxxx
+,BT-23 : Type de processus sous jacent (Optionnel),,,,Devise (BT-5) : EUROS
+,"Référence de l'article (N° de ligne de commande, Code article, …)","DESIGNATION : BT153, BT 154","DESIGNATION : BT153, BT 154","DESIGNATION : BT153, BT 154",QUANTITE BT-129,P.U. HT (€) BT-146,TOTAL HT (€) BT-131,TVA
+,BC ligne 1,Produit 1,Produit 1,Produit 1,1,40,40,1
+,BC ligne 2,Produit 2,Produit 2,Produit 2,3,60,180,1
+,BC ligne 3,Service 1,Service 1,Service 1,2,80,160,2
+,BC ligne 4,Service 2,Service 2,Service 2,1,150,150,3
+
+,,BG-20 remise sur facture,BG-20 remise sur facture,BG-20 remise sur facture,0.1,220,-22,1
+,,"BG-21 charge sur facture (frais, …)","BG-21 charge sur facture (frais, …)","BG-21 charge sur facture (frais, …)",1,25,25,1
+,Détail TVA (motif si exonération : BT-120 / BT-121),Détail TVA (motif si exonération : BT-120 / BT-121),Détail TVA (motif si exonération : BT-120 / BT-121),Cde TVA,Taux TVA (BT-119),Base TVA  (BT-116),TVA  (BT-117),TVA  (BT-117)
+,,,,1,0.2,223,44.6,44.6
+,,,,2,0.1,160,16,16
+,Exempté en vertue de ….,Exempté en vertue de ….,Exempté en vertue de ….,3,0,150
+,"BT-8 : TVA acquittée sur les encaissements / débits BT-20 : Tout retard de paiement engendre une pénalité exigible à compter de la date d'échéance, calculée sur la base de trois fois le taux d'interêt légal. Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € Les réglements reçus avant la date d'échéance ne donneront pas lieu à escompte.","BT-8 : TVA acquittée sur les encaissements / débits BT-20 : Tout retard de paiement engendre une pénalité exigible à compter de la date d'échéance, calculée sur la base de trois fois le taux d'interêt légal. Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € Les réglements reçus avant la date d'échéance ne donneront pas lieu à escompte.","BT-8 : TVA acquittée sur les encaissements / débits BT-20 : Tout retard de paiement engendre une pénalité exigible à compter de la date d'échéance, calculée sur la base de trois fois le taux d'interêt légal. Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € Les réglements reçus avant la date d'échéance ne donneront pas lieu à escompte."
+,"BT-8 : TVA acquittée sur les encaissements / débits BT-20 : Tout retard de paiement engendre une pénalité exigible à compter de la date d'échéance, calculée sur la base de trois fois le taux d'interêt légal. Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € Les réglements reçus avant la date d'échéance ne donneront pas lieu à escompte.","BT-8 : TVA acquittée sur les encaissements / débits BT-20 : Tout retard de paiement engendre une pénalité exigible à compter de la date d'échéance, calculée sur la base de trois fois le taux d'interêt légal. Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € Les réglements reçus avant la date d'échéance ne donneront pas lieu à escompte.","BT-8 : TVA acquittée sur les encaissements / débits BT-20 : Tout retard de paiement engendre une pénalité exigible à compter de la date d'échéance, calculée sur la base de trois fois le taux d'interêt légal. Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € Les réglements reçus avant la date d'échéance ne donneront pas lieu à escompte.",,TOTAL HT BT-109,TOTAL TVA BT-110,TOTAL TTC BT-112,TOTAL TTC BT-112
+,"BT-8 : TVA acquittée sur les encaissements / débits BT-20 : Tout retard de paiement engendre une pénalité exigible à compter de la date d'échéance, calculée sur la base de trois fois le taux d'interêt légal. Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € Les réglements reçus avant la date d'échéance ne donneront pas lieu à escompte.","BT-8 : TVA acquittée sur les encaissements / débits BT-20 : Tout retard de paiement engendre une pénalité exigible à compter de la date d'échéance, calculée sur la base de trois fois le taux d'interêt légal. Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € Les réglements reçus avant la date d'échéance ne donneront pas lieu à escompte.","BT-8 : TVA acquittée sur les encaissements / débits BT-20 : Tout retard de paiement engendre une pénalité exigible à compter de la date d'échéance, calculée sur la base de trois fois le taux d'interêt légal. Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € Les réglements reçus avant la date d'échéance ne donneront pas lieu à escompte.",,533,60.6,593.6,593.6
+,,,,,,BT-113 : Acompte :,0,0
+,Date d'échéance :,,BT-9 (date d'échéance),,NET A PAYER (BT-115),NET A PAYER (BT-115),593.6,593.6
+,Bénéficiaire (si différent du vendeur),,,BT-81 / BT-82 : Moyen de paiement demandé,BT-81 / BT-82 : Moyen de paiement demandé,BT-81 / BT-82 : Moyen de paiement demandé,BT-81 / BT-82 : Moyen de paiement demandé,BT-81 / BT-82 : Moyen de paiement demandé
+,BT-59: Nom du bénéficiaire,,,BT-85 : Nom du compte bancaire,BT-85 : Nom du compte bancaire,BT-85 : Nom du compte bancaire,BT-85 : Nom du compte bancaire,BT-85 : Nom du compte bancaire
+,BT-60: ID bénéficiaire,,,BT-84 : IBAN : FR76 1234 5678 9012 3456 7890 123  | BT-86: BIC : XXXXXXXX,BT-84 : IBAN : FR76 1234 5678 9012 3456 7890 123  | BT-86: BIC : XXXXXXXX,BT-84 : IBAN : FR76 1234 5678 9012 3456 7890 123  | BT-86: BIC : XXXXXXXX,BT-84 : IBAN : FR76 1234 5678 9012 3456 7890 123  | BT-86: BIC : XXXXXXXX,BT-84 : IBAN : FR76 1234 5678 9012 3456 7890 123  | BT-86: BIC : XXXXXXXX
+,BT-61: SIREN/ SIRET Bénéficiaire,,,"BT-83 : REF Paiement (End to End), pour réconciliation par le Bénéficiaire","BT-83 : REF Paiement (End to End), pour réconciliation par le Bénéficiaire","BT-83 : REF Paiement (End to End), pour réconciliation par le Bénéficiaire","BT-83 : REF Paiement (End to End), pour réconciliation par le Bénéficiaire","BT-83 : REF Paiement (End to End), pour réconciliation par le Bénéficiaire"
+,"Ma société. Société anonyme au capital de xx.xxx EUROS - R.C.S. MAVILLE 123 456 789 - NAF ZZZZZ 136 ma rue a moi, code postal Ville Pays – contact@masociete.fr - www.masociete.fr  – N° TVA : FR32 123 456 789","Ma société. Société anonyme au capital de xx.xxx EUROS - R.C.S. MAVILLE 123 456 789 - NAF ZZZZZ 136 ma rue a moi, code postal Ville Pays – contact@masociete.fr - www.masociete.fr  – N° TVA : FR32 123 456 789","Ma société. Société anonyme au capital de xx.xxx EUROS - R.C.S. MAVILLE 123 456 789 - NAF ZZZZZ 136 ma rue a moi, code postal Ville Pays – contact@masociete.fr - www.masociete.fr  – N° TVA : FR32 123 456 789","Ma société. Société anonyme au capital de xx.xxx EUROS - R.C.S. MAVILLE 123 456 789 - NAF ZZZZZ 136 ma rue a moi, code postal Ville Pays – contact@masociete.fr - www.masociete.fr  – N° TVA : FR32 123 456 789","Ma société. Société anonyme au capital de xx.xxx EUROS - R.C.S. MAVILLE 123 456 789 - NAF ZZZZZ 136 ma rue a moi, code postal Ville Pays – contact@masociete.fr - www.masociete.fr  – N° TVA : FR32 123 456 789","Ma société. Société anonyme au capital de xx.xxx EUROS - R.C.S. MAVILLE 123 456 789 - NAF ZZZZZ 136 ma rue a moi, code postal Ville Pays – contact@masociete.fr - www.masociete.fr  – N° TVA : FR32 123 456 789","Ma société. Société anonyme au capital de xx.xxx EUROS - R.C.S. MAVILLE 123 456 789 - NAF ZZZZZ 136 ma rue a moi, code postal Ville Pays – contact@masociete.fr - www.masociete.fr  – N° TVA : FR32 123 456 789",Page 1 / 1

@@ -1,0 +1,8 @@
+# Official Factur-X distribution and the validation assets vendored from it must stay
+# byte-identical to the spec (several files use CRLF): never normalize line endings.
+# `pnpm spec:verify` relies on this. See spec/README.md.
+spec/factur-x-*/distribution/** -text linguist-vendored
+src/lib/xsd/** -text linguist-vendored
+
+# Derived from the distribution by spec/scripts/extract.mjs — regenerate, don't edit.
+spec/factur-x-*/text/** linguist-generated
