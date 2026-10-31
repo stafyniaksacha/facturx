@@ -63,9 +63,9 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.0.0",
-    "@types/node": "^26.0.0",
+    "@types/node": "^26.6.5",
     "@vitest/coverage-v8": "4.1.9",
-    "eslint": "^10.5.0",
+    "eslint": "^10.13.0",
     "typescript": "^6.0.3",
     "unbuild": "^3.6.0",
     "vitest": "^4.1.9",
