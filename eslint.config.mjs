@@ -29,3 +29,17 @@ export default antfu({
       'node/prefer-global/buffer': 'off',
     },
   })
+  // Shipped code must run on the `engines.node` floor (read from package.json),
+  // whatever Node it is developed on. The build lowers syntax to that floor
+  // (build.config.ts) but cannot polyfill runtime APIs: flag them here.
+  .append({
+    files: ['src/**/*.ts'],
+    rules: {
+      'node/no-unsupported-features/es-builtins': 'error',
+      'node/no-unsupported-features/node-builtins': ['error', {
+        // Unflagged since 20.11.0 (hence the floor), only marked stable in
+        // 22.16 / 24.0, which the rule reports as "experimental".
+        ignores: ['import.meta.dirname'],
+      }],
+    },
+  })

@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
     "target": "ESNext",
+    // Built-in APIs available on the engines.node floor (Node 20 = ES2023):
+    // newer ones would type-check but crash at runtime for older consumers.
+    "lib": ["ES2023"],
     "module": "Preserve",
     "moduleResolution": "bundler",
     "paths": {

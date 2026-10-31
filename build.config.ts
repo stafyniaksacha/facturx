@@ -1,4 +1,11 @@
 import { defineBuildConfig } from 'unbuild'
+import pkg from './package.json' with { type: 'json' }
+
+// Lower syntax to the oldest Node we support (e.g. `using` → try/finally) so
+// code written on a newer Node still parses on the `engines.node` floor.
+const nodeFloor = /^>=\s*(\d+\.\d+\.\d+)$/.exec(pkg.engines.node)?.[1]
+if (!nodeFloor)
+  throw new Error(`engines.node must look like ">=x.y.z" to derive the build target, got "${pkg.engines.node}"`)
 
 export default defineBuildConfig({
   declaration: 'node16',
@@ -18,7 +25,7 @@ export default defineBuildConfig({
   ],
   rollup: {
     esbuild: {
-      target: 'esnext',
+      target: `node${nodeFloor}`,
     },
     emitCJS: false,
     cjsBridge: false,
