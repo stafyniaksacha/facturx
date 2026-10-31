@@ -1,0 +1,13 @@
+{
+  "name": "@stafyniaksacha/facturx-spec-scripts",
+  "type": "module",
+  "private": true,
+  "description": "Regenerates the searchable text/CSV extracts of the vendored Factur-X spec. Deliberately NOT part of the pnpm workspace so its dependencies are not installed for regular development.",
+  "scripts": {
+    "extract": "node extract.mjs"
+  },
+  "devDependencies": {
+    "exceljs": "4.4.0",
+    "pdfjs-dist": "4.10.38"
+  }
+}

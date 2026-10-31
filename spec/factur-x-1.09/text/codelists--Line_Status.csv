@@ -1,0 +1,120 @@
+Code,Code name,Description
+1,Added,The information is to be or has been added.
+2,Deleted,The information is to be or has been deleted.
+3,Changed,The information is to be or has been changed.
+4,No action,This line item is not affected by the actual message.
+5,Accepted without amendment,This line item is entirely accepted by the seller.
+6,Accepted with amendment,This line item is accepted but amended by the seller.
+7,Not accepted,This line item is not accepted by the seller.
+8,Schedule only,Code specifying that the message is a schedule only.
+9,Amendments,Code specifying that amendments are requested/notified.
+10,Not found,This line item is not found in the referenced message.
+11,Not amended,This line is not amended by the buyer.
+12,Line item numbers changed,Code specifying that the line item numbers have changed.
+13,Buyer has deducted amount,Buyer has deducted amount from payment.
+14,Buyer claims against invoice,Buyer has a claim against an outstanding invoice.
+15,Charge back by seller,Factor has been requested to charge back the outstanding item.
+16,Seller will issue credit note,Seller agrees to issue a credit note.
+17,Terms changed for new terms,New settlement terms have been agreed.
+18,Abide outcome of negotiations,Factor agrees to abide by the outcome of negotiations between seller and buyer.
+19,Seller rejects dispute,Seller does not accept validity of dispute.
+20,Settlement,The reported situation is settled.
+21,No delivery,Code indicating that no delivery will be required.
+22,Call-off delivery,A request for delivery of a particular quantity of goods to be delivered on a particular date (or within a particular period).
+23,Proposed amendment,A code used to indicate an amendment suggested by the sender.
+24,"Accepted with amendment, no confirmation required",Accepted with changes which require no confirmation.
+25,Equipment provisionally repaired,The equipment or component has been provisionally repaired.
+26,Included,Code indicating that the entity is included.
+27,Upon receipt and verification of documents we shall cover you when due as per your instructions,Upon receipt and verification of documents we shall cover you when due as per your instructions.
+28,Upon receipt and verification of documents we shall authorize you to debit our account with you when due,Upon receipt and verification of documents we shall authorize you to debit our account with you when due.
+29,On receipt of your authenticated advice we shall cover you when due as per your instructions,On receipt of your authenticated advice we shall cover you when due as per your instructions.
+30,On receipt of your authenticated advice we shall authorize you to debit our account with you when due,On receipt of your authenticated advice we shall authorize you to debit our account with you when due.
+31,On receipt of your authenticated advice we shall credit your account with us when due,On receipt of your authenticated advice we shall credit your account with us when due.
+32,Credit advice requested for direct debit,A credit advice is requested for the direct debit.
+33,Credit advice and acknowledgement for direct debit,A credit advice and acknowledgement are requested for the direct debit.
+34,Inquiry,Request for information.
+35,Checked,Checked.
+36,Not checked,Not checked.
+37,Cancelled,Discontinued.
+38,Replaced,Provide a replacement.
+39,New,Not existing before.
+40,Agreed,Consent.
+41,Proposed,Put forward for consideration.
+42,Already delivered,Delivery has taken place.
+43,Additional subordinate structures will follow,Additional subordinate structures will follow the current hierarchy level.
+44,Additional subordinate structures will not follow,No additional subordinate structures will follow the current hierarchy level.
+45,Result opposed,A notification that the result is opposed.
+46,Auction held,A notification that an auction was held.
+47,Legal action pursued,A notification that legal action has been pursued.
+48,Meeting held,A notification that a meeting was held.
+49,Result set aside,A notification that the result has been set aside.
+50,Result disputed,A notification that the result has been disputed.
+51,Countersued,A notification that a countersuit has been filed.
+52,Pending,A notification that an action is awaiting settlement.
+53,Court action dismissed,A notification that a court action will no longer be heard.
+54,"Referred item, accepted",The item being referred to has been accepted.
+55,"Referred item, rejected",The item being referred to has been rejected.
+56,Debit advice statement line,Notification that the statement line is a debit advice.
+57,Credit advice statement line,Notification that the statement line is a credit advice.
+58,Grouped credit advices,Notification that the credit advices are grouped.
+59,Grouped debit advices,Notification that the debit advices are grouped.
+60,Registered,The name is registered.
+61,Payment denied,The payment has been denied.
+62,Approved as amended,Approved with modifications.
+63,Approved as submitted,The request has been approved as submitted.
+64,"Cancelled, no activity",Cancelled due to the lack of activity.
+65,Under investigation,Investigation is being done.
+66,Initial claim received,Notification that the initial claim was received.
+67,Not in process,Not in process.
+68,"Rejected, duplicate",Rejected because it is a duplicate.
+69,"Rejected, resubmit with corrections",Rejected but may be resubmitted when corrected.
+70,"Pending, incomplete",Pending because of incomplete information.
+71,Under field office investigation,Investigation by the field is being done.
+72,"Pending, awaiting additional material",Pending awaiting receipt of additional material.
+73,"Pending, awaiting review",Pending while awaiting review.
+74,Reopened,Opened again.
+75,"Processed by primary, forwarded to additional payer(s)",This request has been processed by the primary payer and sent to additional payer(s).
+76,"Processed by secondary, forwarded to additional payer(s)",This request has been processed by the secondary payer and sent to additional payer(s).
+77,"Processed by tertiary, forwarded to additional payer(s)",This request has been processed by the tertiary payer and sent to additional payer(s).
+78,Previous payment decision reversed,A previous payment decision has been reversed.
+79,"Not our claim, forwarded to another payer(s)",A request does not belong to this payer but has been forwarded to another payer(s).
+80,Transferred to correct insurance carrier,The request has been transferred to the correct insurance carrier for processing.
+81,"Not paid, predetermination pricing only",Payment has not been made and the enclosed response is predetermination pricing only.
+82,Documentation claim,"The claim is for documentation purposes only, no payment required."
+83,Reviewed,Assessed.
+84,Repriced,This price was changed.
+85,Audited,An official examination has occurred.
+86,Conditionally paid,Payment has been conditionally made.
+87,On appeal,Reconsideration of the decision has been applied for.
+88,Closed,Shut.
+89,Reaudited,A subsequent official examination has occurred.
+90,Reissued,Issued again.
+91,Closed after reopening,Reopened and then closed.
+92,Redetermined,Determined again or differently.
+93,Processed as primary,Processed as the first.
+94,Processed as secondary,Processed as the second.
+95,Processed as tertiary,Processed as the third.
+96,Correction of error,A correction to information previously communicated which contained an error.
+97,Single credit item of a group,Notification that the credit item is a single credit item of a group of credit items.
+98,Single debit item of a group,Notification that the debit item is a single debit item of a group of debit items.
+99,Interim response,The response is an interim one.
+100,Final response,The response is an final one.
+101,Debit advice requested,A debit advice is requested for the transaction.
+102,Transaction not impacted,Advice that the transaction is not impacted.
+103,Patient to be notified,The action to take is to notify the patient.
+104,Healthcare provider to be notified,The action to take is to notify the healthcare provider.
+105,Usual general practitioner to be notified,The action to take is to notify the usual general practitioner.
+106,Advice without details,An advice without details is requested or notified.
+107,Advice with details,An advice with details is requested or notified.
+108,Amendment requested,An amendment is requested.
+109,For information,Included for information only.
+110,Withdraw,A code indicating discontinuance or retraction.
+111,Delivery date change,The action / notiification is a change of the delivery date.
+112,Quantity change,The action / notification is a change of quantity.
+113,Resale and claim,"The identified items have been sold by the distributor to the end customer, and compensation for the loss of inventory value is claimed."
+114,Resale,The identified items have been sold by the distributor to the end customer.
+115,Prior addition,This existing line item becomes available at an earlier date.
+116,Expired,This line has expired.
+117,Hold,This line is on Hold.
+118,Open,This line is open.
+119,Observe,The object or item is to be or has been observed.

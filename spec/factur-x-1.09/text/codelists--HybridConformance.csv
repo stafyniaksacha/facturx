@@ -1,0 +1,8 @@
+Code,Definition,Usage Rule,Comment
+MINIMUM,The included document uses a MINIMUM profile,Only applicable in Factur-X/ZUGFeRD,Not allowed in Germany from 2025-01-01
+BASIC WL,The included document uses a Basic Without Lines profile,Only applicable in Factur-X/ZUGFeRD,Not allowed in Germany from 2025-01-01
+BASIC,The included document uses a Basic profile,Applicable in Factur-X/ZUGFeRD and Order-X. For Factur-X/ZUGFeRD the BASIC profile is compliant to the EN16931.
+COMFORT,The included document uses a Comfort profile,Only applicable in Order-X
+EN 16931,The included document uses a EN 16931 profile,Only applicable in Factur-X/ZUGFeRD. This profile is compliant to the EN16931.
+EXTENDED,The included document uses a Comfort profile,Applicable in Factur-X/ZUGFeRD and Order-X. For Factur-X/ZUGFeRD the EXTENDED profile is compliant to and conformant extension of the EN16931.
+XRECHNUNG,The included document uses an XRECHNUNG profile,Only applicable in Factur-X/ZUGFeRD.,Not applicable in France

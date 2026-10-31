@@ -1,0 +1,18 @@
+,HybridDocument,fx:Document Type,,,,HybridConformance,fx:ConformanceLevel,,,,,Filename,fx:DocumentFileName,,,,HybridVersion,fx:Version
+a a a a,Code,Definition,Usage Rule,,,Code,Definition,Usage Rule,Comment,,,Code,Definition,Usage Rule,,,Code,Definition,Usage Rule
+a a a a,INVOICE,The hybrid document contains an invoice or credit note,Only applicable in Factur-X / ZUGFeRD,,,MINIMUM,The included document uses a MINIMUM profile,Only applicable in Factur-X/ZUGFeRD,Not allowed in Germany from 2025-01-01,,,factur-x.xml,The hybrid document contains a Factur-X / ZUGFeRD XML-file,The ConformanceLevel MUST not be XRECHNUNG,,,1.0,The hybrid document is a Factur-X 1.0* compliant document,Default value for current specification
+a a a a,ORDER,The hybrid document contains an order,Only applicable in Order-X,,,BASIC WL,The included document uses a Basic Without Lines profile,Only applicable in Factur-X/ZUGFeRD,Not allowed in Germany from 2025-01-01,,,xrechnung.xml,The hybrid document contains a XRechnung XML file,The ConformanceLevel MUST be XRECHNUNG,,,1p0,The hybrid document is a ZUGFeRD 1p0 compliant document,Legacy use only. A warning is given if used for a document in the validity period of the current specification 
+a a a a,ORDER_RESPONSE,The hybrid document contains an order response,Only applicable in Order-X,,,BASIC,The included document uses a Basic profile,Applicable in Factur-X/ZUGFeRD and Order-X. For Factur-X/ZUGFeRD the BASIC profile is compliant to the EN16931.,,,,order-x.xml,The hybrid document contains an Order-X XML file,,,,2p0,The hybrid document is a ZUGFeRD 2p0 compliant document,Legacy use only. A warning is given if used for a document in the validity period of the current specification 
+a a a a,ORDER_CHANGE,Thy hybrid document contains an order change,Only applicable in Order-X,,,COMFORT,The included document uses a Comfort profile,Only applicable in Order-X,,,,,,,,,2p1,The hybrid document is a ZUGFeRD 2p1 compliant document,Legacy use only. A warning is given if used for a document in the validity period of the current specification 
+a a a a,,,,,,EN 16931,The included document uses a EN 16931 profile,Only applicable in Factur-X/ZUGFeRD. This profile is compliant to the EN16931.,,,,,,,,,2p2,The hybrid document is a ZUGFeRD 2p2 compliant document,Legacy use only. A warning is given if used for a document in the validity period of the current specification 
+a a a a,,,,,,EXTENDED,The included document uses a Extended profile,Applicable in Factur-X/ZUGFeRD and Order-X. For Factur-X/ZUGFeRD the EXTENDED profile is compliant to and conformant extension of the EN16931.
+a a a a,,,,,,XRECHNUNG,The included document uses an XRECHNUNG profile,Only applicable in Factur-X/ZUGFeRD.,Not applicable in France
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a

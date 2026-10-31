@@ -1,0 +1,4 @@
+Code,Definition,Usage Rule
+factur-x.xml,The hybrid document contains a Factur-X / ZUGFeRD XML-file,The ConformanceLevel MUST not be XRECHNUNG
+xrechnung.xml,The hybrid document contains a XRechnung XML file,The ConformanceLevel MUST be XRECHNUNG
+order-x.xml,The hybrid document contains an Order-X XML file
