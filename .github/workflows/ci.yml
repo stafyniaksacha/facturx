@@ -1,0 +1,315 @@
+name: CI
+
+# Checks every pull request on all supported Node.js LTS lines, then installs
+# the packed tarball the way a consumer does: on the exact `engines.node`
+# floor, on IBM Power / IBM Z (emulated), on Windows and on macOS.
+#
+# Toolchain vs runtime: pnpm and vitest need a newer Node than the package
+# promises, so jobs install with `.node-version` and only then switch to the
+# Node under test.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # Consumer installs resolve dependency ranges fresh (no lockfile): a new
+  # upstream release can break users without any change on our side.
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # pnpm version is taken from the root package.json "packageManager" field.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Tests import the package through its exports, i.e. from dist/.
+      - name: Build
+        run: pnpm build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+  test:
+    name: Test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every LTS line from the engines.node major up. 20 is end-of-life but
+        # still promised by engines.node: drop both together. The exact floor
+        # (20.11.0) is older than vitest supports, see the consumer job.
+        node: [20, 22, 24, 26]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - name: Setup Node (toolchain)
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Setup Node ${{ matrix.node }}
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      # Called through node, not pnpm: pnpm itself requires Node >= 22.13.
+      - name: Test
+        run: |
+          node --version
+          node node_modules/vitest/vitest.mjs run
+
+  docs:
+    name: Docs build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build docs
+        run: pnpm docs:build
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `prepack` runs the build.
+      - name: Pack
+        run: pnpm pack --pack-destination "$RUNNER_TEMP/package"
+
+      # ESM-only package: types must resolve under `node16`/`nodenext` and
+      # `bundler` module resolution.
+      - name: Check published types
+        run: pnpm exec attw "$RUNNER_TEMP"/package/*.tgz --profile esm-only
+
+      - name: Upload package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package
+          path: ${{ runner.temp }}/package/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  consumer:
+    name: Consumer (Node ${{ matrix.node }}, ${{ matrix.platform }})${{ matrix.known-issue && ' [known issue]' || '' }}
+    needs: package
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    # A lane with a known upstream bug reports it without blocking merges.
+    continue-on-error: ${{ !!matrix.known-issue }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The engines.node floor, exact: the oldest Node npm lets users install on.
+          - {node: 20.11.0, os: ubuntu-latest, platform: linux/amd64}
+          - {node: 20, os: ubuntu-latest, platform: linux/amd64}
+          - {node: 22, os: ubuntu-latest, platform: linux/amd64}
+          - {node: 24, os: ubuntu-latest, platform: linux/amd64}
+          - {node: 26, os: ubuntu-latest, platform: linux/amd64}
+          # IBM Power (little-endian) and IBM Z (big-endian), emulated by QEMU.
+          - {node: 20.11.0, os: ubuntu-latest, platform: linux/ppc64le}
+          - {node: 26, os: ubuntu-latest, platform: linux/ppc64le}
+          # libxml2-wasm reads WASM memory (always little-endian) through
+          # host-endian typed arrays (HEAP32, getValue), so XPath and namespace
+          # lookups return garbage on big-endian hosts. Not fixed in 0.7.2.
+          - {node: 20.11.0, os: ubuntu-latest, platform: linux/s390x, known-issue: libxml2-wasm is not big-endian safe}
+          - {node: 26, os: ubuntu-latest, platform: linux/s390x, known-issue: libxml2-wasm is not big-endian safe}
+          # Path handling (XSD / Schematron resources, temp dirs) on other OSes.
+          - {node: 20.11.0, os: windows-latest, platform: windows/x64}
+          - {node: 20.11.0, os: macos-latest, platform: darwin/arm64}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Download package
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package
+          path: ${{ runner.temp }}/package
+
+      # Also runs `npm install` below, so engines are checked against it.
+      - name: Setup Node ${{ matrix.node }}
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      # No pnpm, lockfile or workspace: dependency ranges resolve as they do for
+      # users. --engine-strict fails if the package or any dependency rejects
+      # this Node; --ignore-scripts mimics hosts that forbid install scripts.
+      - name: Install like a consumer
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir consumer
+          cp "$GITHUB_WORKSPACE/tests/compat/smoke.mjs" consumer/
+          cd consumer
+          npm init -y > /dev/null
+          npm install --engine-strict --ignore-scripts --no-audit --no-fund ../package/*.tgz
+
+      # Native addons need a compiler or a prebuilt binary at install time,
+      # which IBM and locked-down hosts usually lack.
+      - name: Assert no native code
+        if: runner.os == 'Linux'
+        working-directory: ${{ runner.temp }}/consumer
+        run: |
+          native=$(find node_modules \( -name '*.node' -o -name binding.gyp \) -print)
+          if [ -n "$native" ]; then
+            echo "::error::Native code in the dependency tree:"
+            echo "$native"
+            exit 1
+          fi
+
+      - name: Setup QEMU
+        if: runner.os == 'Linux' && matrix.platform != 'linux/amd64'
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          # Runs privileged: pinned rather than the action's default :latest.
+          image: tonistiigi/binfmt:qemu-v10.2.3@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+          platforms: ${{ matrix.platform }}
+
+      # Official build of the same Node version for the target platform.
+      - name: Download Node for ${{ matrix.platform }}
+        if: runner.os == 'Linux'
+        working-directory: ${{ runner.temp }}
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          version=$(node -p process.version)
+          arch=${PLATFORM#linux/}
+          [ "$arch" = amd64 ] && arch=x64
+          dist="node-$version-linux-$arch"
+          # nodejs.org occasionally resets connections: retry rather than fail the lane.
+          curl -fsSLO --retry 5 --retry-all-errors "https://nodejs.org/dist/$version/$dist.tar.xz"
+          curl -fsSL --retry 5 --retry-all-errors "https://nodejs.org/dist/$version/SHASUMS256.txt" | grep " $dist.tar.xz\$" | sha256sum -c -
+          mkdir node-target
+          tar -xJf "$dist.tar.xz" -C node-target --strip-components=1
+
+      # Bare Debian plus libatomic1, which official Node builds >= 26 link against.
+      - name: Build smoke test image
+        if: runner.os == 'Linux'
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          IMAGE: debian:trixie-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
+        run: |
+          docker build --platform "$PLATFORM" --tag smoke - <<EOF
+          FROM $IMAGE
+          RUN apt-get update && apt-get install --yes --no-install-recommends libatomic1 && rm -rf /var/lib/apt/lists/*
+          EOF
+
+      # Network off: the package must not need it at runtime.
+      - name: Smoke test (offline)
+        if: runner.os == 'Linux'
+        working-directory: ${{ runner.temp }}
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          docker run --rm --platform "$PLATFORM" --network none --user "$(id -u):$(id -g)" \
+            -v "$PWD/node-target:/opt/node:ro" \
+            -v "$PWD/consumer:/app:ro" \
+            -v "$GITHUB_WORKSPACE/examples:/fixtures:ro" \
+            -w /app smoke /opt/node/bin/node smoke.mjs /fixtures
+
+      - name: Smoke test
+        if: runner.os != 'Linux'
+        working-directory: ${{ runner.temp }}/consumer
+        run: node smoke.mjs "$GITHUB_WORKSPACE/examples"
+
+      - name: Report known issue
+        if: failure() && matrix.known-issue
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          KNOWN_ISSUE: ${{ matrix.known-issue }}
+        run: echo "::warning::Expected failure on $PLATFORM ($KNOWN_ISSUE), not blocking."
+
+  # The one status check to require in branch protection: matrix entries can
+  # change without touching repository settings.
+  ci-ok:
+    name: CI OK
+    if: always()
+    needs: [lint, test, docs, package, consumer]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check needed jobs
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
