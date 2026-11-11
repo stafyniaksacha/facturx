@@ -117,10 +117,13 @@ These shipped on `main` after 0.6.1 and are included in the next release.
 
 - **`generate()` accepts PDFs that already have a trailer `/ID`** ([#39](https://github.com/stafyniaksacha/facturx/pull/39)). Most real-world PDFs have
   one, and 0.6.1 threw `Not implemented yet: Document ID already set` on them. The permanent first
-  element is now kept. In exchange, `generate()` now **rejects**, before changing anything:
+  element is now kept. In exchange, `generate()` now **rejects**, before writing the invoice:
   encrypted or signed PDFs, PDFs that already embed an invoice, PDFs with a `/Kids` name tree, a
   reused `PDFDocument`, and PDFs with too many or too large attachments to inspect. The full list of
-  error messages is in [`generate()`](/api/generate#source-pdfs-that-are-rejected). The
+  error messages is in [`generate()`](/api/generate#source-pdfs-that-are-rejected). If you pass a
+  `pdf-lib` `PDFDocument` rather than bytes, load it again after any rejection: `generate()` has
+  already marked it as used and may have written attachments you queued with `attach()` into its
+  name tree. The
   EmbeddedFiles name tree is also kept sorted, so existing attachments can come back in a different
   order.
 - **A malformed EmbeddedFiles name tree** now throws `Malformed EmbeddedFiles name tree: <reason>`
