@@ -13,6 +13,9 @@ A document can be perfectly valid XSD-wise and still break business rules (e.g. 
 add up, or a missing VAT breakdown). For full EN 16931 compliance you need **both** layers.
 :::
 
+For invoices under the French e-invoicing reform, a third layer checks the French `BR-FR` rules:
+see [French e-invoicing rules](/guide/french-ctc).
+
 ## XSD validation
 
 This is the default. [`check()`](/api/check) validates the XML structure against the official

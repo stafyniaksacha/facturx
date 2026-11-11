@@ -34,6 +34,7 @@ open entry is "known", anything else is new.
 | The XMP packet header uses the fixed packet id `W5M0MpCehiHzreSzNTczkc9d` of the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` (was CG-06), and `generate()` keeps a source PDF's permanent trailer `/ID` (ISO 32000-1 §14.4) instead of throwing (#37), while rejecting encrypted (§6.1 p.25) and signed sources and sources that already embed a document of the kind being written (§6 p.24 for invoices; one order per PDF for Order-X is by analogy, no Order-X spec is vendored). That document is detected by content, whatever its file name: any stream of a file (`/EF` `/F`, `/UF` or a deprecated key) in the EmbeddedFiles name tree or catalog `/AF` whose root element (namespace and name) is a CII invoice, or an Order-X order when an order is written, including UTF-8 and UTF-16 with a BOM and invoices hidden behind tricky prolog comments. A file whose name tree key, `/F` or `/UF` is a recognized invoice name (`factur-x.xml`, `xrechnung.xml`, ZUGFeRD names; `order-x.xml` for orders) is rejected too, whatever its content can be read as, and so is one already using the filename being written. Other XML is accepted as a supporting file (§6.4 p.30–32), including an Order-X order attached to an invoice. Reading untrusted input is bounded: each distinct stream is read once, inflated with node:zlib in growing slices (at most 64 KiB of compressed input and 2 MiB of output per attempt), 64 KiB of text is examined, and per PDF at most 256 distinct streams and 128 MiB of inflation are allowed (a failed attempt is charged as much as it could have produced); past either limit the PDF is rejected. Known misses are listed in CG-14 | `pnpm build && pnpm vitest run tests/generate.test.ts` |
 | Schematron findings are classified by the rule's own SVRL `flag`: `warning`/`information` are reported in `warnings` and don't affect validity unless `warningsAsErrors` is set; unflagged and `fatal` ones are errors. Fired `<report>`s count like failed `<assert>`s (the Factur-X Schematrons express profile restrictions such as "@schemeID not used in the given context" as reports; before this they were silently dropped). In the vendored Factur-X XSLTs the warning-flagged rules are: MINIMUM `BR-FXEXT-{G,IC,O,Z}-08ini/-08rev`; BASIC `PEPPOL-EN16931-R008`, `BR-FX-EN-04`, `BR-FXEXT-Z-08rev`; BASIC WL none; EN 16931 `PEPPOL-EN16931-R008`, `CII-SR-474/475/476`; EXTENDED `PEPPOL-EN16931-R008`, `BR-FXEXT-04`, `CII-SR-475/476` and the `-08ini/-08rev` pairs, each backed by a blocking `-08b` rule (spelled `BR-FXEXT-S08b` for S upstream) | `pnpm build && pnpm vitest run tests/schematron.test.ts tests/fixfr04.test.ts` (severity inventory) |
 | README and docs no longer claim `extract()` detects the level: it returns the flavor (from the attachment filename) and echoes `options.level`; the quick start reads the level from `check()` on the extracted XML (was CG-11) | `pnpm build && pnpm --filter @stafyniaksacha/facturx-examples run examples` (quickstart prints `facturx en16931`, not `facturx undefined`) |
+| French CTC rules `BR-FR-Flux2` (FNFE-MPE Schematrons FR CTC v1.4.0.04, step 3 of the release notes p.9): the vendored `src/lib/xsd/fr-ctc/BR-FR-Flux2-Schematron-CII.xslt` is byte-identical to all five copies in the release, standard (all 171 asserts `fatal`) variant only, and its shipped SEF is reproducible and embeds no local path. `validateFrCtc` / `check({ frCtc: true })` check the document itself (the rules read neither root nor profile) and accept only a CII invoice declaring BASIC WL, EN16931 or EXTENDED (p.9, p.11; plain-CII `EXTENDED-CTC-FR` as `extended`); they throw for MINIMUM, BASIC, Order-X, UBL and a `level` that contradicts the document. All 24 Factur-X examples of XP Z12-012 v1.4 Annex B (EN16931 and EXTENDED, incl. multi-vendor, bidirectional, sub-line) pass XSD + the Factur-X profile Schematron (1.09.2.fixFR04, CG-16) + BR-FR with no finding, and the 6 plain-CII `EXTENDED-CTC-FR` examples pass BR-FR at level `extended`. Over the 34 in-scope official Factur-X 1.09 examples, 28 pass and 6 (`_Factur-X_1.08-Exemples_CS/*/Facture_F2026003{0,1}-*`) fail `BR-FR-32` (SIREN `303 656 847` written with spaces) and `BR-FR-CO-10` (seller GlobalID scheme `0088` twice), both genuine in the example data. `id` is the rule (`BR-FR-05`), taken from the SVRL `@id`, never from the message | `pnpm spec:verify`; `pnpm build && pnpm vitest run tests/fr-ctc.test.ts` |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no veraPDF run), any Order-X
 asset (no Order-X spec vendored), field-by-field coverage of the 1.09 EXTENDED additions (BT-173…177,
@@ -58,6 +59,12 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | CG-15 | spec, licence | FNFE CTC FR 1.4.0 release notes p.6, p.8 | — | The FNFE CTC FR 1.4.0.04 release contradicts itself on its licence and its applicability dates |
 | CG-16 | spec, provenance | FNFE CTC FR 1.4.0 release notes p.4–6, p.9, p.11 | — | BASIC WL / EN 16931 / EXTENDED validate against Factur-X 1.09.2.fixFR04 taken from the FNFE CTC FR release, not from an official Factur-X 1.09.2 distribution; MINIMUM / BASIC stay on 1.09 FINAL |
 | CG-17 | spec | 1.09 FINAL `_XSLT_*` vs `.sch` | — | The 1.09 FINAL compiled XSLTs (still used for MINIMUM and BASIC) enforce rules absent from their own `.sch` |
+| CG-18 | French CTC, profiles | Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv`; release notes p.9 | interop | `EXTENDED-CTC-FR` CII invoices: level not detected, no XSD / Schematron |
+| CG-19 | French CTC, syntax | release notes p.9-10 (`BR-FR-Flux2-Schematron-UBL`) | interop | UBL 2.1 invoices are not supported |
+| CG-20 | French CTC, lifecycle | release notes p.10 (`BR-FR-CDV-*`); Annex A `annex-a--CDV_FE_-_CDAR.csv` | interop | CDAR lifecycle status messages are not validated |
+| CG-21 | French CTC, e-reporting | Annex A `annex-a--E-REPORTING_-_Flux_10.csv` | interop | Flux 10 e-reporting is not supported (no licence in the release) |
+| CG-22 | French CTC, coverage | release notes p.8-10; Annex A `annex-a--BR-France_CTC.csv`, `annex-a--BR-France-CTC-CPRO.csv` | interop | Annex A BR-FR rules the published Schematron does not implement (incl. `BR-FR-CPRO-*`); release notes contradict each other and the XSLT on coverage |
+| CG-23 | French CTC, upstream | `BR-FR-Flux2-Schematron-CII.xslt` | — | SVRL `test` of 4 BR-FR asserts loses its regex quantifier (`^\d{9}$` reported as `^\d9$`) |
 
 ### CG-01 — Unit prices truncated to 2 decimals
 
@@ -309,6 +316,77 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   `diff <(grep -oE '\[(BR|CII|FX)[A-Za-z0-9_-]*\]' "spec/factur-x-1.09/distribution/4. FACTUR-X_1.09_XSD_SCHEMATRON_2026-06-10/0. Factur-X_1.09_MINIMUM/Factur-X_1.09_MINIMUM.sch" | sort -u) <(grep -oE '\[(BR|CII|FX)[A-Za-z0-9_-]*\]' src/lib/xsd/facturx/minimum/FACTUR-X_MINIMUM.xslt | sort -u)`
   (the same with `2. Factur-X_1.09_BASIC` / `basic/FACTUR-X_BASIC.xslt`; for BASIC WL and EN 16931
   use the 1.09 `_XSLT_*` files in `spec/factur-x-1.09/`).
+### CG-18 — `EXTENDED-CTC-FR` CII profile
+
+- **Spec:** XP Z12-012 v1.4 defines an `EXTENDED-CTC-FR` profile for plain CII (guideline ID
+  `urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr`), with French extension
+  fields `EXT-FR-FE-*` (Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv`) and its own Schematron
+  (`spec/fnfe-ctc-fr-1.4.0.04/distribution/CII/EXTENDED-CTC-FR/`). Release notes p.9: the Factur-X
+  EXTENDED components can validate it, being a superset.
+- **Code:** `getLevel` (`src/lib/xml.ts`) throws `Unknown level: "1p0"` on that guideline ID, so
+  `check()` can't run on it; models, converter and parser don't know the `EXT-FR-FE-*` fields.
+  `validateFrCtc({ level: 'extended' })` does run BR-FR on it.
+- **Evidence:** the 6 `*_EXTENDED-CTC-FR_CII_*.xml` files of Annex B, e.g.
+  `node bin/facturx.mjs check "spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/F202500001/_EXTENDED-CTC-FR/F202500001_INV_20250201_EXTENDED-CTC-FR_CII_Commentee.xml"`
+  prints `Unknown level: "1p0"`. Annex B has CII examples to test a fix against.
+
+### CG-19 — UBL syntax
+
+- **Spec:** the reform accepts UBL 2.1 invoices and credit notes; the release ships
+  `BR-FR-Flux2-Schematron-UBL` and the EN16931 / `EXTENDED-CTC-FR` UBL Schematrons (release notes
+  p.9-10), Annex A has `annex-a--Flux_2_UBL_*.csv` and Annex B has `*_UBL_*.xml` examples.
+- **Code:** this package handles CII only (`getFlavor` in `src/lib/xml.ts`); UBL would be a new flavor,
+  and the UBL XSD is not in the release (p.11: get it from OASIS).
+
+### CG-20 — CDAR lifecycle messages
+
+- **Spec:** release notes p.10: a lifecycle status message (Cross Domain Acknowledgement and Response
+  D22B) is validated by the "uncoupled" CDAR XSD, then `BR-FR-CDV-Schematron-CDAR` (`BR-FR-CDV-01…16`,
+  `BR-FR-CDV-CL-01…11`). Both are in `spec/fnfe-ctc-fr-1.4.0.04/distribution/CDAR/`; Annex A describes
+  the statuses (`annex-a--CDV_FE_-_CDAR.csv`, `annex-a--Tableau_des_motifs_de_STATUTS.csv`) and Annex B
+  has CDAR examples under `Cycle de Vie - CDAR/`.
+- **Code:** not supported. A validate-only feature (XSD + `BR-FR-CDV`, tested on the Annex B CDAR
+  examples) is the cheapest next step; building CDAR messages is a larger one.
+
+### CG-21 — Flux 10 e-reporting
+
+- **Spec:** `spec/fnfe-ctc-fr-1.4.0.04/distribution/Flux10/` (XSD + Schematron), Annex A
+  `annex-a--E-REPORTING_-_Flux_10.csv`.
+- **Code:** not supported. `Flux10/` carries no licence statement (CG-15), so its Schematron can't be
+  shipped until that is clarified.
+
+### CG-22 — BR-FR rules not implemented by the published Schematron
+
+- **Spec:** XP Z12-012 Annex A (`annex-a--BR-France_CTC.csv`) defines the `BR-FR-*` rules for flows 2,
+  8 and 9; `annex-a--BR-France-CTC-CPRO.csv` the B2G (Chorus Pro) rules, optional step 4 (release
+  notes p.9).
+- **Code:** `validateFrCtc` runs the published Schematron as is, so it checks only what that implements:
+  59 rules. Not implemented (no assert in the XSLT): `BR-FR-07`, `-14`, `-19`, `BR-FR-CO-01`, `-02`,
+  `-06`, `-11`, `-13`, `-16`, `-17`, `BR-FR-MV-04`, and all `BR-FR-CPRO-*` (no Schematron published).
+  Annex A itself marks `BR-FR-CO-01` "Règle non présente dans le schématron" (depends on the processing
+  date). The `BR-FR-MAP-*`, `-MVMAP-*`, `-BDMAP-*` mapping rules are out of scope by design (p.10).
+- **Spec inconsistency (unresolved):** p.10 lists `BR-FR-CO-01…17`, `BR-FR-MV-01…14`, `BR-FR-BD-02`
+  and `-13`; p.8 says multi-vendor rules (`BR-FR-MV`) "will be published in a later version"; the XSLT
+  implements `BR-FR-MV-01…14` except `-04`, and also `BR-FR-BD-14` (not listed on p.10).
+- **Evidence:** list the rules of the XSLT and of Annex A and compare:
+  `grep -A1 'name="id"' src/lib/xsd/fr-ctc/BR-FR-Flux2-Schematron-CII.xslt | grep -oE '>BR-FR-([A-Z]+-)?[0-9]+' | sort -u`
+  and `grep -oE '^"?BR-FR-([A-Z]+-)?[0-9]+' spec/afnor-xp-z12-012-1.4/text/annex-a--BR-France_CTC.csv | sort -u`.
+- **Not fixed locally:** hand-written rules would not be traceable to an official artefact; wait for
+  FNFE-MPE.
+
+### CG-23 — Mangled `test` in BR-FR SVRL output (upstream)
+
+- **Source:** `src/lib/xsd/fr-ctc/BR-FR-Flux2-Schematron-CII.xslt` (verbatim from the release). The
+  compiled XSLT copies each assert's test into a literal `test="…"` attribute of `svrl:failed-assert`,
+  which XSLT evaluates as an attribute value template: `{9}` in `matches(…, '^\d{9}$')` is evaluated to
+  `9`. The rule itself is evaluated correctly (the `xsl:when` test is not an AVT); only the reported
+  `SchematronError.test` is wrong. Affects 4 asserts (`BR-FR-10_BT-30`, `BR-FR-11_BT-47`,
+  `BR-FR-32-LEGALID`, `BR-FR-32-GLOBALID`). The vendored Factur-X EXTENDED XSLT has the same pattern.
+- **Evidence:** `grep -n 'svrl:failed-assert' -A1 src/lib/xsd/fr-ctc/BR-FR-Flux2-Schematron-CII.xslt | grep -c 'test="[^"]*{[0-9]'`
+  prints `4`; `validateFrCtc` on `examples/Facture_FR_EN16931.xml` reports `BR-FR-32-LEGALID` with
+  `test` `matches(normalize-space(.), '^\d9$')`.
+- **Not fixed locally:** vendored assets are not edited by hand. To report upstream (the skeleton should
+  escape braces as `{{`/`}}`).
 
 ## Changing this file
 

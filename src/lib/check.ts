@@ -1,6 +1,7 @@
 import type { Buffer } from 'node:buffer'
 import type { SchematronError } from './schematron'
 import { XmlDocument, XmlValidateError, XsdValidator } from 'libxml2-wasm'
+import { assertFrCtcApplicable, validateFrCtc } from './fr-ctc'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
 import { getFlavor, getLevel } from './xml'
@@ -16,8 +17,16 @@ export async function check(options: {
    */
   schematron?: boolean
   /**
-   * With `schematron`, treat failed `warning`/`information` rules as errors.
-   * Warnings are always reported in `schematronWarnings`. Defaults to `false`.
+   * Also run the French CTC business rules (`BR-FR-Flux2`, XP Z12-012 v1.4.0): step 3 of the
+   * validation sequence of the FNFE-MPE release notes (p.9), after XSD (step 1) and the profile
+   * Schematron (step 2). Independent of `schematron`: pass both for the full sequence.
+   * Factur-X BASIC WL, EN16931 and EXTENDED only; throws for other flavors and levels.
+   * Defaults to `false`.
+   */
+  frCtc?: boolean
+  /**
+   * With `schematron` and/or `frCtc`, treat failed `warning`/`information` rules as errors.
+   * Warnings are always reported in `schematronWarnings` / `frCtcWarnings`. Defaults to `false`.
    */
   warningsAsErrors?: boolean
 }): Promise<{
@@ -28,11 +37,26 @@ export async function check(options: {
   schematronValid?: boolean
   schematronErrors?: SchematronError[]
   schematronWarnings?: SchematronError[]
+  frCtcValid?: boolean
+  frCtcErrors?: SchematronError[]
+  frCtcWarnings?: SchematronError[]
 }> {
   const xml = await resolveXml(options.xml)
 
-  const flavor = options.flavor || getFlavor(xml)
-  const level = options.level || getLevel(xml)
+  let flavor: string
+  let level: string
+  try {
+    flavor = options.flavor || getFlavor(xml)
+    level = options.level || getLevel(xml)
+    // Fail before any validation work when the French rules can't apply.
+    if (options.frCtc)
+      assertFrCtcApplicable(flavor, level)
+  }
+  catch (error) {
+    if (!(options.xml instanceof XmlDocument))
+      xml.dispose()
+    throw error
+  }
 
   const xsd = await getXsd(flavor, level)
   const validator = XsdValidator.fromDoc(xsd)
@@ -63,24 +87,25 @@ export async function check(options: {
     xml.dispose()
   }
 
-  if (!options.schematron) {
-    return {
-      valid: xsdValid,
-      errors,
-      flavor,
-      level,
-    }
+  let valid = xsdValid
+  const result: Awaited<ReturnType<typeof check>> = { valid, errors, flavor, level }
+
+  if (options.schematron) {
+    const schematron = await validateSchematron({ xml: xmlString, flavor, level, warningsAsErrors: options.warningsAsErrors })
+    valid &&= schematron.valid
+    result.schematronValid = schematron.valid
+    result.schematronErrors = schematron.errors
+    result.schematronWarnings = schematron.warnings
   }
 
-  const schematron = await validateSchematron({ xml: xmlString, flavor, level, warningsAsErrors: options.warningsAsErrors })
-
-  return {
-    valid: xsdValid && schematron.valid,
-    errors,
-    flavor,
-    level,
-    schematronValid: schematron.valid,
-    schematronErrors: schematron.errors,
-    schematronWarnings: schematron.warnings,
+  if (options.frCtc) {
+    const frCtc = await validateFrCtc({ xml: xmlString, flavor, level, warningsAsErrors: options.warningsAsErrors })
+    valid &&= frCtc.valid
+    result.frCtcValid = frCtc.valid
+    result.frCtcErrors = frCtc.errors
+    result.frCtcWarnings = frCtc.warnings
   }
+
+  result.valid = valid
+  return result
 }

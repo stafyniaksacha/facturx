@@ -11,6 +11,7 @@ function check(options: {
   flavor?: string
   level?: string
   schematron?: boolean
+  frCtc?: boolean
   warningsAsErrors?: boolean
 }): Promise<{
   valid: boolean
@@ -20,6 +21,9 @@ function check(options: {
   schematronValid?: boolean
   schematronErrors?: SchematronError[]
   schematronWarnings?: SchematronError[]
+  frCtcValid?: boolean
+  frCtcErrors?: SchematronError[]
+  frCtcWarnings?: SchematronError[]
 }>
 ```
 
@@ -31,7 +35,8 @@ function check(options: {
 | `flavor` | `string` | autodetect | `facturx`, `orderx` or `zugferd`. |
 | `level` | `string` | autodetect | Schema level (e.g. `en16931`). |
 | `schematron` | `boolean` | `false` | Also run Schematron business-rule validation. **Factur-X only** — throws otherwise. |
-| `warningsAsErrors` | `boolean` | `false` | With `schematron`, also count rules flagged `warning`/`information` as errors. |
+| `frCtc` | `boolean` | `false` | Also run the French e-invoicing rules `BR-FR-Flux2` ([guide](/guide/french-ctc)). Independent of `schematron`. **Factur-X BASIC WL, EN16931 and EXTENDED only** — throws otherwise, including when a forced `level` differs from the one the document declares. |
+| `warningsAsErrors` | `boolean` | `false` | With `schematron` and/or `frCtc`, also count rules flagged `warning`/`information` as errors. |
 
 ## Returns
 
@@ -44,8 +49,11 @@ function check(options: {
 | `schematronValid` | `boolean?` | Schematron result on its own (only when `schematron: true`). |
 | `schematronErrors` | `SchematronError[]?` | Business-rule failures (only when `schematron: true`). See [`SchematronError`](/api/validate-schematron#schematronerror). |
 | `schematronWarnings` | `SchematronError[]?` | Rules flagged `warning`/`information` that failed, always reported (only when `schematron: true`). |
+| `frCtcValid` | `boolean?` | BR-FR result on its own (only when `frCtc: true`). |
+| `frCtcErrors` | `SchematronError[]?` | Failed BR-FR rules: `id` is the rule (`BR-FR-05`), `assertId` the assertion (only when `frCtc: true`). Messages may quote invoice data. |
+| `frCtcWarnings` | `SchematronError[]?` | BR-FR rules flagged `warning`/`information` that failed: none with the vendored rules (only when `frCtc: true`). |
 
-When `schematron: true`, `valid` is `true` only if **both** the XSD and the Schematron pass.
+`valid` is `true` only if **every** layer that ran passes: the XSD, plus the Schematron with `schematron: true`, plus BR-FR with `frCtc: true`.
 
 ## Examples
 
@@ -59,4 +67,5 @@ When `schematron: true`, `valid` is `true` only if **both** the XSD and the Sche
 
 - CLI equivalent: [`facturx check`](/cli/check)
 - [`validateSchematron()`](/api/validate-schematron) — the business-rule layer on its own
+- [`validateFrCtc()`](/api/validate-fr-ctc) — the French rules on their own
 - [Validation](/guide/validation) — the two validation layers explained
