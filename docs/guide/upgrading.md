@@ -62,9 +62,11 @@ example "Attribute @schemeID marked as not used in the given context". 0.6.1 sil
 findings. They are now listed in `schematronErrors` and make the document invalid.
 
 **Effect:** a document that passed in 0.6.1 can now fail, typically because it carries an attribute
-the profile does not allow. The repository's own `examples/Facture_FR_EN16931.xml` is one case: it now
-fails two `@schemeID` reports at EN 16931 (`examples/Avoir_FR_type381_EN16931.xml` and
-`examples/factur-x.xml` fail too). Remove the attribute the message points to.
+the profile does not allow. The most common case is a `schemeID` on a contact e-mail address
+(`DefinedTradeContact/EmailURIUniversalCommunication/URIID`, BT-43 / BT-58): EN 16931 defines no scheme
+for it, so `schemeID="SMTP"` there fails. The repository's own examples carried it and were fixed. Only
+the electronic address (`URIUniversalCommunication/URIID`, BT-34 / BT-49) takes a `schemeID`. Remove the
+attribute the message points to.
 
 ### BASIC WL, EN 16931 and EXTENDED validate against Factur-X 1.09.2.fixFR04
 
