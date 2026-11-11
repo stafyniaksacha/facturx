@@ -102,9 +102,18 @@ describe('generate', () => {
       await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Encrypted')
     })
 
-    it('signed (SigFlags SignaturesExist)', async () => {
+    it('signed (a signature field with a value)', async () => {
       const pdf = await blankPdf()
-      pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [], SigFlags: 3 }))
+      const signature = pdf.context.register(pdf.context.obj({ Type: 'Sig', Filter: 'Adobe.PPKLite' }))
+      const field = pdf.context.register(pdf.context.obj({ FT: 'Sig', T: PDFString.of('Signature1'), V: signature }))
+      pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [field], SigFlags: 3 }))
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
+    })
+
+    it('signed (/Perms)', async () => {
+      const pdf = await blankPdf()
+      pdf.catalog.set(PDFName.of('Perms'), pdf.context.obj({}))
 
       await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
     })
@@ -115,6 +124,15 @@ describe('generate', () => {
       pdf.catalog.set(PDFName.of('Names'), pdf.context.obj({ EmbeddedFiles: { Kids: [leaf] } }))
 
       await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('/Kids')
+    })
+
+    it.each(['factur-x.xml', 'xrechnung.xml'])('already embeds %s', async (name) => {
+      const pdf = await blankPdf()
+      await pdf.attach(new TextEncoder().encode('<x/>'), name, { mimeType: 'text/xml' })
+
+      await expect(generate({ pdf: Buffer.from(await pdf.save()), xml: await readFile(SOURCE_XML, 'utf8') }))
+        .rejects
+        .toThrow(`already has an embedded invoice (${name})`)
     })
 
     it('already has an embedded invoice', async () => {
@@ -130,8 +148,17 @@ describe('generate', () => {
 
       const results = await Promise.allSettled([generate({ pdf, xml }), generate({ pdf, xml })])
       expect(results.map(r => r.status).sort()).toEqual(['fulfilled', 'rejected'])
-      await expect(generate({ pdf, xml })).rejects.toThrow('already has an embedded invoice')
+      await expect(generate({ pdf, xml })).rejects.toThrow('already passed to generate()')
     })
+  })
+
+  it('accepts unsigned signature fields', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const field = pdf.context.register(pdf.context.obj({ FT: 'Sig', T: PDFString.of('Signature1') }))
+    pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [field], SigFlags: 1 }))
+
+    await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
   })
 
   it('writes the fixed XMP packet id, not the document ID (CG-06)', async () => {

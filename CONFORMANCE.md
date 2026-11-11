@@ -19,7 +19,7 @@ open entry is "known", anything else is new.
 | All vendored XSD and `_codedb.xml` are byte-identical to the spec; all XSLT identical after the documented `sum()` patch; all `.sef.json.gz` reproducible from them | `pnpm spec:verify` |
 | All 56 official example PDFs (11–12 per profile) extract, pass XSD + Schematron at their profile, and round-trip through `xmlToInvoice` → `invoiceToXml` with an identical model (this is what caught the 0.6.x `RoleCode` regression fixed in #25) | `pnpm build && pnpm vitest run tests/spec-examples.test.ts` |
 | External XML entities are not expanded with the default libxml2-wasm parse options used by `resolveXml` / `xmlToInvoice` (no XXE) | probe in the audit (entity resolves to empty / `check()` rejects the document); keep `XML_PARSE_NOENT` / `XML_PARSE_DTDLOAD` / `XML_PARSE_XINCLUDE` off |
-| The XMP packet header uses the fixed packet id `W5M0MpCehiHzreSzNTczkc9d` of the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` (was CG-06), and `generate()` keeps a source PDF's permanent trailer `/ID` (ISO 32000-1 §14.4) instead of throwing (#37) | `pnpm build && pnpm vitest run tests/generate.test.ts` |
+| The XMP packet header uses the fixed packet id `W5M0MpCehiHzreSzNTczkc9d` of the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` (was CG-06), and `generate()` keeps a source PDF's permanent trailer `/ID` (ISO 32000-1 §14.4) instead of throwing (#37), while rejecting encrypted (§6.1 p.25) and signed sources and sources that already embed an invoice XML (§6 p.24) | `pnpm build && pnpm vitest run tests/generate.test.ts` |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no veraPDF run), any Order-X
 asset (no Order-X spec vendored), field-by-field coverage of the 1.09 EXTENDED additions (BT-173…177,
@@ -55,7 +55,7 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 
 ### CG-02 — XMP packet not UTF-8
 
-- **Code:** `src/lib/xmp.ts:97` passes a JS string to `pdf.context.stream()`; pdf-lib keeps the low
+- **Code:** `src/lib/xmp.ts:102` passes a JS string to `pdf.context.stream()`; pdf-lib keeps the low
   byte of each UTF-16 code unit. `é` is written as `0xE9` (Latin-1), `€` as `0xAC`.
 - **Spec:** the XMP packet (`begin=""` ⇒ UTF-8) must be valid UTF-8 for BR-HYBRID-03 and PDF/A
   metadata validation.
@@ -63,7 +63,7 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 
 ### CG-03 — XMP values not XML-escaped (also a security issue)
 
-- **Code:** `src/lib/xmp.ts:9-95` interpolates `title`, `subject`, `author`, `producer`, `creator`,
+- **Code:** `src/lib/xmp.ts:14-100` interpolates `title`, `subject`, `author`, `producer`, `creator`,
   `filename`, `conformanceLevel` raw into XML. Title/subject/author come from the invoice (seller,
   buyer, number) via `baseInfo2PdfMetadata`.
 - **Effect:** a seller name containing `&` or `<` yields malformed XMP (fails BR-HYBRID-03). A crafted
@@ -95,7 +95,7 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 - **Spec:** §6.2.2 table p.27. France: MINIMUM / BASIC WL `Data`; BASIC / EN 16931 / EXTENDED
   `Alternative`, `Source` or `Data`. Germany: `Alternative` mandatory for BASIC and above.
   BR-HYBRID-11 (Warning).
-- **Code:** `src/lib/generate.ts:97`. `Data` is valid for every profile in France, so this is a
+- **Code:** `src/lib/generate.ts:102`. `Data` is valid for every profile in France, so this is a
   missing option, not a wrong default. It blocks German-compliant output.
 
 ### CG-08 — Order-X hybrid metadata
@@ -103,12 +103,12 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 - **Spec:** hybrid code lists (`text/codelists--HybridDocument.csv`, `--HybridConformance.csv`):
   Order-X `fx:DocumentType` ∈ {`ORDER`, `ORDER_CHANGE`, `ORDER_RESPONSE`}, `fx:ConformanceLevel` ∈
   {`BASIC`, `COMFORT`, `EXTENDED`}. BR-HYBRID-06/07 are Fatal.
-- **Code:** `src/lib/xmp.ts:87` always writes `INVOICE`; `src/lib/generate.ts:68-71` leaves
+- **Code:** `src/lib/xmp.ts:92` always writes `INVOICE`; `src/lib/generate.ts:78-81` leaves
   `conformanceLevel` empty for `orderx`. The namespace question is CG-10.
 
 ### CG-09 — `generate()` with `flavor: 'zugferd'`
 
-- **Code:** `src/lib/generate.ts:72-75` embeds `zugferd-invoice.xml` with the Factur-X `fx:` XMP and
+- **Code:** `src/lib/generate.ts:82-85` embeds `zugferd-invoice.xml` with the Factur-X `fx:` XMP and
   an empty conformance level. `getFlavor()` maps only the ZUGFeRD 1.0 root (`CrossIndustryDocument`)
   to `zugferd`, and `check()` has no XSD for it (throws).
 - **Spec:** `zugferd-invoice.xml` is not in the HybridDocumentFilename code list (BR-HYBRID-08/13,

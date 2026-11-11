@@ -1,6 +1,8 @@
 export const FACTURX_FILENAME = 'factur-x.xml'
 export const ZUGFERD_FILENAMES = ['zugferd-invoice.xml', 'ZUGFeRD-invoice.xml']
 export const ORDERX_FILENAME = 'order-x.xml'
+// codelists--Filename.csv: used by the XRECHNUNG reference profile (§7.7), not generated yet (CG-12).
+export const XRECHNUNG_FILENAME = 'xrechnung.xml'
 
 export type FACTURX_SCHEMA_TYPE = keyof typeof FACTURX_SCHEMA
 export const FACTURX_SCHEMA = {

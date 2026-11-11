@@ -1,6 +1,7 @@
 import type { Buffer } from 'node:buffer'
 import type {
   PDFDocument,
+  PDFObject,
 } from 'pdf-lib'
 import type { PdfMetadata } from '../types'
 
@@ -13,13 +14,12 @@ import {
   PDFDict,
   PDFHexString,
   PDFName,
-  PDFNumber,
   PDFString,
 } from 'pdf-lib'
 import pkg from '../../package.json' with { type: 'json' }
 
 import { check } from './check'
-import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
+import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, XRECHNUNG_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
 import { attachmentNames } from './pdf'
 
@@ -143,15 +143,15 @@ export async function generate(options: {
  * whole file and appends attachments without decrypting, re-signing or replacing anything.
  */
 function assertEmbeddable(pdf: PDFDocument): void {
-  // pdf-lib does not decrypt the source nor encrypt the attachment it adds.
+  // §6.1 p.25: a Factur-X document must not be encrypted, and pdf-lib would not encrypt the
+  // attachment it adds anyway.
   if (pdf.isEncrypted)
     throw new Error('Encrypted PDFs are not supported')
 
-  // ISO 32000-1 §12.7.2, SigFlags bit 1 (SignaturesExist), and §12.8.4 /Perms (DocMDP): saving
-  // rewrites the file, which would invalidate the signature. Sign after generate() instead.
-  const acroForm = pdf.context.lookup(pdf.catalog.get(PDFName.of('AcroForm')))
-  const sigFlags = acroForm instanceof PDFDict ? pdf.context.lookup(acroForm.get(PDFName.of('SigFlags'))) : undefined
-  if ((sigFlags instanceof PDFNumber && (sigFlags.asNumber() & 1) === 1) || pdf.catalog.has(PDFName.of('Perms')))
+  // Saving rewrites the whole file, which invalidates any signature. A signed signature field has
+  // a /V value (ISO 32000-1 §12.7.4.5); /Perms (§12.8.4) holds DocMDP or UR3 signatures. Unsigned
+  // signature fields are left alone. Factur-X §4 p.21 applies the signature to the finished PDF envelope.
+  if (pdf.catalog.has(PDFName.of('Perms')) || hasSignedField(pdf))
     throw new Error('Signed PDFs are not supported: sign the document after generate()')
 
   // pdf-lib appends to the root /Names array of the EmbeddedFiles name tree. A root with /Kids
@@ -161,11 +161,37 @@ function assertEmbeddable(pdf: PDFDocument): void {
   if (embeddedFiles instanceof PDFDict && embeddedFiles.has(PDFName.of('Kids')))
     throw new Error('PDFs whose embedded files name tree has /Kids are not supported')
 
-  // A second invoice would be appended next to the first, and extract() would return the old one.
-  const invoiceNames = [FACTURX_FILENAME, ORDERX_FILENAME, ...ZUGFERD_FILENAMES]
+  if (generated.has(pdf))
+    throw new Error('This PDFDocument was already passed to generate(): load a new one for each call')
+
+  // §6 p.24: only one invoice XML per document. A second one would be appended next to the first,
+  // and extract() would return the old one. Names: codelists--Filename.csv plus legacy ZUGFeRD.
+  // Attachments a caller added with pdf-lib's attach() and has not saved yet are not visible here.
+  const invoiceNames = [FACTURX_FILENAME, XRECHNUNG_FILENAME, ORDERX_FILENAME, ...ZUGFERD_FILENAMES]
   const existing = attachmentNames(pdf).find(name => invoiceNames.includes(name))
-  if (existing || generated.has(pdf))
-    throw new Error(`The PDF already has an embedded invoice${existing ? ` (${existing})` : ''}`)
+  if (existing)
+    throw new Error(`The PDF already has an embedded invoice (${existing})`)
+}
+
+function hasSignedField(pdf: PDFDocument): boolean {
+  const acroForm = pdf.context.lookup(pdf.catalog.get(PDFName.of('AcroForm')))
+  if (!(acroForm instanceof PDFDict))
+    return false
+
+  const seen = new Set<PDFDict>()
+  const signed = (field: PDFObject | undefined): boolean => {
+    const dict = pdf.context.lookup(field)
+    if (!(dict instanceof PDFDict) || seen.has(dict))
+      return false
+    seen.add(dict)
+    if (dict.get(PDFName.of('FT')) === PDFName.of('Sig') && dict.has(PDFName.of('V')))
+      return true
+    const kids = pdf.context.lookup(dict.get(PDFName.of('Kids')))
+    return kids instanceof PDFArray && kids.asArray().some(signed)
+  }
+
+  const fields = pdf.context.lookup(acroForm.get(PDFName.of('Fields')))
+  return fields instanceof PDFArray && fields.asArray().some(signed)
 }
 
 /**
