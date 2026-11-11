@@ -162,7 +162,8 @@ function assertEmbeddable(pdf: PDFDocument): void {
   // Saving rewrites the whole file, which invalidates any signature. A signed signature field has
   // a /V value (ISO 32000-1 §12.7.4.5); /Perms (§12.8.4) holds DocMDP or UR3 signatures. Unsigned
   // signature fields are left alone. Factur-X §4 p.21 applies the signature to the finished PDF envelope.
-  if (pdf.catalog.has(PDFName.of('Perms')) || hasSignedField(pdf))
+  const perms = pdf.context.lookup(pdf.catalog.get(PDFName.of('Perms')))
+  if ((perms !== undefined && perms !== PDFNull) || hasSignedField(pdf))
     throw new Error('Signed PDFs are not supported: sign the document after generate()')
 
   // pdf-lib appends to the root /Names array of the EmbeddedFiles name tree. A root with /Kids
@@ -222,8 +223,9 @@ function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: str
   // specifications can share one expensive stream.
   const budget = new InflateBudget(MAX_INFLATED_BYTES)
   const contents = new Map<PDFRawStream, XmlContent>()
+  const walkedEf = new Set<PDFDict>()
   for (const { names, fileSpec } of specs) {
-    for (const stream of embeddedFileStreams(fileSpec)) {
+    for (const stream of embeddedFileStreams(fileSpec, walkedEf)) {
       if (!contents.has(stream)) {
         if (contents.size >= MAX_SCANNED_FILES)
           throw new Error(`The PDF has more than ${MAX_SCANNED_FILES} distinct embedded file streams: could not check it for an existing ${kind}`)
@@ -240,7 +242,7 @@ function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: str
       }
       const content = contents.get(stream)!
       if (typeof content === 'object' && conflicting.some(([ns, local]) => content.ns === ns && content.name === local))
-        throw new Error(`The PDF already has an embedded ${kind} (${names[0] ?? 'unnamed file'})`)
+        throw new Error(`The PDF already has an embedded ${kind} (${displayName(names[0])})`)
     }
   }
 
@@ -252,6 +254,18 @@ function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: str
     if (known)
       throw new Error(`The PDF already has an embedded ${kind} (${known})`)
   }
+}
+
+/**
+ * A file name from the document, made safe for an error message: control characters removed (no
+ * log injection) and at most 80 characters (no megabyte messages).
+ */
+function displayName(name: string | undefined): string {
+  // eslint-disable-next-line no-control-regex
+  const clean = (name ?? '').replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+  if (!clean)
+    return 'unnamed file'
+  return clean.length > 80 ? `${clean.slice(0, 79)}…` : clean
 }
 
 /** Root element of an XML file, a file that is not XML, or XML whose root could not be found. */
@@ -406,16 +420,17 @@ function hasSignedField(pdf: PDFDocument): boolean {
   if (!(fields instanceof PDFArray))
     return false
 
-  const stack = fields.asArray().map(field => ({ field, type: undefined as PDFObject | undefined, hasValue: false }))
-  // Keyed by what the node inherits too, so a malformed kid shared by several parents is checked
-  // under each; still bounded, a node can only be reached with a few distinct inherited states.
+  // Only two facts are inherited: whether the field type is /Sig and whether there is a value. A
+  // node is visited at most once per combination (4), so a malformed kid shared by several parents
+  // is checked under each, and the walk stays linear in the number of nodes and edges.
+  const stack = fields.asArray().map(field => ({ field, isSig: false as boolean | undefined, hasValue: false }))
   const seen = new Map<PDFDict, Set<string>>()
   while (stack.length > 0) {
-    const { field, type: inheritedType, hasValue: inheritedValue } = stack.pop()!
+    const { field, isSig: inheritedIsSig, hasValue: inheritedValue } = stack.pop()!
     const dict = pdf.context.lookup(field)
     if (!(dict instanceof PDFDict))
       continue
-    const key = `${inheritedType}|${inheritedValue}`
+    const key = `${inheritedIsSig}|${inheritedValue}`
     const states = seen.get(dict) ?? new Set<string>()
     if (states.has(key))
       continue
@@ -427,15 +442,16 @@ function hasSignedField(pdf: PDFDocument): boolean {
       const value = pdf.context.lookup(dict.get(PDFName.of(key)))
       return value === PDFNull ? undefined : value
     }
-    const type = resolve('FT') ?? inheritedType
+    const ownType = resolve('FT')
+    const isSig = ownType !== undefined ? ownType === PDFName.of('Sig') : inheritedIsSig
     const hasValue = inheritedValue || resolve('V') !== undefined
-    if (type === PDFName.of('Sig') && hasValue)
+    if (isSig && hasValue)
       return true
     const kids = pdf.context.lookup(dict.get(PDFName.of('Kids')))
     // One push per kid: spreading a very wide /Kids array would exceed the argument limit.
     if (kids instanceof PDFArray) {
       for (const kid of kids.asArray())
-        stack.push({ field: kid, type, hasValue })
+        stack.push({ field: kid, isSig, hasValue })
     }
   }
   return false

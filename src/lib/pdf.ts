@@ -69,12 +69,14 @@ export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileS
  * Every embedded file stream of a file specification: all stream values of `/EF` (`/F`, `/UF`,
  * and the deprecated `/DOS`, `/Mac`, `/Unix`, any of which a reader may pick), each once. Entries
  * that are not streams are ignored. A file specification without `/EF` embeds nothing. Yielded one
- * at a time, so a caller enforcing a limit can stop before walking a huge untrusted `/EF`.
+ * at a time, so a caller enforcing a limit can stop before walking a huge untrusted `/EF`. An `/EF`
+ * already in `walked` (shared by several file specifications) is skipped, then added to it.
  */
-export function* embeddedFileStreams(fileSpec: PDFDict): Generator<PDFRawStream> {
+export function* embeddedFileStreams(fileSpec: PDFDict, walked: Set<PDFDict>): Generator<PDFRawStream> {
   const ef = fileSpec.lookup(PDFName.of('EF'))
-  if (!(ef instanceof PDFDict))
+  if (!(ef instanceof PDFDict) || walked.has(ef))
     return
+  walked.add(ef)
   const seen = new Set<PDFRawStream>()
   for (const key of ef.keys()) {
     const stream = ef.lookup(key)
@@ -118,6 +120,7 @@ export class InflateBudget {
  * InflateBudgetExceededError once the budget is spent.
  */
 export function readEmbeddedFilePrefix(stream: PDFRawStream, maxBytes: number, budget: InflateBudget): Uint8Array | undefined {
+  // PDFDict.lookup() already maps a null value, direct or indirect, to undefined (ISO 32000-1 §7.3.9).
   const filter = stream.dict.lookup(PDFName.of('Filter'))
   const filters = filter instanceof PDFArray ? filter.asArray() : filter === undefined ? [] : [filter]
   if (filters.length === 0)

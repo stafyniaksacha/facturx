@@ -541,6 +541,45 @@ describe('generate', () => {
     expect(Date.now() - started).toBeLessThan(2000)
   })
 
+  it('walks an /EF dictionary shared by many file specifications once', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const stream = pdf.context.register(pdf.context.stream('x', { Type: 'EmbeddedFile' }))
+    const ef = pdf.context.obj({})
+    for (let i = 0; i < 10_000; i++)
+      ef.set(PDFName.of(`S${i}`), stream)
+    const efRef = pdf.context.register(ef)
+    const specs = Array.from({ length: 10_000 }, () => pdf.context.register(pdf.context.obj({ Type: 'Filespec', EF: efRef })))
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj(specs))
+
+    const started = Date.now()
+    await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+    expect(Date.now() - started).toBeLessThan(3000)
+  })
+
+  it('shows a document-controlled file name safely in the error', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    await pdf.attach(new TextEncoder().encode(xml), `evil\n\u001B[31m${'x'.repeat(500)}`, { mimeType: 'text/xml' })
+
+    const error = await generate({ pdf: Buffer.from(await pdf.save()), xml }).catch((e: Error) => e)
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).message).toMatch(/^The PDF already has an embedded invoice \(evil\[31mx+…\)$/)
+    expect((error as Error).message.length).toBeLessThan(140)
+  })
+
+  it('detects an unfiltered invoice whose /Filter and /DecodeParms are indirect nulls (regression guard)', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    // pdf-lib's dict.get() already drops a direct null; an indirect one resolves to PDFNull.
+    const stream = pdf.context.register(pdf.context.stream(xml, { Type: 'EmbeddedFile', Filter: pdf.context.register(PDFNull), DecodeParms: pdf.context.register(PDFNull) }))
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', F: PDFString.of('old.xml'), EF: { F: stream } }))]))
+
+    await expect(generate({ pdf, xml })).rejects.toThrow('already has an embedded invoice (old.xml)')
+  })
+
   it('rejects a PDF with too many distinct embedded files to check', async () => {
     const pdf = await PDFDocument.create()
     pdf.addPage()
@@ -562,6 +601,34 @@ describe('generate', () => {
     source.catalog.set(PDFName.of('AF'), source.context.obj([fileSpec]))
 
     await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+  })
+
+  it('accepts an indirect null /Perms', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    pdf.catalog.set(PDFName.of('Perms'), pdf.context.register(PDFNull))
+
+    await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+  })
+
+  it('checks a field DAG with many distinct inherited /FT values in linear time', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    // 5 layers of 300 nodes, each linked to every node of the next layer, each with its own /FT:
+    // keyed by the inherited /FT itself, the walk would visit each node once per parent (~10^8).
+    let layer = Array.from({ length: 300 }, () => pdf.context.register(pdf.context.obj({ FT: 'Tx' })))
+    const top = layer
+    for (let depth = 1; depth < 5; depth++) {
+      const next = Array.from({ length: 300 }, (_, i) => pdf.context.register(pdf.context.obj({ FT: `T${depth}_${i}` })))
+      for (const ref of layer)
+        pdf.context.lookup(ref, PDFDict).set(PDFName.of('Kids'), pdf.context.obj(next))
+      layer = next
+    }
+    pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: top }))
+
+    const started = Date.now()
+    await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+    expect(Date.now() - started).toBeLessThan(3000)
   })
 
   it('accepts unsigned signature fields', async () => {
