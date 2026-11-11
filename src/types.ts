@@ -17,6 +17,12 @@ export interface PdfMetadata {
 export interface XmpMetadata extends PdfMetadata {
   producer: string
   creator: string
+  /**
+   * @deprecated Ignored since the XMP packet uses the fixed id `W5M0MpCehiHzreSzNTczkc9d` (was
+   * CG-06), and `generate()` keeps the source PDF's trailer `/ID` instead of creating one. Kept
+   * optional so existing callers still compile; it will be removed in the next major version.
+   */
+  documentId?: string
   filename: string
   conformanceLevel: string
 }
