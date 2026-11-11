@@ -503,6 +503,8 @@ describe('generate', () => {
     await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('already has an embedded invoice (INV.XML)')
   })
 
+  // Inflating ~150 MiB to prove the 128 MiB budget is CPU-bound: about 2 s locally, but it went past
+  // vitest's default 5 s timeout on slow CI runners (Node 20). The limit itself is unchanged.
   it('rejects a PDF whose embedded files would inflate past the per-PDF budget', async () => {
     const pdf = await PDFDocument.create()
     pdf.addPage()
@@ -515,7 +517,7 @@ describe('generate', () => {
     pdf.catalog.set(PDFName.of('AF'), pdf.context.obj(specs))
 
     await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('too large to check for an existing invoice')
-  })
+  }, 30_000)
 
   it('says "order" when the document being written is an Order-X order', async () => {
     const order = await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8')
