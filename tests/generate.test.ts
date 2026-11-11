@@ -144,6 +144,33 @@ describe('generate', () => {
       await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
     })
 
+    it.each([
+      ['direct', false],
+      ['inherited', true],
+    ])('signed (an indirect /FT /Sig, %s)', async (_, inherited) => {
+      const pdf = await blankPdf()
+      const signature = pdf.context.register(pdf.context.obj({ Type: 'Sig', Filter: 'Adobe.PPKLite' }))
+      const sigType = pdf.context.register(PDFName.of('Sig'))
+      const field = inherited
+        ? pdf.context.obj({ FT: sigType, Kids: [pdf.context.obj({ V: signature })] })
+        : pdf.context.obj({ FT: sigType, V: signature })
+      pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [field] }))
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
+    })
+
+    it('signed, after 200,000 unsigned sibling fields', async () => {
+      const pdf = await blankPdf()
+      const signature = pdf.context.register(pdf.context.obj({ Type: 'Sig', Filter: 'Adobe.PPKLite' }))
+      const kids = pdf.context.obj([])
+      for (let i = 0; i < 200_000; i++)
+        kids.push(pdf.context.obj({}))
+      kids.push(pdf.context.obj({ V: signature }))
+      pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [pdf.context.obj({ FT: 'Sig', Kids: kids })] }))
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
+    })
+
     it('signed (/Perms)', async () => {
       const pdf = await blankPdf()
       pdf.catalog.set(PDFName.of('Perms'), pdf.context.obj({}))
@@ -168,6 +195,15 @@ describe('generate', () => {
         .toThrow(`already has an embedded invoice (${name})`)
     })
 
+    it('already has an invoice queued with attach() but not saved', async () => {
+      const pdf = await blankPdf()
+      await pdf.attach(new TextEncoder().encode('<x/>'), 'factur-x.xml', { mimeType: 'text/xml' })
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') }))
+        .rejects
+        .toThrow('already has an embedded invoice (factur-x.xml)')
+    })
+
     it('already has an embedded invoice', async () => {
       const xml = await readFile(SOURCE_XML, 'utf8')
       const output = await generate({ pdf: await sourcePdf(), xml })
@@ -183,6 +219,26 @@ describe('generate', () => {
       expect(results.map(r => r.status).sort()).toEqual(['fulfilled', 'rejected'])
       await expect(generate({ pdf, xml })).rejects.toThrow('already passed to generate()')
     })
+  })
+
+  it('keeps the embedded files name tree sorted (ISO 32000-1 §7.9.6)', async () => {
+    const source = await PDFDocument.create()
+    source.addPage()
+    await source.attach(new TextEncoder().encode('z'), 'z.txt', { mimeType: 'text/plain' })
+    await source.attach(new TextEncoder().encode('a'), 'a.txt', { mimeType: 'text/plain' })
+    // Store the /Names array as an indirect object, as many producers do.
+    await source.flush()
+    const sourceTree = source.catalog.lookup(PDFName.of('Names'), PDFDict).lookup(PDFName.of('EmbeddedFiles'), PDFDict)
+    sourceTree.set(PDFName.of('Names'), source.context.register(sourceTree.lookup(PDFName.of('Names'), PDFArray)))
+
+    const output = await PDFDocument.load(await generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') }))
+    const tree = output.catalog.lookup(PDFName.of('Names'), PDFDict).lookup(PDFName.of('EmbeddedFiles'), PDFDict)
+    const keys = tree.lookup(PDFName.of('Names'), PDFArray).asArray().filter((_, i) => i % 2 === 0).map(key => (key as PDFHexString | PDFString).decodeText())
+    expect(keys).toEqual(['a.txt', 'factur-x.xml', 'z.txt'])
+    // Sorted in place: no stale copy of the array left in the file.
+    const arrays = output.context.enumerateIndirectObjects().filter(([, obj]) => obj instanceof PDFArray && obj.size() === 6)
+    expect(arrays).toHaveLength(1)
+    expect(tree.get(PDFName.of('Names'))).toBe(arrays[0][0])
   })
 
   it('accepts unsigned signature fields', async () => {

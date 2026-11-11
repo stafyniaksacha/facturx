@@ -93,6 +93,10 @@ export async function generate(options: {
     // Marked synchronously, before the first await below, so overlapping calls on the same
     // PDFDocument cannot both attach an invoice.
     generated.add(pdf)
+    // Write attachments the caller queued with pdf-lib's attach() into the name tree, so the
+    // check below sees them too.
+    await pdf.flush()
+    assertNoEmbeddedInvoice(pdf)
     setDocumentId(pdf)
 
     const encoder = new TextEncoder()
@@ -127,6 +131,9 @@ export async function generate(options: {
       producer: creator,
       creator,
     }, pdf)
+
+    await pdf.flush()
+    sortEmbeddedFiles(pdf)
 
     return await pdf.save()
   }
@@ -163,14 +170,56 @@ function assertEmbeddable(pdf: PDFDocument): void {
 
   if (generated.has(pdf))
     throw new Error('This PDFDocument was already passed to generate(): load a new one for each call')
+}
 
-  // §6 p.24: only one invoice XML per document. A second one would be appended next to the first,
-  // and extract() would return the old one. Names: codelists--Filename.csv plus legacy ZUGFeRD.
-  // Attachments a caller added with pdf-lib's attach() and has not saved yet are not visible here.
+/**
+ * §6 p.24: only one invoice XML per document. A second one would be appended next to the first,
+ * and extract() would return the old one. Names: codelists--Filename.csv plus legacy ZUGFeRD.
+ */
+function assertNoEmbeddedInvoice(pdf: PDFDocument): void {
   const invoiceNames = [FACTURX_FILENAME, XRECHNUNG_FILENAME, ORDERX_FILENAME, ...ZUGFERD_FILENAMES]
   const existing = attachmentNames(pdf).find(name => invoiceNames.includes(name))
   if (existing)
     throw new Error(`The PDF already has an embedded invoice (${existing})`)
+}
+
+/**
+ * pdf-lib appends new attachments at the end of the EmbeddedFiles /Names array, but name tree keys
+ * must be sorted in lexical order (ISO 32000-1 §7.9.6) for readers that search the tree by key.
+ * assertEmbeddable() rejects a root with /Kids, so the tree is a single flat /Names array here.
+ */
+function sortEmbeddedFiles(pdf: PDFDocument): void {
+  const names = pdf.context.lookup(pdf.catalog.get(PDFName.of('Names')))
+  const embeddedFiles = names instanceof PDFDict ? pdf.context.lookup(names.get(PDFName.of('EmbeddedFiles'))) : undefined
+  if (!(embeddedFiles instanceof PDFDict))
+    return
+  const entries = pdf.context.lookup(embeddedFiles.get(PDFName.of('Names')))
+  if (!(entries instanceof PDFArray))
+    return
+
+  const pairs: { key: Uint8Array, name: PDFObject, value: PDFObject }[] = []
+  for (let i = 0; i + 1 < entries.size(); i += 2) {
+    const name = entries.get(i)
+    const key = pdf.context.lookup(name)
+    if (!(key instanceof PDFHexString || key instanceof PDFString))
+      return // Not a well-formed name tree: leave it as it is rather than guess.
+    pairs.push({ key: key.asBytes(), name, value: entries.get(i + 1) })
+  }
+  pairs.sort((a, b) => compareBytes(a.key, b.key))
+
+  // In place: the array may be an indirect object, and a replacement would leave the old one behind.
+  pairs.forEach(({ name, value }, i) => {
+    entries.set(2 * i, name)
+    entries.set(2 * i + 1, value)
+  })
+}
+
+function compareBytes(a: Uint8Array, b: Uint8Array): number {
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    if (a[i] !== b[i])
+      return a[i] - b[i]
+  }
+  return a.length - b.length
 }
 
 function hasSignedField(pdf: PDFDocument): boolean {
@@ -199,13 +248,16 @@ function hasSignedField(pdf: PDFDocument): boolean {
       continue
     seen.set(dict, states.add(key))
 
-    const type = dict.get(PDFName.of('FT')) ?? inheritedType
+    const type = pdf.context.lookup(dict.get(PDFName.of('FT'))) ?? inheritedType
     const hasValue = inheritedValue || dict.has(PDFName.of('V'))
     if (type === PDFName.of('Sig') && hasValue)
       return true
     const kids = pdf.context.lookup(dict.get(PDFName.of('Kids')))
-    if (kids instanceof PDFArray)
-      stack.push(...kids.asArray().map(kid => ({ field: kid, type, hasValue })))
+    // One push per kid: spreading a very wide /Kids array would exceed the argument limit.
+    if (kids instanceof PDFArray) {
+      for (const kid of kids.asArray())
+        stack.push({ field: kid, type, hasValue })
+    }
   }
   return false
 }
