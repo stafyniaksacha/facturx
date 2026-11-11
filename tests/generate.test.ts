@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { extract, generate, xmlToInvoice } from '@stafyniaksacha/facturx'
-import { PDFArray, PDFDocument, PDFHexString, PDFName, PDFRawStream, PDFString } from 'pdf-lib'
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRawStream, PDFString } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
 // A Factur-X PDF produced by an office suite: it carries a trailer /ID, like most real-world PDFs.
@@ -111,6 +111,39 @@ describe('generate', () => {
       await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
     })
 
+    it('signed (a kid with a value under an inherited /FT /Sig)', async () => {
+      const pdf = await blankPdf()
+      const signature = pdf.context.register(pdf.context.obj({ Type: 'Sig', Filter: 'Adobe.PPKLite' }))
+      const parent = pdf.context.register(pdf.context.obj({ FT: 'Sig', T: PDFString.of('Signatures') }))
+      const kid = pdf.context.register(pdf.context.obj({ Parent: parent, T: PDFString.of('Signature1'), V: signature }))
+      pdf.context.lookup(parent, PDFDict).set(PDFName.of('Kids'), pdf.context.obj([kid]))
+      pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [parent], SigFlags: 3 }))
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
+    })
+
+    it('signed (a /V inherited from the parent)', async () => {
+      const pdf = await blankPdf()
+      const signature = pdf.context.register(pdf.context.obj({ Type: 'Sig', Filter: 'Adobe.PPKLite' }))
+      const parent = pdf.context.register(pdf.context.obj({ T: PDFString.of('Signatures'), V: signature }))
+      const kid = pdf.context.register(pdf.context.obj({ Parent: parent, FT: 'Sig', T: PDFString.of('Signature1') }))
+      pdf.context.lookup(parent, PDFDict).set(PDFName.of('Kids'), pdf.context.obj([kid]))
+      pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [parent] }))
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
+    })
+
+    it('signed, deep in a field tree too deep for recursion', async () => {
+      const pdf = await blankPdf()
+      const signature = pdf.context.register(pdf.context.obj({ Type: 'Sig', Filter: 'Adobe.PPKLite' }))
+      let node = pdf.context.register(pdf.context.obj({ FT: 'Sig', V: signature }))
+      for (let i = 0; i < 20_000; i++)
+        node = pdf.context.register(pdf.context.obj({ Kids: [node] }))
+      pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [node] }))
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
+    })
+
     it('signed (/Perms)', async () => {
       const pdf = await blankPdf()
       pdf.catalog.set(PDFName.of('Perms'), pdf.context.obj({}))
@@ -157,6 +190,17 @@ describe('generate', () => {
     pdf.addPage()
     const field = pdf.context.register(pdf.context.obj({ FT: 'Sig', T: PDFString.of('Signature1') }))
     pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [field], SigFlags: 1 }))
+
+    await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+  })
+
+  it('accepts unsigned signature fields that inherit /FT /Sig', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const parent = pdf.context.register(pdf.context.obj({ FT: 'Sig', T: PDFString.of('Signatures') }))
+    const kid = pdf.context.register(pdf.context.obj({ Parent: parent, T: PDFString.of('Signature1') }))
+    pdf.context.lookup(parent, PDFDict).set(PDFName.of('Kids'), pdf.context.obj([kid]))
+    pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [parent], SigFlags: 1 }))
 
     await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
   })

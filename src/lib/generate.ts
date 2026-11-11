@@ -178,20 +178,36 @@ function hasSignedField(pdf: PDFDocument): boolean {
   if (!(acroForm instanceof PDFDict))
     return false
 
-  const seen = new Set<PDFDict>()
-  const signed = (field: PDFObject | undefined): boolean => {
+  // /FT and /V are both inheritable (ISO 32000-1 §12.7.3.1, Table 220), so carry them down the
+  // field tree. Iterative, since the tree comes from an untrusted PDF and can be arbitrarily deep.
+  const fields = pdf.context.lookup(acroForm.get(PDFName.of('Fields')))
+  if (!(fields instanceof PDFArray))
+    return false
+
+  const stack = fields.asArray().map(field => ({ field, type: undefined as PDFObject | undefined, hasValue: false }))
+  // Keyed by what the node inherits too, so a malformed kid shared by several parents is checked
+  // under each; still bounded, a node can only be reached with a few distinct inherited states.
+  const seen = new Map<PDFDict, Set<string>>()
+  while (stack.length > 0) {
+    const { field, type: inheritedType, hasValue: inheritedValue } = stack.pop()!
     const dict = pdf.context.lookup(field)
-    if (!(dict instanceof PDFDict) || seen.has(dict))
-      return false
-    seen.add(dict)
-    if (dict.get(PDFName.of('FT')) === PDFName.of('Sig') && dict.has(PDFName.of('V')))
+    if (!(dict instanceof PDFDict))
+      continue
+    const key = `${inheritedType}|${inheritedValue}`
+    const states = seen.get(dict) ?? new Set<string>()
+    if (states.has(key))
+      continue
+    seen.set(dict, states.add(key))
+
+    const type = dict.get(PDFName.of('FT')) ?? inheritedType
+    const hasValue = inheritedValue || dict.has(PDFName.of('V'))
+    if (type === PDFName.of('Sig') && hasValue)
       return true
     const kids = pdf.context.lookup(dict.get(PDFName.of('Kids')))
-    return kids instanceof PDFArray && kids.asArray().some(signed)
+    if (kids instanceof PDFArray)
+      stack.push(...kids.asArray().map(kid => ({ field: kid, type, hasValue })))
   }
-
-  const fields = pdf.context.lookup(acroForm.get(PDFName.of('Fields')))
-  return fields instanceof PDFArray && fields.asArray().some(signed)
+  return false
 }
 
 /**
