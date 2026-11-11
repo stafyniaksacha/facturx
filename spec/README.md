@@ -128,9 +128,10 @@ assume the opposite):
   244, UBL line 36) for the original `F202500006` (UC4, BT-1). Matching these documents by BT-25
   fails.
 - **UC11 dates.** `UC11_F202600022_MULTI-VENDEUR_EXTENDED-CTC-FR_CII_Commentee.xml` is issued on
-  2025-01-05 (BT-2, line 19) while its billing period is 2025-12-01 to 2025-12-31 (BT-73/BT-74) and
-  one line covers 2026-01-01 to 2026-01-31 (BT-134/BT-135, lines 122/125). Annex B doesn't say
-  whether this is intentional (advance billing) or a typo for 2026.
+  2025-01-05 (BT-2, line 19) and due on 2025-02-04 (BT-9, line 505), while its billing period is
+  2025-12-01 to 2025-12-31 (BT-73/BT-74) and one line covers 2026-01-01 to 2026-01-31
+  (BT-134/BT-135, lines 122/125). Annex B doesn't say whether this is intentional (advance billing)
+  or a typo for 2026.
 
 ```bash
 (cd spec/afnor-xp-z12-012-1.4/distribution && shasum -a 256 -c --quiet ../SHA256SUMS)
