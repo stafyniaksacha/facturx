@@ -67,20 +67,22 @@ export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileS
 
 /**
  * Every embedded file stream of a file specification: all stream values of `/EF` (`/F`, `/UF`,
- * and the deprecated `/DOS`, `/Mac`, `/Unix`, any of which a reader may pick). Entries that are not
- * streams are ignored. A file specification without `/EF` embeds nothing.
+ * and the deprecated `/DOS`, `/Mac`, `/Unix`, any of which a reader may pick), each once. Entries
+ * that are not streams are ignored. A file specification without `/EF` embeds nothing. Yielded one
+ * at a time, so a caller enforcing a limit can stop before walking a huge untrusted `/EF`.
  */
-export function embeddedFileStreams(fileSpec: PDFDict): PDFRawStream[] {
+export function* embeddedFileStreams(fileSpec: PDFDict): Generator<PDFRawStream> {
   const ef = fileSpec.lookup(PDFName.of('EF'))
   if (!(ef instanceof PDFDict))
-    return []
-  const streams: PDFRawStream[] = []
+    return
+  const seen = new Set<PDFRawStream>()
   for (const key of ef.keys()) {
     const stream = ef.lookup(key)
-    if (stream instanceof PDFRawStream && !streams.includes(stream))
-      streams.push(stream)
+    if (stream instanceof PDFRawStream && !seen.has(stream)) {
+      seen.add(stream)
+      yield stream
+    }
   }
-  return streams
 }
 
 // Inflation is synchronous, so its total cost is bounded instead: each attempt inflates a slice of

@@ -528,6 +528,19 @@ describe('generate', () => {
     await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
   })
 
+  it('stops at the stream limit inside one huge /EF dictionary', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const ef = pdf.context.obj({})
+    for (let i = 0; i < 20_000; i++)
+      ef.set(PDFName.of(`S${i}`), pdf.context.register(pdf.context.stream('x', { Type: 'EmbeddedFile' })))
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', EF: ef }))]))
+
+    const started = Date.now()
+    await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('more than 256 distinct embedded file streams')
+    expect(Date.now() - started).toBeLessThan(2000)
+  })
+
   it('rejects a PDF with too many distinct embedded files to check', async () => {
     const pdf = await PDFDocument.create()
     pdf.addPage()
