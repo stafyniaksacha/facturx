@@ -20,7 +20,7 @@ Key documents inside `distribution/`:
 | `1. FACTUR-X 1.09 2026 06 10 EN.pdf` | The specification: PDF/A-3 embedding (§6), XMP (§6.3), data types (§7.1.5), profiles (§7.2–7.7), hybrid rules `BR-HYBRID-*` (appendix 3.d) |
 | `2. FACTUR-X_extension_schema_exemple.xmp.txt` | Reference XMP packet (what `src/lib/xmp.ts` must produce) |
 | `3. FACTUR-X 1.09 - 2026 06 10 - EN FR VF.xlsx` | Field matrix per profile (BT/BG → XPath, cardinality), business rules, code lists, hybrid code lists |
-| `4. FACTUR-X_1.09_XSD_SCHEMATRON_2026-06-10/` | XSD, Schematron (`.sch`) and compiled XSLT per profile — the source of `src/lib/xsd/facturx/` |
+| `4. FACTUR-X_1.09_XSD_SCHEMATRON_2026-06-10/` | XSD, Schematron (`.sch`) and compiled XSLT per profile — the source of `src/lib/xsd/facturx/{minimum,basic}/` (BASIC WL, EN16931 and EXTENDED come from 1.09.2.fixFR04 in `fnfe-ctc-fr-1.4.0.04/`, see below and `CONFORMANCE.md` CG-16) |
 | `5. FACTUR-X 1.09 - Examples/` | Official example PDFs per profile — the conformance corpus run by `tests/spec-examples.test.ts` |
 | `7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/` | Per-profile technical appendices |
 | `EN16931 code lists values v17b … .xlsx` | EN 16931 code lists in force from 2026-05-15 |
@@ -36,7 +36,8 @@ per worksheet, e.g. `text/fields--Factur-X_CII_D22B_EN16931.csv`, `text/fields--
 # distribution/ is byte-identical to what was vendored
 (cd spec/factur-x-1.09/distribution && sha256sum -c --quiet ../SHA256SUMS)
 
-# every validation asset shipped in src/lib/xsd/facturx/ traces back to distribution/
+# every validation asset shipped in src/lib/xsd/facturx/ traces back to its source
+# (this distribution for MINIMUM/BASIC, fnfe-ctc-fr-1.4.0.04/ for the other three)
 pnpm spec:verify
 
 # text/ is reproducible from distribution/ (expect no diff afterwards)
@@ -155,8 +156,10 @@ pnpm --dir spec/scripts run extract afnor-xp-z12-012-1.4
    and `pnpm --dir spec/scripts run extract factur-x-<version>` (update the file lists in `extract.mjs`
    if names changed).
 2. Re-vendor the XSD / codedb / XSLT and recompile the SEF as described in
-   [`src/lib/xsd/facturx/SCHEMATRON.md`](../src/lib/xsd/facturx/SCHEMATRON.md); point
-   `scripts/verify-spec-assets.mjs` and `tests/spec-examples.test.ts` at the new folder.
+   [`src/lib/xsd/facturx/SCHEMATRON.md`](../src/lib/xsd/facturx/SCHEMATRON.md); point the profile
+   entries of `SOURCES` in `scripts/verify-spec-assets.mjs` and `tests/spec-examples.test.ts` at the
+   new folder. An official 1.09.2 (or later) distribution would also replace the FNFE-supplied
+   1.09.2.fixFR04 assets of BASIC WL, EN16931 and EXTENDED and close CG-16.
 3. Read the version-history table at the start of the new spec and review every change against
    [`CONFORMANCE.md`](../CONFORMANCE.md).
 4. `pnpm spec:verify && pnpm build && pnpm test` must pass.
