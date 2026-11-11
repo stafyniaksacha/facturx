@@ -243,7 +243,7 @@ describe('vendored Factur-X Schematron severity inventory', () => {
   const XSD_DIR = resolve(import.meta.dirname, '../src/lib/xsd/facturx')
 
   function warningRules(level: string): string[] {
-    const file = readdirSync(resolve(XSD_DIR, level)).find(f => f.endsWith('.xslt'))!
+    const file = readdirSync(resolve(XSD_DIR, level)).find(f => f.startsWith('FACTUR-X_') && f.endsWith('.xslt'))!
     const xslt = readFileSync(resolve(XSD_DIR, level, file), 'utf8')
     const out = new Set<string>()
     for (const m of xslt.matchAll(/<svrl:(failed-assert|successful-report)\b[\s\S]*?<\/svrl:\1>/g)) {
