@@ -23,7 +23,7 @@ import pkg from '../../package.json' with { type: 'json' }
 import { check } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
-import { embeddedFileSpecs, embeddedFileStreams, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
+import { embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
 import { extractBaseInfo, getFlavor, getLevel } from './xml'
@@ -187,53 +187,70 @@ const ORDER_ROOTS = [
   ['urn:un:unece:uncefact:data:SCRDMCCBDACIOMessageStructure:100', 'SCRDMCCBDACIOMessageStructure'],
 ]
 
+// Names other tools give the invoice (codelists--Filename.csv, legacy ZUGFeRD) or the order. Only a
+// backstop for files whose content cannot be read: detection is by content first.
+const INVOICE_FILENAMES = [FACTURX_FILENAME, 'xrechnung.xml', ...ZUGFERD_FILENAMES]
+const ORDER_FILENAMES = [ORDERX_FILENAME]
+
 // The root start tag sits near the top of the file: only this much decoded text is examined.
 const ROOT_SNIFF_BYTES = 64 * 1024
-// Distinct embedded file streams examined per PDF, bounding the total work on untrusted input.
+// Bounds on the work done per PDF, which is untrusted input. Past either, the PDF is rejected.
 const MAX_SCANNED_FILES = 256
+const MAX_INFLATED_BYTES = 64 * 1024 * 1024
 
 /**
  * §6 p.24: only one invoice XML per document. A second one would sit next to the first, and
- * extract() could return the old one. Detected by content, not by file name, since other tools
- * name the file differently: any embedded file (name tree or /AF) whose root element is a document
- * of the same kind as the one being written (an invoice for Factur-X / ZUGFeRD, an order for
- * Order-X). Other XML, such as an Order-X purchase order supporting an invoice, is allowed (§6.4),
- * and so is any file whose content is clearly not XML. It fails closed: a file whose content cannot
- * be read (unsupported filter, broken data) or whose root cannot be found is rejected as not
- * checkable, since it might be an invoice. A file that already uses the name we are about to write
- * is rejected too, whatever it holds: two identical name tree keys would be ambiguous.
+ * extract() could return the old one. Best effort, on every embedded file reachable from the name
+ * tree or the catalog /AF. The source is rejected when a file:
+ * - holds a document of the kind being written, detected by content since other tools name the
+ *   file differently: the root element (namespace and name) of an invoice for Factur-X / ZUGFeRD,
+ *   of an order for Order-X. Other XML, such as an Order-X purchase order supporting an invoice, is
+ *   allowed (§6.4);
+ * - has a name tree key, /F or /UF that other tools give such a document. This only backs up the
+ *   content check, for files it cannot read (other filters, DOCTYPE, unusual encodings);
+ * - already uses the name about to be written: two identical keys would be ambiguous.
+ * A file that cannot be read and carries no such name is accepted (an open gap, see CONFORMANCE.md).
  */
 function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: string): void {
   const conflicting = flavor === 'orderx' ? ORDER_ROOTS : INVOICE_ROOTS
+  const conflictingNames = flavor === 'orderx' ? ORDER_FILENAMES : INVOICE_FILENAMES
   const kind = flavor === 'orderx' ? 'order' : 'invoice'
   const specs = embeddedFileSpecs(pdf)
 
-  // Each distinct stream is read once, and only so many are read: many file specifications can
-  // share one expensive stream. Past the limit the PDF is rejected, not silently accepted.
+  // Each distinct stream is read once, and only so many are read and inflated: many file
+  // specifications can share one expensive stream.
+  const budget = new InflateBudget(MAX_INFLATED_BYTES)
   const contents = new Map<PDFRawStream, XmlContent>()
   for (const { names, fileSpec } of specs) {
-    const name = names[0] ?? 'unnamed file'
-    const { streams, malformed } = embeddedFileStreams(fileSpec)
-    if (malformed)
-      throw new Error(`The PDF has an embedded file whose content could not be checked for an existing ${kind} (${name})`)
-    for (const stream of streams) {
+    for (const stream of embeddedFileStreams(fileSpec)) {
       if (!contents.has(stream)) {
         if (contents.size >= MAX_SCANNED_FILES)
           throw new Error(`The PDF has more than ${MAX_SCANNED_FILES} distinct embedded file streams: could not check it for an existing ${kind}`)
-        const prefix = readEmbeddedFilePrefix(stream, ROOT_SNIFF_BYTES)
+        let prefix: Uint8Array | undefined
+        try {
+          prefix = readEmbeddedFilePrefix(stream, ROOT_SNIFF_BYTES, budget)
+        }
+        catch (error) {
+          if (error instanceof InflateBudgetExceededError)
+            throw new Error(`The PDF's embedded files are too large to check for an existing ${kind}`)
+          throw error
+        }
         contents.set(stream, prefix ? classifyContent(prefix) : 'undetermined')
       }
       const content = contents.get(stream)!
-      // Fail closed: content that cannot be read or whose root cannot be found might be an invoice.
-      if (content === 'undetermined')
-        throw new Error(`The PDF has an embedded file whose content could not be checked for an existing ${kind} (${name})`)
-      if (content !== 'not-xml' && conflicting.some(([ns, local]) => content.ns === ns && content.name === local))
-        throw new Error(`The PDF already has an embedded ${kind} (${name})`)
+      if (typeof content === 'object' && conflicting.some(([ns, local]) => content.ns === ns && content.name === local))
+        throw new Error(`The PDF already has an embedded ${kind} (${names[0] ?? 'unnamed file'})`)
     }
   }
 
+  // Name checks, after content so that a real invoice is reported as one.
   if (specs.some(({ names }) => names.includes(filename)))
     throw new Error(`The PDF already has an embedded file named ${filename}`)
+  for (const { names } of specs) {
+    const known = names.find(name => conflictingNames.includes(name))
+    if (known)
+      throw new Error(`The PDF already has an embedded ${kind} (${known})`)
+  }
 }
 
 /** Root element of an XML file, a file that is not XML, or XML whose root could not be found. */

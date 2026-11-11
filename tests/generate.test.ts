@@ -344,17 +344,15 @@ describe('generate', () => {
     ['an unterminated comment', '<?xml version="1.0"?><!-- no end'],
     ['a quoted > in a DOCTYPE system id', '<!DOCTYPE x SYSTEM "><rsm:CrossIndustryInvoice xmlns:rsm=\'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100\'>"><x/>'],
     ['an unterminated start tag', '<?xml version="1.0"?><x a="1'],
-  ])('rejects as not checkable, without hanging, an XML file with %s', async (_, content) => {
+  ])('accepts, without hanging, an XML file with %s', async (_, content) => {
     const source = await PDFDocument.create()
     source.addPage()
     await source.attach(new TextEncoder().encode(content), 'odd.xml', { mimeType: 'text/xml' })
 
-    await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') }))
-      .rejects
-      .toThrow('could not be checked for an existing invoice (odd.xml)')
+    await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
   }, 2000)
 
-  it('rejects as not checkable an invoice in a stream it cannot decode, whatever its name', async () => {
+  it('rejects by name an invoice in a stream it cannot decode (/F zugferd-invoice.xml under another key)', async () => {
     const xml = await readFile(SOURCE_XML, 'utf8')
     const pdf = await PDFDocument.create()
     pdf.addPage()
@@ -366,7 +364,7 @@ describe('generate', () => {
 
     await expect(generate({ pdf: Buffer.from(await pdf.save()), xml }))
       .rejects
-      .toThrow('could not be checked for an existing invoice (invoice-1)')
+      .toThrow('already has an embedded invoice (zugferd-invoice.xml)')
   })
 
   it.each([
@@ -393,7 +391,7 @@ describe('generate', () => {
     const fileSpec = pdf.context.register(pdf.context.obj({ Type: 'Filespec', UF: PDFHexString.fromText('logo.png'), EF: { F: other, UF: invoice } }))
     pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([fileSpec]))
 
-    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow(fIsStream ? 'already has an embedded invoice (logo.png)' : 'could not be checked')
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('already has an embedded invoice (logo.png)')
   })
 
   it.each([
@@ -409,24 +407,56 @@ describe('generate', () => {
     ['an /EF that is not a dictionary', async (pdf: PDFDocument) => {
       pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', EF: 5 }))]))
     }],
-  ])('rejects as not checkable %s', async (_, attach) => {
+  ])('accepts, as a documented gap (CG-14), an unreadable invoice with no recognized name: %s', async (_, attach) => {
     const xml = await readFile(SOURCE_XML, 'utf8')
     const pdf = await PDFDocument.create()
     pdf.addPage()
     await attach(pdf, xml)
 
-    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('could not be checked for an existing invoice')
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).resolves.toBeInstanceOf(Uint8Array)
+  })
+
+  it('rejects by name an /AF file it cannot decode (xrechnung.xml, ASCIIHexDecode)', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const stream = pdf.context.register(pdf.context.stream(`${Buffer.from(xml).toString('hex')}>`, { Type: 'EmbeddedFile', Filter: 'ASCIIHexDecode' }))
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', F: PDFString.of('xrechnung.xml'), EF: { F: stream } }))]))
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('already has an embedded invoice (xrechnung.xml)')
+  })
+
+  it('detects an invoice stored only under a deprecated /EF key (/DOS)', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const stream = pdf.context.register(pdf.context.flateStream(new TextEncoder().encode(xml), { Type: 'EmbeddedFile' }))
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', F: PDFString.of('INV.XML'), EF: { DOS: stream } }))]))
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('already has an embedded invoice (INV.XML)')
+  })
+
+  it('rejects a PDF whose embedded files would inflate past the per-PDF budget', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    // 80 distinct streams, each inflating to about 1 MiB from its first 1 KiB: past the 64 MiB budget.
+    const zeros = new Uint8Array(1536 * 1024)
+    const specs = Array.from({ length: 80 }, () => pdf.context.register(pdf.context.obj({
+      Type: 'Filespec',
+      EF: { F: pdf.context.register(pdf.context.flateStream(zeros, { Type: 'EmbeddedFile' })) },
+    })))
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj(specs))
+
+    await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('too large to check for an existing invoice')
   })
 
   it('says "order" when the document being written is an Order-X order', async () => {
+    const order = await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8')
     const pdf = await PDFDocument.create()
     pdf.addPage()
-    const stream = pdf.context.register(pdf.context.stream('3c78>', { Type: 'EmbeddedFile', Filter: 'ASCIIHexDecode' }))
-    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', EF: { F: stream } }))]))
+    await pdf.attach(new TextEncoder().encode(order), 'previous-order.xml', { mimeType: 'text/xml' })
 
-    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml: await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8') }))
-      .rejects
-      .toThrow('could not be checked for an existing order')
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml: order })).rejects.toThrow('already has an embedded order (previous-order.xml)')
   })
 
   it('accepts attachments that are clearly not XML', async () => {

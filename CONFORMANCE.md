@@ -19,7 +19,7 @@ open entry is "known", anything else is new.
 | All vendored XSD and `_codedb.xml` are byte-identical to the spec; all XSLT identical after the documented `sum()` patch; all `.sef.json.gz` reproducible from them | `pnpm spec:verify` |
 | All 56 official example PDFs (11–12 per profile) extract, pass XSD + Schematron at their profile, and round-trip through `xmlToInvoice` → `invoiceToXml` with an identical model (this is what caught the 0.6.x `RoleCode` regression fixed in #25) | `pnpm build && pnpm vitest run tests/spec-examples.test.ts` |
 | External XML entities are not expanded with the default libxml2-wasm parse options used by `resolveXml` / `xmlToInvoice` (no XXE) | probe in the audit (entity resolves to empty / `check()` rejects the document); keep `XML_PARSE_NOENT` / `XML_PARSE_DTDLOAD` / `XML_PARSE_XINCLUDE` off |
-| The XMP packet header uses the fixed packet id `W5M0MpCehiHzreSzNTczkc9d` of the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` (was CG-06), and `generate()` keeps a source PDF's permanent trailer `/ID` (ISO 32000-1 §14.4) instead of throwing (#37), while rejecting encrypted (§6.1 p.25) and signed sources and sources that already embed a document of the kind being written (§6 p.24). That document is detected by content, whatever its file name: a file in the EmbeddedFiles name tree or catalog `/AF` whose root element (namespace and name) is a CII / ZUGFeRD 1 invoice, or an Order-X order when an order is written. The ZUGFeRD 1 namespace is not vendored, so it is unverified. Other XML is accepted as a supporting file (§6.4 p.30–32), including an Order-X order attached to an invoice and a UBL complementary invoice. Reading is bounded: each distinct stream is read once, at most 64 KiB of compressed input and 8 MiB of inflated output per stream, 64 KiB of text examined, and at most 256 distinct streams per PDF (several file specifications can share one stream). The check fails closed, rejecting as not checkable: a PDF with more distinct streams; a file whose `/EF` is malformed or whose content cannot be read (a filter other than none or a single `/FlateDecode` without `/DecodeParms`, or broken data); and XML whose root cannot be found (a DOCTYPE, an unterminated construct, more than 64 KiB of prolog, or a start tag that does not parse, including text that starts with an element-like `<word`). Both `/EF` `/F` and `/UF` are checked. Accepted as not XML: content that does not start with markup, empty or blank content, and text whose first `<` cannot open XML markup (e.g. `<<Important>>`). UTF-8 and UTF-16 (with or without a BOM) are decoded. UTF-32 with a BOM and EBCDIC are read as not XML, so an invoice in those encodings is not detected; a leading NUL or UTF-32 without a BOM is rejected as not checkable. Not scanned: page-level `/AF` and file attachment annotations. A source that already uses the filename being written is also rejected | `pnpm build && pnpm vitest run tests/generate.test.ts` |
+| The XMP packet header uses the fixed packet id `W5M0MpCehiHzreSzNTczkc9d` of the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` (was CG-06), and `generate()` keeps a source PDF's permanent trailer `/ID` (ISO 32000-1 §14.4) instead of throwing (#37), while rejecting encrypted (§6.1 p.25) and signed sources and sources that already embed a document of the kind being written (§6 p.24). That document is detected by content, whatever its file name: any stream of a file (`/EF` `/F`, `/UF` or a deprecated key) in the EmbeddedFiles name tree or catalog `/AF` whose root element (namespace and name) is a CII invoice, or an Order-X order when an order is written, including UTF-8 and UTF-16 with a BOM and invoices hidden behind tricky prolog comments. A file whose name tree key, `/F` or `/UF` is a recognized invoice name (`factur-x.xml`, `xrechnung.xml`, ZUGFeRD names; `order-x.xml` for orders) is rejected too, whatever its content can be read as, and so is one already using the filename being written. Other XML is accepted as a supporting file (§6.4 p.30–32), including an Order-X order attached to an invoice. Reading untrusted input is bounded: each distinct stream is read once, inflated with node:zlib in growing slices (at most 64 KiB of compressed input and 2 MiB of output per attempt), 64 KiB of text is examined, and per PDF at most 256 distinct streams and 64 MiB of inflated output are allowed; past either limit the PDF is rejected. Known misses are listed in CG-14 | `pnpm build && pnpm vitest run tests/generate.test.ts` |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no veraPDF run), any Order-X
 asset (no Order-X spec vendored), field-by-field coverage of the 1.09 EXTENDED additions (BT-173…177,
@@ -41,6 +41,7 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | CG-11 | API vs docs | — | docs | `extract()` never autodetects `level`; README implies it does |
 | CG-12 | profiles | §7.7, `codelists--HybridConformance.csv` | interop | XRECHNUNG reference profile unsupported; no DE profile restrictions |
 | CG-13 | embedding | §6.2.2 p.27, §6.4 p.31 | interop | `/Kids` levels in the EmbeddedFiles name tree: `extract()` finds no invoice, `generate()` rejects the source |
+| CG-14 | embedding | §6 p.24 | interop | `generate()` can miss an existing invoice whose content it cannot read and whose name it does not recognize |
 
 ### CG-01 — Unit prices truncated to 2 decimals
 
@@ -152,6 +153,29 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   array into a leaf under `/Kids`, save, and call `extract()` on it: `No attachment found`. For
   `generate()`, see the test `rejects inputs it cannot embed into correctly > embedded files name tree
   with /Kids` in `tests/generate.test.ts`.
+
+### CG-14 — Existing-invoice detection is best effort
+
+- **Spec:** §6 p.24: only one invoice XML file per PDF/A-3 document.
+- **Code:** `assertNoEmbeddedInvoice` (`src/lib/generate.ts`) rejects a source PDF that already holds an
+  invoice, detected by content (root element) or by a recognized file name. An embedded file whose
+  content it cannot classify is accepted unless its name tree key, `/F` or `/UF` is a recognized
+  invoice name. Such content includes:
+  - a filter other than none or a single `/FlateDecode` without `/DecodeParms`, or broken Flate data;
+  - XML with a DOCTYPE, an unterminated construct, more than 64 KiB of prolog, or a start tag that
+    does not parse;
+  - encodings other than UTF-8 and UTF-16 with a BOM, e.g. UTF-32 or UTF-16 without a BOM that does
+    not start with `<`.
+
+  Page-level `/AF` and file attachment annotations are not scanned. The ZUGFeRD 1 root namespace
+  (`urn:ferd:CrossIndustryDocument:invoice:1p0`) is not vendored, so its detection is unverified.
+- **Evidence:** the tests `accepts, as a documented gap (CG-14), an unreadable invoice with no
+  recognized name: …` in `tests/generate.test.ts` cover a long prolog, `/DecodeParms`, corrupt Flate
+  data and a non-dictionary `/EF`. Reviewer probes also showed UTF-32 (no BOM) invoices accepted.
+- **Why not fail closed:** rejecting every file whose content cannot be classified also rejected
+  legitimate §6.4 attachments (XML with a DOCTYPE, other filters, text such as `<name@host>`), and
+  each hardening round of the hand-written classifier found new edge cases. The maintainer chose
+  best effort plus a name backstop.
 
 ## Changing this file
 

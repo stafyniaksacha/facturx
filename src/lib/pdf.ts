@@ -65,45 +65,57 @@ export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileS
   return [...specs].map(([fileSpec, names]) => ({ names: [...names], fileSpec }))
 }
 
-// Compressed input fed to zlib per attempt, and the most it may produce. Deflate expands at most
-// about 1032:1, so the output, and the memory, stay bounded even for a crafted bomb.
-const MAX_COMPRESSED_INPUT = 64 * 1024
-const MAX_INFLATED_OUTPUT = 8 * 1024 * 1024
-
 /**
- * The embedded file streams of a file specification (`/EF` `/F` and `/UF`, which readers may pick
- * either of), and whether its `/EF` is malformed: present but not a dictionary, or an entry that is
- * not a stream. A file specification without `/EF` embeds nothing.
+ * Every embedded file stream of a file specification: all stream values of `/EF` (`/F`, `/UF`,
+ * and the deprecated `/DOS`, `/Mac`, `/Unix`, any of which a reader may pick). Entries that are not
+ * streams are ignored. A file specification without `/EF` embeds nothing.
  */
-export function embeddedFileStreams(fileSpec: PDFDict): { streams: PDFRawStream[], malformed: boolean } {
-  if (!fileSpec.has(PDFName.of('EF')))
-    return { streams: [], malformed: false }
+export function embeddedFileStreams(fileSpec: PDFDict): PDFRawStream[] {
   const ef = fileSpec.lookup(PDFName.of('EF'))
   if (!(ef instanceof PDFDict))
-    return { streams: [], malformed: true }
-
+    return []
   const streams: PDFRawStream[] = []
-  let malformed = false
-  for (const key of ['F', 'UF']) {
-    if (!ef.has(PDFName.of(key)))
-      continue
-    const stream = ef.lookup(PDFName.of(key))
-    if (!(stream instanceof PDFRawStream))
-      malformed = true
-    else if (!streams.includes(stream))
+  for (const key of ef.keys()) {
+    const stream = ef.lookup(key)
+    if (stream instanceof PDFRawStream && !streams.includes(stream))
       streams.push(stream)
   }
-  return { streams, malformed }
+  return streams
+}
+
+// Inflation is synchronous, so its total cost is bounded instead: each attempt inflates a slice of
+// the compressed input (starting small, growing 4x only while the text is still shorter than
+// needed) with a capped output, and every inflated byte is charged to a per-PDF budget. Deflate
+// expands at most about 1032:1, so even a crafted bomb stays within these bounds.
+const FIRST_COMPRESSED_INPUT = 1024
+const MAX_COMPRESSED_INPUT = 64 * 1024
+const MAX_ATTEMPT_OUTPUT = 2 * 1024 * 1024
+
+export class InflateBudgetExceededError extends Error {
+  constructor() {
+    super('Inflate budget exceeded')
+  }
+}
+
+/** Inflated bytes still allowed for one PDF; charging past it throws InflateBudgetExceededError. */
+export class InflateBudget {
+  constructor(public remaining: number) {}
+
+  charge(bytes: number): void {
+    this.remaining -= bytes
+    if (this.remaining < 0)
+      throw new InflateBudgetExceededError()
+  }
 }
 
 /**
  * At most `maxBytes` bytes from the start of an embedded file stream, or undefined when it cannot
- * be read within bounded work. Only unfiltered and `/FlateDecode`
- * streams are read (pdf-lib's attach() writes the latter); for any other filter or filter chain
- * it returns undefined. Flate data is inflated by node:zlib from a bounded slice of the compressed input with a
- * capped output, never through pdf-lib's decoder, which inflates whole deflate blocks.
+ * be read. Only unfiltered and `/FlateDecode` streams are read (pdf-lib's attach() writes the
+ * latter); for any other filter or filter chain it returns undefined. Flate data is inflated by
+ * node:zlib, never through pdf-lib's decoder, which inflates whole deflate blocks. Throws
+ * InflateBudgetExceededError once the budget is spent.
  */
-export function readEmbeddedFilePrefix(stream: PDFRawStream, maxBytes: number): Uint8Array | undefined {
+export function readEmbeddedFilePrefix(stream: PDFRawStream, maxBytes: number, budget: InflateBudget): Uint8Array | undefined {
   const filter = stream.dict.lookup(PDFName.of('Filter'))
   const filters = filter instanceof PDFArray ? filter.asArray() : filter === undefined ? [] : [filter]
   if (filters.length === 0)
@@ -113,26 +125,30 @@ export function readEmbeddedFilePrefix(stream: PDFRawStream, maxBytes: number): 
     return undefined
   }
 
-  // Shrink the compressed slice until its output fits the cap: only a stream far more compressible
-  // than any real XML (a bomb) needs more than one attempt.
-  if (stream.contents.length === 0)
-    return new Uint8Array(0)
-  let input = Math.min(stream.contents.length, MAX_COMPRESSED_INPUT)
+  const total = Math.min(stream.contents.length, MAX_COMPRESSED_INPUT)
+  let input = Math.min(total, FIRST_COMPRESSED_INPUT)
+  let best: Uint8Array | undefined = total === 0 ? new Uint8Array(0) : undefined
   while (input > 0) {
     try {
       const inflated = inflateSync(stream.contents.subarray(0, input), {
         finishFlush: zlibConstants.Z_SYNC_FLUSH, // tolerate the cut-off end of the slice
-        maxOutputLength: MAX_INFLATED_OUTPUT,
+        maxOutputLength: MAX_ATTEMPT_OUTPUT,
       })
-      return new Uint8Array(inflated.buffer, inflated.byteOffset, Math.min(inflated.byteLength, maxBytes))
+      budget.charge(inflated.byteLength)
+      best = new Uint8Array(inflated.buffer, inflated.byteOffset, Math.min(inflated.byteLength, maxBytes))
     }
     catch (error) {
-      if ((error as { code?: string }).code !== 'ERR_BUFFER_TOO_LARGE')
-        return undefined // Not valid zlib data.
-      input = input >= 4096 ? Math.floor(input / 4) : 0
+      if (error instanceof InflateBudgetExceededError)
+        throw error
+      if ((error as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE')
+        budget.charge(MAX_ATTEMPT_OUTPUT)
+      return best // Too large (keep the previous, shorter prefix) or not valid zlib data.
     }
+    if (best.byteLength >= maxBytes || input >= total)
+      return best
+    input = Math.min(input * 4, total)
   }
-  return undefined
+  return best
 }
 
 const MALFORMED_NAME_TREE = 'Malformed EmbeddedFiles name tree'
