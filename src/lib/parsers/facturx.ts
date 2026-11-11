@@ -596,7 +596,7 @@ function parseTradeTax(node: XmlElement): ram.TradeTaxType {
     basisAmount: parseAmount(get(node, './ram:BasisAmount')),
     lineTotalBasisAmount: parseAmount(get(node, './ram:LineTotalBasisAmount')),
     allowanceChargeBasisAmount: parseAmount(get(node, './ram:AllowanceChargeBasisAmount')),
-    categoryCode: new qdt.TaxCategoryCodeType({ value: textOf(get(node, './ram:CategoryCode')) ?? '' }),
+    categoryCode: textOf(get(node, './ram:CategoryCode')) ? new qdt.TaxCategoryCodeType({ value: textOf(get(node, './ram:CategoryCode'))! }) : undefined,
     exemptionReasonCode: parseCode(get(node, './ram:ExemptionReasonCode')),
     taxPointDate: parseDate(get(node, './ram:TaxPointDate')),
     dueDateTypeCode: textOf(get(node, './ram:DueDateTypeCode')) ? new qdt.TimeReferenceCodeType({ value: textOf(get(node, './ram:DueDateTypeCode'))! }) : undefined,

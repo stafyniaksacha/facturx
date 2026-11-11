@@ -16,7 +16,10 @@ add up, or a missing VAT breakdown). For full EN 16931 compliance you need **bot
 ## XSD validation
 
 This is the default. [`check()`](/api/check) validates the XML structure against the official
-**Factur-X 1.09 / ZUGFeRD 2.5** XSD for the detected (or supplied) flavor and level:
+**Factur-X / ZUGFeRD** XSD for the detected (or supplied) flavor and level: Factur-X 1.09 / ZUGFeRD 2.5
+for MINIMUM and BASIC, and Factur-X **1.09.2** (the `fixFR04` assets published by FNFE-MPE for the
+French e-invoicing reform) for BASIC WL, EN 16931 and EXTENDED. The Schematron below follows the same
+split.
 
 ```ts
 import { check } from '@stafyniaksacha/facturx'

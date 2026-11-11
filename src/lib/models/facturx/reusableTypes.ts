@@ -340,7 +340,7 @@ export class TradeTaxType {
     basisAmount?: udt.AmountType
     lineTotalBasisAmount?: udt.AmountType
     allowanceChargeBasisAmount?: udt.AmountType
-    categoryCode: qdt.TaxCategoryCodeType
+    categoryCode?: qdt.TaxCategoryCodeType
     exemptionReasonCode?: udt.CodeType
     taxPointDate?: udt.DateType
     dueDateTypeCode?: qdt.TimeReferenceCodeType
@@ -365,7 +365,13 @@ export class TradeTaxType {
   basisAmount?: udt.AmountType
   lineTotalBasisAmount?: udt.AmountType
   allowanceChargeBasisAmount?: udt.AmountType
-  categoryCode: qdt.TaxCategoryCodeType
+  /**
+   * VAT category code (BT-95, BT-102, BT-118, BT-151). Required by the XSD of every profile
+   * except EXTENDED, where Factur-X 1.09.2 makes it optional (`minOccurs="0"`) so that
+   * information sub-lines can omit it (XP Z12-012 annex A: BT-151 0..1 in EXTENDED-CTC-FR).
+   * Business rules still require it on the VAT breakdown (BG-23) and on detail lines.
+   */
+  categoryCode?: qdt.TaxCategoryCodeType
   exemptionReasonCode?: udt.CodeType
   taxPointDate?: udt.DateType
   dueDateTypeCode?: qdt.TimeReferenceCodeType

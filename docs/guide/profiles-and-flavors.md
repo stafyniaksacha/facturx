@@ -35,6 +35,14 @@ Profiles are increasing supersets of data, from the bare legal minimum to a full
 The `conformanceLevel` strings above are written into the PDF/A-3 XMP metadata by
 [`generate()`](/api/generate).
 
+The validation assets (XSD and Schematron) are not all the same version. `minimum` and `basic` use
+Factur-X **1.09** (FINAL, 2026-06-10). `basicwl`, `en16931` and `extended` use Factur-X **1.09.2**
+(`fixFR04`), the update FNFE-MPE publishes for the three profiles in scope of the French e-invoicing
+reform. In `extended`, 1.09.2 makes the VAT category code and type code of a line optional, so that
+`GROUP` / `INFORMATION` sub-lines can omit them (the `categoryCode` of `TradeTaxType` is optional in
+the models for that reason); the Schematron still requires them on detail lines and on the VAT
+breakdown.
+
 ## Autodetection
 
 When you don't pass `flavor` / `level`, the library reads them from the XML itself:
