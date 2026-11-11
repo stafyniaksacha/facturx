@@ -16,6 +16,7 @@ import pkg from '../../package.json' with { type: 'json' }
 import { check } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
+import { readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
 import { extractBaseInfo, getFlavor, getLevel } from './xml'
@@ -78,6 +79,8 @@ export async function generate(options: {
     }
 
     const pdf = await resolvePdf(options.pdf)
+    // Throws on a malformed tree, which pdf.attach() would otherwise append to and corrupt (#40).
+    readEmbeddedFilesNames(pdf)
 
     let documentId
 
