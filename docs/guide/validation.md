@@ -18,7 +18,7 @@ see [French e-invoicing rules](/guide/french-ctc).
 
 ## XSD validation
 
-This is the default. [`check()`](/api/check) validates the XML structure against the official
+This is the default. [`check()`](/api/check) validates the XML structure against the
 **Factur-X / ZUGFeRD** XSD for the detected (or supplied) flavor and level: Factur-X 1.09 / ZUGFeRD 2.5
 for MINIMUM and BASIC, and Factur-X **1.09.2** (the `fixFR04` assets supplied by FNFE-MPE, not an official Factur-X distribution, for the
 French e-invoicing reform) for BASIC WL, EN 16931 and EXTENDED. The Schematron below follows the same
@@ -41,7 +41,7 @@ if (!valid) {
 ## Schematron (business-rule) validation
 
 Since the 1.09 XSDs no longer enumerate code lists, the **Schematron** rules are what enforce valid
-codes *and* the EN 16931 `BR-*` business rules. The library ships the official ISO-Schematron
+codes *and* the EN 16931 `BR-*` business rules. The library ships the ISO-Schematron of each profile (from the same sources as the XSD)
 compiled to a relocatable Saxon transform (one per profile) and runs it with SaxonJS.
 
 Turn it on by adding `schematron: true` to `check()`:

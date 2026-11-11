@@ -1,6 +1,6 @@
 # `check()`
 
-Validate an XML invoice against the official **XSD**, and optionally the EN 16931 **Schematron**
+Validate an XML invoice against the Factur-X **XSD** (official 1.09 for MINIMUM/BASIC, FNFE-MPE 1.09.2.fixFR04 for BASIC WL/EN 16931/EXTENDED), and optionally the EN 16931 **Schematron**
 business rules.
 
 ## Signature

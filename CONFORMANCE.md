@@ -64,6 +64,7 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | CG-20 | French CTC, lifecycle | release notes p.10 (`BR-FR-CDV-*`); Annex A `annex-a--CDV_FE_-_CDAR.csv` | interop | CDAR lifecycle status messages are not validated |
 | CG-21 | French CTC, e-reporting | Annex A `annex-a--E-REPORTING_-_Flux_10.csv` | interop | Flux 10 e-reporting is not supported (no licence in the release) |
 | CG-22 | French CTC, coverage | release notes p.8-10; Annex A `annex-a--BR-France_CTC.csv`, `annex-a--BR-France-CTC-CPRO.csv` | interop | Annex A BR-FR rules the published Schematron does not implement (incl. `BR-FR-CPRO-*`); release notes contradict each other and the XSLT on coverage |
+| CG-24 | spec, French CTC | FNFE CTC FR 1.4.0 release notes p.9 vs EXTENDED `FX-SCH-A-000636` | — | Release says Factur-X EXTENDED validates `EXTENDED-CTC-FR`; the shipped EXTENDED Schematron rejects its guideline ID (unresolved) |
 | CG-23 | French CTC, upstream | `BR-FR-Flux2-Schematron-CII.xslt` | — | SVRL `test` of 4 BR-FR asserts loses its regex quantifier (`^\d{9}$` reported as `^\d9$`) |
 
 ### CG-01 — Unit prices truncated to 2 decimals
@@ -321,11 +322,13 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 - **Spec:** XP Z12-012 v1.4 defines an `EXTENDED-CTC-FR` profile for plain CII (guideline ID
   `urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr`), with French extension
   fields `EXT-FR-FE-*` (Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv`) and its own Schematron
-  (`spec/fnfe-ctc-fr-1.4.0.04/distribution/CII/EXTENDED-CTC-FR/`). Release notes p.9: the Factur-X
-  EXTENDED components can validate it, being a superset.
+  (`spec/fnfe-ctc-fr-1.4.0.04/distribution/CII/EXTENDED-CTC-FR/`). Release notes p.9 say the
+  Factur-X EXTENDED components can validate it, being a superset; the vendored EXTENDED Schematron
+  disagrees (CG-24).
 - **Code:** `getLevel` (`src/lib/xml.ts`) throws `Unknown level: "1p0"` on that guideline ID, so
-  `check()` can't run on it; models, converter and parser don't know the `EXT-FR-FE-*` fields.
-  `validateFrCtc({ level: 'extended' })` does run BR-FR on it.
+  `check()` without an explicit level can't run on it; with `level: 'extended'` it runs, XSD passes
+  and the Factur-X EXTENDED Schematron fails (CG-24). Models, converter and parser don't know the
+  `EXT-FR-FE-*` fields. `validateFrCtc({ level: 'extended' })` does run BR-FR on it.
 - **Evidence:** the 6 `*_EXTENDED-CTC-FR_CII_*.xml` files of Annex B, e.g.
   `node bin/facturx.mjs check "spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/F202500001/_EXTENDED-CTC-FR/F202500001_INV_20250201_EXTENDED-CTC-FR_CII_Commentee.xml"`
   prints `Unknown level: "1p0"`. Annex B has CII examples to test a fix against.
@@ -387,6 +390,21 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   `test` `matches(normalize-space(.), '^\d9$')`.
 - **Not fixed locally:** vendored assets are not edited by hand. To report upstream (the skeleton should
   escape braces as `{{`/`}}`).
+
+### CG-24 — Release notes vs EXTENDED Schematron on `EXTENDED-CTC-FR` (unresolved)
+
+- **Spec says (1):** FNFE CTC FR 1.4.0 release notes p.9 (`spec/fnfe-ctc-fr-1.4.0.04/text/release-notes-en.txt`):
+  the Factur-X EXTENDED profile, being broader than EXTENDED-CTC-FR, "can be used for the CII's
+  EXTENDED-CTC-FR profile".
+- **Spec says (2):** the same release's Factur-X 1.09.2.fixFR04 EXTENDED Schematron checks BT-24 against
+  code list 1 of `FACTUR-X_EXTENDED_codedb.xml` (assert `FX-SCH-A-000636`), which only allows
+  `…urn:factur-x.eu:1p0:extended` and `…urn:zugferd.de:2p0:extended`, not
+  `…urn.cpro.gouv.fr:1p0:extended-ctc-fr`. Factur-X 1.09 FINAL had the same rule and list.
+- **Code:** follows the vendored Schematron (never edited); `validateFrCtc` maps EXTENDED-CTC-FR to
+  `extended` for BR-FR only, which doesn't read the profile.
+- **Evidence:** `find spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures -name '*_EXTENDED-CTC-FR_CII_*.xml' -exec node bin/facturx.mjs check --level extended --schematron {} \;`
+  → each of the 6 examples fails only `Value of 'ram:ID' is not allowed.` (XSD passes).
+- **Close when:** FNFE clarifies, or the dedicated `CII/EXTENDED-CTC-FR` Schematron is supported (CG-18).
 
 ## Changing this file
 

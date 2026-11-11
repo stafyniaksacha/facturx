@@ -91,7 +91,8 @@ const RAM_NS = 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInf
  * here rather than trusting the caller.
  *
  * The plain-CII `EXTENDED-CTC-FR` profile (`…urn.cpro.gouv.fr:1p0:extended-ctc-fr`) maps to `extended`:
- * the Factur-X EXTENDED components can validate it (release notes p.9).
+ * the release notes (p.9) say the Factur-X EXTENDED components can validate it, although the vendored
+ * EXTENDED Schematron rejects its guideline ID (CG-24). BR-FR itself doesn't read the profile.
  */
 async function declaredLevel(xml: string | Buffer): Promise<string> {
   const doc = await resolveXml(xml)
