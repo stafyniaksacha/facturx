@@ -140,9 +140,10 @@ export function readEmbeddedFilePrefix(stream: PDFRawStream, maxBytes: number, b
     catch (error) {
       if (error instanceof InflateBudgetExceededError)
         throw error
-      if ((error as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE')
-        budget.charge(MAX_ATTEMPT_OUTPUT)
-      return best // Too large (keep the previous, shorter prefix) or not valid zlib data.
+      // The output produced before a failure (over the cap, or invalid data after a valid start)
+      // is not reported, so charge the most this attempt could have produced.
+      budget.charge(Math.min(MAX_ATTEMPT_OUTPUT, input * 1032))
+      return best // Keep the previous, shorter prefix, if any.
     }
     if (best.byteLength >= maxBytes || input >= total)
       return best

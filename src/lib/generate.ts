@@ -196,7 +196,8 @@ const ORDER_FILENAMES = [ORDERX_FILENAME]
 const ROOT_SNIFF_BYTES = 64 * 1024
 // Bounds on the work done per PDF, which is untrusted input. Past either, the PDF is rejected.
 const MAX_SCANNED_FILES = 256
-const MAX_INFLATED_BYTES = 64 * 1024 * 1024
+// About 500 KiB per stream for 256 streams: a stream inflates at most ~2.2 MiB, typically under 400 KiB.
+const MAX_INFLATED_BYTES = 128 * 1024 * 1024
 
 /**
  * §6 p.24: only one invoice XML per document. A second one would sit next to the first, and

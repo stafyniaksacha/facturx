@@ -416,6 +416,50 @@ describe('generate', () => {
     await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).resolves.toBeInstanceOf(Uint8Array)
   })
 
+  it.each([
+    ['the name tree key', 'xrechnung.xml', undefined],
+    ['/UF', undefined, 'ZUGFeRD-invoice.xml'],
+  ])('rejects by name, through %s alone, a file whose content is not an invoice', async (_, key, uf) => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const stream = pdf.context.register(pdf.context.flateStream(new TextEncoder().encode('not an invoice'), { Type: 'EmbeddedFile' }))
+    const fileSpec = pdf.context.register(pdf.context.obj({ Type: 'Filespec', ...(uf ? { UF: PDFHexString.fromText(uf) } : {}), EF: { F: stream } }))
+    pdf.catalog.set(PDFName.of('Names'), pdf.context.obj({ EmbeddedFiles: { Names: [PDFString.of(key ?? 'attachment-1'), fileSpec] } }))
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml: await readFile(SOURCE_XML, 'utf8') }))
+      .rejects
+      .toThrow(`already has an embedded invoice (${key ?? uf})`)
+  })
+
+  it('detects a UTF-16BE invoice with a BOM', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const le = Buffer.from(xml.replace('encoding="UTF-8"', 'encoding="UTF-16"'), 'utf16le')
+    const be = Buffer.alloc(le.length)
+    for (let i = 0; i + 1 < le.length; i += 2) {
+      be[i] = le[i + 1]
+      be[i + 1] = le[i]
+    }
+    await pdf.attach(Buffer.concat([Buffer.from([0xFE, 0xFF]), be]), 'invoice-be.xml', { mimeType: 'text/xml' })
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('already has an embedded invoice (invoice-be.xml)')
+  })
+
+  it('accepts a stream whose later slice exceeds the per-attempt output cap', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    // Incompressible start (several small attempts), then zeros that overflow the 2 MiB cap.
+    const random = new Uint8Array(12 * 1024).map(() => Math.floor(Math.random() * 256))
+    const content = Buffer.concat([Buffer.from(random), Buffer.alloc(60 * 1024 * 1024)])
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({
+      Type: 'Filespec',
+      EF: { F: pdf.context.register(pdf.context.flateStream(content, { Type: 'EmbeddedFile' })) },
+    }))]))
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+  })
+
   it('rejects by name an /AF file it cannot decode (xrechnung.xml, ASCIIHexDecode)', async () => {
     const xml = await readFile(SOURCE_XML, 'utf8')
     const pdf = await PDFDocument.create()
@@ -439,9 +483,9 @@ describe('generate', () => {
   it('rejects a PDF whose embedded files would inflate past the per-PDF budget', async () => {
     const pdf = await PDFDocument.create()
     pdf.addPage()
-    // 80 distinct streams, each inflating to about 1 MiB from its first 1 KiB: past the 64 MiB budget.
+    // 150 distinct streams, each inflating to about 1 MiB from its first 1 KiB: past the 128 MiB budget.
     const zeros = new Uint8Array(1536 * 1024)
-    const specs = Array.from({ length: 80 }, () => pdf.context.register(pdf.context.obj({
+    const specs = Array.from({ length: 150 }, () => pdf.context.register(pdf.context.obj({
       Type: 'Filespec',
       EF: { F: pdf.context.register(pdf.context.flateStream(zeros, { Type: 'EmbeddedFile' })) },
     })))
