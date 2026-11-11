@@ -50,8 +50,21 @@ interface PdfMetadata {
   `zugferd-invoice.xml`, and writes the matching PDF/A-3 XMP metadata (including the Factur-X
   `conformanceLevel` for the level).
 - When `meta` is omitted, the title/author/subject/date are derived from the invoice XML.
+- Keeps the source PDF's permanent document ID (the first trailer `/ID` element) and writes a new
+  second element. A source without an `/ID` gets a new one.
+- Keeps the embedded files name tree sorted.
 - Throws `Invalid XML format (<flavor> - <level>)` when `check` is enabled and validation fails, and
   `Unknown schema flavor` for an unrecognised flavor.
+- Throws, before changing anything, when the source PDF cannot take the invoice correctly:
+  - it is encrypted, or signed (sign the PDF after `generate()`);
+  - its embedded files name tree is malformed, or has `/Kids` levels;
+  - it already embeds an invoice (or an order, when writing Order-X): detected by content, by a
+    known invoice filename, or by the filename about to be written. Detection is best effort; see
+    CG-14 in `CONFORMANCE.md`;
+  - it has more embedded file streams, or more compressed data, than can be checked within bounded
+    work (256 distinct streams, 128 MiB inflated);
+  - the same `PDFDocument` object was already passed to `generate()`, even if that call failed:
+    load a new one for each call.
 
 ## Example
 

@@ -431,6 +431,29 @@ describe('generate', () => {
       .toThrow(`already has an embedded invoice (${key ?? uf})`)
   })
 
+  it('detects a UTF-8 invoice with a BOM', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    await pdf.attach(Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), Buffer.from(xml)]), 'bom.xml', { mimeType: 'text/xml' })
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('already has an embedded invoice (bom.xml)')
+  })
+
+  it('rejects by name an unreadable order-x.xml when writing an order, accepts it when writing an invoice', async () => {
+    const order = await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8')
+    const source = async (): Promise<Buffer> => {
+      const pdf = await PDFDocument.create()
+      pdf.addPage()
+      const stream = pdf.context.register(pdf.context.stream(`${Buffer.from(order).toString('hex')}>`, { Type: 'EmbeddedFile', Filter: 'ASCIIHexDecode' }))
+      pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', F: PDFString.of('order-x.xml'), EF: { F: stream } }))]))
+      return Buffer.from(await pdf.save())
+    }
+
+    await expect(generate({ pdf: await source(), xml: order })).rejects.toThrow('already has an embedded file named order-x.xml')
+    await expect(generate({ pdf: await source(), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+  })
+
   it('detects a UTF-16BE invoice with a BOM', async () => {
     const xml = await readFile(SOURCE_XML, 'utf8')
     const pdf = await PDFDocument.create()
