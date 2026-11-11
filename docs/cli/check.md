@@ -22,7 +22,8 @@ facturx check <xml> [options]
 | `--flavor` | `-f` | string | autodetect | `facturx`, `orderx` or `zugferd`. |
 | `--level` | `-l` | string | autodetect | Schema level (e.g. `en16931`). |
 | `--schematron` | `-s` | boolean | `false` | Also run Schematron (EN 16931 `BR-*`) validation. **Factur-X only.** |
-| `--warnings-as-errors` | `-W` | boolean | `false` | With `--schematron`, also fail on rules flagged `warning`/`information`. Without it, those are printed as `[Schematron warning]` and don't change the exit code. |
+| `--fr-ctc` | | boolean | `false` | Also run the French e-invoicing rules `BR-FR-Flux2` ([guide](/guide/french-ctc)). **Factur-X BASIC WL, EN16931 and EXTENDED only.** Combine with `--schematron` for the full validation sequence. |
+| `--warnings-as-errors` | `-W` | boolean | `false` | With `--schematron` or `--fr-ctc`, also fail on rules flagged `warning`/`information`. Without it, those are printed as `[Schematron warning]` and don't change the exit code. |
 
 ## Behaviour
 
@@ -31,9 +32,11 @@ facturx check <xml> [options]
   This is **Factur-X only** — using it on another flavor throws (see [Validation](/guide/validation)).
 - **Output:**
   - Valid → prints `Valid XML format (<flavor> - <level>, <mode>)` where *mode* is `XSD` or
-    `XSD + Schematron`.
-  - Invalid → prints each error to stderr, prefixed with `[XSD]` or `[Schematron]`, and exits with
-    code **`1`**.
+    `XSD + Schematron`, with ` + BR-FR` appended when `--fr-ctc` is set.
+  - Invalid → prints each error to stderr, prefixed with `[XSD]`, `[Schematron]` or
+    `[BR-FR] <assert id>:`, and exits with code **`1`**. BR-FR messages are in French and may quote
+    invoice data: mind where this output goes.
+  - `--fr-ctc` on MINIMUM, BASIC or a non-Factur-X file prints why and exits with code **`1`**.
   - Schematron rules flagged `warning`/`information` are printed to stderr as
     `[Schematron warning]` without changing the exit code, even when the document is valid. With
     `--warnings-as-errors` / `-W` they are listed as `[Schematron]` errors and make the command fail.

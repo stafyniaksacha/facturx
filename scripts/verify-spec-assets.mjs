@@ -11,13 +11,16 @@
  *   compared, ignoring the build timestamp, its checksum and absolute base URIs.
  *
  * Any vendored file without a spec counterpart fails the check (untraceable).
+ *
+ * French CTC (src/lib/xsd/fr-ctc/, see verifyFrCtc): the vendored BR-FR-Flux2 XSLT must be
+ * byte-identical to every copy in the FNFE-MPE release, and its SEF reproducible.
  * Order-X assets are reported as unverifiable: that spec is not vendored.
  *
  * Usage: node scripts/verify-spec-assets.mjs [--sef]
  */
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -69,7 +72,7 @@ function normalizeSef(json) {
   })
 }
 
-function verifySef(level, xsltFile, sefFile) {
+function verifySef(level, xsltFile, sefFile, sefDir = join(vendored, level)) {
   const out = join(work, `${level}.sef.json`)
   const run = spawnSync(process.execPath, [
     join(repoRoot, 'node_modules/xslt3/xslt3.js'),
@@ -80,8 +83,50 @@ function verifySef(level, xsltFile, sefFile) {
   ], { encoding: 'utf8' })
   if (run.status !== 0)
     return report(false, level, sefFile, `xslt3 failed: ${run.stderr.trim()}`)
-  const ok = normalizeSef(readFileSync(out, 'utf8')) === normalizeSef(gunzipSync(readFileSync(join(vendored, level, sefFile))).toString('utf8'))
+  const ok = normalizeSef(readFileSync(out, 'utf8')) === normalizeSef(gunzipSync(readFileSync(join(sefDir, sefFile))).toString('utf8'))
   report(ok, level, sefFile, ok ? 'recompiled from vendored XSLT' : 'differs from a fresh compilation of the vendored XSLT')
+}
+
+/**
+ * French CTC rules (BR-FR-Flux2, FNFE-MPE Schematrons FR CTC v1.4.0.04): the release ships the same
+ * CII transform five times (Factur-X BASICWL/EN16931/EXTENDED, CII EN16931/EXTENDED-CTC-FR); the
+ * vendored copy must be identical to all of them. Only the standard ("fatal") variant may be vendored:
+ * the _WARNING variant's transition window closed (release notes p.6).
+ */
+function verifyFrCtc() {
+  const frDir = join(repoRoot, 'src/lib/xsd/fr-ctc')
+  const release = join(repoRoot, 'spec/fnfe-ctc-fr-1.4.0.04/distribution')
+  const name = 'BR-FR-Flux2-Schematron-CII'
+  const copies = [
+    'Factur-X_1.09.2.fixFR04/BASICWL',
+    'Factur-X_1.09.2.fixFR04/EN16931',
+    'Factur-X_1.09.2.fixFR04/EXTENDED',
+    'CII/EN16931',
+    'CII/EXTENDED-CTC-FR',
+  ].map(d => join(release, d, '2xslt', `${name}.xslt`))
+
+  const expected = new Set([`${name}.xslt`, `${name}.sef.json.gz`, 'SCHEMATRON.md'])
+  for (const file of readdirSync(frDir).sort()) {
+    if (!expected.has(file))
+      report(false, 'fr-ctc', file, /_WARNING/.test(file) ? 'the _WARNING variant must not be vendored' : 'no counterpart in spec/ — untraceable')
+  }
+
+  const xslt = join(frDir, `${name}.xslt`)
+  const missing = copies.filter(c => !existsSync(c))
+  if (missing.length)
+    return report(false, 'fr-ctc', `${name}.xslt`, `release copy not found: ${missing.join(', ')}`)
+  const ok = copies.every(c => same(c, xslt))
+  report(ok, 'fr-ctc', `${name}.xslt`, ok ? `identical to all ${copies.length} release copies` : 'differs from a release copy')
+
+  // The SEF embeds the absolute path it was compiled from; it must be a neutral one (SCHEMATRON.md).
+  const sef = gunzipSync(readFileSync(join(frDir, `${name}.sef.json.gz`))).toString('utf8')
+  const leak = [homedir(), repoRoot].find(p => sef.includes(p))
+  report(!leak, 'fr-ctc', `${name}.sef.json.gz`, leak ? 'embeds a local path, recompile from a neutral directory' : 'no local path embedded')
+
+  if (withSef)
+    verifySef('fr-ctc', xslt, `${name}.sef.json.gz`, frDir)
+  else
+    console.log(`skip  fr-ctc   ${name}.sef.json.gz  (run with --sef to recompile)`)
 }
 
 try {
@@ -126,6 +171,8 @@ try {
     }
   }
 
+  verifyFrCtc()
+
   console.log('note  orderx   XSDs not verifiable: the Order-X specification is not vendored under spec/')
 }
 finally {
@@ -136,4 +183,4 @@ if (failures) {
   console.error(`\n${failures} vendored asset(s) do not match the spec.`)
   process.exit(1)
 }
-console.log('\nAll vendored Factur-X assets match spec/factur-x-1.09.')
+console.log('\nAll vendored Factur-X and French CTC assets match spec/.')

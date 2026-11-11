@@ -13,6 +13,7 @@ Conforms to **Factur-X 1.09 / ZUGFeRD 2.5** (the EN 16931 European e-invoicing s
 - 🔁 **Parse** an XML invoice into a fully-typed model — `xmlToInvoice`
 - 🧱 **Build** a Cross Industry Invoice model and serialize it to XML — `invoiceToXml`
 - ✅ **Validate** against the official 1.09 **XSD**, and optionally the **Schematron** EN 16931 `BR-*` business rules and code lists — `check` (`schematron: true`) / `validateSchematron`
+- 🇫🇷 **French e-invoicing rules** `BR-FR-Flux2` (XP Z12-012 v1.4.0) for Factur-X BASIC WL, EN16931 and EXTENDED, opt-in — `check` (`frCtc: true`) / `validateFrCtc` / `facturx check --fr-ctc`
 - 🗂 All five Factur-X profiles: `minimum`, `basicwl`, `basic`, `en16931`, `extended`
 
 See [Profiles & flavors](https://stafyniaksacha.github.io/facturx/guide/profiles-and-flavors) for the supported flavors, levels and autodetection rules.
@@ -58,6 +59,7 @@ Full guides and the complete API reference live on the docs site:
 - **[What are Factur-X & ZUGFeRD?](https://stafyniaksacha.github.io/facturx/guide/what-is-facturx)** — the concepts behind the formats
 - **[Profiles & flavors](https://stafyniaksacha.github.io/facturx/guide/profiles-and-flavors)** — which flavor/level to target
 - **[Validation](https://stafyniaksacha.github.io/facturx/guide/validation)** — XSD vs Schematron, and how to read the errors
+- **[French e-invoicing rules](https://stafyniaksacha.github.io/facturx/guide/french-ctc)** — the `BR-FR` rules of the reform (not legal advice)
 - **[CLI reference](https://stafyniaksacha.github.io/facturx/cli/)** — every command and flag
 - **[SDK reference](https://stafyniaksacha.github.io/facturx/api/)** — `generate` / `extract` / `check` / parsing
 - **[Model reference](https://stafyniaksacha.github.io/facturx/api/models)** — the Cross Industry Invoice tree and how to build one from scratch
