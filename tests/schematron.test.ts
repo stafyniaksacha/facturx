@@ -33,7 +33,7 @@ describe('schematron validation', () => {
 
   it('reports severity and keeps warnings out of validity by default', async () => {
     // PEPPOL-EN16931-R008 ("Document MUST not contain empty elements") is flagged
-    // `warning` in the Factur-X 1.09 EN16931 Schematron.
+    // `warning` in the EN16931 Schematron (1.09 FINAL and 1.09.2.fixFR04).
     const xml = getEN16931XML().replace('<ram:Name>Au bon moulin</ram:Name>', '<ram:Name>Au bon moulin</ram:Name><ram:Description></ram:Description>')
 
     const lenient = await validateSchematron({ xml, flavor: 'facturx', level: 'en16931' })

@@ -28,11 +28,11 @@ open entry is "known", anything else is new.
 | --- | --- |
 | All vendored XSD and `_codedb.xml` are byte-identical to their source (per profile, see Spec of record); all XSLT identical after the documented `sum()` patch, which is idempotent; all `.sef.json.gz` reproducible from them; no vendored folder without a declared source | `pnpm spec:verify` |
 | All 56 official example PDFs (11–12 per profile) extract, pass XSD + Schematron at their profile (no error and no warning), and round-trip through `xmlToInvoice` → `invoiceToXml` with an identical model (this is what caught the 0.6.x `RoleCode` regression fixed in #25) | `pnpm build && pnpm vitest run tests/spec-examples.test.ts` |
-| All 24 Factur-X documents of XP Z12-012 v1.4 annex B (12 PDFs + their 12 commented CII XML, EN 16931 and EXTENDED) pass XSD + profile Schematron at the level in their name with no error and no warning, and re-serialize XSD-valid; the model round-trip is identical except for the two examples hit by CG-01 | `pnpm build && pnpm vitest run tests/annex-b-examples.test.ts` |
-| 1.09.2.fixFR04 behaviour: EXTENDED accepts a line VAT block without `TypeCode`/`CategoryCode` (XSD `minOccurs="0"`, release notes p.5) and the model round-trips it, EN 16931 still rejects it; detail lines, BG-23 and document allowances/charges still need both codes (`BR-FXEXT-CO-04`, `BR-47`, structural `count(ram:TypeCode)=1`); `BR-FXEXT-S-01` accepts several S breakdowns and catches S lines without one (1.09 FINAL's `BR-S-01` did not); `BR-FXEXT-BR-54-1/-2` replace `BR-54`; `BR-CO-27` is `CII-SR-470` in BASIC WL / EN 16931 and gone from EXTENDED | `pnpm build && pnpm vitest run tests/fixfr04.test.ts` |
+| All 24 Factur-X documents of XP Z12-012 v1.4 annex B (12 PDFs + their 12 commented CII XML, EN 16931 and EXTENDED) pass XSD + profile Schematron at the level in their name with no error and no warning, and re-serialize XSD-valid; the model round-trip is identical except for the two examples hit by CG-01, where only BT-146/BT-148 differ and only by rounding to cents | `pnpm build && pnpm vitest run tests/annex-b-examples.test.ts` |
+| 1.09.2.fixFR04 behaviour: EXTENDED accepts a line VAT block without `TypeCode`/`CategoryCode` (XSD `minOccurs="0"`, release notes p.5) and the model round-trips it, EN 16931 still rejects it; detail lines, BG-23 and document allowances/charges still need both codes (`BR-FXEXT-CO-04`, `BR-47`, structural `count(ram:TypeCode)=1`); `BR-FXEXT-S-01` still accepts several S breakdowns and now catches S lines without one (1.09 FINAL's `BR-S-01` did not); two Z breakdowns no longer fire `BR-Z-01` but still fail `BR-FXEXT-Z-08b`; `BR-FXEXT-06` no longer fires on an untyped parent line; `BR-FXEXT-BR-54-1/-2` replace `BR-54`; `BR-CO-27` is `CII-SR-470` in BASIC WL / EN 16931 and gone from EXTENDED | `pnpm build && pnpm vitest run tests/fixfr04.test.ts` |
 | External XML entities are not expanded with the default libxml2-wasm parse options used by `resolveXml` / `xmlToInvoice` (no XXE) | probe in the audit (entity resolves to empty / `check()` rejects the document); keep `XML_PARSE_NOENT` / `XML_PARSE_DTDLOAD` / `XML_PARSE_XINCLUDE` off |
 | The XMP packet header uses the fixed packet id `W5M0MpCehiHzreSzNTczkc9d` of the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` (was CG-06), and `generate()` keeps a source PDF's permanent trailer `/ID` (ISO 32000-1 §14.4) instead of throwing (#37), while rejecting encrypted (§6.1 p.25) and signed sources and sources that already embed a document of the kind being written (§6 p.24 for invoices; one order per PDF for Order-X is by analogy, no Order-X spec is vendored). That document is detected by content, whatever its file name: any stream of a file (`/EF` `/F`, `/UF` or a deprecated key) in the EmbeddedFiles name tree or catalog `/AF` whose root element (namespace and name) is a CII invoice, or an Order-X order when an order is written, including UTF-8 and UTF-16 with a BOM and invoices hidden behind tricky prolog comments. A file whose name tree key, `/F` or `/UF` is a recognized invoice name (`factur-x.xml`, `xrechnung.xml`, ZUGFeRD names; `order-x.xml` for orders) is rejected too, whatever its content can be read as, and so is one already using the filename being written. Other XML is accepted as a supporting file (§6.4 p.30–32), including an Order-X order attached to an invoice. Reading untrusted input is bounded: each distinct stream is read once, inflated with node:zlib in growing slices (at most 64 KiB of compressed input and 2 MiB of output per attempt), 64 KiB of text is examined, and per PDF at most 256 distinct streams and 128 MiB of inflation are allowed (a failed attempt is charged as much as it could have produced); past either limit the PDF is rejected. Known misses are listed in CG-14 | `pnpm build && pnpm vitest run tests/generate.test.ts` |
-| Schematron findings are classified by the rule's own SVRL `flag`: `warning`/`information` are reported in `warnings` and don't affect validity unless `warningsAsErrors` is set; unflagged and `fatal` ones are errors. Fired `<report>`s count like failed `<assert>`s (the Factur-X Schematrons express profile restrictions such as "@schemeID not used in the given context" as reports; before this they were silently dropped). In the vendored Factur-X XSLTs the warning-flagged rules are: MINIMUM `BR-FXEXT-{G,IC,O,Z}-08ini/-08rev`; BASIC `PEPPOL-EN16931-R008`, `BR-FX-EN-04`, `BR-FXEXT-Z-08rev`; BASIC WL none; EN 16931 `PEPPOL-EN16931-R008`, `CII-SR-474/475/476`; EXTENDED `PEPPOL-EN16931-R008`, `BR-FXEXT-04`, `CII-SR-475/476` and the `-08ini/-08rev` pairs, each backed by a blocking `-08b` rule | `pnpm build && pnpm vitest run tests/schematron.test.ts` |
+| Schematron findings are classified by the rule's own SVRL `flag`: `warning`/`information` are reported in `warnings` and don't affect validity unless `warningsAsErrors` is set; unflagged and `fatal` ones are errors. Fired `<report>`s count like failed `<assert>`s (the Factur-X Schematrons express profile restrictions such as "@schemeID not used in the given context" as reports; before this they were silently dropped). In the vendored Factur-X XSLTs the warning-flagged rules are: MINIMUM `BR-FXEXT-{G,IC,O,Z}-08ini/-08rev`; BASIC `PEPPOL-EN16931-R008`, `BR-FX-EN-04`, `BR-FXEXT-Z-08rev`; BASIC WL none; EN 16931 `PEPPOL-EN16931-R008`, `CII-SR-474/475/476`; EXTENDED `PEPPOL-EN16931-R008`, `BR-FXEXT-04`, `CII-SR-475/476` and the `-08ini/-08rev` pairs, each backed by a blocking `-08b` rule (spelled `BR-FXEXT-S08b` for S upstream) | `pnpm build && pnpm vitest run tests/schematron.test.ts tests/fixfr04.test.ts` (severity inventory) |
 | README and docs no longer claim `extract()` detects the level: it returns the flavor (from the attachment filename) and echoes `options.level`; the quick start reads the level from `check()` on the extracted XML (was CG-11) | `pnpm build && pnpm --filter @stafyniaksacha/facturx-examples run examples` (quickstart prints `facturx en16931`, not `facturx undefined`) |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no veraPDF run), any Order-X
@@ -70,7 +70,7 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 - **Evidence:** set an EN16931 example's `NetPriceProductTradePrice/ChargeAmount` to `0.3456`, run
   `xmlToInvoice` → `invoiceToXml`: output is `0.35`. The Factur-X 1.09 examples do not catch it (all
   their prices are whole cents), but two XP Z12-012 annex B examples do: UC11 (BT-146 `0.6925` →
-  `0.69`) and UC13 (BT-148 `489.057` → `489.06`), pinned as expected round-trip losses in
+  `0.69`, 4 lines) and UC13 (BT-146/BT-148 on 5 lines, e.g. `489.057` → `489.06`, `-3.049` → `-3.05`), pinned as expected round-trip losses in
   `tests/annex-b-examples.test.ts` (`CG01_ROUND_TRIP_LOSS`, to empty when this is fixed). Directly
   affects per-kWh energy pricing.
 
@@ -246,16 +246,37 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   - Schematron, all three: `BR-CO-27` disappears. In BASIC WL and EN 16931 the same assert (same
     context and test) is now `CII-SR-470`; in EXTENDED it is gone, so a payee account with both an
     IBAN and a proprietary ID (BT-84) is no longer reported. `CII-SR-467…476` are added (EXTENDED:
-    all but 470 and 474; BASIC WL: 467–473; `CII-SR-474/475/476` are warnings), and BASIC WL gains
-    `BR-CO-18` (blocking) and loses `BR-51`, `BR-CO-19` and `BR-FXEXT-Z-08rev` (see CG-17).
+    all but 470 and 474; BASIC WL: 467–473; `CII-SR-474/475/476` are warnings). BASIC WL gains
+    `BR-CO-18` (blocking) and loses `BR-51` and `BR-FXEXT-Z-08rev`; its 1.09.2 `.sch` now contains
+    `BR-CO-19`, which the 1.09 FINAL `.sch` lacked (CG-17). EN 16931 loses `BR-FXEXT-12` (blocking),
+    `BR-FX-EN-04` and `BR-FXEXT-Z-08rev` (warnings), so it now accepts documents `BR-FXEXT-12`
+    rejected.
   - Schematron, EXTENDED: `BR-S/Z/E/AE/IC/G/O/AF/AG-01` are replaced by
-    `BR-FXEXT-{S,Z,E,AE,IC,G,O,AF,AG}-01`, which only count `DETAIL` lines (BT-X-8) and the
-    logistics charges (BT-X-273); `BR-54` by `BR-FXEXT-BR-54-1` and `BR-FXEXT-BR-54-2`.
+    `BR-FXEXT-{S,Z,E,AE,IC,G,O,AF,AG}-01`, which count `DETAIL` lines (BT-X-8), document
+    allowances/charges and logistics charges (BT-X-273). The old Z/E/… rules required exactly one
+    breakdown of the category, the new ones at least one (several S breakdowns were already
+    accepted); the per-category `-08b` basis rules still reject such a split. The new S rule also
+    catches S lines with no S breakdown, which 1.09 FINAL's `BR-S-01` (lines + breakdowns ≥ 2) let
+    through. `BR-54` is replaced by `BR-FXEXT-BR-54-1` and `BR-FXEXT-BR-54-2`.
+  - Schematron, EXTENDED, same id but changed test: `BR-FXEXT-06` no longer requires BT-X-8 on a
+    line that is the parent of other lines, only on lines carrying a `ParentLineID` (a relaxation,
+    in neither the release notes nor the `.sch` header); `BR-FXEXT-08` rounds the sum of child lines
+    to cents before comparing; `BR-FXEXT-CO-04` additionally requires `TypeCode = 'VAT'`;
+    `BR-FXEXT-CO-10/12/13` cast each summed item to `xs:decimal` (`.sch` header: "to avoid rounding
+    issues"). Read from the XSLT tests; only `BR-FXEXT-06` is reproduced by a test.
   - codedb, EXTENDED: EAS codes `0245`–`0248` added.
-- **Release notes vs files:** p.6 says the profile XSDs and Schematrons are unchanged apart from code
+- **Release notes vs files:** p.5 says `BR-FXEXT-CO-04` was changed to allow INFORMATION and GROUP
+  lines without a VAT category, but its 1.09 FINAL context already excluded them; the change in the
+  files is the XSD cardinality and the added `TypeCode` test. p.6 and p.9 call the EXTENDED fix
+  "1.09.2Beta, which will be released in early August as V1.09.2", while the `.sch` and codedb headers
+  of all three profiles say "Version: 1.09.2, Release date: 2026-08-04, Effective date: 2026-09-01";
+  the EXTENDED `.sch` header also says applicable on emission from October 1, 2026, contradicting its
+  own effective date (the same September/October conflict as CG-15, now in shipped assets). p.6 says the profile XSDs and Schematrons are unchanged apart from code
   lists except for EXTENDED; the BASIC WL and EN 16931 rule changes above contradict it. p.4 names
   the new rules `BR-FREXT-S-01 … BR-FREXT-O-01` and `BR-FXEXT-54-1/-2`; the shipped Factur-X files
   use `BR-FXEXT-S-01 …` and `BR-FXEXT-BR-54-1/-2` (cite those).
+- **Licence:** the 1.09.2.fixFR04 Factur-X `.sch` files carry no licence text; they ship (compiled)
+  under the release's Apache-2.0 statement, like the rest of CG-15.
 - **The library's own conformance claims** still cite 1.09 FINAL text (§, p.N) for every profile.
 - **Close when:** the official Factur-X 1.09.2 distribution is vendored under `spec/` and
   `SOURCES` in `scripts/verify-spec-assets.mjs` points every profile at it.

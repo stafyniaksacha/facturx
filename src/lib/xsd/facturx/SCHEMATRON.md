@@ -1,13 +1,14 @@
 # Vendored Factur-X validation assets
 
-Each profile folder comes from one of two official sources (see `SOURCES` in
+Each profile folder comes from one of two sources: the official Factur-X 1.09 distribution, or the
+FNFE-MPE-supplied 1.09.2.fixFR04 assets (not an official Factur-X distribution) (see `SOURCES` in
 [`scripts/verify-spec-assets.mjs`](../../../../scripts/verify-spec-assets.mjs) and CG-16 in
 [`CONFORMANCE.md`](../../../../CONFORMANCE.md)):
 
 | Folder | Source | Spec path (`<src>` below) |
 | --- | --- | --- |
 | `minimum`, `basic` | Factur-X **1.09 / ZUGFeRD 2.5 FINAL (2026-06-10)** | `spec/factur-x-1.09/distribution/4. FACTUR-X_1.09_XSD_SCHEMATRON_2026-06-10/<n>. Factur-X_1.09_<LEVEL>/` (XSLT in `_XSLT_<LEVEL>/`) |
-| `basicwl`, `en16931`, `extended` | Factur-X **1.09.2.fixFR04**, from FNFE-MPE "Schematrons FR CTC" 1.4.0.04 | `spec/fnfe-ctc-fr-1.4.0.04/distribution/Factur-X_1.09.2.fixFR04/<LEVEL>/` (XSD in `1xsd/`, XSLT in `2xslt/`) |
+| `basicwl`, `en16931`, `extended` | Factur-X **1.09.2.fixFR04**, FNFE-MPE-supplied, from "Schematrons FR CTC" 1.4.0.04 | `spec/fnfe-ctc-fr-1.4.0.04/distribution/Factur-X_1.09.2.fixFR04/<LEVEL>/` (XSD in `1xsd/`, XSLT in `2xslt/`) |
 
 FNFE-MPE only ships 1.09.2.fixFR04 for the three profiles in scope of the French reform (release
 notes p.9, p.11), so MINIMUM and BASIC stay on 1.09 FINAL. Files keep their upstream names and line

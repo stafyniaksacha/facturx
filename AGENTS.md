@@ -137,5 +137,5 @@ Known so you don't rediscover them; fix them deliberately, not as a side effect 
 - `engines.node` is `>=20.11.0`, and Node 20 is end-of-life.
 - `tests/parser.test.ts:29` is skipped.
 - The shipped `.sef.json.gz` files embed the absolute path they were compiled from: a neutral
-  `/tmp/facturx-sef/<level>/` since the 1.09.2.fixFR04 move (see `SCHEMATRON.md`); keep it that way.
+  `/tmp/facturx-sef/<level>/` (recorded as `file:///private/tmp/…` on macOS) since the 1.09.2.fixFR04 move (see `SCHEMATRON.md`); keep it that way.
 - Spec-level gaps: see `CONFORMANCE.md`.

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { check, invoiceToXml, validateSchematron, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
@@ -116,11 +116,27 @@ describe('factur-x 1.09.2.fixFR04: EXTENDED TradeTaxType codes are optional', ()
     const allowanceResult = await check({ xml: allowance, schematron: true })
     expect(allowanceResult.errors).toEqual([])
     expect(allowanceResult.schematronErrors?.map(e => e.test)).toContain('count(ram:TypeCode)=1')
+
+    const allowanceCategory = mutate(
+      example(F1_EXTENDED),
+      /(<ram:ApplicableHeaderTradeSettlement>[\s\S]*?<ram:CategoryTradeTax>[\s\S]*?)<ram:CategoryCode>[A-Z]+<\/ram:CategoryCode>/,
+      '$1',
+    )
+    const allowanceCategoryResult = await check({ xml: allowanceCategory, schematron: true })
+    expect(allowanceCategoryResult.errors).toEqual([])
+    expect(allowanceCategoryResult.schematronErrors?.map(e => e.test)).toContain('count(ram:CategoryCode)=1')
+  })
+
+  it('keeps a present-but-empty CategoryCode through the round trip', async () => {
+    const xml = mutate(example(UC1_EN16931), /<ram:CategoryCode>S<\/ram:CategoryCode>/, '<ram:CategoryCode></ram:CategoryCode>')
+    expect((await check({ xml, level: 'en16931' })).errors).toEqual([])
+    const serialized = (await invoiceToXml(await xmlToInvoice(xml))).toString()
+    expect((await check({ xml: serialized, level: 'en16931' })).errors).toEqual([])
   })
 })
 
 describe('factur-x 1.09.2.fixFR04: EXTENDED Schematron rule changes', () => {
-  it('accepts several Standard-rated VAT breakdowns (BR-FXEXT-S-01 replaces BR-S-01)', async () => {
+  it('accepts several Standard-rated VAT breakdowns (as 1.09 FINAL already did)', async () => {
     const xml = example(F1_EXTENDED)
     const header = xml.slice(xml.indexOf('<ram:ApplicableHeaderTradeSettlement>'))
     expect(header.match(/<ram:CategoryCode>S<\/ram:CategoryCode>/g)?.length).toBeGreaterThanOrEqual(2)
@@ -128,6 +144,33 @@ describe('factur-x 1.09.2.fixFR04: EXTENDED Schematron rule changes', () => {
     const result = await validateSchematron({ xml, flavor: 'facturx', level: 'extended' })
     expect(result.errors).toEqual([])
     expect(result.warnings).toEqual([])
+  })
+
+  it('no longer reports BR-Z-01 for two Zero-rated breakdowns, but BR-FXEXT-Z-08b still does', async () => {
+    // 1.09 FINAL's BR-Z-01 (and BR-E-01, …) required exactly one breakdown of the category;
+    // BR-FXEXT-Z-01 requires at least one. The per-category basis rule still rejects the split.
+    let xml = example(UC12_EXTENDED)
+      .replaceAll('<ram:CategoryCode>S</ram:CategoryCode>', '<ram:CategoryCode>Z</ram:CategoryCode>')
+      .replace(/<ram:RateApplicablePercent>(?:10|20)\.00<\/ram:RateApplicablePercent>/g, '<ram:RateApplicablePercent>0.00</ram:RateApplicablePercent>')
+      .replace(/<ram:CalculatedAmount>(?:60|20)\.00<\/ram:CalculatedAmount>/g, '<ram:CalculatedAmount>0.00</ram:CalculatedAmount>')
+    xml = mutate(xml, /(<ram:TaxTotalAmount currencyID="EUR">)80\.00/, '$10.00')
+    xml = mutate(xml, /<ram:GrandTotalAmount>580\.00/, '<ram:GrandTotalAmount>500.00')
+    xml = mutate(xml, /<ram:DuePayableAmount>580\.00/, '<ram:DuePayableAmount>500.00')
+    expect(xml.slice(xml.indexOf('<ram:ApplicableHeaderTradeSettlement>')).match(/<ram:CategoryCode>Z<\/ram:CategoryCode>/g)).toHaveLength(2)
+
+    const result = await validateSchematron({ xml, flavor: 'facturx', level: 'extended' })
+    expect(ids(result.errors)).not.toContain('BR-Z-01')
+    expect(ids(result.errors)).not.toContain('BR-FXEXT-Z-01')
+    expect(ids(result.errors)).toContain('BR-FXEXT-Z-08b')
+  })
+
+  it('no longer reports BR-FXEXT-06 for a parent line without a sub-type (relaxed in 1.09.2)', async () => {
+    // 1.09 FINAL also required BT-X-8 on a line other lines point to; 1.09.2 only checks lines
+    // that carry a ParentLineID. Not in the release notes (CONFORMANCE.md CG-16).
+    const xml = mutate(example(UC12_EXTENDED), /<ram:LineStatusReasonCode>GROUP<\/ram:LineStatusReasonCode>/, '')
+    const result = await validateSchematron({ xml, flavor: 'facturx', level: 'extended' })
+    expect(ids(result.errors)).not.toContain('BR-FXEXT-06')
+    expect(ids(result.errors)).toContain('BR-FXEXT-CO-04')
   })
 
   it('reports BR-FXEXT-S-01 when Standard-rated detail lines have no S breakdown', async () => {
@@ -192,5 +235,34 @@ describe('factur-x 1.09.2.fixFR04: BR-CO-27 (IBAN or proprietary ID, BT-84)', ()
     const rule = result.errors.find(e => e.id === 'CII-SR-470')
     expect(rule?.severity).toBe('error')
     expect(ids(result.errors)).not.toContain('BR-CO-27')
+  })
+})
+
+describe('vendored Factur-X Schematron severity inventory', () => {
+  // Proof for the warning-flag list in CONFORMANCE.md (Verified, severity row).
+  const XSD_DIR = resolve(import.meta.dirname, '../src/lib/xsd/facturx')
+
+  function warningRules(level: string): string[] {
+    const file = readdirSync(resolve(XSD_DIR, level)).find(f => f.endsWith('.xslt'))!
+    const xslt = readFileSync(resolve(XSD_DIR, level, file), 'utf8')
+    const out = new Set<string>()
+    for (const m of xslt.matchAll(/<svrl:(failed-assert|successful-report)\b[\s\S]*?<\/svrl:\1>/g)) {
+      const flag = m[0].match(/flag="(\w+)"|name="flag">(\w+)</)
+      if (flag && ['warning', 'information'].includes(flag[1] ?? flag[2]))
+        out.add(m[0].match(/\[([A-Z][\w-]+)\]/)?.[1] ?? '?')
+    }
+    return [...out].sort()
+  }
+
+  const pairs = (cats: string[]): string[] => cats.flatMap(c => [`BR-FXEXT-${c}-08ini`, `BR-FXEXT-${c}-08rev`])
+
+  it.each([
+    ['minimum', pairs(['G', 'IC', 'O', 'Z'])],
+    ['basic', ['BR-FX-EN-04', 'BR-FXEXT-Z-08rev', 'PEPPOL-EN16931-R008']],
+    ['basicwl', []],
+    ['en16931', ['CII-SR-474', 'CII-SR-475', 'CII-SR-476', 'PEPPOL-EN16931-R008']],
+    ['extended', ['BR-FXEXT-04', ...pairs(['AE', 'AF', 'AG', 'E', 'G', 'IC', 'O', 'S', 'Z']), 'CII-SR-475', 'CII-SR-476', 'PEPPOL-EN16931-R008']],
+  ])('%s', (level, expected) => {
+    expect(warningRules(level)).toEqual([...expected].sort())
   })
 })

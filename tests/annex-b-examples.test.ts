@@ -16,6 +16,14 @@ const EXAMPLES_DIR = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/
 // CG-01 is fixed; this list then has to be emptied.
 const CG01_ROUND_TRIP_LOSS = ['UC11_F202600022', 'UC13_AUTOF202600035']
 
+function diffLeaves(a: unknown, b: unknown, path = ''): { path: string, before: unknown, after: unknown }[] {
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)])
+    return [...keys].flatMap(k => diffLeaves((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], `${path}.${k}`))
+  }
+  return Object.is(a, b) ? [] : [{ path, before: a, after: b }]
+}
+
 function levelFromName(name: string): string {
   if (/EXTENDED/.test(name))
     return 'extended'
@@ -65,9 +73,18 @@ describe('official XP Z12-012 v1.4 annex B Factur-X examples', () => {
     const serialized = (await invoiceToXml(model)).toString()
     const reparsed = await check({ xml: serialized, level })
     expect(reparsed.errors).toEqual([])
-    if (CG01_ROUND_TRIP_LOSS.some(id => name.includes(id)))
-      expect(await xmlToInvoice(serialized)).not.toEqual(model)
-    else
-      expect(await xmlToInvoice(serialized)).toEqual(model)
+    const after = await xmlToInvoice(serialized)
+    if (CG01_ROUND_TRIP_LOSS.some(id => name.includes(id))) {
+      // Only item net/gross prices (BT-146 / BT-148) may differ, and only by rounding to cents.
+      const lost = diffLeaves(model, after)
+      expect(lost.length).toBeGreaterThan(0)
+      for (const { path, before, after } of lost) {
+        expect(path).toMatch(/\.(?:net|gross)PriceProductTradePrice\.chargeAmount\.value$/)
+        expect(after).toBe(Number((before as number).toFixed(2)))
+      }
+    }
+    else {
+      expect(after).toEqual(model)
+    }
   })
 })
