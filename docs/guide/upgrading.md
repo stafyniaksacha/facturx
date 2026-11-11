@@ -63,7 +63,8 @@ findings. They are now listed in `schematronErrors` and make the document invali
 
 **Effect:** a document that passed in 0.6.1 can now fail, typically because it carries an attribute
 the profile does not allow. The repository's own `examples/Facture_FR_EN16931.xml` is one case: it now
-fails two `@schemeID` reports at EN 16931. Remove the attribute the message points to.
+fails two `@schemeID` reports at EN 16931 (`examples/Avoir_FR_type381_EN16931.xml` and
+`examples/factur-x.xml` fail too). Remove the attribute the message points to.
 
 ### BASIC WL, EN 16931 and EXTENDED validate against Factur-X 1.09.2.fixFR04
 
@@ -78,11 +79,16 @@ What you may notice:
 | Profile | Change |
 | --- | --- |
 | BASIC WL, EN 16931 | `BR-CO-27` is now reported as `CII-SR-470` (same check). |
-| BASIC WL | New blocking rules `BR-CO-18` and `CII-SR-467` … `CII-SR-473`. |
-| EN 16931 | `BR-FXEXT-12` is gone, so some documents it used to reject now pass. New warning rules `CII-SR-474/475/476`. |
-| EXTENDED | `BR-S-01`, `BR-Z-01`, `BR-E-01`, `BR-AE-01`, `BR-IC-01`, `BR-G-01`, `BR-O-01`, `BR-AF-01`, `BR-AG-01` become `BR-FXEXT-<category>-01`. They count `DETAIL` lines and accept several breakdowns of one category. |
+| BASIC WL | New blocking rules `BR-CO-18` and `CII-SR-467` … `CII-SR-473`. The warning `BR-FXEXT-Z-08rev` is no longer emitted. `BR-51` is gone, but it could not fire on BASIC WL anyway: the XSD has no payment card. |
+| EN 16931 | `BR-FXEXT-12` is gone, so some documents it used to reject now pass. New blocking rules `CII-SR-467` … `CII-SR-469` and `CII-SR-471` … `CII-SR-473`. New warning rules `CII-SR-474/475/476`. The warnings `BR-FX-EN-04` and `BR-FXEXT-Z-08rev` are no longer emitted. |
+| EXTENDED | `BR-S-01`, `BR-Z-01`, `BR-E-01`, `BR-AE-01`, `BR-IC-01`, `BR-G-01`, `BR-O-01`, `BR-AF-01`, `BR-AG-01` become `BR-FXEXT-<category>-01`. They count `DETAIL` lines, document allowances and charges, and logistics charges, and accept several breakdowns of one category. |
+| EXTENDED | New blocking rules `CII-SR-467` … `CII-SR-469` and `CII-SR-471` … `CII-SR-473`. New warning rules `CII-SR-475/476`. |
 | EXTENDED | `BR-54` becomes `BR-FXEXT-BR-54-1` and `BR-FXEXT-BR-54-2`. `BR-CO-27` is no longer checked. |
 | EXTENDED | The XSD makes a VAT block's `TypeCode` / `CategoryCode` optional, so information and group sub-lines can leave them out. The Schematron still requires them on detail lines, on the VAT breakdown (BG-23) and on document-level allowances and charges. |
+
+The new blocking `CII-SR-*` rules check that BT-81 and BT-82 have a single value across payment
+means, that BT-83 and an allowance or charge amount appear at most once, and that BT-95 and BT-96 are
+present on every document allowance or charge.
 
 If you filter or translate findings by `id`, update the mapping above.
 
@@ -93,7 +99,7 @@ The converter omits it when it is unset, and the parser leaves it `undefined` wh
 have it. Code that reads it needs a guard:
 
 ```ts
-const code = tax.categoryCode ?? 'S' // or handle the missing case explicitly
+const code = tax.categoryCode?.value ?? 'S' // or handle the missing case explicitly
 ```
 
 ## Other behaviour changes
@@ -105,7 +111,9 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   element is now kept. In exchange, `generate()` now **rejects**, before changing anything:
   encrypted or signed PDFs, PDFs that already embed an invoice, PDFs with a `/Kids` name tree, a
   reused `PDFDocument`, and PDFs with too many or too large attachments to inspect. The full list of
-  error messages is in [`generate()`](/api/generate#source-pdfs-that-are-rejected).
+  error messages is in [`generate()`](/api/generate#source-pdfs-that-are-rejected). The
+  EmbeddedFiles name tree is also kept sorted, so existing attachments can come back in a different
+  order.
 - **A malformed EmbeddedFiles name tree** now throws `Malformed EmbeddedFiles name tree: <reason>`
   from `extract()` and `generate()`, instead of a raw `pdf-lib` error ([#41](https://github.com/stafyniaksacha/facturx/pull/41)). A `/Name` key, which
   0.6.1 decoded, is now rejected.
@@ -148,8 +156,11 @@ legal advice.
 
 | Field | Meaning |
 | --- | --- |
-| `severity` | `'error'` or `'warning'` (see above). |
-| `assertId` | Raw SVRL assert id: an internal number such as `FX-SCH-A-000372` for structural checks, sometimes the rule itself in 1.09.2, or the exact assertion for BR-FR. |
+| `severity` | `'error'` or `'warning'` (see above). **Required** in the type, so code that builds `SchematronError` objects itself (mocks, adapters) must set it. |
+| `assertId` | Raw SVRL assert id, set only when the rule declares one. It is an internal number such as `FX-SCH-A-000372` for many structural checks, sometimes the rule itself in 1.09.2, or the exact assertion for BR-FR. It is absent for every `report` finding and for structural checks without an id. |
+
+The types `SchematronError`, `SchematronResult` (the `{ valid, errors, warnings }` returned by
+`validateSchematron()` and `validateFrCtc()`) and `SchematronConfig` are now exported by name.
 
 `id` also recognises rule ids with lowercase suffixes now, for example `BR-FXEXT-Z-08rev`, which 0.6.1
 left undefined.
