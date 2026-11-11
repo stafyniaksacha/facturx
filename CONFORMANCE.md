@@ -96,7 +96,7 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 - **Spec:** §6.2.2 table p.27. France: MINIMUM / BASIC WL `Data`; BASIC / EN 16931 / EXTENDED
   `Alternative`, `Source` or `Data`. Germany: `Alternative` mandatory for BASIC and above.
   BR-HYBRID-11 (Warning).
-- **Code:** `src/lib/generate.ts:102`. `Data` is valid for every profile in France, so this is a
+- **Code:** `src/lib/generate.ts:109`. `Data` is valid for every profile in France, so this is a
   missing option, not a wrong default. It blocks German-compliant output.
 
 ### CG-08 — Order-X hybrid metadata
@@ -104,12 +104,12 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 - **Spec:** hybrid code lists (`text/codelists--HybridDocument.csv`, `--HybridConformance.csv`):
   Order-X `fx:DocumentType` ∈ {`ORDER`, `ORDER_CHANGE`, `ORDER_RESPONSE`}, `fx:ConformanceLevel` ∈
   {`BASIC`, `COMFORT`, `EXTENDED`}. BR-HYBRID-06/07 are Fatal.
-- **Code:** `src/lib/xmp.ts:92` always writes `INVOICE`; `src/lib/generate.ts:78-81` leaves
+- **Code:** `src/lib/xmp.ts:92` always writes `INVOICE`; `src/lib/generate.ts:79-82` leaves
   `conformanceLevel` empty for `orderx`. The namespace question is CG-10.
 
 ### CG-09 — `generate()` with `flavor: 'zugferd'`
 
-- **Code:** `src/lib/generate.ts:82-85` embeds `zugferd-invoice.xml` with the Factur-X `fx:` XMP and
+- **Code:** `src/lib/generate.ts:83-86` embeds `zugferd-invoice.xml` with the Factur-X `fx:` XMP and
   an empty conformance level. `getFlavor()` maps only the ZUGFeRD 1.0 root (`CrossIndustryDocument`)
   to `zugferd`, and `check()` has no XSD for it (throws).
 - **Spec:** `zugferd-invoice.xml` is not in the HybridDocumentFilename code list (BR-HYBRID-08/13,
