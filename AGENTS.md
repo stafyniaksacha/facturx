@@ -39,6 +39,7 @@ pnpm test             # vitest; includes the official-example corpus (~16 s of t
 pnpm vitest run tests/spec-examples.test.ts   # just the corpus: 56 official PDFs
 pnpm spec:verify      # vendored XSD/codedb/XSLT/SEF ⇔ spec/ (~1 min, recompiles every SEF)
 pnpm lint             # @antfu/eslint-config (see "Current state": fails on main)
+pnpm typecheck        # tsc --noEmit (CI runs it after lint)
 pnpm --filter @stafyniaksacha/facturx-examples run examples   # runs every example script
 pnpm docs             # VitePress dev server; regenerates docs/api/models/ from the model sources
 ```
