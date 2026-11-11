@@ -144,7 +144,7 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 
 - **Spec:** §6.2.2 p.27 and §6.4 p.31: "it is also allowed to insert one or two “/Kids” steps level
   between “/EmbeddedFiles” and “/Names”", and readers should accept this structure.
-- **Code:** `extractRawAttachments` (`src/lib/pdf.ts`) only reads a `/Names` array on the tree root,
+- **Code:** `readEmbeddedFilesNames` (`src/lib/pdf.ts`) only reads a `/Names` array on the tree root,
   so `extract()` throws `No attachment found`. `generate()` rejects such a source on purpose
   (`assertEmbeddable` in `src/lib/generate.ts`), because pdf-lib would append a `/Names` array next to
   the root's `/Kids` and produce an invalid name tree (ISO 32000-1 §7.9.6).

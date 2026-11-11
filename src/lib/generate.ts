@@ -22,7 +22,7 @@ import pkg from '../../package.json' with { type: 'json' }
 import { check } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, XRECHNUNG_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
-import { attachmentNames } from './pdf'
+import { attachmentNames, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
 import { extractBaseInfo, getFlavor, getLevel } from './xml'
@@ -89,6 +89,8 @@ export async function generate(options: {
     }
 
     const pdf = await resolvePdf(options.pdf)
+    // Throws on a malformed tree, which pdf.attach() would otherwise append to and corrupt (#40).
+    readEmbeddedFilesNames(pdf)
 
     assertEmbeddable(pdf)
     // Marked synchronously, before the first await below, so overlapping calls on the same
@@ -205,7 +207,7 @@ function sortEmbeddedFiles(pdf: PDFDocument, invoiceFilename: string): void {
     const name = entries.get(i)
     const key = pdf.context.lookup(name)
     if (!(key instanceof PDFHexString || key instanceof PDFString))
-      return // Not a well-formed name tree: leave it as it is rather than guess.
+      return // Validated by readEmbeddedFilesNames() first; leave anything unexpected untouched.
     pairs.push({ key: key.asBytes(), name, value: entries.get(i + 1) })
   }
 
