@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { extract, generate, xmlToInvoice } from '@stafyniaksacha/facturx'
-import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRawStream, PDFString } from 'pdf-lib'
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNull, PDFRawStream, PDFString } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
 // A Factur-X PDF produced by an office suite: it carries a trailer /ID, like most real-world PDFs.
@@ -171,6 +171,15 @@ describe('generate', () => {
       await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
     })
 
+    it('signed (an indirect null /FT under a /FT /Sig parent)', async () => {
+      const pdf = await blankPdf()
+      const signature = pdf.context.register(pdf.context.obj({ Type: 'Sig', Filter: 'Adobe.PPKLite' }))
+      const kid = pdf.context.obj({ FT: pdf.context.register(PDFNull), V: signature })
+      pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [pdf.context.obj({ FT: 'Sig', Kids: [kid] })] }))
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
+    })
+
     it('signed (/Perms)', async () => {
       const pdf = await blankPdf()
       pdf.catalog.set(PDFName.of('Perms'), pdf.context.obj({}))
@@ -239,6 +248,24 @@ describe('generate', () => {
     const arrays = output.context.enumerateIndirectObjects().filter(([, obj]) => obj instanceof PDFArray && obj.size() === 6)
     expect(arrays).toHaveLength(1)
     expect(tree.get(PDFName.of('Names'))).toBe(arrays[0][0])
+  })
+
+  it('writes the invoice key in the encoding of the source keys before sorting', async () => {
+    const source = await PDFDocument.create()
+    source.addPage()
+    await source.attach(new TextEncoder().encode('a'), 'a.txt', { mimeType: 'text/plain' })
+    await source.attach(new TextEncoder().encode('z'), 'z.txt', { mimeType: 'text/plain' })
+    await source.flush()
+    // pdf-lib writes UTF-16BE keys; rewrite them as PDFDocEncoded literals, as many producers do.
+    const sourceKeys = source.catalog.lookup(PDFName.of('Names'), PDFDict).lookup(PDFName.of('EmbeddedFiles'), PDFDict).lookup(PDFName.of('Names'), PDFArray)
+    for (let i = 0; i < sourceKeys.size(); i += 2)
+      sourceKeys.set(i, PDFString.of(sourceKeys.lookup(i, PDFHexString).decodeText()))
+
+    const output = await PDFDocument.load(await generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') }))
+    const keys = output.catalog.lookup(PDFName.of('Names'), PDFDict).lookup(PDFName.of('EmbeddedFiles'), PDFDict).lookup(PDFName.of('Names'), PDFArray).asArray().filter((_, i) => i % 2 === 0)
+    // Every key is a PDFDocEncoded literal (no UTF-16BE byte order mark), in byte order.
+    expect(keys.map(key => Buffer.from((key as PDFString).asBytes()).toString('latin1'))).toEqual(['a.txt', 'factur-x.xml', 'z.txt'])
+    expect((await extract({ pdf: Buffer.from(await output.save()) })).filename).toBe('factur-x.xml')
   })
 
   it('accepts unsigned signature fields', async () => {

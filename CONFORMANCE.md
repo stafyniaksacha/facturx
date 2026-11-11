@@ -40,6 +40,7 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | CG-10 | spec | BR-HYBRID-04 vs §6.3.1 p.28 | — | Spec is internally inconsistent on the XMP namespace URI |
 | CG-11 | API vs docs | — | docs | `extract()` never autodetects `level`; README implies it does |
 | CG-12 | profiles | §7.7, `codelists--HybridConformance.csv` | interop | XRECHNUNG reference profile unsupported; no DE profile restrictions |
+| CG-13 | embedding | §6.2.2 p.27, §6.4 p.31 | interop | `/Kids` levels in the EmbeddedFiles name tree: `extract()` finds no invoice, `generate()` rejects the source |
 
 ### CG-01 — Unit prices truncated to 2 decimals
 
@@ -138,6 +139,19 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 - MINIMUM and BASIC WL are "not allowed in Germany from 2025-01-01" as invoices
   (`codelists--HybridConformance.csv`). BR-HYBRID-DE-01 (Fatal, DE): MINIMUM is forbidden when buyer
   and seller are both in Germany. The library gives no warning for either.
+
+### CG-13 — `/Kids` levels in the EmbeddedFiles name tree
+
+- **Spec:** §6.2.2 p.27 and §6.4 p.31: "it is also allowed to insert one or two “/Kids” steps level
+  between “/EmbeddedFiles” and “/Names”", and readers should accept this structure.
+- **Code:** `extractRawAttachments` (`src/lib/pdf.ts`) only reads a `/Names` array on the tree root,
+  so `extract()` throws `No attachment found`. `generate()` rejects such a source on purpose
+  (`assertEmbeddable` in `src/lib/generate.ts`), because pdf-lib would append a `/Names` array next to
+  the root's `/Kids` and produce an invalid name tree (ISO 32000-1 §7.9.6).
+- **Evidence:** load `examples/Facture_FR_EN16931.pdf` with pdf-lib, move the EmbeddedFiles `/Names`
+  array into a leaf under `/Kids`, save, and call `extract()` on it: `No attachment found`. For
+  `generate()`, see the test `rejects inputs it cannot embed into correctly > embedded files name tree
+  with /Kids` in `tests/generate.test.ts`.
 
 ## Changing this file
 

@@ -14,6 +14,7 @@ import {
   PDFDict,
   PDFHexString,
   PDFName,
+  PDFNull,
   PDFString,
 } from 'pdf-lib'
 import pkg from '../../package.json' with { type: 'json' }
@@ -133,7 +134,7 @@ export async function generate(options: {
     }, pdf)
 
     await pdf.flush()
-    sortEmbeddedFiles(pdf)
+    sortEmbeddedFiles(pdf, filename)
 
     return await pdf.save()
   }
@@ -186,9 +187,11 @@ function assertNoEmbeddedInvoice(pdf: PDFDocument): void {
 /**
  * pdf-lib appends new attachments at the end of the EmbeddedFiles /Names array, but name tree keys
  * must be sorted in lexical order (ISO 32000-1 §7.9.6) for readers that search the tree by key.
+ * Keys are compared as bytes, so they must share one encoding: pdf-lib always writes UTF-16BE, so
+ * the invoice key is rewritten as a PDFDocEncoded string when every source key uses that encoding.
  * assertEmbeddable() rejects a root with /Kids, so the tree is a single flat /Names array here.
  */
-function sortEmbeddedFiles(pdf: PDFDocument): void {
+function sortEmbeddedFiles(pdf: PDFDocument, invoiceFilename: string): void {
   const names = pdf.context.lookup(pdf.catalog.get(PDFName.of('Names')))
   const embeddedFiles = names instanceof PDFDict ? pdf.context.lookup(names.get(PDFName.of('EmbeddedFiles'))) : undefined
   if (!(embeddedFiles instanceof PDFDict))
@@ -205,6 +208,16 @@ function sortEmbeddedFiles(pdf: PDFDocument): void {
       return // Not a well-formed name tree: leave it as it is rather than guess.
     pairs.push({ key: key.asBytes(), name, value: entries.get(i + 1) })
   }
+
+  const isUtf16 = (bytes: Uint8Array): boolean => bytes[0] === 0xFE && bytes[1] === 0xFF
+  const invoice = pairs.find(({ key, name }) => isUtf16(key) && (pdf.context.lookup(name) as PDFString).decodeText() === invoiceFilename)
+  const others = pairs.filter(pair => pair !== invoice)
+  // The invoice filenames are ASCII, which PDFDocEncoding encodes as the same bytes.
+  if (invoice && others.length > 0 && !others.some(({ key }) => isUtf16(key))) {
+    invoice.name = PDFString.of(invoiceFilename)
+    invoice.key = (invoice.name as PDFString).asBytes()
+  }
+
   pairs.sort((a, b) => compareBytes(a.key, b.key))
 
   // In place: the array may be an indirect object, and a replacement would leave the old one behind.
@@ -248,8 +261,14 @@ function hasSignedField(pdf: PDFDocument): boolean {
       continue
     seen.set(dict, states.add(key))
 
-    const type = pdf.context.lookup(dict.get(PDFName.of('FT'))) ?? inheritedType
-    const hasValue = inheritedValue || dict.has(PDFName.of('V'))
+    // A null value, direct, indirect or a reference to a missing object, is the same as an absent
+    // entry (ISO 32000-1 §7.3.9, §7.3.10).
+    const resolve = (key: string): PDFObject | undefined => {
+      const value = pdf.context.lookup(dict.get(PDFName.of(key)))
+      return value === PDFNull ? undefined : value
+    }
+    const type = resolve('FT') ?? inheritedType
+    const hasValue = inheritedValue || resolve('V') !== undefined
     if (type === PDFName.of('Sig') && hasValue)
       return true
     const kids = pdf.context.lookup(dict.get(PDFName.of('Kids')))
