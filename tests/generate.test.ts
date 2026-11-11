@@ -195,22 +195,70 @@ describe('generate', () => {
       await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('/Kids')
     })
 
-    it.each(['factur-x.xml', 'xrechnung.xml'])('already embeds %s', async (name) => {
+    // Detected by content, whatever the file is called: other tools use other names.
+    it.each(['xrechnung.xml', 'invoice.xml', 'facture'])('already embeds an invoice named %s', async (name) => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
       const pdf = await blankPdf()
-      await pdf.attach(new TextEncoder().encode('<x/>'), name, { mimeType: 'text/xml' })
+      await pdf.attach(new TextEncoder().encode(xml), name, { mimeType: 'text/xml' })
 
-      await expect(generate({ pdf: Buffer.from(await pdf.save()), xml: await readFile(SOURCE_XML, 'utf8') }))
+      await expect(generate({ pdf: Buffer.from(await pdf.save()), xml }))
         .rejects
         .toThrow(`already has an embedded invoice (${name})`)
     })
 
+    it('already has an invoice associated only through /AF', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      const pdf = await blankPdf()
+      const stream = pdf.context.register(pdf.context.flateStream(new TextEncoder().encode(xml), { Type: 'EmbeddedFile' }))
+      const fileSpec = pdf.context.register(pdf.context.obj({ Type: 'Filespec', UF: PDFHexString.fromText('order.xml'), EF: { F: stream } }))
+      pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([fileSpec]))
+
+      await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('already has an embedded invoice (order.xml)')
+    })
+
+    it('already embeds a UTF-16LE invoice', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      const pdf = await blankPdf()
+      const utf16 = Buffer.concat([Buffer.from([0xFF, 0xFE]), Buffer.from(xml.replace('encoding="UTF-8"', 'encoding="UTF-16"'), 'utf16le')])
+      await pdf.attach(utf16, 'invoice-utf16.xml', { mimeType: 'text/xml' })
+
+      await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('already has an embedded invoice (invoice-utf16.xml)')
+    })
+
+    it('already embeds an invoice larger than the decoded prefix', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      const pdf = await blankPdf()
+      const large = xml.replace('</rsm:CrossIndustryInvoice>', `<!--${' '.repeat(1024 * 1024)}--></rsm:CrossIndustryInvoice>`)
+      await pdf.attach(new TextEncoder().encode(large), 'large.xml', { mimeType: 'text/xml' })
+
+      await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('already has an embedded invoice (large.xml)')
+    })
+
     it('already has an invoice queued with attach() but not saved', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      const pdf = await blankPdf()
+      await pdf.attach(new TextEncoder().encode(xml), 'queued.xml', { mimeType: 'text/xml' })
+
+      await expect(generate({ pdf, xml })).rejects.toThrow('already has an embedded invoice (queued.xml)')
+    })
+
+    it('already has a non-invoice file under the name it would write', async () => {
       const pdf = await blankPdf()
       await pdf.attach(new TextEncoder().encode('<x/>'), 'factur-x.xml', { mimeType: 'text/xml' })
 
+      await expect(generate({ pdf: Buffer.from(await pdf.save()), xml: await readFile(SOURCE_XML, 'utf8') }))
+        .rejects
+        .toThrow('already has an embedded file named factur-x.xml')
+    })
+
+    it('already has that name as a file specification /F under another key', async () => {
+      const pdf = await blankPdf()
+      const fileSpec = pdf.context.register(pdf.context.obj({ Type: 'Filespec', F: PDFString.of('factur-x.xml') }))
+      pdf.catalog.set(PDFName.of('Names'), pdf.context.obj({ EmbeddedFiles: { Names: [PDFString.of('attachment-1'), fileSpec] } }))
+
       await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') }))
         .rejects
-        .toThrow('already has an embedded invoice (factur-x.xml)')
+        .toThrow('already has an embedded file named factur-x.xml')
     })
 
     it('already has an embedded invoice', async () => {
@@ -266,6 +314,75 @@ describe('generate', () => {
     // Every key is a PDFDocEncoded literal (no UTF-16BE byte order mark), in byte order.
     expect(keys.map(key => Buffer.from((key as PDFString).asBytes()).toString('latin1'))).toEqual(['a.txt', 'factur-x.xml', 'z.txt'])
     expect((await extract({ pdf: Buffer.from(await output.save()) })).filename).toBe('factur-x.xml')
+  })
+
+  it('accepts supporting XML files that are not invoices (§6.4)', async () => {
+    const source = await PDFDocument.create()
+    source.addPage()
+    await source.attach(new TextEncoder().encode('<?xml version="1.0"?><timesheet><day>1</day></timesheet>'), 'timesheet.xml', { mimeType: 'text/xml' })
+
+    const output = await generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })
+    expect((await extract({ pdf: Buffer.from(output) })).filename).toBe('factur-x.xml')
+  })
+
+  it.each([
+    ['an Order-X purchase order', resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml')],
+    ['a look-alike root without the CII namespace', undefined],
+  ])('accepts a supporting XML file that is %s (§6.4)', async (_, file) => {
+    const content = file ? await readFile(file) : new TextEncoder().encode('<CrossIndustryInvoice/>')
+    const source = await PDFDocument.create()
+    source.addPage()
+    await source.attach(content, 'supporting.xml', { mimeType: 'text/xml' })
+
+    const output = await generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })
+    expect((await extract({ pdf: Buffer.from(output) })).filename).toBe('factur-x.xml')
+  })
+
+  it.each([
+    ['a DOCTYPE internal subset with no closing ]', '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "b">'],
+    ['a DOCTYPE with a [ in a quoted system id', '<?xml version="1.0"?><!DOCTYPE x SYSTEM "a[b"><x/>'],
+    ['an unterminated comment', '<?xml version="1.0"?><!-- no end'],
+    ['a quoted > in a DOCTYPE system id', '<!DOCTYPE x SYSTEM "><rsm:CrossIndustryInvoice xmlns:rsm=\'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100\'>"><x/>'],
+    ['an unterminated start tag', '<?xml version="1.0"?><x a="1'],
+  ])('accepts, without hanging, a supporting file with %s', async (_, content) => {
+    const source = await PDFDocument.create()
+    source.addPage()
+    await source.attach(new TextEncoder().encode(content), 'odd.xml', { mimeType: 'text/xml' })
+
+    await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+  }, 2000)
+
+  it('reads a stream shared by many file specifications only once', async () => {
+    const source = await PDFDocument.create()
+    source.addPage()
+    const stream = source.context.register(source.context.flateStream(new TextEncoder().encode('<timesheet/>'), { Type: 'EmbeddedFile' }))
+    const specs = Array.from({ length: 5000 }, () => source.context.register(source.context.obj({ Type: 'Filespec', EF: { F: stream } })))
+    source.catalog.set(PDFName.of('AF'), source.context.obj(specs))
+
+    await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+  })
+
+  it('rejects a PDF with too many distinct embedded files to check', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const specs = Array.from({ length: 257 }, () => pdf.context.register(pdf.context.obj({
+      Type: 'Filespec',
+      EF: { F: pdf.context.register(pdf.context.stream('x', { Type: 'EmbeddedFile' })) },
+    })))
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj(specs))
+
+    await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('could not check it')
+  })
+
+  it('reads only a bounded prefix of a highly compressed attachment', async () => {
+    const source = await PDFDocument.create()
+    source.addPage()
+    // 64 MiB of zeros in ~64 KiB of zlib data: far more than the inflate cap allows.
+    const bomb = source.context.register(source.context.flateStream(new Uint8Array(64 * 1024 * 1024), { Type: 'EmbeddedFile' }))
+    const fileSpec = source.context.register(source.context.obj({ Type: 'Filespec', UF: PDFHexString.fromText('zeros.bin'), EF: { F: bomb } }))
+    source.catalog.set(PDFName.of('AF'), source.context.obj([fileSpec]))
+
+    await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
   })
 
   it('accepts unsigned signature fields', async () => {

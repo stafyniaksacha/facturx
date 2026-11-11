@@ -2,6 +2,7 @@ import type { Buffer } from 'node:buffer'
 import type {
   PDFDocument,
   PDFObject,
+  PDFRawStream,
 } from 'pdf-lib'
 import type { PdfMetadata } from '../types'
 
@@ -20,9 +21,9 @@ import {
 import pkg from '../../package.json' with { type: 'json' }
 
 import { check } from './check'
-import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, XRECHNUNG_FILENAME, ZUGFERD_FILENAMES } from './constants'
+import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
-import { attachmentNames, readEmbeddedFilesNames } from './pdf'
+import { embeddedFileSpecs, embeddedFileStream, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
 import { extractBaseInfo, getFlavor, getLevel } from './xml'
@@ -99,7 +100,7 @@ export async function generate(options: {
     // Write attachments the caller queued with pdf-lib's attach() into the name tree, so the
     // check below sees them too.
     await pdf.flush()
-    assertNoEmbeddedInvoice(pdf)
+    assertNoEmbeddedInvoice(pdf, filename, flavor)
     setDocumentId(pdf)
 
     const encoder = new TextEncoder()
@@ -175,15 +176,131 @@ function assertEmbeddable(pdf: PDFDocument): void {
     throw new Error('This PDFDocument was already passed to generate(): load a new one for each call')
 }
 
+// Root elements (namespace URI, local name) of the documents generate() writes. CII D16B / D22B and
+// Order-X from the vendored XSDs. ZUGFeRD 1.0 (`CrossIndustryDocument`) is not vendored: its URI is
+// from the ZUGFeRD 1.0 schema and unverified here; a wrong URI only causes a missed detection.
+const INVOICE_ROOTS = [
+  ['urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100', 'CrossIndustryInvoice'],
+  ['urn:ferd:CrossIndustryDocument:invoice:1p0', 'CrossIndustryDocument'],
+]
+const ORDER_ROOTS = [
+  ['urn:un:unece:uncefact:data:SCRDMCCBDACIOMessageStructure:100', 'SCRDMCCBDACIOMessageStructure'],
+]
+
+// The root start tag sits near the top of the file: only this much decoded text is examined.
+const ROOT_SNIFF_BYTES = 64 * 1024
+// Distinct embedded file streams examined per PDF, bounding the total work on untrusted input.
+const MAX_SCANNED_FILES = 256
+
 /**
- * §6 p.24: only one invoice XML per document. A second one would be appended next to the first,
- * and extract() would return the old one. Names: codelists--Filename.csv plus legacy ZUGFeRD.
+ * §6 p.24: only one invoice XML per document. A second one would sit next to the first, and
+ * extract() could return the old one. Detected by content, not by file name, since other tools
+ * name the file differently: any embedded file (name tree or /AF) whose root element is a document
+ * of the same kind as the one being written (an invoice for Factur-X / ZUGFeRD, an order for
+ * Order-X). Other XML, such as an Order-X purchase order supporting an invoice, is allowed (§6.4).
+ * A file that already uses the name we are about to write is rejected too, whatever it holds: two
+ * identical name tree keys would be ambiguous.
  */
-function assertNoEmbeddedInvoice(pdf: PDFDocument): void {
-  const invoiceNames = [FACTURX_FILENAME, XRECHNUNG_FILENAME, ORDERX_FILENAME, ...ZUGFERD_FILENAMES]
-  const existing = attachmentNames(pdf).find(name => invoiceNames.includes(name))
-  if (existing)
-    throw new Error(`The PDF already has an embedded invoice (${existing})`)
+function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: string): void {
+  const conflicting = flavor === 'orderx' ? ORDER_ROOTS : INVOICE_ROOTS
+  const kind = flavor === 'orderx' ? 'order' : 'invoice'
+  const specs = embeddedFileSpecs(pdf)
+
+  // Each distinct stream is read once, and only so many are read: many file specifications can
+  // share one expensive stream. Past the limit the PDF is rejected, not silently accepted.
+  const roots = new Map<PDFRawStream, { ns: string, name: string } | undefined>()
+  for (const { names, fileSpec } of specs) {
+    const stream = embeddedFileStream(fileSpec)
+    if (!stream)
+      continue
+    if (!roots.has(stream)) {
+      if (roots.size >= MAX_SCANNED_FILES)
+        throw new Error(`The PDF has more than ${MAX_SCANNED_FILES} embedded files: could not check it for an existing ${kind}`)
+      const prefix = readEmbeddedFilePrefix(stream, ROOT_SNIFF_BYTES)
+      roots.set(stream, prefix && xmlRoot(prefix))
+    }
+    const root = roots.get(stream)
+    if (root && conflicting.some(([ns, name]) => root.ns === ns && root.name === name))
+      throw new Error(`The PDF already has an embedded ${kind} (${names[0] ?? 'unnamed file'})`)
+  }
+
+  if (specs.some(({ names }) => names.includes(filename)))
+    throw new Error(`The PDF already has an embedded file named ${filename}`)
+}
+
+/** Namespace URI and local name of the root element of an XML prefix, or undefined if not XML. */
+function xmlRoot(prefix: Uint8Array): { ns: string, name: string } | undefined {
+  const startTag = rootStartTag(decodePrefix(prefix))
+  if (!startTag)
+    return undefined
+
+  let doc: XmlDocument | undefined
+  try {
+    // Parse only the root start tag, closed: it carries the root's namespace declarations, and a
+    // prefix cut mid-document would not parse. Default options: never NOENT, DTDLOAD, XINCLUDE or
+    // HUGE on untrusted input (AGENTS.md "Security").
+    doc = XmlDocument.fromString(startTag.replace(/\/?>$/, '/>'))
+    const root = doc.root
+    return root ? { ns: root.namespaceUri, name: root.name } : undefined
+  }
+  catch {
+    return undefined
+  }
+  finally {
+    doc?.dispose()
+  }
+}
+
+/** Decode a prefix as text, following a UTF-16 / UTF-8 BOM or a UTF-16 '<' pattern, else UTF-8. */
+function decodePrefix(prefix: Uint8Array): string {
+  const [b0, b1] = prefix
+  const encoding = (b0 === 0xFF && b1 === 0xFE) || (b0 === 0x3C && b1 === 0x00)
+    ? 'utf-16le'
+    : (b0 === 0xFE && b1 === 0xFF) || (b0 === 0x00 && b1 === 0x3C) ? 'utf-16be' : 'utf-8'
+  return new TextDecoder(encoding).decode(prefix) // Drops a BOM; invalid bytes become U+FFFD.
+}
+
+/** The root element's start tag, skipping the XML declaration, PIs and comments. */
+function rootStartTag(text: string): string | undefined {
+  let idx = 0
+  while (idx < text.length) {
+    while (/\s/.test(text[idx] ?? ''))
+      idx++
+    if (text.startsWith('<?', idx)) {
+      idx = text.indexOf('?>', idx)
+      if (idx < 0)
+        return undefined
+      idx += 2
+    }
+    else if (text.startsWith('<!--', idx)) {
+      idx = text.indexOf('-->', idx)
+      if (idx < 0)
+        return undefined
+      idx += 3
+    }
+    else if (text.startsWith('<!', idx)) {
+      // DOCTYPE: quoted ids and an internal subset can hold '>' and ']', so it is not parsed here
+      // and the root is undetermined. Real CII documents carry no DOCTYPE.
+      return undefined
+    }
+    else if (text[idx] === '<') {
+      let quote = ''
+      for (let end = idx + 1; end < text.length; end++) {
+        const char = text[end]
+        if (quote)
+          quote = char === quote ? '' : quote
+        else if (char === '"' || char === '\'')
+          quote = char
+        else if (char === '>')
+          return text.slice(idx, end + 1)
+      }
+      return undefined
+    }
+    else {
+      return undefined
+    }
+  }
+  return undefined
 }
 
 /**
