@@ -85,6 +85,18 @@ describe('validateFrCtc', () => {
     await expect(validateFrCtc({ xml: getOrderXBasicXML(), flavor: 'orderx', level: 'basic' })).rejects.toThrow(/Factur-X/)
     await expect(validateFrCtc({ xml: getMinimumXML(), level: '__proto__' })).rejects.toThrow(/BASIC WL/)
   })
+
+  it('checks the document itself instead of trusting the caller', async () => {
+    // The BR-FR transform finds nothing to check on a non-CII document and would pass it.
+    await expect(validateFrCtc({ xml: getOrderXBasicXML(), level: 'en16931' })).rejects.toThrow(/got root element "SCRDMCCBDACIOMessageStructure"/)
+    await expect(validateFrCtc({ xml: '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>', level: 'en16931' })).rejects.toThrow(/got root element "Invoice"/)
+    // A MINIMUM invoice can't be passed off as EN16931, nor run without a level.
+    await expect(validateFrCtc({ xml: getMinimumXML(), level: 'en16931' })).rejects.toThrow(/does not match the profile declared by the document \("minimum"\)/)
+    await expect(validateFrCtc({ xml: getMinimumXML() })).rejects.toThrow(/got level "minimum"/)
+    // Without a level, the declared profile is used.
+    const result = await validateFrCtc({ xml: readFileSync(NEGATIVE, 'utf8') })
+    expect(result.errors.length).toBe(9)
+  })
 })
 
 describe('check({ frCtc })', () => {

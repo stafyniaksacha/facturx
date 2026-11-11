@@ -35,7 +35,7 @@ function check(options: {
 | `flavor` | `string` | autodetect | `facturx`, `orderx` or `zugferd`. |
 | `level` | `string` | autodetect | Schema level (e.g. `en16931`). |
 | `schematron` | `boolean` | `false` | Also run Schematron business-rule validation. **Factur-X only** — throws otherwise. |
-| `frCtc` | `boolean` | `false` | Also run the French e-invoicing rules `BR-FR-Flux2` ([guide](/guide/french-ctc)). Independent of `schematron`. **Factur-X BASIC WL, EN16931 and EXTENDED only** — throws otherwise. |
+| `frCtc` | `boolean` | `false` | Also run the French e-invoicing rules `BR-FR-Flux2` ([guide](/guide/french-ctc)). Independent of `schematron`. **Factur-X BASIC WL, EN16931 and EXTENDED only** — throws otherwise, including when a forced `level` differs from the one the document declares. |
 | `warningsAsErrors` | `boolean` | `false` | With `schematron` and/or `frCtc`, also count rules flagged `warning`/`information` as errors. |
 
 ## Returns

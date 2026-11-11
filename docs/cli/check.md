@@ -23,7 +23,7 @@ facturx check <xml> [options]
 | `--level` | `-l` | string | autodetect | Schema level (e.g. `en16931`). |
 | `--schematron` | `-s` | boolean | `false` | Also run Schematron (EN 16931 `BR-*`) validation. **Factur-X only.** |
 | `--fr-ctc` | | boolean | `false` | Also run the French e-invoicing rules `BR-FR-Flux2` ([guide](/guide/french-ctc)). **Factur-X BASIC WL, EN16931 and EXTENDED only.** Combine with `--schematron` for the full validation sequence. |
-| `--warnings-as-errors` | `-W` | boolean | `false` | With `--schematron` or `--fr-ctc`, also fail on rules flagged `warning`/`information`. Without it, those are printed as `[Schematron warning]` and don't change the exit code. |
+| `--warnings-as-errors` | `-W` | boolean | `false` | With `--schematron` or `--fr-ctc`, also fail on rules flagged `warning`/`information`. Without it, those are printed as `[Schematron warning]` / `[BR-FR warning]` and don't change the exit code. |
 
 ## Behaviour
 
@@ -39,7 +39,7 @@ facturx check <xml> [options]
   - `--fr-ctc` on MINIMUM, BASIC or a non-Factur-X file prints why and exits with code **`1`**.
   - Schematron rules flagged `warning`/`information` are printed to stderr as
     `[Schematron warning]` without changing the exit code, even when the document is valid. With
-    `--warnings-as-errors` / `-W` they are listed as `[Schematron]` errors and make the command fail.
+    `--warnings-as-errors` / `-W` they are listed as `[Schematron]` / `[BR-FR]` errors and make the command fail.
 
 This non-zero exit code makes `check` easy to use in CI pipelines and shell scripts.
 

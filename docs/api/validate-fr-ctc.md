@@ -9,7 +9,7 @@ runs when you pass `frCtc: true`. See [French e-invoicing rules](/guide/french-c
 ```ts
 function validateFrCtc(options: {
   xml: string | Buffer
-  level: string
+  level?: string
   flavor?: string
   warningsAsErrors?: boolean
 }): Promise<{
@@ -24,9 +24,13 @@ function validateFrCtc(options: {
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `xml` | `string \| Buffer` | — | **Required.** The invoice XML (CII D22B). |
-| `level` | `string` | — | **Required.** `basicwl`, `en16931` or `extended`. Anything else throws. |
+| `level` | `string` | declared | `basicwl`, `en16931` or `extended`. Defaults to the profile the document declares (BT-24); when given, it must match it. |
 | `flavor` | `string` | `facturx` | If given, must be `facturx`: any other value throws. |
 | `warningsAsErrors` | `boolean` | `false` | Also count rules flagged `warning`/`information` as errors. Every vendored BR-FR rule is `fatal`, so this has no effect today. |
+
+The document is checked first: it must be a CII invoice (`rsm:CrossIndustryInvoice`) declaring BASIC
+WL, EN16931 or EXTENDED (a plain-CII `EXTENDED-CTC-FR` invoice counts as `extended`), otherwise the
+call throws. The rules themselves don't check this and would pass any other document.
 
 ## Returns
 
@@ -44,7 +48,7 @@ Messages are in French and may quote invoice values: treat them as personal data
 ```ts
 import { validateFrCtc } from '@stafyniaksacha/facturx'
 
-const { valid, errors } = await validateFrCtc({ xml, level: 'en16931' })
+const { valid, errors } = await validateFrCtc({ xml }) // level read from the document
 
 if (!valid) {
   for (const e of errors)

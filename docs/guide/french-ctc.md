@@ -18,7 +18,7 @@ The FNFE-MPE release notes (p.9) define three validation steps for an invoice:
 | Step | What | In this library |
 | --- | --- | --- |
 | 1 | XSD of the profile | `check()` (always) |
-| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true` |
+| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`, with the vendored Factur-X **1.09** Schematrons (the release ships 1.09.2.fixFR04 ones, p.6) |
 | 3 | French rules `BR-FR-Flux2` | `frCtc: true` |
 
 `frCtc` runs step 3 only: it neither requires nor implies `schematron`. Pass both to run the whole
@@ -45,15 +45,20 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
 
 ## Scope
 
-- **Factur-X BASIC WL, EN16931 and EXTENDED** only: the profiles in the reform's scope (release notes
-  p.9 and p.11). MINIMUM and BASIC, and any other flavor, **throw** instead of passing silently: the
-  rules don't check the profile themselves.
-- Rules **BR-FR-01…32, BR-FR-CO-*, BR-FR-DEC-*, BR-FR-MV-* and BR-FR-BD-*** (release notes p.10).
-  The B2G rules for Chorus Pro (`BR-FR-CPRO-*`, step 4) have no published Schematron yet.
+- **Factur-X BASIC WL, EN16931 and EXTENDED** only: the three profiles the release selects (release
+  notes p.9, p.11, which adds "BASIC WL for the first year only"; XP Z12-012 Annex A lists guideline
+  IDs for these three). The rules themselves read neither the root element nor the profile, so the
+  library checks the document: a non-CII document, a MINIMUM or BASIC invoice, or a `level` that
+  differs from the one the document declares **throws** instead of passing silently. A plain-CII
+  `EXTENDED-CTC-FR` invoice is checked as `extended` (p.9).
+- The rules **the published Schematron implements**: 59 of the `BR-FR-*` rules of XP Z12-012 Annex A
+  (`BR-FR-01…32`, `-CO-*`, `-DEC-*`, `-MV-*`, `-BD-*`, with gaps). A pass doesn't mean every Annex A
+  rule holds: some depend on external data or aren't published yet, e.g. `BR-FR-CO-01` (no
+  post-dating) or the Chorus Pro rules `BR-FR-CPRO-*` (step 4). See `CONFORMANCE.md`, CG-22.
 - The **standard ("fatal") variant**: every rule is an error. The `_WARNING` variant was meant for a
   transition window that has closed (release notes p.6) and is not shipped.
 - Not covered: UBL invoices, the `EXTENDED-CTC-FR` profile's own XSD and Schematron, lifecycle
-  statuses (CDAR, `BR-FR-CDV`) and e-reporting (flux 10). See `CONFORMANCE.md`, CG-18 to CG-22.
+  statuses (CDAR, `BR-FR-CDV`) and e-reporting (flux 10). See `CONFORMANCE.md`, CG-18 to CG-21.
 
 ## Reading BR-FR errors
 

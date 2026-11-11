@@ -1,6 +1,8 @@
 import type { Buffer } from 'node:buffer'
 import type { SchematronConfig, SchematronError, SchematronResult } from './schematron'
+import { resolveXml } from './resolve'
 import { runSchematron } from './schematron'
+import { getLevel } from './xml'
 
 /**
  * French CTC business rules (`BR-FR-Flux2`) for invoices in UN/CEFACT CII D22B, hence for Factur-X.
@@ -20,8 +22,9 @@ export const FR_CTC_SCHEMATRON: SchematronConfig = {
 }
 
 /**
- * Factur-X profiles in scope of the French e-invoicing reform: BASIC WL, EN16931 and EXTENDED (release
- * notes p.9 and p.10-11). MINIMUM and BASIC are not invoices under the reform.
+ * Factur-X profiles the FNFE-MPE release selects for the reform: BASIC WL (for the first year only),
+ * EN16931 and EXTENDED (release notes p.9, p.11; XP Z12-012 Annex A, BT-24 guideline IDs). The release
+ * ships no MINIMUM or BASIC components.
  */
 export const FR_CTC_LEVELS: ReadonlySet<string> = new Set(['basicwl', 'en16931', 'extended'])
 
@@ -50,23 +53,60 @@ function toRule(error: SchematronError): SchematronError {
  * (`BR-FR-05_BT-22_PMT`). Messages are in French and may quote invoice values (names, identifiers,
  * amounts): treat them as personal data, don't log them where invoice contents would not be allowed.
  *
- * @throws when `flavor` is not `facturx`, or `level` is not one of `basicwl`, `en16931`, `extended`.
+ * @throws when the document is not a CII invoice, when its declared profile (or `level`) is not one of
+ *   `basicwl`, `en16931`, `extended`, or when `level` differs from the declared profile.
  */
 export async function validateFrCtc(options: {
   xml: string | Buffer
-  /** Profile of the invoice: `basicwl`, `en16931` or `extended`. */
-  level: string
+  /**
+   * Profile of the invoice: `basicwl`, `en16931` or `extended`. Defaults to the profile declared in the
+   * document (BT-24); when given, it must match it.
+   */
+  level?: string
   flavor?: string
   /** Treat failed `warning`/`information` rules as errors. The vendored rules are all `fatal`, so this has no effect today. */
   warningsAsErrors?: boolean
 }): Promise<SchematronResult> {
-  assertFrCtcApplicable(options.flavor ?? 'facturx', options.level)
+  assertFrCtcApplicable(options.flavor ?? 'facturx', options.level ?? 'en16931')
+  const declared = await declaredLevel(options.xml)
+  if (options.level && options.level !== declared) {
+    throw new Error(`French CTC rules (BR-FR): level "${options.level}" does not match the profile declared by the document ("${declared}")`)
+  }
+  assertFrCtcApplicable('facturx', declared)
 
   const result = await runSchematron(FR_CTC_SCHEMATRON, options.xml, { warningsAsErrors: options.warningsAsErrors })
   return {
     valid: result.valid,
     errors: result.errors.map(toRule),
     warnings: result.warnings.map(toRule),
+  }
+}
+
+const CII_NS = 'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100'
+const RAM_NS = 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100'
+
+/**
+ * Profile declared by the document itself. The BR-FR transform never reads it (nor the root element):
+ * on an Order-X or UBL document it simply finds nothing to check and passes, so the document is checked
+ * here rather than trusting the caller.
+ *
+ * The plain-CII `EXTENDED-CTC-FR` profile (`…urn.cpro.gouv.fr:1p0:extended-ctc-fr`) maps to `extended`:
+ * the Factur-X EXTENDED components can validate it (release notes p.9).
+ */
+async function declaredLevel(xml: string | Buffer): Promise<string> {
+  const doc = await resolveXml(xml)
+  try {
+    const root = doc.root
+    if (root.name !== 'CrossIndustryInvoice' || root.namespaceUri !== CII_NS) {
+      throw new Error(`French CTC rules (BR-FR) apply to Factur-X / CII D22B invoices only, got root element "${root.name}"`)
+    }
+    const id = doc.get('/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:GuidelineSpecifiedDocumentContextParameter/ram:ID', { rsm: CII_NS, ram: RAM_NS })?.content.trim()
+    if (id?.endsWith(':extended-ctc-fr'))
+      return 'extended'
+    return getLevel(doc)
+  }
+  finally {
+    doc.dispose()
   }
 }
 
