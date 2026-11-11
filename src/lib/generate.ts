@@ -10,7 +10,10 @@ import { XmlDocument } from 'libxml2-wasm'
 import {
   AFRelationship,
   PDFArray,
+  PDFDict,
   PDFHexString,
+  PDFName,
+  PDFNumber,
   PDFString,
 } from 'pdf-lib'
 import pkg from '../../package.json' with { type: 'json' }
@@ -18,10 +21,15 @@ import pkg from '../../package.json' with { type: 'json' }
 import { check } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
+import { attachmentNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
 import { extractBaseInfo, getFlavor, getLevel } from './xml'
 import { setPDFA3BMetadata } from './xmp'
+
+// PDFDocument objects generate() has already attached an invoice to. pdf-lib only writes the
+// attachment into the name tree on save(), so the tree alone cannot detect a reused document.
+const generated = new WeakSet<PDFDocument>()
 
 export async function generate(options: {
   pdf: string | Buffer | PDFDocument
@@ -81,6 +89,10 @@ export async function generate(options: {
 
     const pdf = await resolvePdf(options.pdf)
 
+    assertEmbeddable(pdf)
+    // Marked synchronously, before the first await below, so overlapping calls on the same
+    // PDFDocument cannot both attach an invoice.
+    generated.add(pdf)
     setDocumentId(pdf)
 
     const encoder = new TextEncoder()
@@ -127,6 +139,36 @@ export async function generate(options: {
 }
 
 /**
+ * Reject inputs that generate() cannot turn into a correct hybrid document. pdf-lib rewrites the
+ * whole file and appends attachments without decrypting, re-signing or replacing anything.
+ */
+function assertEmbeddable(pdf: PDFDocument): void {
+  // pdf-lib does not decrypt the source nor encrypt the attachment it adds.
+  if (pdf.isEncrypted)
+    throw new Error('Encrypted PDFs are not supported')
+
+  // ISO 32000-1 §12.7.2, SigFlags bit 1 (SignaturesExist), and §12.8.4 /Perms (DocMDP): saving
+  // rewrites the file, which would invalidate the signature. Sign after generate() instead.
+  const acroForm = pdf.context.lookup(pdf.catalog.get(PDFName.of('AcroForm')))
+  const sigFlags = acroForm instanceof PDFDict ? pdf.context.lookup(acroForm.get(PDFName.of('SigFlags'))) : undefined
+  if ((sigFlags instanceof PDFNumber && (sigFlags.asNumber() & 1) === 1) || pdf.catalog.has(PDFName.of('Perms')))
+    throw new Error('Signed PDFs are not supported: sign the document after generate()')
+
+  // pdf-lib appends to the root /Names array of the EmbeddedFiles name tree. A root with /Kids
+  // (ISO 32000-1 §7.9.6) would end up with both /Kids and /Names, which is invalid.
+  const names = pdf.context.lookup(pdf.catalog.get(PDFName.of('Names')))
+  const embeddedFiles = names instanceof PDFDict ? pdf.context.lookup(names.get(PDFName.of('EmbeddedFiles'))) : undefined
+  if (embeddedFiles instanceof PDFDict && embeddedFiles.has(PDFName.of('Kids')))
+    throw new Error('PDFs whose embedded files name tree has /Kids are not supported')
+
+  // A second invoice would be appended next to the first, and extract() would return the old one.
+  const invoiceNames = [FACTURX_FILENAME, ORDERX_FILENAME, ...ZUGFERD_FILENAMES]
+  const existing = attachmentNames(pdf).find(name => invoiceNames.includes(name))
+  if (existing || generated.has(pdf))
+    throw new Error(`The PDF already has an embedded invoice${existing ? ` (${existing})` : ''}`)
+}
+
+/**
  * Set the trailer /ID for the file we are about to write. ISO 32000-1 §14.4: the first element is
  * a permanent identifier set when the file is created and kept across updates; the second changes
  * whenever the file is modified. Keep the source PDF's permanent identifier when it has one, and
@@ -135,7 +177,7 @@ export async function generate(options: {
 function setDocumentId(pdf: PDFDocument): void {
   const changing = PDFHexString.of(randomBytes(16).toString('hex'))
   const existing = pdf.context.lookup(pdf.context.trailerInfo.ID)
-  const permanent = existing instanceof PDFArray ? existing.get(0) : undefined
+  const permanent = existing instanceof PDFArray ? pdf.context.lookup(existing.get(0)) : undefined
 
   if (permanent instanceof PDFHexString || permanent instanceof PDFString) {
     pdf.context.trailerInfo.ID = pdf.context.obj([permanent, changing])

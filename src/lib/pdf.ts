@@ -30,6 +30,10 @@ export function extractAttachments(pdfDoc: PDFDocument): {
   })
 }
 
+export function attachmentNames(pdfDoc: PDFDocument): string[] {
+  return extractRawAttachments(pdfDoc).map(({ fileName }) => fileName.decodeText())
+}
+
 function extractRawAttachments(pdfDoc: PDFDocument): {
   fileName: PDFHexString | PDFString
   fileSpec: PDFDict

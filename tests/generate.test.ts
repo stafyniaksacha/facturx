@@ -5,8 +5,9 @@ import { extract, generate, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { PDFArray, PDFDocument, PDFHexString, PDFName, PDFRawStream, PDFString } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
-// A PDF produced by an office suite: it carries a trailer /ID, like most real-world PDFs.
-const SOURCE_PDF = resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.pdf')
+// A Factur-X PDF produced by an office suite: it carries a trailer /ID, like most real-world PDFs.
+// It already embeds its invoice, so sourcePdf() strips that to get a plain PDF with an /ID.
+const EXAMPLE_PDF = resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.pdf')
 const SOURCE_XML = resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.xml')
 
 // Fixed packet id from the XMP specification, as in the spec's reference packet
@@ -24,6 +25,13 @@ function trailerId(pdf: PDFDocument): string[] {
   })
 }
 
+async function sourcePdf(): Promise<Buffer> {
+  const pdf = await PDFDocument.load(await readFile(EXAMPLE_PDF))
+  pdf.catalog.delete(PDFName.of('Names'))
+  pdf.catalog.delete(PDFName.of('AF'))
+  return Buffer.from(await pdf.save())
+}
+
 function xmpPacket(pdf: PDFDocument): string {
   const stream = pdf.context.lookup(pdf.catalog.get(PDFName.of('Metadata')))
   if (!(stream instanceof PDFRawStream))
@@ -33,7 +41,7 @@ function xmpPacket(pdf: PDFDocument): string {
 
 describe('generate', () => {
   it('keeps the permanent /ID of a source PDF that already has one (#37)', async () => {
-    const source = await readFile(SOURCE_PDF)
+    const source = await sourcePdf()
     const xml = await readFile(SOURCE_XML, 'utf8')
     const sourceId = trailerId(await PDFDocument.load(source))
     expect(sourceId).toHaveLength(2)
@@ -66,9 +74,69 @@ describe('generate', () => {
     expect(outputId[1]).toBe(outputId[0])
   })
 
+  it('keeps a permanent /ID element stored as an indirect object', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const permanent = PDFHexString.of('00112233445566778899aabbccddeeff')
+    pdf.context.trailerInfo.ID = pdf.context.obj([pdf.context.register(permanent), PDFHexString.of('ff')])
+
+    const outputId = trailerId(await PDFDocument.load(await generate({ pdf, xml })))
+    expect(outputId[0]).toBe('00112233445566778899aabbccddeeff')
+    expect(outputId[1]).not.toBe('ff')
+  })
+
+  describe('rejects inputs it cannot embed into correctly', () => {
+    async function blankPdf(): Promise<PDFDocument> {
+      const pdf = await PDFDocument.create()
+      pdf.addPage()
+      return pdf
+    }
+
+    it('encrypted', async () => {
+      const source = await blankPdf()
+      source.context.trailerInfo.Encrypt = source.context.register(source.context.obj({ Filter: 'Standard' }))
+      const pdf = await PDFDocument.load(await source.save(), { ignoreEncryption: true })
+      expect(pdf.isEncrypted).toBe(true)
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Encrypted')
+    })
+
+    it('signed (SigFlags SignaturesExist)', async () => {
+      const pdf = await blankPdf()
+      pdf.catalog.set(PDFName.of('AcroForm'), pdf.context.obj({ Fields: [], SigFlags: 3 }))
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
+    })
+
+    it('embedded files name tree with /Kids', async () => {
+      const pdf = await blankPdf()
+      const leaf = pdf.context.register(pdf.context.obj({ Limits: [PDFString.of('a'), PDFString.of('a')], Names: [] }))
+      pdf.catalog.set(PDFName.of('Names'), pdf.context.obj({ EmbeddedFiles: { Kids: [leaf] } }))
+
+      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('/Kids')
+    })
+
+    it('already has an embedded invoice', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      const output = await generate({ pdf: await sourcePdf(), xml })
+
+      await expect(generate({ pdf: Buffer.from(output), xml })).rejects.toThrow('already has an embedded invoice (factur-x.xml)')
+    })
+
+    it('the same PDFDocument used twice, even concurrently', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      const pdf = await blankPdf()
+
+      const results = await Promise.allSettled([generate({ pdf, xml }), generate({ pdf, xml })])
+      expect(results.map(r => r.status).sort()).toEqual(['fulfilled', 'rejected'])
+      await expect(generate({ pdf, xml })).rejects.toThrow('already has an embedded invoice')
+    })
+  })
+
   it('writes the fixed XMP packet id, not the document ID (CG-06)', async () => {
     const xml = await readFile(SOURCE_XML, 'utf8')
-    const output = await PDFDocument.load(await generate({ pdf: await readFile(SOURCE_PDF), xml }))
+    const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml }))
 
     expect(xmpPacket(output)).toMatch(new RegExp(`^<\\?xpacket begin="[^"]*" id="${XMP_PACKET_ID}"\\?>`))
   })
