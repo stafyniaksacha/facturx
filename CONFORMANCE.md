@@ -19,6 +19,7 @@ open entry is "known", anything else is new.
 | All vendored XSD and `_codedb.xml` are byte-identical to the spec; all XSLT identical after the documented `sum()` patch; all `.sef.json.gz` reproducible from them | `pnpm spec:verify` |
 | All 56 official example PDFs (11–12 per profile) extract, pass XSD + Schematron at their profile, and round-trip through `xmlToInvoice` → `invoiceToXml` with an identical model (this is what caught the 0.6.x `RoleCode` regression fixed in #25) | `pnpm build && pnpm vitest run tests/spec-examples.test.ts` |
 | External XML entities are not expanded with the default libxml2-wasm parse options used by `resolveXml` / `xmlToInvoice` (no XXE) | probe in the audit (entity resolves to empty / `check()` rejects the document); keep `XML_PARSE_NOENT` / `XML_PARSE_DTDLOAD` / `XML_PARSE_XINCLUDE` off |
+| The XMP packet header uses the fixed packet id `W5M0MpCehiHzreSzNTczkc9d` of the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` (was CG-06), and `generate()` keeps a source PDF's permanent trailer `/ID` (ISO 32000-1 §14.4) instead of throwing (#37) | `pnpm build && pnpm vitest run tests/generate.test.ts` |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no veraPDF run), any Order-X
 asset (no Order-X spec vendored), field-by-field coverage of the 1.09 EXTENDED additions (BT-173…177,
@@ -33,7 +34,6 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | CG-03 | XMP, security | BR-HYBRID-03 | Fatal | XMP values not XML-escaped (malformed XMP, metadata injection) |
 | CG-04 | PDF/A | BR-HYBRID-02 | Fatal | Info dictionary and XMP disagree (Producer, Keywords) |
 | CG-05 | PDF/A | BR-HYBRID-02 | Fatal | `generate()` does not make the PDF PDF/A-3; docs claim it does |
-| CG-06 | XMP | XMP packet header | interop | `xpacket id` is random instead of the fixed XMP value |
 | CG-07 | embedding | §6.2.2 p.26–27, BR-HYBRID-11 | Warning | `AFRelationship` hard-coded to `Data` |
 | CG-08 | Order-X | BR-HYBRID-06/07 | Fatal | Order-X PDFs get Factur-X `INVOICE` XMP and empty conformance level |
 | CG-09 | ZUGFeRD | BR-HYBRID-08/13, §6.3.2 p.29 | Fatal | `generate({ flavor: 'zugferd' })` writes a non-conformant hybrid |
@@ -89,13 +89,6 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   veraPDF.
 - **Docs overclaim:** README ("compliant PDF/A-3 bytes"), `docs/api/generate.md:3,45`,
   `docs/guide/getting-started.md:46`.
-
-### CG-06 — `xpacket id` is random
-
-- **Code:** `src/lib/xmp.ts:10` writes `id="${documentId}"` (the random PDF document ID).
-- **Reference:** the spec's packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` uses
-  the fixed XMP value `W5M0MpCehiHzreSzNTczkc9d`. Confirm the validator impact with veraPDF before
-  ranking higher.
 
 ### CG-07 — `AFRelationship` hard-coded to `Data`
 

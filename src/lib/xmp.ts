@@ -2,12 +2,17 @@ import type { PDFDocument } from 'pdf-lib'
 import type { XmpMetadata } from '../types'
 import { PDFName } from 'pdf-lib'
 
+// Fixed packet id defined by the XMP specification, as used in the spec's
+// reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt`. It is not a
+// document identifier.
+const XMP_PACKET_ID = 'W5M0MpCehiHzreSzNTczkc9d'
+
 export function setPDFA3BMetadata(
-  { date, documentId, title, subject, author, producer, creator, filename, conformanceLevel }: XmpMetadata,
+  { date, title, subject, author, producer, creator, filename, conformanceLevel }: XmpMetadata,
   pdf: PDFDocument,
 ): void {
   const metadataXML = `
-  <?xpacket begin="" id="${documentId}"?>
+  <?xpacket begin="" id="${XMP_PACKET_ID}"?>
     <x:xmpmeta xmlns:x="adobe:ns:meta/">
       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
         <rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">

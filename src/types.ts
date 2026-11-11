@@ -17,7 +17,6 @@ export interface PdfMetadata {
 export interface XmpMetadata extends PdfMetadata {
   producer: string
   creator: string
-  documentId: string
   filename: string
   conformanceLevel: string
 }

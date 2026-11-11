@@ -9,7 +9,9 @@ import { randomBytes } from 'node:crypto'
 import { XmlDocument } from 'libxml2-wasm'
 import {
   AFRelationship,
+  PDFArray,
   PDFHexString,
+  PDFString,
 } from 'pdf-lib'
 import pkg from '../../package.json' with { type: 'json' }
 
@@ -79,16 +81,7 @@ export async function generate(options: {
 
     const pdf = await resolvePdf(options.pdf)
 
-    let documentId
-
-    if (pdf.context.trailerInfo.ID) {
-      throw new Error('Not implemented yet: Document ID already set')
-    }
-    else {
-      documentId = randomBytes(16).toString('hex')
-      const id = PDFHexString.of(documentId)
-      pdf.context.trailerInfo.ID = pdf.context.obj([id, id])
-    }
+    setDocumentId(pdf)
 
     const encoder = new TextEncoder()
     const uint8Array = encoder.encode(xml.toString())
@@ -117,7 +110,6 @@ export async function generate(options: {
 
     setPDFA3BMetadata({
       ...meta,
-      documentId,
       filename,
       conformanceLevel,
       producer: creator,
@@ -131,5 +123,25 @@ export async function generate(options: {
       // Dispose the XmlDocument instance if we created it within this function
       xml.dispose()
     }
+  }
+}
+
+/**
+ * Set the trailer /ID for the file we are about to write. ISO 32000-1 §14.4: the first element is
+ * a permanent identifier set when the file is created and kept across updates; the second changes
+ * whenever the file is modified. Keep the source PDF's permanent identifier when it has one, and
+ * always write a fresh second element since the output is a modified file.
+ */
+function setDocumentId(pdf: PDFDocument): void {
+  const changing = PDFHexString.of(randomBytes(16).toString('hex'))
+  const existing = pdf.context.lookup(pdf.context.trailerInfo.ID)
+  const permanent = existing instanceof PDFArray ? existing.get(0) : undefined
+
+  if (permanent instanceof PDFHexString || permanent instanceof PDFString) {
+    pdf.context.trailerInfo.ID = pdf.context.obj([permanent, changing])
+  }
+  else {
+    // No /ID (or a malformed one): this file gets a new identity, both elements equal.
+    pdf.context.trailerInfo.ID = pdf.context.obj([changing, changing])
   }
 }
