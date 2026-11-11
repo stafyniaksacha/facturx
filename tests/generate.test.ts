@@ -344,13 +344,40 @@ describe('generate', () => {
     ['an unterminated comment', '<?xml version="1.0"?><!-- no end'],
     ['a quoted > in a DOCTYPE system id', '<!DOCTYPE x SYSTEM "><rsm:CrossIndustryInvoice xmlns:rsm=\'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100\'>"><x/>'],
     ['an unterminated start tag', '<?xml version="1.0"?><x a="1'],
-  ])('accepts, without hanging, a supporting file with %s', async (_, content) => {
+  ])('rejects as not checkable, without hanging, an XML file with %s', async (_, content) => {
     const source = await PDFDocument.create()
     source.addPage()
     await source.attach(new TextEncoder().encode(content), 'odd.xml', { mimeType: 'text/xml' })
 
-    await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+    await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') }))
+      .rejects
+      .toThrow('could not be checked for an existing invoice (odd.xml)')
   }, 2000)
+
+  it('rejects as not checkable an invoice in a stream it cannot decode, whatever its name', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const hex = `${Buffer.from(xml).toString('hex')}>`
+    const stream = pdf.context.register(pdf.context.stream(hex, { Type: 'EmbeddedFile', Filter: 'ASCIIHexDecode' }))
+    const fileSpec = pdf.context.register(pdf.context.obj({ Type: 'Filespec', F: PDFString.of('zugferd-invoice.xml'), EF: { F: stream } }))
+    pdf.catalog.set(PDFName.of('Names'), pdf.context.obj({ EmbeddedFiles: { Names: [PDFString.of('invoice-1'), fileSpec] } }))
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([fileSpec]))
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml }))
+      .rejects
+      .toThrow('could not be checked for an existing invoice (invoice-1)')
+  })
+
+  it('accepts attachments that are clearly not XML', async () => {
+    const source = await PDFDocument.create()
+    source.addPage()
+    await source.attach(new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]), 'logo.png', { mimeType: 'image/png' })
+    await source.attach(new Uint8Array(0), 'empty.txt', { mimeType: 'text/plain' })
+    await source.attach(new TextEncoder().encode('  plain text'), 'notes.txt', { mimeType: 'text/plain' })
+
+    await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+  })
 
   it('reads a stream shared by many file specifications only once', async () => {
     const source = await PDFDocument.create()

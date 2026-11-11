@@ -197,9 +197,11 @@ const MAX_SCANNED_FILES = 256
  * extract() could return the old one. Detected by content, not by file name, since other tools
  * name the file differently: any embedded file (name tree or /AF) whose root element is a document
  * of the same kind as the one being written (an invoice for Factur-X / ZUGFeRD, an order for
- * Order-X). Other XML, such as an Order-X purchase order supporting an invoice, is allowed (§6.4).
- * A file that already uses the name we are about to write is rejected too, whatever it holds: two
- * identical name tree keys would be ambiguous.
+ * Order-X). Other XML, such as an Order-X purchase order supporting an invoice, is allowed (§6.4),
+ * and so is any file whose content is clearly not XML. It fails closed: a file whose content cannot
+ * be read (unsupported filter, broken data) or whose root cannot be found is rejected as not
+ * checkable, since it might be an invoice. A file that already uses the name we are about to write
+ * is rejected too, whatever it holds: two identical name tree keys would be ambiguous.
  */
 function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: string): void {
   const conflicting = flavor === 'orderx' ? ORDER_ROOTS : INVOICE_ROOTS
@@ -208,31 +210,38 @@ function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: str
 
   // Each distinct stream is read once, and only so many are read: many file specifications can
   // share one expensive stream. Past the limit the PDF is rejected, not silently accepted.
-  const roots = new Map<PDFRawStream, { ns: string, name: string } | undefined>()
+  const contents = new Map<PDFRawStream, XmlContent>()
   for (const { names, fileSpec } of specs) {
     const stream = embeddedFileStream(fileSpec)
     if (!stream)
       continue
-    if (!roots.has(stream)) {
-      if (roots.size >= MAX_SCANNED_FILES)
-        throw new Error(`The PDF has more than ${MAX_SCANNED_FILES} embedded files: could not check it for an existing ${kind}`)
+    if (!contents.has(stream)) {
+      if (contents.size >= MAX_SCANNED_FILES)
+        throw new Error(`The PDF has more than ${MAX_SCANNED_FILES} distinct embedded file streams: could not check it for an existing ${kind}`)
       const prefix = readEmbeddedFilePrefix(stream, ROOT_SNIFF_BYTES)
-      roots.set(stream, prefix && xmlRoot(prefix))
+      contents.set(stream, prefix ? classifyContent(prefix) : 'undetermined')
     }
-    const root = roots.get(stream)
-    if (root && conflicting.some(([ns, name]) => root.ns === ns && root.name === name))
-      throw new Error(`The PDF already has an embedded ${kind} (${names[0] ?? 'unnamed file'})`)
+    const name = names[0] ?? 'unnamed file'
+    const content = contents.get(stream)!
+    // Fail closed: content that cannot be read or whose root cannot be found might be an invoice.
+    if (content === 'undetermined')
+      throw new Error(`The PDF has an embedded file whose content could not be checked for an existing ${kind} (${name})`)
+    if (content !== 'not-xml' && conflicting.some(([ns, local]) => content.ns === ns && content.name === local))
+      throw new Error(`The PDF already has an embedded ${kind} (${name})`)
   }
 
   if (specs.some(({ names }) => names.includes(filename)))
     throw new Error(`The PDF already has an embedded file named ${filename}`)
 }
 
-/** Namespace URI and local name of the root element of an XML prefix, or undefined if not XML. */
-function xmlRoot(prefix: Uint8Array): { ns: string, name: string } | undefined {
+/** Root element of an XML file, a file that is not XML, or XML whose root could not be found. */
+type XmlContent = { ns: string, name: string } | 'not-xml' | 'undetermined'
+
+/** Classify a decoded prefix of an embedded file by its root element. */
+function classifyContent(prefix: Uint8Array): XmlContent {
   const startTag = rootStartTag(decodePrefix(prefix))
-  if (!startTag)
-    return undefined
+  if (startTag === 'not-xml' || startTag === 'undetermined')
+    return startTag
 
   let doc: XmlDocument | undefined
   try {
@@ -241,10 +250,10 @@ function xmlRoot(prefix: Uint8Array): { ns: string, name: string } | undefined {
     // HUGE on untrusted input (AGENTS.md "Security").
     doc = XmlDocument.fromString(startTag.replace(/\/?>$/, '/>'))
     const root = doc.root
-    return root ? { ns: root.namespaceUri, name: root.name } : undefined
+    return root ? { ns: root.namespaceUri, name: root.name } : 'undetermined'
   }
   catch {
-    return undefined
+    return 'undetermined'
   }
   finally {
     doc?.dispose()
@@ -260,30 +269,40 @@ function decodePrefix(prefix: Uint8Array): string {
   return new TextDecoder(encoding).decode(prefix) // Drops a BOM; invalid bytes become U+FFFD.
 }
 
-/** The root element's start tag, skipping the XML declaration, PIs and comments. */
-function rootStartTag(text: string): string | undefined {
+/**
+ * The root element's start tag, skipping the XML declaration, PIs and comments. 'not-xml' when the
+ * text does not start with markup; 'undetermined' when it does but no root start tag can be found
+ * (a DOCTYPE, an unterminated construct, or a prolog longer than the prefix).
+ */
+function rootStartTag(text: string): string | 'not-xml' | 'undetermined' {
   let idx = 0
+  let sawMarkup = false
   while (idx < text.length) {
     while (/\s/.test(text[idx] ?? ''))
       idx++
+    if (idx >= text.length)
+      break
+    if (text[idx] !== '<')
+      return sawMarkup ? 'undetermined' : 'not-xml'
+    sawMarkup = true
     if (text.startsWith('<?', idx)) {
       idx = text.indexOf('?>', idx)
       if (idx < 0)
-        return undefined
+        return 'undetermined'
       idx += 2
     }
     else if (text.startsWith('<!--', idx)) {
       idx = text.indexOf('-->', idx)
       if (idx < 0)
-        return undefined
+        return 'undetermined'
       idx += 3
     }
     else if (text.startsWith('<!', idx)) {
-      // DOCTYPE: quoted ids and an internal subset can hold '>' and ']', so it is not parsed here
-      // and the root is undetermined. Real CII documents carry no DOCTYPE.
-      return undefined
+      // DOCTYPE: quoted ids and an internal subset can hold '>' and ']', so it is not parsed here.
+      // Real CII documents carry no DOCTYPE.
+      return 'undetermined'
     }
-    else if (text[idx] === '<') {
+    else {
       let quote = ''
       for (let end = idx + 1; end < text.length; end++) {
         const char = text[end]
@@ -294,13 +313,10 @@ function rootStartTag(text: string): string | undefined {
         else if (char === '>')
           return text.slice(idx, end + 1)
       }
-      return undefined
-    }
-    else {
-      return undefined
+      return 'undetermined'
     }
   }
-  return undefined
+  return sawMarkup ? 'undetermined' : 'not-xml'
 }
 
 /**
