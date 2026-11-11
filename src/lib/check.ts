@@ -15,6 +15,11 @@ export async function check(options: {
    * Only available for the `facturx` flavor. Defaults to `false`.
    */
   schematron?: boolean
+  /**
+   * With `schematron`, treat failed `warning`/`information` rules as errors.
+   * Warnings are always reported in `schematronWarnings`. Defaults to `false`.
+   */
+  warningsAsErrors?: boolean
 }): Promise<{
   valid: boolean
   errors: any[]
@@ -22,6 +27,7 @@ export async function check(options: {
   level: string
   schematronValid?: boolean
   schematronErrors?: SchematronError[]
+  schematronWarnings?: SchematronError[]
 }> {
   const xml = await resolveXml(options.xml)
 
@@ -66,7 +72,7 @@ export async function check(options: {
     }
   }
 
-  const schematron = await validateSchematron({ xml: xmlString, flavor, level })
+  const schematron = await validateSchematron({ xml: xmlString, flavor, level, warningsAsErrors: options.warningsAsErrors })
 
   return {
     valid: xsdValid && schematron.valid,
@@ -75,5 +81,6 @@ export async function check(options: {
     level,
     schematronValid: schematron.valid,
     schematronErrors: schematron.errors,
+    schematronWarnings: schematron.warnings,
   }
 }

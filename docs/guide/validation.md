@@ -46,7 +46,12 @@ const result = await check({ xml, schematron: true })
 result.valid // ← true only if XSD *and* Schematron both pass
 result.schematronValid // ← Schematron result on its own
 result.schematronErrors // ← SchematronError[]
+result.schematronWarnings // ← rules flagged warning/information, always reported
 ```
+
+Rules the spec flags `warning` (or `information`) don't make the document invalid. Pass
+`warningsAsErrors: true` to fail on them as well, like a compiler's `-Werror`; they stay in
+`schematronWarnings` either way.
 
 Or call [`validateSchematron()`](/api/validate-schematron) directly when you only want the
 business-rule layer:
@@ -54,7 +59,7 @@ business-rule layer:
 ```ts
 import { validateSchematron } from '@stafyniaksacha/facturx'
 
-const { valid, errors } = await validateSchematron({
+const { valid, errors, warnings } = await validateSchematron({
   xml,
   flavor: 'facturx',
   level: 'en16931',
@@ -74,14 +79,18 @@ Each entry is a `SchematronError`:
 interface SchematronError {
   /** Human-readable assertion message, e.g. "[BR-16]-An Invoice shall have ...". */
   message: string
-  /** Business rule id parsed from the message, e.g. "BR-16" (when present). */
+  /** Business rule id: the "[BR-16]" message prefix, else the SVRL assert id. */
   id?: string
+  /** Raw SVRL assert id, when the rule sets one (e.g. "FX-SCH-A-000372"). */
+  assertId?: string
   /** The failing XPath test expression. */
   test?: string
   /** Location of the offending node. */
   location?: string
   /** Severity flag from the rule (e.g. "fatal", "warning"). */
   flag?: string
+  /** "warning" for rules flagged warning/information, "error" otherwise. */
+  severity: 'error' | 'warning'
 }
 ```
 
@@ -91,7 +100,8 @@ for (const e of result.schematronErrors ?? [])
 // e.g. "BR-16 → [BR-16]-An Invoice shall have at least one Invoice line ..."
 ```
 
-The `id` (like `BR-16`, `BR-CO-10`) maps directly to the rule numbers in the EN 16931 specification,
+Every failed assert and every fired report is listed. Structural checks (e.g. "Element
+'ram:SellerTradeParty' must occur exactly 1 times") carry no `id`. The `id` (like `BR-16`, `BR-CO-10`) maps directly to the rule numbers in the EN 16931 specification,
 which makes it easy to look up exactly what failed.
 
 ## Validation during generate / extract
@@ -114,7 +124,11 @@ npx @stafyniaksacha/facturx check invoice.xml
 
 # XSD + EN 16931 business rules
 npx @stafyniaksacha/facturx check invoice.xml --schematron
+
+# ... and fail on rules flagged warning too
+npx @stafyniaksacha/facturx check invoice.xml --schematron --warnings-as-errors
 ```
 
-The command prints each error prefixed with `[XSD]` or `[Schematron]` and exits with code `1` when
+The command prints each error prefixed with `[XSD]` or `[Schematron]` (warnings with
+`[Schematron warning]`, on stderr, even when the document is valid) and exits with code `1` when
 the document is invalid. See the [`check` CLI page](/cli/check).

@@ -11,9 +11,11 @@ function validateSchematron(options: {
   xml: string | Buffer
   flavor?: string
   level: string
+  warningsAsErrors?: boolean
 }): Promise<{
   valid: boolean
   errors: SchematronError[]
+  warnings: SchematronError[]
 }>
 ```
 
@@ -24,6 +26,7 @@ function validateSchematron(options: {
 | `xml` | `string \| Buffer` | — | **Required.** The invoice XML. |
 | `flavor` | `string` | — | If given, must be `facturx` — any other value throws. |
 | `level` | `string` | — | **Required.** Profile to validate against: `minimum`, `basicwl`, `basic`, `en16931` or `extended`. |
+| `warningsAsErrors` | `boolean` | `false` | Also count rules flagged `warning`/`information` as errors (like a compiler's `-Werror`). |
 
 ::: warning Factur-X only
 The spec ships no Order-X Schematron. Passing a `flavor` other than `facturx` throws
@@ -35,8 +38,13 @@ The spec ships no Order-X Schematron. Passing a `flavor` other than `facturx` th
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `valid` | `boolean` | `true` when there are no failed assertions. |
-| `errors` | `SchematronError[]` | One entry per failed assertion. |
+| `valid` | `boolean` | `true` when no assertion of severity `error` failed (with `warningsAsErrors`, when no assertion failed at all). |
+| `errors` | `SchematronError[]` | Failed assertions that make the document invalid. With `warningsAsErrors`, the warnings are listed here too. |
+| `warnings` | `SchematronError[]` | Failed assertions flagged `warning`/`information`, always reported. |
+
+Some rules are non-blocking by design and flagged `warning` in the spec's Schematron (for example
+`PEPPOL-EN16931-R008` in EN16931, or the EXTENDED ini/rev rules). They are reported in `warnings`
+and don't affect `valid` unless you pass `warningsAsErrors: true`.
 
 ### `SchematronError`
 
@@ -44,14 +52,18 @@ The spec ships no Order-X Schematron. Passing a `flavor` other than `facturx` th
 interface SchematronError {
   /** Human-readable assertion message, e.g. "[BR-16]-An Invoice shall have ...". */
   message: string
-  /** Business rule id parsed from the message, e.g. "BR-16" (when present). */
+  /** Business rule id: the "[BR-16]" message prefix, else the SVRL assert id. */
   id?: string
+  /** Raw SVRL assert id, when the rule sets one (e.g. "FX-SCH-A-000372"). */
+  assertId?: string
   /** The failing XPath test expression. */
   test?: string
   /** Location of the offending node. */
   location?: string
   /** Severity flag from the rule (e.g. "fatal", "warning"). */
   flag?: string
+  /** "warning" for rules flagged warning/information, "error" otherwise. */
+  severity: 'error' | 'warning'
 }
 ```
 

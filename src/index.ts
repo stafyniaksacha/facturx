@@ -15,3 +15,5 @@ export {
   validateSchematron,
   xmlToInvoice,
 }
+
+export type { SchematronConfig, SchematronError, SchematronResult } from './lib/schematron'
