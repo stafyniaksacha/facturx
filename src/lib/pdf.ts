@@ -1,13 +1,14 @@
 import type {
   PDFDocument,
-  PDFRawStream,
 } from 'pdf-lib'
+import { inflateSync, constants as zlibConstants } from 'node:zlib'
 import {
   decodePDFRawStream,
   PDFArray,
   PDFDict,
   PDFHexString,
   PDFName,
+  PDFRawStream,
   PDFStream,
   PDFString,
 } from 'pdf-lib'
@@ -28,6 +29,132 @@ export function extractAttachments(pdfDoc: PDFDocument): {
       data: decodePDFRawStream(stream).decode(),
     }
   })
+}
+
+/**
+ * Every embedded file the document references: each EmbeddedFiles name tree entry (read through
+ * the validated reader below) and each file specification in the catalog `/AF` array (PDF/A-3
+ * associated files), once each. `names` holds the tree key and the file specification's `/F` and
+ * `/UF`, which can all differ; a file associated only through `/AF` has no tree key.
+ */
+export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileSpec: PDFDict }[] {
+  const specs = new Map<PDFDict, Set<string>>()
+  const add = (fileSpec: unknown, key?: PDFHexString | PDFString): void => {
+    if (!(fileSpec instanceof PDFDict))
+      return
+    const names = specs.get(fileSpec) ?? new Set<string>()
+    if (key)
+      names.add(key.decodeText())
+    for (const entry of ['F', 'UF']) {
+      const name = fileSpec.lookup(PDFName.of(entry))
+      if (name instanceof PDFString || name instanceof PDFHexString)
+        names.add(name.decodeText())
+    }
+    specs.set(fileSpec, names)
+  }
+
+  for (const { fileName, fileSpec } of readEmbeddedFilesNames(pdfDoc))
+    add(fileSpec, fileName)
+
+  const af = pdfDoc.catalog.lookup(PDFName.of('AF'))
+  if (af instanceof PDFArray) {
+    for (let idx = 0; idx < af.size(); idx++)
+      add(af.lookup(idx))
+  }
+
+  return [...specs].map(([fileSpec, names]) => ({ names: [...names], fileSpec }))
+}
+
+/**
+ * Every embedded file stream of a file specification: all stream values of `/EF` (`/F`, `/UF`,
+ * and the deprecated `/DOS`, `/Mac`, `/Unix`, any of which a reader may pick), each once. Entries
+ * that are not streams are ignored. A file specification without `/EF` embeds nothing. Yielded one
+ * at a time, so a caller enforcing a limit can stop before walking a huge untrusted `/EF`. An `/EF`
+ * already in `walked` (shared by several file specifications) is skipped, then added to it.
+ */
+export function* embeddedFileStreams(fileSpec: PDFDict, walked: Set<PDFDict>): Generator<PDFRawStream> {
+  const ef = fileSpec.lookup(PDFName.of('EF'))
+  if (!(ef instanceof PDFDict) || walked.has(ef))
+    return
+  walked.add(ef)
+  const seen = new Set<PDFRawStream>()
+  for (const key of ef.keys()) {
+    const stream = ef.lookup(key)
+    if (stream instanceof PDFRawStream && !seen.has(stream)) {
+      seen.add(stream)
+      yield stream
+    }
+  }
+}
+
+// Inflation is synchronous, so its total cost is bounded instead: each attempt inflates a slice of
+// the compressed input (starting small, growing 4x only while the text is still shorter than
+// needed) with a capped output, and every inflated byte is charged to a per-PDF budget. Deflate
+// expands at most about 1032:1, so even a crafted bomb stays within these bounds.
+const FIRST_COMPRESSED_INPUT = 1024
+const MAX_COMPRESSED_INPUT = 64 * 1024
+const MAX_ATTEMPT_OUTPUT = 2 * 1024 * 1024
+
+export class InflateBudgetExceededError extends Error {
+  constructor() {
+    super('Inflate budget exceeded')
+  }
+}
+
+/** Inflated bytes still allowed for one PDF; charging past it throws InflateBudgetExceededError. */
+export class InflateBudget {
+  constructor(public remaining: number) {}
+
+  charge(bytes: number): void {
+    this.remaining -= bytes
+    if (this.remaining < 0)
+      throw new InflateBudgetExceededError()
+  }
+}
+
+/**
+ * At most `maxBytes` bytes from the start of an embedded file stream, or undefined when it cannot
+ * be read. Only unfiltered and `/FlateDecode` streams are read (pdf-lib's attach() writes the
+ * latter); for any other filter or filter chain it returns undefined. Flate data is inflated by
+ * node:zlib, never through pdf-lib's decoder, which inflates whole deflate blocks. Throws
+ * InflateBudgetExceededError once the budget is spent.
+ */
+export function readEmbeddedFilePrefix(stream: PDFRawStream, maxBytes: number, budget: InflateBudget): Uint8Array | undefined {
+  // PDFDict.lookup() already maps a null value, direct or indirect, to undefined (ISO 32000-1 §7.3.9).
+  const filter = stream.dict.lookup(PDFName.of('Filter'))
+  const filters = filter instanceof PDFArray ? filter.asArray() : filter === undefined ? [] : [filter]
+  if (filters.length === 0)
+    return stream.contents.subarray(0, maxBytes)
+  if (filters.length !== 1 || stream.dict.lookup(PDFName.of('DecodeParms')) !== undefined
+    || stream.dict.context.lookup(filters[0]) !== PDFName.of('FlateDecode')) {
+    return undefined
+  }
+
+  const total = Math.min(stream.contents.length, MAX_COMPRESSED_INPUT)
+  let input = Math.min(total, FIRST_COMPRESSED_INPUT)
+  let best: Uint8Array | undefined = total === 0 ? new Uint8Array(0) : undefined
+  while (input > 0) {
+    try {
+      const inflated = inflateSync(stream.contents.subarray(0, input), {
+        finishFlush: zlibConstants.Z_SYNC_FLUSH, // tolerate the cut-off end of the slice
+        maxOutputLength: MAX_ATTEMPT_OUTPUT,
+      })
+      budget.charge(inflated.byteLength)
+      best = new Uint8Array(inflated.buffer, inflated.byteOffset, Math.min(inflated.byteLength, maxBytes))
+    }
+    catch (error) {
+      if (error instanceof InflateBudgetExceededError)
+        throw error
+      // The output produced before a failure (over the cap, or invalid data after a valid start)
+      // is not reported, so charge the most this attempt could have produced.
+      budget.charge(Math.min(MAX_ATTEMPT_OUTPUT, input * 1032))
+      return best // Keep the previous, shorter prefix, if any.
+    }
+    if (best.byteLength >= maxBytes || input >= total)
+      return best
+    input = Math.min(input * 4, total)
+  }
+  return best
 }
 
 const MALFORMED_NAME_TREE = 'Malformed EmbeddedFiles name tree'
