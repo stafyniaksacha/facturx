@@ -251,6 +251,13 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
     `BR-CO-19`, which the 1.09 FINAL `.sch` lacked (CG-17). EN 16931 loses `BR-FXEXT-12` (blocking),
     `BR-FX-EN-04` and `BR-FXEXT-Z-08rev` (warnings), so it now accepts documents `BR-FXEXT-12`
     rejected.
+  - Schematron, `CII-SR-471` / `CII-SR-472` (context `//ram:SpecifiedTradeAllowanceCharge`): the
+    messages say each allowance/charge "shall contain a VAT category code (BT-95)" / "should contain a
+    VAT rate (BT-96)", but the tests are `count(ram:CategoryTradeTax) <= 1` and
+    `count(ram:RateApplicablePercent) <= 1`: they cap a count, they don't require presence. The
+    472 test also targets a child `TradeAllowanceChargeType` doesn't have (the rate sits under
+    `CategoryTradeTax`), so it can never fire. The library runs the rules as published; presence of
+    the VAT category code is enforced elsewhere (`BR-32` for BT-95, `BR-37` for BT-102).
   - Schematron, EXTENDED: `BR-S/Z/E/AE/IC/G/O/AF/AG-01` are replaced by
     `BR-FXEXT-{S,Z,E,AE,IC,G,O,AF,AG}-01`, which count `DETAIL` lines (BT-X-8), document
     allowances/charges and logistics charges (BT-X-273). The old Z/E/… rules required exactly one
