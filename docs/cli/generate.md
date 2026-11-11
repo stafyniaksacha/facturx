@@ -28,6 +28,9 @@ facturx generate --pdf <input.pdf> --xml <input.xml> --output <output.pdf> [opti
   invalid. Pass `--no-check` to bypass.
 - PDF metadata (title, author, subject, dates…) is derived from the XML when not otherwise present.
 - On success it prints `Saved to <path>`.
+- Fails on source PDFs it cannot embed into correctly: encrypted or signed PDFs, PDFs that already
+  contain an invoice XML, and PDFs with an unsupported or corrupt attachment list. See
+  [Source PDFs that are rejected](/api/generate#source-pdfs-that-are-rejected).
 
 ## Examples
 

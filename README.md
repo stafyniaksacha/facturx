@@ -40,13 +40,15 @@ import { check, extract, generate } from '@stafyniaksacha/facturx'
 const facturxPdf = await generate({ pdf, xml })
 
 // Pull the embedded XML back out of a Factur-X / Order-X / ZUGFeRD PDF
-const { xml: extractedXml, flavor, level } = await extract({ pdf })
+// (the flavor comes from the attachment filename)
+const { xml: extractedXml, flavor } = await extract({ pdf })
 
 // Validate against the XSD (and, with schematron: true, the EN 16931 business rules)
-const { valid, errors } = await check({ xml })
+const { valid, errors, level } = await check({ xml: extractedXml })
 ```
 
-The `flavor` and `level` are autodetected from the XML when not provided.
+`generate` and `check` autodetect the `flavor` and `level` from the XML when not provided. `extract`
+reports only the flavor; run `check` on the extracted XML to get its level.
 
 ## Documentation
 

@@ -49,7 +49,7 @@ import { generate } from '@stafyniaksacha/facturx'
 const pdf = await readFile('./invoice.pdf')
 const xml = await readFile('./factur-x.xml')
 
-const bytes = await generate({ pdf, xml }) // validates, then embeds
+const bytes = await generate({ pdf, xml, check: true }) // XSD-validates, then embeds
 await writeFile('./facturx.pdf', bytes)
 ```
 
@@ -75,5 +75,9 @@ const seller = invoice.supplyChainTradeTransaction
 - **`flavor` / `level`** are optional on every function that takes XML — they're
   [autodetected](/guide/profiles-and-flavors#autodetection) from the document when omitted.
 - **Inputs** accept `string | Buffer` (and `generate`/`check` also accept a parsed `XmlDocument`;
-  `generate`/`extract` also accept a `PDFDocument`).
+  `generate`/`extract` also accept a `PDFDocument`). A string is the document **content**, never a
+  file path: read files yourself (`readFile`) and pass the `Buffer`. For a PDF, a string is decoded
+  as base64 by pdf-lib.
+- **Validation** is off by default in `generate()` and `extract()`; pass `check: true` to run the XSD
+  check first. (The CLI is the other way round: `--check` is on unless you pass `--no-check`.)
 - **Errors** are thrown as standard `Error`s (e.g. `No attachment found`, `Invalid XML`).

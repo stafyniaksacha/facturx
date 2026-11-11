@@ -53,7 +53,8 @@ See the full [CLI reference](/cli/) for every command and flag.
 
 The three everyday operations — **generate**, **extract** and **check** — share the same shape:
 you pass a PDF and/or XML (as a string, `Buffer`, or already-parsed document) and get back a
-result. The `flavor` and `level` are autodetected from the XML when you don't specify them.
+result. `generate` and `check` autodetect the `flavor` and `level` from the XML when you don't
+specify them; `extract` reports the flavor (from the attachment filename) but not the level.
 
 <<< ../../examples/quickstart.ts#tour{ts}
 
