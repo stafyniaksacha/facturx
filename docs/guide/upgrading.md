@@ -88,9 +88,11 @@ What you may notice:
 | EXTENDED | `BR-54` becomes `BR-FXEXT-BR-54-1` and `BR-FXEXT-BR-54-2`. `BR-CO-27` is no longer checked. |
 | EXTENDED | The XSD makes a VAT block's `TypeCode` / `CategoryCode` optional, so information and group sub-lines can leave them out. The Schematron still requires them on detail lines, on the VAT breakdown (BG-23) and on document-level allowances and charges. |
 
-The new blocking `CII-SR-*` rules check that BT-81 and BT-82 have a single value across payment
-means, that BT-83 and an allowance or charge amount appear at most once, and that BT-95 and BT-96 are
-present on every document allowance or charge.
+The new blocking `CII-SR-*` rules check that BT-81 and BT-82 have a single value across payment means,
+and that BT-83, an allowance or charge amount, and an allowance or charge VAT block appear at most
+once. The messages of `CII-SR-471` / `CII-SR-472` say BT-95 / BT-96 must be present, but the rules
+only cap the count, and `CII-SR-472` can never fire (CG-16). Presence of the VAT category code is still
+checked by `BR-32` / `BR-37`.
 
 If you filter or translate findings by `id`, update the mapping above.
 
@@ -98,10 +100,15 @@ If you filter or translate findings by `id`, update the mapping above.
 
 Following the EXTENDED XSD change above, `categoryCode` on `TradeTaxType` is now typed as optional.
 The converter omits it when it is unset, and the parser leaves it `undefined` when the XML doesn't
-have it. Code that reads it needs a guard:
+have it. Code that reads it must handle the missing case. Don't
+substitute a default category: on an EXTENDED information or group sub-line the code is absent on
+purpose, and treating it as `S` would classify the line as standard-rated.
 
 ```ts
-const code = tax.categoryCode?.value ?? 'S' // or handle the missing case explicitly
+const code = tax.categoryCode?.value // string | undefined
+if (code === undefined) {
+  // no VAT category on this line (e.g. an EXTENDED information or group sub-line)
+}
 ```
 
 ## Other behaviour changes
