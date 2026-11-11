@@ -184,16 +184,21 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   headers of the FATAL `BR-FR-*` and `EXTENDED-CTC-FR` `.sch` files say October 1, 2026. The reception
   deadline (no later than October 1) agrees. The PDFs describe 1.4.0 (2026-06-30), the files are fix 04
   (2026-09-04).
-- **Severity:** p.11 says all implemented BR-FR-Flux2 rules are set to "warning" except the
-  Multi-Vendor ones. The standard variant flags all 171 asserts `fatal`, and the `_WARNING` variant still
-  keeps 26 asserts `flag="fatal"`.
+- **Severity:** p.6 says the standard version carries the "FATAL" flag and the `_WARNING` version
+  "PASS[ES] ALL RULES"; p.11 says all implemented BR-FR-Flux2 rules are set to "warning" except those
+  "related to Multi-Vendor" (p.10 groups `BR-FR-MV-01…14` with `BR-FR-BD-02` and `BR-FR-BD-13`). The
+  standard variant flags all 171 asserts `fatal`, which matches p.6 but not p.11 read on its own. The
+  `_WARNING` variant keeps 26 asserts `fatal`: 20 `BR-FR-MV-*`, 3 `BR-FR-BD-02`, 1 `BR-FR-BD-13` and
+  2 `BR-FR-BD-14`. If "related to Multi-Vendor" means the p.10 group, only the 2 `BR-FR-BD-14` asserts
+  contradict the notes (it is not in the p.10 list); if it means `BR-FR-MV-*` only, the 6 `BR-FR-BD-*`
+  asserts do. Recorded without picking a reading.
 - **Evidence** (`R=spec/fnfe-ctc-fr-1.4.0.04`):
   - Licence: `grep -n 'Apache 2.0' $R/text/release-notes-en.txt` → l.325 "governed by the terms of the
     Apache 2.0 License"; `grep -n EUPL $R/distribution/CII/EN16931/schematron/BR-FR-Flux2-Schematron-CII.sch`
     → l.5 "European Union Public Licence (EUPL) version 1.4.0";
     `grep -c 'All rights reserved' $R/text/release-notes-en.txt` → 14 (one per page footer).
-  - Dates: `sed -n 238,266p $R/text/release-notes-en.txt` (p.6: sending "AS OF SEPTEMBER 1", reception
-    "NO LATER THAN OCTOBER 1"); `sed -n 10p $R/distribution/CII/EN16931/schematron/BR-FR-Flux2-Schematron-CII.sch`
+  - Dates: `sed -n 255,268p $R/text/release-notes-en.txt` (p.6: reception "NO LATER THAN OCTOBER 1",
+    the standard version on sending side "STARTING SEPTEMBER 1ST 2026"); `sed -n 10p $R/distribution/CII/EN16931/schematron/BR-FR-Flux2-Schematron-CII.sch`
     → "EN RECEPTION AU PLUS TARD LE 1ER OCTOBRE 2026 ET EN EMISSION A COMPTER DU 1ER OCTOBRE 2026".
   - Severity: `sed -n 462,463p $R/text/release-notes-en.txt` (p.11: "All implemented BR-FR-Flux2
     Schematron rules are set to “warning” mode, except for those related to Multi-Vendor");

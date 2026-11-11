@@ -80,8 +80,9 @@ interface SchematronError {
   /** Human-readable assertion message, e.g. "[BR-16]-An Invoice shall have ...". */
   message: string
   /**
-   * Rule id from the "[BR-16]" message prefix. Undefined when the message has none, e.g. for
-   * structural checks; the raw SVRL id, if the rule sets one, is in `assertId`.
+   * Rule id from a "[BR-16]" tag in the message (validateSchematron). Undefined when the message
+   * has none, e.g. for structural checks; the raw SVRL id, if the rule sets one, is in `assertId`.
+   * BR-FR findings (validateFrCtc) take it from the assert id instead, e.g. "BR-FR-05".
    */
   id?: string
   /** Raw SVRL assert id, when the rule sets one (e.g. "FX-SCH-A-000372"). */
