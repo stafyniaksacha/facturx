@@ -42,7 +42,7 @@ function check(options: {
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `valid` | `boolean` | XSD result — or XSD **and** Schematron when `schematron: true`. |
+| `valid` | `boolean` | `true` only if the XSD and every enabled business-rule layer pass: the Schematron with `schematron: true`, BR-FR with `frCtc: true`. |
 | `errors` | `any[]` | XSD validation errors (empty when structurally valid). |
 | `flavor` | `string` | Detected (or supplied) flavor. |
 | `level` | `string` | Detected (or supplied) level. |
@@ -54,6 +54,10 @@ function check(options: {
 | `frCtcWarnings` | `SchematronError[]?` | BR-FR rules flagged `warning`/`information` that failed: none with the vendored rules (only when `frCtc: true`). |
 
 `valid` is `true` only if **every** layer that ran passes: the XSD, plus the Schematron with `schematron: true`, plus BR-FR with `frCtc: true`.
+
+When the XSD fails and a business-rule transform cannot run on the invalid data (for example a
+non-decimal amount), `check()` keeps the XSD errors and reports that layer as invalid with a single
+"could not run on this XSD-invalid document (<error code>)" entry, instead of throwing.
 
 ## Examples
 

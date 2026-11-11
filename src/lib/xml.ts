@@ -37,13 +37,20 @@ export function getLevel(xmlDoc: XmlDocument): string {
   if (!doc_id_xpath.length) {
     throw new Error('No ID found in the document')
   }
-  const xpathNode = doc_id_xpath[0]
+  return levelFromGuidelineId(doc_id_xpath[0].content)
+}
 
-  if (!xpathNode.content) {
+/**
+ * Level from a guideline ID (BT-24), e.g. `urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended`.
+ * The last `:` segment, or the one before it when the last is a date revision (Order-X, and plain
+ * `urn:cen.eu:en16931:2017` for EN 16931).
+ */
+export function levelFromGuidelineId(id: string | undefined): string {
+  if (!id) {
     throw new Error('No text found in the ID node')
   }
 
-  const doc_id = xpathNode?.content?.split(':')
+  const doc_id = id.split(':')
   let level = doc_id[doc_id.length - 1]
 
   const possibleValues = new Set([...Object.keys(FACTURX_SCHEMA), ...Object.keys(ORDERX_SCHEMA)])

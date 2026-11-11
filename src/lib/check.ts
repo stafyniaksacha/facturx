@@ -1,5 +1,5 @@
 import type { Buffer } from 'node:buffer'
-import type { SchematronError } from './schematron'
+import type { SchematronError, SchematronResult } from './schematron'
 import { XmlDocument, XmlValidateError, XsdValidator } from 'libxml2-wasm'
 import { assertFrCtcApplicable, validateFrCtc } from './fr-ctc'
 import { resolveXml } from './resolve'
@@ -90,8 +90,28 @@ export async function check(options: {
   let valid = xsdValid
   const result: Awaited<ReturnType<typeof check>> = { valid, errors, flavor, level }
 
+  // The business-rule transforms assume XSD-valid data: on an invalid value (e.g. a non-decimal
+  // amount) SaxonJS aborts with a dynamic error such as FORG0001. Keep the XSD diagnostics in that
+  // case instead of rejecting; on an XSD-valid document the error is a genuine failure and is rethrown.
+  const runOnInvalid = async (stage: string, run: () => Promise<SchematronResult>): Promise<SchematronResult> => {
+    try {
+      return await run()
+    }
+    catch (error) {
+      if (xsdValid || (error as { name?: string })?.name !== 'XError')
+        throw error
+      // The code only: SaxonJS messages quote the offending invoice value.
+      const code = String((error as { code?: string }).code ?? 'unknown')
+      return {
+        valid: false,
+        errors: [{ message: `${stage} could not run on this XSD-invalid document (${code}): fix the XSD errors first`, severity: 'error' }],
+        warnings: [],
+      }
+    }
+  }
+
   if (options.schematron) {
-    const schematron = await validateSchematron({ xml: xmlString, flavor, level, warningsAsErrors: options.warningsAsErrors })
+    const schematron = await runOnInvalid('Schematron', () => validateSchematron({ xml: xmlString, flavor, level, warningsAsErrors: options.warningsAsErrors }))
     valid &&= schematron.valid
     result.schematronValid = schematron.valid
     result.schematronErrors = schematron.errors
@@ -99,7 +119,7 @@ export async function check(options: {
   }
 
   if (options.frCtc) {
-    const frCtc = await validateFrCtc({ xml: xmlString, flavor, level, warningsAsErrors: options.warningsAsErrors })
+    const frCtc = await runOnInvalid('BR-FR', () => validateFrCtc({ xml: xmlString, flavor, level, warningsAsErrors: options.warningsAsErrors }))
     valid &&= frCtc.valid
     result.frCtcValid = frCtc.valid
     result.frCtcErrors = frCtc.errors

@@ -52,7 +52,9 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
   differs from the one the document declares **throws** instead of passing silently. A plain-CII
   `EXTENDED-CTC-FR` invoice is checked as `extended`: the release notes (p.9) say the Factur-X
   EXTENDED components can validate it, but the Factur-X EXTENDED Schematron rejects its guideline ID,
-  so only XSD + BR-FR pass on it (CG-24).
+  so only XSD + BR-FR pass on it (CG-24). `validateFrCtc()` detects this profile by itself, but
+  `check()` doesn't recognise its guideline ID (CG-18): pass `level: 'extended'`, e.g.
+  `check({ xml, level: 'extended', frCtc: true })`.
 - The rules **the published Schematron implements**: 59 of the `BR-FR-*` rules of XP Z12-012 Annex A
   (`BR-FR-01…32`, `-CO-*`, `-DEC-*`, `-MV-*`, `-BD-*`, with gaps). A pass doesn't mean every Annex A
   rule holds: some depend on external data or aren't published yet, e.g. `BR-FR-CO-01` (no

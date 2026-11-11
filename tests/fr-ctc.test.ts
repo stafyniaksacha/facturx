@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { join, relative, resolve } from 'node:path'
+import { join, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
 import { check, extract, validateFrCtc } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
@@ -23,7 +23,8 @@ const CLI = join(ROOT, 'bin/facturx.mjs')
 function listFiles(dir: string, keep: (name: string) => boolean): string[] {
   return readdirSync(dir, { withFileTypes: true, recursive: true })
     .filter(entry => entry.isFile() && keep(entry.name))
-    .map(entry => join(entry.parentPath, entry.name))
+    // Dirent.parentPath only exists from Node 20.12; engines allows 20.11, which has `path`.
+    .map(entry => join(entry.parentPath ?? (entry as { path?: string }).path ?? dir, entry.name))
     .sort()
 }
 
@@ -121,6 +122,30 @@ describe('check({ frCtc })', () => {
     await expect(check({ xml: getBasicXML(), frCtc: true })).rejects.toThrow(/got level "basic"/)
     await expect(check({ xml: getOrderXBasicXML(), frCtc: true })).rejects.toThrow(/got flavor "orderx"/)
   })
+
+  it('reads the profile whatever prefix the invoice binds the CII namespace to', async () => {
+    const xml = readFileSync(NEGATIVE, 'utf8').replace(/xmlns:rsm=/, 'xmlns:cii=').replace(/<(\/?)rsm:/g, '<$1cii:')
+    expect(xml).toContain('<cii:CrossIndustryInvoice')
+
+    const direct = await validateFrCtc({ xml, level: 'en16931' })
+    const viaCheck = await check({ xml, flavor: 'facturx', level: 'en16931', frCtc: true })
+    expect(direct.errors.map(e => e.id)).toEqual((await validateFrCtc({ xml: readFileSync(NEGATIVE, 'utf8') })).errors.map(e => e.id))
+    expect(viaCheck.frCtcErrors?.map(e => e.id)).toEqual(direct.errors.map(e => e.id))
+  })
+
+  it('keeps the XSD diagnostics when a business-rule transform cannot run on XSD-invalid data', async () => {
+    // A non-decimal amount is an XSD error, and the profile Schematron aborts on it (FORG0001).
+    const xml = readFileSync(NEGATIVE, 'utf8').replace(/<ram:TotalPrepaidAmount>[^<]*</, '<ram:TotalPrepaidAmount>oops<')
+    const result = await check({ xml, schematron: true, frCtc: true })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.length).toBeGreaterThan(0)
+    expect(result.schematronValid).toBe(false)
+    expect(result.schematronErrors?.[0]?.message).toMatch(/could not run on this XSD-invalid document \(FORG0001\)/)
+    // The value must not leak into the message.
+    expect(result.schematronErrors?.[0]?.message).not.toContain('oops')
+    expect(typeof result.frCtcValid).toBe('boolean')
+  })
 })
 
 // XP Z12-012 v1.4 Annex B: the official examples of the French reform. They must pass the whole
@@ -177,7 +202,8 @@ describe('official Factur-X 1.09 examples under BR-FR', () => {
   ].map(f => [`_Factur-X_1.08-Exemples_CS/${f}`, ['BR-FR-32-LEGALID', 'BR-FR-CO-10_BT-29-2']]))
 
   const examples = listFiles(FX_EXAMPLES, n => n.toLowerCase().endsWith('.pdf')).map((file) => {
-    const name = relative(FX_EXAMPLES, file)
+    // Forward slashes on every platform: folder matching and FAILING keys use them.
+    const name = relative(FX_EXAMPLES, file).split(sep).join('/')
     const folder = Object.keys(LEVEL_BY_FOLDER).find(f => name.includes(`${f}/`))
     return { file, name, level: folder ? LEVEL_BY_FOLDER[folder] : 'unknown' }
   })

@@ -2,7 +2,7 @@ import type { Buffer } from 'node:buffer'
 import type { SchematronConfig, SchematronError, SchematronResult } from './schematron'
 import { resolveXml } from './resolve'
 import { runSchematron } from './schematron'
-import { getLevel } from './xml'
+import { levelFromGuidelineId } from './xml'
 
 /**
  * French CTC business rules (`BR-FR-Flux2`) for invoices in UN/CEFACT CII D22B, hence for Factur-X.
@@ -104,7 +104,11 @@ async function declaredLevel(xml: string | Buffer): Promise<string> {
     const id = doc.get('/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:GuidelineSpecifiedDocumentContextParameter/ram:ID', { rsm: CII_NS, ram: RAM_NS })?.content.trim()
     if (id?.endsWith(':extended-ctc-fr'))
       return 'extended'
-    return getLevel(doc)
+    // Parse the ID read above with explicit namespaces: getLevel() resolves `rsm:`/`ram:` through
+    // the document's own prefixes and fails on an invoice that binds the CII namespace to another one.
+    if (id === undefined)
+      throw new Error('No ID found in the document')
+    return levelFromGuidelineId(id)
   }
   finally {
     doc.dispose()
