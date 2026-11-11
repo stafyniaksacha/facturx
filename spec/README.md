@@ -118,6 +118,20 @@ zip) is **not** vendored: it is marked "© AFNOR — All rights reserved"; get i
 AFNOR or impots.gouv.fr. The annexes carry no licence statement; they are vendored as reference and
 test data (fictitious official examples) and are not shipped in the npm package.
 
+Known inconsistencies in the Annex B examples (left as published; tests that rely on them must not
+assume the opposite):
+
+- **BT-25 (preceding invoice) is one digit short.** The UC5b credit note
+  (`Factures/Facture et Avoir/UC5b_F202500011_*`) references `F20250007` (CII line 244, UBL line 35),
+  but the invoice it credits identifies itself as `F202500007` (UC5, BT-1). The UC4b corrective invoice
+  (`Factures/Facture et Facture Rectificative/UC4b_F202500010_*`) references `F20250006` (CII line
+  244, UBL line 36) for the original `F202500006` (UC4, BT-1). Matching these documents by BT-25
+  fails.
+- **UC11 dates.** `UC11_F202600022_MULTI-VENDEUR_EXTENDED-CTC-FR_CII_Commentee.xml` is issued on
+  2025-01-05 (BT-2, line 19) while its billing period is 2025-12-01 to 2025-12-31 (BT-73/BT-74) and
+  one line covers 2026-01-01 to 2026-01-31 (BT-134/BT-135, lines 122/125). Annex B doesn't say
+  whether this is intentional (advance billing) or a typo for 2026.
+
 ```bash
 (cd spec/afnor-xp-z12-012-1.4/distribution && shasum -a 256 -c --quiet ../SHA256SUMS)
 pnpm --dir spec/scripts run extract afnor-xp-z12-012-1.4
