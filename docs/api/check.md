@@ -57,7 +57,7 @@ function check(options: {
 
 When the XSD fails and a business-rule transform cannot run on the invalid data (for example a
 non-decimal amount), `check()` keeps the XSD errors and reports that layer as invalid with a single
-"could not run on this XSD-invalid document (<error code>)" entry, instead of throwing.
+`could not run on this XSD-invalid document (<code>)` entry, where `<code>` is the SaxonJS error code such as `FORG0001`, instead of throwing.
 
 ## Examples
 
