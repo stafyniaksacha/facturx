@@ -22,7 +22,7 @@ export default defineCommand({
     },
     output: {
       type: 'string',
-      description: 'Output PDF-A/3 file, defaults to stdout',
+      description: 'Output PDF-A/3 file',
       required: true,
       alias: 'o',
     },

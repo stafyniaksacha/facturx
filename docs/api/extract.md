@@ -22,7 +22,7 @@ function extract(options: {
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `pdf` | `string \| Buffer \| PDFDocument` | — | **Required.** The PDF to read. |
+| `pdf` | `string \| Buffer \| PDFDocument` | — | **Required.** The PDF to read, as bytes (`Buffer`), a base64 string, or a `pdf-lib` document. **Not a file path.** |
 | `check` | `boolean` | `false` | Set `true` to XSD-validate the extracted XML; throws `Invalid XML` on failure. |
 | `flavor` | `string` | autodetect | Assert an expected flavor; mismatches throw. |
 | `level` | `string` | autodetect | Schema level used for the validation step. |
@@ -34,7 +34,7 @@ function extract(options: {
 | `filename` | `string` | The embedded attachment filename (e.g. `factur-x.xml`). |
 | `xml` | `string` | The extracted XML as a string. |
 | `flavor` | `string?` | The detected (or asserted) flavor. |
-| `level` | `string?` | The level, if provided. |
+| `level` | `string?` | The `level` option, echoed back. It is **not** detected from the XML. |
 
 ## Behaviour
 
@@ -43,7 +43,12 @@ function extract(options: {
 - The flavor is inferred from the attachment filename. Passing `flavor` asserts an expectation:
   e.g. `flavor: 'facturx'` throws `Invalid flavor, expected facturx but found orderx` if the PDF
   actually contains an Order-X file.
-- Throws `No attachment found` when no recognised XML is present.
+- Does not detect the level. `level` in the result is the option you passed (or `undefined`); call
+  [`check()`](/api/check) on the extracted XML to get the detected level.
+- Throws `No attachment found` when no recognised XML is present. This includes PDFs whose
+  attachments sit in a multi-level (`/Kids`) name tree, which is not read yet.
+- Throws `Malformed EmbeddedFiles name tree: …` when the PDF's attachment list is corrupt (for
+  example a name without a value), instead of an internal `pdf-lib` error.
 - Validation is **off by default**; pass `check: true` to XSD-validate the extracted XML (`Invalid
   XML` is thrown on failure).
 

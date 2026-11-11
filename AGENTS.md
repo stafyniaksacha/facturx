@@ -38,7 +38,7 @@ pnpm build            # REQUIRED before tests: tests import the built package (d
 pnpm test             # vitest; includes the official-example corpus (~16 s of the run)
 pnpm vitest run tests/spec-examples.test.ts   # just the corpus: 56 official PDFs
 pnpm spec:verify      # vendored XSD/codedb/XSLT/SEF ⇔ spec/ (~1 min, recompiles every SEF)
-pnpm lint             # @antfu/eslint-config (see "Current state": fails on main)
+pnpm lint             # @antfu/eslint-config
 pnpm typecheck        # tsc --noEmit (CI runs it after lint)
 pnpm --filter @stafyniaksacha/facturx-examples run examples   # runs every example script
 pnpm docs             # VitePress dev server; regenerates docs/api/models/ from the model sources
@@ -51,7 +51,7 @@ pnpm docs             # VitePress dev server; regenerates docs/api/models/ from 
 | Path | Role |
 | --- | --- |
 | `src/index.ts` | Public API: `check`, `extract`, `generate`, `invoiceToXml`, `xmlToInvoice`, `validateSchematron`, `Models`. Subpath exports `./models`, `./cli` |
-| `src/lib/check.ts`, `xsd.ts` | XSD validation via libxml2-wasm `XsdValidator`; schemas cached per flavor/level. `xsd.ts` calls `xmlRegisterFsInputProviders()` at import time so XSD imports resolve, which gives libxml2 process-wide filesystem access |
+| `src/lib/check.ts`, `xsd.ts` | XSD validation via libxml2-wasm `XsdValidator`; schemas cached per flavor/level. `xsd.ts` registers `fileInputProvider` (`input-provider.ts`, which also handles Windows drive paths and `file:` URLs) at import time so XSD imports resolve, which gives libxml2 process-wide filesystem access |
 | `src/lib/schematron.ts` | Business rules: gunzips the SEF next to its `codedb.xml` in a temp dir, runs SaxonJS, parses SVRL. Factur-X only |
 | `src/lib/xml.ts` | Flavor from the root element; level from the last `:` segment of `GuidelineSpecifiedDocumentContextParameter/ID`; base info for PDF metadata |
 | `src/lib/generate.ts`, `xmp.ts`, `metadata.ts` | Attach the XML (`AFRelationship`), set Info dict + PDF/A XMP. Does **not** make the PDF PDF/A (CG-05) |
@@ -121,14 +121,15 @@ The library parses untrusted XML and PDFs and emits documents with legal and tax
 - **Supply chain:** keep GitHub Actions pinned by SHA, installs `--frozen-lockfile`, new runtime
   dependencies justified.
 
-## Current state (audited 2026-10-26, v0.6.1)
+## Current state (audited 2026-11-11, v0.6.2)
 
 Known so you don't rediscover them; fix them deliberately, not as a side effect of other work.
 
-- `pnpm lint` fails: 14 errors, mostly in `docs/**/*.md` code snippets, plus `docs/scripts/gen-models.mjs`,
-  `pnpm-workspace.yaml` and one trailing space in `src/lib/parsers/facturx.ts`.
-- No CI runs build, lint, test or `spec:verify` on pull requests; `.github/workflows/docs.yml` only
-  deploys the docs on tags.
+- `.github/workflows/ci.yml` runs on pull requests and pushes: build, lint, typecheck, tests on every
+  Node LTS line, docs build, package check, and consumer installs (incl. IBM Power/Z). It does **not**
+  run `pnpm spec:verify`: run it yourself when you touch `src/lib/xsd/**`.
+  `.github/workflows/docs.yml` deploys the docs on tags.
+- `extract({ check: true })` fails on ZUGFeRD attachments with `Unknown schema flavor` (#38).
 - `engines.node` is `>=20.11.0`, and Node 20 is end-of-life.
 - `tests/parser.test.ts:29` is skipped.
 - The shipped `.sef.json.gz` files embed the absolute path of the checkout they were compiled in.
