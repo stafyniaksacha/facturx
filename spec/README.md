@@ -100,8 +100,33 @@ Known inconsistencies, to keep in mind when citing it (see `CONFORMANCE.md`):
 pnpm --dir spec/scripts run extract fnfe-ctc-fr-1.4.0.04
 ```
 
+## `afnor-xp-z12-012-1.4/` — XP Z12-012 v1.4 annexes A and B (2026-06-30)
+
+Annexes of the AFNOR standard XP Z12-012 v1.4 ("Formats and profiles for invoice messages and life
+cycle statuses", French e-invoicing reform), from the FNFE-MPE zip
+`FR_and_ENG_XP_Z12-012_Annexes_A_et_B_EXEMPLES_V1.4.zip` (fnfe-mpe.org, July 2026).
+
+| Path | What it is | Edit? |
+| --- | --- | --- |
+| `distribution/XP_Z12-012_Annexe_A_2026_V1.4_VF.xlsx` | Annex A: field matrices per syntax/profile (CII/UBL, EN16931, EXTENDED-CTC-FR, BASIC WL), BR-FR rules incl. `BR-FR-CTC-CPRO`, code lists, CDAR lifecycle statuses, Flux 1 / Flux 10 / directory | never |
+| `distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/` | Annex B: official example invoices (Factur-X PDF, CII, UBL; EN16931, EXTENDED, EXTENDED-CTC-FR) and CDAR lifecycle messages, with explanatory PDFs | never |
+| `SHA256SUMS` | Checksums of every file in `distribution/` | regenerate on upgrade |
+| `text/` | `annex-a--*.csv` (one per worksheet) and `annex-b-examples-en.txt` | never — regenerate |
+
+The standard itself (`ENG_XP Z12-012_FORMATS_AND_PROFILES_FOR_INVOICE_MESSAGES_V1.4.pdf`, in the same
+zip) is **not** vendored: it is marked "© AFNOR — All rights reserved"; get it free of charge from
+AFNOR or impots.gouv.fr. The annexes carry no licence statement; they are vendored as reference and
+test data (fictitious official examples) and are not shipped in the npm package.
+
+```bash
+(cd spec/afnor-xp-z12-012-1.4/distribution && shasum -a 256 -c --quiet ../SHA256SUMS)
+pnpm --dir spec/scripts run extract afnor-xp-z12-012-1.4
+```
+
 ## Not vendored
 
+- **XP Z12-012 standard text** (AFNOR copyright, see above) and **XP Z12-013** (API between company
+  systems and approved platforms, OpenAPI swaggers): out of scope for this library.
 - **Order-X** specification: `src/lib/xsd/orderx/` cannot be traced to a vendored source yet. The
   Factur-X hybrid code lists above do cover Order-X XMP values (`ORDER`, `ORDER_CHANGE`,
   `ORDER_RESPONSE`, `BASIC` / `COMFORT` / `EXTENDED`, `order-x.xml`).

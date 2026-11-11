@@ -11,7 +11,7 @@
  *
  * Usage (from the repo root):
  *   pnpm --dir spec/scripts install --ignore-workspace
- *   pnpm --dir spec/scripts run extract [factur-x-1.09 | fnfe-ctc-fr-1.4.0.04]
+ *   pnpm --dir spec/scripts run extract [factur-x-1.09 | fnfe-ctc-fr-1.4.0.04 | afnor-xp-z12-012-1.4]
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -39,6 +39,14 @@ const SOURCES = {
     workbooks: [
       ['3. FACTUR-X 1.09 - 2026 06 10 - EN FR VF.xlsx', 'fields'],
       ['EN16931 code lists values v17b - used from 2026-05-15 - Fx 1.09.xlsx', 'codelists'],
+    ],
+  },
+  'afnor-xp-z12-012-1.4': {
+    pdfs: [
+      ['XP_Z12-012_Annexe_B_EXEMPLES_V1.4/XP_Z12-012_Annexe_B_EXEMPLES_V1.4_EN.pdf', 'annex-b-examples-en.txt'],
+    ],
+    workbooks: [
+      ['XP_Z12-012_Annexe_A_2026_V1.4_VF.xlsx', 'annex-a'],
     ],
   },
   'fnfe-ctc-fr-1.4.0.04': {

@@ -1,0 +1,52 @@
+CODE_MOTIF,LIBELLE,DESCRIPTION,,Applicable,Provenance,Codes Equivalent Standard (UBL),,REJETÉE   à l'Emission,REJETÉE (en Réception),REFUSÉE B2B,EN LITIGE,APPROUVÉE PARTIELLEMENT,SUSPENDUE,ERREUR_ROUTAGE,IRRECEVABLE,DÉPOSÉE,REFUSÉE B2G,,,Correction version 06/2026,Correction version 31/10/2025,Correction version 31/07/2025
+NON_TRANSMISE,Destinataire non connecté,"Ce motif est utilisé UNIQUEMENT avec le statut ""DÉPOSÉE"" pour signifier que la facture n'a pas pu être transmise parce que le destinataire (ACHETEUR), bien que présent dans l'Annuaire PPF, n'a aucune adresse de réception de facture active (c’est-à-dire connectée à une Plateforme Agréée en réception). ",,B2B / B2G,B2G,,,,,,,,,,,X,,,,,"Ajout motif ""non transmis"" au statut Déposée",,,a a a
+JUSTIF_ABS,Justificatif absent ou insuffisant,"Ce motif doit être utilisé s'il manque des pièces jointes pour le traitement de la facture (statut ""Suspendue"") Elle devra faire l'objet d'un renvoi par l'émetteur d'un cycle de vie au statut ""Complétée"" avec la ou les pièce(s) jointe(s) manquante(s)",,B2B / B2G,B2G,,,,,,,,X,,,,,,,,,,,a a a
+ROUTAGE_ERR,Erreur de routage,"Ce motif doit être utilisé dans le cas où les informations servant au routage de la facture sont devenues obsolètes. Ceci peut se produire par exemple :  - en cas de décalage de mise à jour d’annuaire  - une erreur de la Plateforme Agréée émettrice. Post correction de l'annuaire par le destinataire de la facture, la facture peut-être transmise à nouveau (Sans aucun changement sur les données de la facture)",,B2B / B2G,B2G,,,,,,,,,X,,,,,,,,,,a a a
+RETRAIT_MAN_SERV,Retraitement manuel par les services,Ce motif nécessite une explication en Note de CDV,,B2B / B2G,B2G,,,,,,,,,,,,X,,,Ajout pour B2G,,,,a a a
+ST_CT_NON_DECLAR,Sous-traitant / Co-traitant non déclaré,Ce motif nécessite une explication en Note de CDV,,B2B / B2G,B2G,,,,,,,,,,,,X,,,Ajout pour B2G,,,,a a a
+SUPPR_COMP_AVOIR,Suppression pour compensation d'avoirs,Ce motif nécessite une explication en Note de CDV,,B2B / B2G,B2G,,,,,,,,,,,,X,,,Ajout pour B2G,,,,a a a
+TRANSF_PMNT_REGIE,Transfert pour paiement en régie,Ce motif nécessite une explication en Note de CDV,,B2B / B2G,B2G,,,,,,,,,,,,X,,,Ajout pour B2G,,,,a a a
+CONTACT_ACHTR,Autres : contacter votre acheteur,Ce motif nécessite une explication en Note de CDV,,B2B / B2G,B2G,,,,,,,,,,,,X,,,Ajout Motif Refus pour B2G uniquement,,,,a a a
+AUTRE, Autre,Ce motif nécessite une explication en Note de CDV,,B2B / B2G,B2G,,,,,,X,X,,,,,X,,,Ajout Motif Refus pour B2G uniquement,,,,a a a
+COORD_BANC_ERR,Erreur de coordonnées bancaires,Les références bancaires sur la facture ne correspondent pas à ce qui est paramétré chez le Payeur / Acheteur),,B2B / B2G,B2G /IMR / CDAR,FIN,,,,,X,,X,,,,X,,,Ajout Motif Refus pour B2G uniquement,,,,a a a
+TX_TVA_ERR, Taux de TVA erroné, Un taux de TVA utilisé n'est pas celui qui aurait dû,,B2B / B2G,B2G,,,,,X,X,,,,,,X,,,,,,,a a a
+MONTANTTOTAL_ERR,Montant Total Erroné,"Un des montants totaux de la facture est erronée, par exemple Net à payer",,B2B,B2G /IMR / CDAR,,,X,X,X,X,,,,,,X,,,,,,,a a a
+CALCUL_ERR,Erreur de calcul de la facture,"Soit détecté au schematron, soit après (pour les lignes, ou arrondi non accepté)",,B2B,IMR / CDAR,LEG,,X,X,X,X,,,,,,X,,,,,,,a a a
+NON_CONFORME,Mention légale manquante,Toute mention légale non contrôlée,,B2B,IMR / CDAR,LEG,,,,X,X,,,,,,X,,,,,,,a a a
+DOUBLON,Facture en doublon (déjà émise / réçue),Facture en doublon (même numéro même fournisseur et même année de la date de facture),,B2B,IMR / CDAR,LEG,,X,X,X,X,,,,,,X,,,,,,,a a a
+DEST_INC,Destinataire inconnu,"A l'émission, le destinataire est inconnu. Il n'existe pas dans l'annuaire.",,B2B,IMR / CDAR,REC,,X,,,,,,,,,,,,,,,,a a a
+DEST_ERR,Erreur de destinataire,"L'entité juridique  destinataire de la facture n'est pas la bonne (n° de SIREN du Destinataire). Par exemple en cas de multi-société dans un groupe, il arrive que la société facturée ne soit pas celle qui aurait dû l'être.",,B2B,B2G /IMR / CDAR,UNR,,,,X,X,,,,,,X,,,,,,,a a a
+TRANSAC_INC,Transaction inconnue,La facture ne correspond  pas à une livraison effectuée ou une prestation de service livrée.,,B2B,IMR / CDAR,UNR,,,,X,X,,,,,,X,,,,,,,a a a
+EMMET_INC,Emetteur inconnu,L'émetteur de la facture est inconnu du Destinataire (anti-spam),,B2B,IMR / CDAR,UNR,,,,X,X,,,,,,X,,,,,,,a a a
+CONTRAT_TERM,Contrat terminé,"Contrat terminé, plus de facture possible",,B2B,IMR / CDAR,UNR,,,,X,X,,,,,,X,,,,,,,a a a
+DOUBLE_FACT,DOUBLE FACTURE,Prestation ou livraison déjà facturé sur une autre facture,,B2B,IMR / CDAR,UNR,,,,X,X,,,,,,X,,,,,,,a a a
+CMD_ERR,N° de COMMANDE Incorrect ou manquant,"N°  de commande erroné, inexistant ou déjà facturé. Ne peut être utilisé avec un stratut REFUSÉE que si le numéro de camaande a été fourni par l'ACHETEUR AVANT LA FACTURATION.",,B2B,IMR / CDAR,REF,,,,X,X,X,X,,,,X,,,,,,,a a a
+ADR_ERR,L'adresse de facturation électronique erronée,L'adresse de facturation électronique du destinataire (BT-49 ou BT-34) est absente ou erronée,,B2B,IMR / CDAR,REF,,X,X,X,X,,,,,,X,,,,,,,a a a
+SIRET_ERR,SIRET Erroné ou absent,Le SIRET du destinataire est erroné ou absent si exigé,,B2B,IMR / CDAR,REF,,,,,X,X,X,,,,,,,,,,,a a a
+CODE_ROUTAGE_ERR,CODE_ROUTAGE Absent ou Erroné,Le CODE_ROUTAGE du destinataire est erroné ou absent si exigé,,B2B,IMR / CDAR,REF,,,,,X,X,X,,,,,,,,,,,a a a
+REF_CT_ABSENT,Référence contractuelle nécessaire pour le traitement de la facture manquante,"Référence exigée contractuellement est absente (liste à encadrer) et à identifier dans le CDV : BT-12 (N° de contrat), N° de BL (BT-16), Ref Acheteur (BT-10), Objet Facturé (BT-18), Référence Projet (BT-11), Facture antérieure (BG-3),  …",,B2B,IMR / CDAR,REF,,,,X,X,X,X,,,,X,,,,,,,a a a
+REF_ERR,Référence incorrecte,A préciser dans les autres données du CDV de quelle référence il s'agit,,B2B,IMR / CDAR,REF,,,,,X,X,X,,,,,,,,,,,a a a
+PU_ERR,Prix Unitaires incorrects,Un prix Unitaire n'est pas celui attendu,,B2B,IMR / CDAR,PRI,,,,,X,X,,,,,,,,,,,,a a a
+REM_ERR,Remise erronée,Une remise est absente ou n'est pas celle attendue,,B2B,IMR / CDAR,PRI,,,,,X,X,,,,,,,,,,,,a a a
+QTE_ERR,Quantité facturée incorrecte,Une quantité facturée n'est pas celle attendue,,B2B,IMR / CDAR,QTY,,,,,X,X,,,,,,,,,,,,a a a
+ART_ERR,Article facturé incorrect,Un article facturé n'est pas le bon ou est erroné,,B2B,IMR / CDAR,ITM,,,,,X,X,,,,,,,,,,,,a a a
+MODPAI_ERR,Modalités de paiement incorrectes,Les modalités de paiement (date d'échéance par exemple) n'est pas celle escomptées,,B2B,IMR / CDAR,PAY,,,,,X,X,,,,,,,,,,,,a a a
+QUALITE_ERR,Qualité d'article livré incorrecte,Un des articles livré est défectueux,,B2B,IMR / CDAR,QUA,,,,,X,X,,,,,,,,,,,,a a a
+LIVR_INCOMP,Problème de livraison,"Livraison incomplète, non conforme",,B2B,IMR / CDAR,DEL,,,,,X,X,,,,,X,,,,,,,a a a
+REJ_SEMAN,Rejet pour erreur sémantique, Analyse du format sémantique ,,B2B,,,,X,X,,,,,,,,,,,,,,,a a a
+REJ_UNI,Rejet sur contrôle unicité, Contrôle d'unicité,,B2B,,,,X,X,,,,,,,,,,,,,,,a a a
+REJ_COH,Rejet sur contrôle Cohérence de données,Contrôle cohérence de données (les balises et les référentiels),,B2B,,,,X,X,,,,,,,,,,,,,,,a a a
+REJ_ADR,Rejet sur Contrôle d'adressage ,Contrôle d'adressage ,,B2B,,,,X,X,,,,,,,,,,,,,,,a a a
+REJ_CONT_B2G,Rejet sur Contrôles métier B2G,Contrôles B2G (vérification du n° d'engagement…),,B2B,,,,X,X,,,,,,,,,,,,,,,a a a
+REJ_REF_PJ,Rejet sur Référence de PJ,Référence de PJ,,B2B,,,,X,X,,,,,,,,,,,,,,,a a a
+REJ_ASS_PJ,Rejet sur Erreur d'association de la PJ,Erreur d'association de la PJ,,B2B,,,,X,X,,,,,,,,,,,,,,,a a a
+IRR_VIDE_F,Contrôle de non vide sur les fichiers du flux,Contrôle de non vide sur les fichiers du flux,,B2B,,,,,,,,,,,X,,,,,,,Ajout,,a a a
+IRR_TYPE_F,Contrôle de type et extension des fichiers du flux,Contrôle de type et extension des fichiers du flux,,B2B,,,,,,,,,,,X,,,,,,,Ajout,,a a a
+IRR_SYNTAX,Contrôle syntaxique des fichiers du flux ,Contrôle syntaxique des fichiers du flux ,,B2B,,,,,,,,,,,X,,,,,,,Ajout,,a a a
+IRR_TAILLE_PJ,Contrôle de taille des PJ de chaque fichier du flux ,Contrôle de taille des PJ de chaque fichier du flux ,,B2B,,,,,,,,,,,X,,,,,,,Ajout,,a a a
+IRR_NOM_PJ,Contrôle du nom des PJ de chaque fichier du flux (absence de caractères interdits),Contrôle du nom des PJ de chaque fichier du flux (absence de caractères interdits),,B2B,,,,,,,,,,,X,,,,,,,Ajout,,a a a
+IRR_VID_PJ,Contrôle de PJ non vide de chaque fichier du flux,Contrôle de PJ non vide de chaque fichier du flux,,B2B,,,,,,,,,,,X,,,,,,,Ajout,,a a a
+IRR_EXT_DOC,Contrôle de l'extension des PJ de chaque fichier du flux ,Contrôle de l'extension des PJ de chaque fichier du flux ,,B2B,,,,,,,,,,,X,,,,,,,Ajout,,a a a
+IRR_TAILLE_F,Contrôle de taille max des fichiers contenus dans le flux ,Contrôle de taille max des fichiers contenus dans le flux ,,B2B,,,,,,,,,,,X,,,,,,,Ajout,,a a a
+IRR_ANTIVIRUS,Contrôle anti-virus,Le flux ne respecte pas les conditions de sécurité,,B2B,,,,,,,,,,,X,,,,,,,Ajout,,a a a
+IRR_NOM_F,Contrôle du nom de fichier contenu dans le flux,Contrôle du nom de fichier contenu dans le flux,,B2B,,,,,,,,,,,X,,,,,Ajout,,,,a a a

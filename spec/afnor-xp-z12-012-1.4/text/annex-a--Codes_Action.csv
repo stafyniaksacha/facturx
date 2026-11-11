@@ -1,0 +1,29 @@
+a a
+a a,,Action
+a a a a,,CODE,Libellé,Définition,Note d'usage
+a a a a,,NOA,Aucune Action Requise,No action required ,No action required
+a a a a,,PIN,Information complémentaire requise,Provide information ,Missing information requested without re-issuing invoice
+a a a a,,NIN,Créer une Facture Rectificative,Issue new invoice ,Request to re-issue a corrected invoice
+a a a a,,CNF,Créer un Avoir total,Credit fully ,Request to fully cancel the referenced invoice with a credit note
+a a a a,,CNP,Créer un Avoir Partiel,Credit partially ,Request to issue partial credit note for corrections only
+a a a a,,CNA,Rembourser le paiement de la facture,Credit the amount ,Request to repay the amount paid on the invoice
+a a a a,,OTH,Autre,Other ,Requested action is not defined by code
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
+a a a a
