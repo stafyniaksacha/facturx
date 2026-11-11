@@ -369,12 +369,77 @@ describe('generate', () => {
       .toThrow('could not be checked for an existing invoice (invoice-1)')
   })
 
+  it.each([
+    ['a comment written as <!-->', '<?xml version="1.0"?><!--><x/>-->'],
+    ['a comment written as <!--->', '<?xml version="1.0"?><!---><x/>-->'],
+  ])('detects an invoice behind %s', async (_, prolog) => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    await pdf.attach(new TextEncoder().encode(prolog + xml.replace(/^<\?xml[^>]*>/, '')), 'old.xml', { mimeType: 'text/xml' })
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('already has an embedded invoice (old.xml)')
+  })
+
+  it.each([
+    ['/F holds something else', true],
+    ['/F is not a stream', false],
+  ])('detects an invoice in /EF /UF when %s', async (_, fIsStream) => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const invoice = pdf.context.register(pdf.context.flateStream(new TextEncoder().encode(xml), { Type: 'EmbeddedFile' }))
+    const other = fIsStream ? pdf.context.register(pdf.context.flateStream(new Uint8Array([0x89, 0x50, 0x4E, 0x47]), { Type: 'EmbeddedFile' })) : 5
+    const fileSpec = pdf.context.register(pdf.context.obj({ Type: 'Filespec', UF: PDFHexString.fromText('logo.png'), EF: { F: other, UF: invoice } }))
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([fileSpec]))
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow(fIsStream ? 'already has an embedded invoice (logo.png)' : 'could not be checked')
+  })
+
+  it.each([
+    ['a prolog longer than the examined prefix', async (pdf: PDFDocument, xml: string) => pdf.attach(new TextEncoder().encode(`<?xml version="1.0"?><!--${' '.repeat(70 * 1024)}-->${xml.replace(/^<\?xml[^>]*>/, '')}`), 'long.xml', { mimeType: 'text/xml' })],
+    ['/DecodeParms on a /FlateDecode stream', async (pdf: PDFDocument, xml: string) => {
+      const stream = pdf.context.register(pdf.context.flateStream(new TextEncoder().encode(xml), { Type: 'EmbeddedFile', DecodeParms: { Predictor: 12 } }))
+      pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', EF: { F: stream } }))]))
+    }],
+    ['corrupt /FlateDecode data', async (pdf: PDFDocument) => {
+      const stream = pdf.context.register(pdf.context.stream(new Uint8Array([1, 2, 3, 4, 5, 6]), { Type: 'EmbeddedFile', Filter: 'FlateDecode' }))
+      pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', EF: { F: stream } }))]))
+    }],
+    ['an /EF that is not a dictionary', async (pdf: PDFDocument) => {
+      pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', EF: 5 }))]))
+    }],
+  ])('rejects as not checkable %s', async (_, attach) => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    await attach(pdf, xml)
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml })).rejects.toThrow('could not be checked for an existing invoice')
+  })
+
+  it('says "order" when the document being written is an Order-X order', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const stream = pdf.context.register(pdf.context.stream('3c78>', { Type: 'EmbeddedFile', Filter: 'ASCIIHexDecode' }))
+    pdf.catalog.set(PDFName.of('AF'), pdf.context.obj([pdf.context.register(pdf.context.obj({ Type: 'Filespec', EF: { F: stream } }))]))
+
+    await expect(generate({ pdf: Buffer.from(await pdf.save()), xml: await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8') }))
+      .rejects
+      .toThrow('could not be checked for an existing order')
+  })
+
   it('accepts attachments that are clearly not XML', async () => {
     const source = await PDFDocument.create()
     source.addPage()
     await source.attach(new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]), 'logo.png', { mimeType: 'image/png' })
     await source.attach(new Uint8Array(0), 'empty.txt', { mimeType: 'text/plain' })
     await source.attach(new TextEncoder().encode('  plain text'), 'notes.txt', { mimeType: 'text/plain' })
+    await source.attach(new TextEncoder().encode('<<Important>> pay soon'), 'reminder.txt', { mimeType: 'text/plain' })
+    await source.attach(new TextEncoder().encode('<- see attached'), 'pointer.txt', { mimeType: 'text/plain' })
+    await source.attach(new TextEncoder().encode(' \n\t '), 'blank.txt', { mimeType: 'text/plain' })
+    const emptyFlate = source.context.register(source.context.stream(new Uint8Array(0), { Type: 'EmbeddedFile', Filter: 'FlateDecode' }))
+    source.catalog.set(PDFName.of('AF'), source.context.obj([source.context.register(source.context.obj({ Type: 'Filespec', EF: { F: emptyFlate } }))]))
 
     await expect(generate({ pdf: Buffer.from(await source.save()), xml: await readFile(SOURCE_XML, 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
   })

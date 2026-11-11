@@ -23,7 +23,7 @@ import pkg from '../../package.json' with { type: 'json' }
 import { check } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
-import { embeddedFileSpecs, embeddedFileStream, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
+import { embeddedFileSpecs, embeddedFileStreams, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
 import { extractBaseInfo, getFlavor, getLevel } from './xml'
@@ -212,22 +212,24 @@ function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: str
   // share one expensive stream. Past the limit the PDF is rejected, not silently accepted.
   const contents = new Map<PDFRawStream, XmlContent>()
   for (const { names, fileSpec } of specs) {
-    const stream = embeddedFileStream(fileSpec)
-    if (!stream)
-      continue
-    if (!contents.has(stream)) {
-      if (contents.size >= MAX_SCANNED_FILES)
-        throw new Error(`The PDF has more than ${MAX_SCANNED_FILES} distinct embedded file streams: could not check it for an existing ${kind}`)
-      const prefix = readEmbeddedFilePrefix(stream, ROOT_SNIFF_BYTES)
-      contents.set(stream, prefix ? classifyContent(prefix) : 'undetermined')
-    }
     const name = names[0] ?? 'unnamed file'
-    const content = contents.get(stream)!
-    // Fail closed: content that cannot be read or whose root cannot be found might be an invoice.
-    if (content === 'undetermined')
+    const { streams, malformed } = embeddedFileStreams(fileSpec)
+    if (malformed)
       throw new Error(`The PDF has an embedded file whose content could not be checked for an existing ${kind} (${name})`)
-    if (content !== 'not-xml' && conflicting.some(([ns, local]) => content.ns === ns && content.name === local))
-      throw new Error(`The PDF already has an embedded ${kind} (${name})`)
+    for (const stream of streams) {
+      if (!contents.has(stream)) {
+        if (contents.size >= MAX_SCANNED_FILES)
+          throw new Error(`The PDF has more than ${MAX_SCANNED_FILES} distinct embedded file streams: could not check it for an existing ${kind}`)
+        const prefix = readEmbeddedFilePrefix(stream, ROOT_SNIFF_BYTES)
+        contents.set(stream, prefix ? classifyContent(prefix) : 'undetermined')
+      }
+      const content = contents.get(stream)!
+      // Fail closed: content that cannot be read or whose root cannot be found might be an invoice.
+      if (content === 'undetermined')
+        throw new Error(`The PDF has an embedded file whose content could not be checked for an existing ${kind} (${name})`)
+      if (content !== 'not-xml' && conflicting.some(([ns, local]) => content.ns === ns && content.name === local))
+        throw new Error(`The PDF already has an embedded ${kind} (${name})`)
+    }
   }
 
   if (specs.some(({ names }) => names.includes(filename)))
@@ -284,15 +286,20 @@ function rootStartTag(text: string): string | 'not-xml' | 'undetermined' {
       break
     if (text[idx] !== '<')
       return sawMarkup ? 'undetermined' : 'not-xml'
+    // Before any markup, '<' followed by something that cannot open a PI, comment, DOCTYPE or
+    // element name (an ASCII non-name character) is plain text, e.g. '<<Important>>' or '<- see'.
+    const next = text[idx + 1] ?? ''
+    if (!sawMarkup && !/[?!A-Z_:]/i.test(next) && next.charCodeAt(0) < 0x80)
+      return 'not-xml'
     sawMarkup = true
     if (text.startsWith('<?', idx)) {
-      idx = text.indexOf('?>', idx)
+      idx = text.indexOf('?>', idx + 2) // after the opener: '<?>' does not close it
       if (idx < 0)
         return 'undetermined'
       idx += 2
     }
     else if (text.startsWith('<!--', idx)) {
-      idx = text.indexOf('-->', idx)
+      idx = text.indexOf('-->', idx + 4) // after the opener: '<!-->' and '<!--->' do not close it
       if (idx < 0)
         return 'undetermined'
       idx += 3

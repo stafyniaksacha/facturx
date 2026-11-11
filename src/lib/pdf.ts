@@ -70,20 +70,37 @@ export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileS
 const MAX_COMPRESSED_INPUT = 64 * 1024
 const MAX_INFLATED_OUTPUT = 8 * 1024 * 1024
 
-/** The embedded file stream of a file specification (`/EF` `/F`, else `/UF`), if any. */
-export function embeddedFileStream(fileSpec: PDFDict): PDFRawStream | undefined {
+/**
+ * The embedded file streams of a file specification (`/EF` `/F` and `/UF`, which readers may pick
+ * either of), and whether its `/EF` is malformed: present but not a dictionary, or an entry that is
+ * not a stream. A file specification without `/EF` embeds nothing.
+ */
+export function embeddedFileStreams(fileSpec: PDFDict): { streams: PDFRawStream[], malformed: boolean } {
+  if (!fileSpec.has(PDFName.of('EF')))
+    return { streams: [], malformed: false }
   const ef = fileSpec.lookup(PDFName.of('EF'))
   if (!(ef instanceof PDFDict))
-    return undefined
-  const stream = ef.lookup(PDFName.of('F')) ?? ef.lookup(PDFName.of('UF'))
-  return stream instanceof PDFRawStream ? stream : undefined
+    return { streams: [], malformed: true }
+
+  const streams: PDFRawStream[] = []
+  let malformed = false
+  for (const key of ['F', 'UF']) {
+    if (!ef.has(PDFName.of(key)))
+      continue
+    const stream = ef.lookup(PDFName.of(key))
+    if (!(stream instanceof PDFRawStream))
+      malformed = true
+    else if (!streams.includes(stream))
+      streams.push(stream)
+  }
+  return { streams, malformed }
 }
 
 /**
  * At most `maxBytes` bytes from the start of an embedded file stream, or undefined when it cannot
  * be read within bounded work. Only unfiltered and `/FlateDecode`
- * streams are read (pdf-lib's attach() writes the latter); other filters and filter chains are
- * skipped. Flate data is inflated by node:zlib from a bounded slice of the compressed input with a
+ * streams are read (pdf-lib's attach() writes the latter); for any other filter or filter chain
+ * it returns undefined. Flate data is inflated by node:zlib from a bounded slice of the compressed input with a
  * capped output, never through pdf-lib's decoder, which inflates whole deflate blocks.
  */
 export function readEmbeddedFilePrefix(stream: PDFRawStream, maxBytes: number): Uint8Array | undefined {
@@ -98,6 +115,8 @@ export function readEmbeddedFilePrefix(stream: PDFRawStream, maxBytes: number): 
 
   // Shrink the compressed slice until its output fits the cap: only a stream far more compressible
   // than any real XML (a bomb) needs more than one attempt.
+  if (stream.contents.length === 0)
+    return new Uint8Array(0)
   let input = Math.min(stream.contents.length, MAX_COMPRESSED_INPUT)
   while (input > 0) {
     try {
