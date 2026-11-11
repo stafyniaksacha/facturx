@@ -20,7 +20,7 @@ open entry is "known", anything else is new.
 | All 56 official example PDFs (11–12 per profile) extract, pass XSD + Schematron at their profile (no error and no warning), and round-trip through `xmlToInvoice` → `invoiceToXml` with an identical model (this is what caught the 0.6.x `RoleCode` regression fixed in #25) | `pnpm build && pnpm vitest run tests/spec-examples.test.ts` |
 | External XML entities are not expanded with the default libxml2-wasm parse options used by `resolveXml` / `xmlToInvoice` (no XXE) | probe in the audit (entity resolves to empty / `check()` rejects the document); keep `XML_PARSE_NOENT` / `XML_PARSE_DTDLOAD` / `XML_PARSE_XINCLUDE` off |
 | The XMP packet header uses the fixed packet id `W5M0MpCehiHzreSzNTczkc9d` of the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` (was CG-06), and `generate()` keeps a source PDF's permanent trailer `/ID` (ISO 32000-1 §14.4) instead of throwing (#37), while rejecting encrypted (§6.1 p.25) and signed sources and sources that already embed a document of the kind being written (§6 p.24 for invoices; one order per PDF for Order-X is by analogy, no Order-X spec is vendored). That document is detected by content, whatever its file name: any stream of a file (`/EF` `/F`, `/UF` or a deprecated key) in the EmbeddedFiles name tree or catalog `/AF` whose root element (namespace and name) is a CII invoice, or an Order-X order when an order is written, including UTF-8 and UTF-16 with a BOM and invoices hidden behind tricky prolog comments. A file whose name tree key, `/F` or `/UF` is a recognized invoice name (`factur-x.xml`, `xrechnung.xml`, ZUGFeRD names; `order-x.xml` for orders) is rejected too, whatever its content can be read as, and so is one already using the filename being written. Other XML is accepted as a supporting file (§6.4 p.30–32), including an Order-X order attached to an invoice. Reading untrusted input is bounded: each distinct stream is read once, inflated with node:zlib in growing slices (at most 64 KiB of compressed input and 2 MiB of output per attempt), 64 KiB of text is examined, and per PDF at most 256 distinct streams and 128 MiB of inflation are allowed (a failed attempt is charged as much as it could have produced); past either limit the PDF is rejected. Known misses are listed in CG-14 | `pnpm build && pnpm vitest run tests/generate.test.ts` |
-| Schematron findings are classified by the rule's own SVRL `flag`: `warning`/`information` are reported in `warnings` and don't affect validity unless `warningsAsErrors` is set; unflagged and `fatal` ones are errors. Fired `<report>`s count like failed `<assert>`s (the Factur-X Schematrons express profile restrictions such as "@schemeID not used in the given context" as reports; before this they were silently dropped). In the vendored Factur-X XSLTs every warning-flagged rule is either `PEPPOL-EN16931-R008`, `BR-FX-EN-04`, `BR-FXEXT-04` or an EXTENDED `-08ini/-08rev` pair backed by a blocking `-08b` rule | `pnpm build && pnpm vitest run tests/schematron.test.ts` |
+| Schematron findings are classified by the rule's own SVRL `flag`: `warning`/`information` are reported in `warnings` and don't affect validity unless `warningsAsErrors` is set; unflagged and `fatal` ones are errors. Fired `<report>`s count like failed `<assert>`s (the Factur-X Schematrons express profile restrictions such as "@schemeID not used in the given context" as reports; before this they were silently dropped). Proven on `PEPPOL-EN16931-R008` (a warning-flagged EN 16931 rule) and on an `@schemeID` report; the exhaustive list of warning-flagged rules per profile is not proven here | `pnpm build && pnpm vitest run tests/schematron.test.ts` |
 | README and docs no longer claim `extract()` detects the level: it returns the flavor (from the attachment filename) and echoes `options.level`; the quick start reads the level from `check()` on the extracted XML (was CG-11) | `pnpm build && pnpm --filter @stafyniaksacha/facturx-examples run examples` (quickstart prints `facturx en16931`, not `facturx undefined`) |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no veraPDF run), any Order-X
@@ -184,10 +184,22 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   headers of the FATAL `BR-FR-*` and `EXTENDED-CTC-FR` `.sch` files say October 1, 2026. The reception
   deadline (no later than October 1) agrees. The PDFs describe 1.4.0 (2026-06-30), the files are fix 04
   (2026-09-04).
-- **Severity:** p.11 says the `_WARNING` variant sets "all rules" to warning, but it keeps 26 asserts
-  `flag="fatal"`.
-- **Evidence:** `head -12 spec/fnfe-ctc-fr-1.4.0.04/distribution/CII/EN16931/schematron/BR-FR-Flux2-Schematron-CII.sch`;
-  `grep -c 'name="flag">fatal' spec/fnfe-ctc-fr-1.4.0.04/distribution/CII/EN16931/2xslt/BR-FR-Flux2-Schematron-CII_WARNING.xslt`.
+- **Severity:** p.11 says all implemented BR-FR-Flux2 rules are set to "warning" except the
+  Multi-Vendor ones. The standard variant flags all 171 asserts `fatal`, and the `_WARNING` variant still
+  keeps 26 asserts `flag="fatal"`.
+- **Evidence** (`R=spec/fnfe-ctc-fr-1.4.0.04`):
+  - Licence: `grep -n 'Apache 2.0' $R/text/release-notes-en.txt` → l.325 "governed by the terms of the
+    Apache 2.0 License"; `grep -n EUPL $R/distribution/CII/EN16931/schematron/BR-FR-Flux2-Schematron-CII.sch`
+    → l.5 "European Union Public Licence (EUPL) version 1.4.0";
+    `grep -c 'All rights reserved' $R/text/release-notes-en.txt` → 14 (one per page footer).
+  - Dates: `sed -n 238,266p $R/text/release-notes-en.txt` (p.6: sending "AS OF SEPTEMBER 1", reception
+    "NO LATER THAN OCTOBER 1"); `sed -n 10p $R/distribution/CII/EN16931/schematron/BR-FR-Flux2-Schematron-CII.sch`
+    → "EN RECEPTION AU PLUS TARD LE 1ER OCTOBRE 2026 ET EN EMISSION A COMPTER DU 1ER OCTOBRE 2026".
+  - Severity: `sed -n 462,463p $R/text/release-notes-en.txt` (p.11: "All implemented BR-FR-Flux2
+    Schematron rules are set to “warning” mode, except for those related to Multi-Vendor");
+    `grep -c 'name="flag">fatal' $R/distribution/CII/EN16931/2xslt/BR-FR-Flux2-Schematron-CII.xslt` → 171 and
+    `grep -c 'name="flag">warning'` on the same file → 0 (standard variant);
+    `grep -c 'name="flag">fatal' $R/distribution/CII/EN16931/2xslt/BR-FR-Flux2-Schematron-CII_WARNING.xslt` → 26.
 - **Not legal advice:** confirm applicability dates with the official reform sources.
 
 ## Changing this file

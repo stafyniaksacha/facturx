@@ -38,9 +38,9 @@ The spec ships no Order-X Schematron. Passing a `flavor` other than `facturx` th
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `valid` | `boolean` | `true` when no assertion of severity `error` failed (with `warningsAsErrors`, when no assertion failed at all). |
-| `errors` | `SchematronError[]` | Failed assertions that make the document invalid. With `warningsAsErrors`, the warnings are listed here too. |
-| `warnings` | `SchematronError[]` | Failed assertions flagged `warning`/`information`, always reported. |
+| `valid` | `boolean` | `true` when no finding of severity `error` was raised (with `warningsAsErrors`, when there is no finding at all). A finding is a failed `<assert>` or a fired `<report>`. |
+| `errors` | `SchematronError[]` | Findings (failed asserts and fired reports) that make the document invalid. With `warningsAsErrors`, the warnings are listed here too. |
+| `warnings` | `SchematronError[]` | Findings flagged `warning`/`information`, always reported. |
 
 Some rules are non-blocking by design and flagged `warning` in the spec's Schematron (for example
 `PEPPOL-EN16931-R008` in EN16931, or the EXTENDED ini/rev rules). They are reported in `warnings`
@@ -52,7 +52,10 @@ and don't affect `valid` unless you pass `warningsAsErrors: true`.
 interface SchematronError {
   /** Human-readable assertion message, e.g. "[BR-16]-An Invoice shall have ...". */
   message: string
-  /** Business rule id: the "[BR-16]" message prefix, else the SVRL assert id. */
+  /**
+   * Rule id from the "[BR-16]" message prefix. Undefined when the message has none, e.g. for
+   * structural checks; the raw SVRL id, if the rule sets one, is in `assertId`.
+   */
   id?: string
   /** Raw SVRL assert id, when the rule sets one (e.g. "FX-SCH-A-000372"). */
   assertId?: string

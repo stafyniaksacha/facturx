@@ -79,7 +79,10 @@ Each entry is a `SchematronError`:
 interface SchematronError {
   /** Human-readable assertion message, e.g. "[BR-16]-An Invoice shall have ...". */
   message: string
-  /** Business rule id: the "[BR-16]" message prefix, else the SVRL assert id. */
+  /**
+   * Rule id from the "[BR-16]" message prefix. Undefined when the message has none, e.g. for
+   * structural checks; the raw SVRL id, if the rule sets one, is in `assertId`.
+   */
   id?: string
   /** Raw SVRL assert id, when the rule sets one (e.g. "FX-SCH-A-000372"). */
   assertId?: string
