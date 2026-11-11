@@ -1,9 +1,10 @@
+import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
-import { check, extract, validateFrCtc } from '@stafyniaksacha/facturx'
+import { check, extract, generate, validateFrCtc } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
 
 import { getMinimumXML, getOrderXBasicXML } from './fixtures/xml'
@@ -131,6 +132,21 @@ describe('check({ frCtc })', () => {
     const viaCheck = await check({ xml, flavor: 'facturx', level: 'en16931', frCtc: true })
     expect(direct.errors.map(e => e.id)).toEqual((await validateFrCtc({ xml: readFileSync(NEGATIVE, 'utf8') })).errors.map(e => e.id))
     expect(viaCheck.frCtcErrors?.map(e => e.id)).toEqual(direct.errors.map(e => e.id))
+
+    // Level auto-detection (check, generate metadata) doesn't depend on the prefix either.
+    const auto = await check({ xml, schematron: true })
+    expect(auto.level).toBe('en16931')
+    expect(auto.errors).toEqual([])
+    expect(auto.schematronErrors).toEqual([])
+    const pdf = await generate({ pdf: await readFile(join(ROOT, 'examples/source-invoice.pdf')), xml })
+    expect((await extract({ pdf: Buffer.from(pdf) })).xml.toString()).toContain('<cii:CrossIndustryInvoice')
+  })
+
+  it('ignores whitespace around the guideline ID (BT-24 is an xs:token)', async () => {
+    const xml = readFileSync(NEGATIVE, 'utf8').replace(/(<ram:GuidelineSpecifiedDocumentContextParameter>\s*<ram:ID>)([^<]*)</, '$1  $2  <')
+    expect(xml).toMatch(/<ram:ID> {2}urn:/)
+    expect((await check({ xml })).level).toBe('en16931')
+    expect((await validateFrCtc({ xml })).errors.length).toBeGreaterThan(0)
   })
 
   it('keeps the XSD diagnostics when a business-rule transform cannot run on XSD-invalid data', async () => {

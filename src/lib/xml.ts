@@ -12,27 +12,19 @@ import {
 } from './constants'
 import { resolveXml } from './resolve'
 
-export function extractNamespaces(fileDoc: XmlDocument): Record<string, string> {
-  return fileDoc.root.namespaces
-}
-
 export function getLevel(xmlDoc: XmlDocument): string {
-  const namespaces = extractNamespaces(xmlDoc)
+  // Match by local name: namespace prefixes are not significant (Namespaces in XML 1.0 §3), and an
+  // invoice may bind the CII/Order-X/ZUGFeRD namespaces to prefixes other than rsm:/ram:. The root
+  // element was already identified by getFlavor().
+  const idPath = (context: string): string =>
+    `//*[local-name()='${context}']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']/*[local-name()='ID']`
 
   // Factur-X and Order-X
-  let doc_id_xpath = xmlDoc.find([
-    '//rsm:ExchangedDocumentContext',
-    '/ram:GuidelineSpecifiedDocumentContextParameter',
-    '/ram:ID',
-  ].join(''), namespaces)
+  let doc_id_xpath = xmlDoc.find(idPath('ExchangedDocumentContext'))
 
   if (!doc_id_xpath.length) {
     // ZUGFeRD 1.0
-    doc_id_xpath = xmlDoc.find([
-      '//rsm:SpecifiedExchangedDocumentContext',
-      '/ram:GuidelineSpecifiedDocumentContextParameter',
-      '/ram:ID',
-    ].join(''), namespaces)
+    doc_id_xpath = xmlDoc.find(idPath('SpecifiedExchangedDocumentContext'))
   }
   if (!doc_id_xpath.length) {
     throw new Error('No ID found in the document')
@@ -46,11 +38,13 @@ export function getLevel(xmlDoc: XmlDocument): string {
  * `urn:cen.eu:en16931:2017` for EN 16931).
  */
 export function levelFromGuidelineId(id: string | undefined): string {
-  if (!id) {
+  // BT-24 is an xs:token (udt:IDType): surrounding whitespace is not significant.
+  const value = id?.trim()
+  if (!value) {
     throw new Error('No text found in the ID node')
   }
 
-  const doc_id = id.split(':')
+  const doc_id = value.split(':')
   let level = doc_id[doc_id.length - 1]
 
   const possibleValues = new Set([...Object.keys(FACTURX_SCHEMA), ...Object.keys(ORDERX_SCHEMA)])
@@ -81,9 +75,7 @@ export async function extractBaseInfo(xml: string | Buffer | XmlDocument): Promi
   const xmlDoc = await resolveXml(xml)
 
   try {
-    const namespaces = extractNamespaces(xmlDoc)
-
-    const dateEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString', namespaces)
+    const dateEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString')
     const dateStr = dateEl.content
     const dateFormat = dateEl.attr('format')?.value || '102'
     const formatMap = {
@@ -94,16 +86,16 @@ export async function extractBaseInfo(xml: string | Buffer | XmlDocument): Promi
     } as const
     const date = dateStr ? parse(dateStr, formatMap[dateFormat as keyof typeof formatMap], new Date()) : new Date()
 
-    const numberEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:ID', namespaces)
+    const numberEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:ID')
     const number = numberEl.content || ''
 
-    const sellerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name', namespaces)
+    const sellerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name')
     const seller = sellerEl.content || ''
 
-    const buyerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:Name', namespaces)
+    const buyerEl = findXPath(xmlDoc, '//ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:Name')
     const buyer = buyerEl.content || ''
 
-    const docTypeEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:TypeCode', namespaces)
+    const docTypeEl = findXPath(xmlDoc, '//rsm:ExchangedDocument/ram:TypeCode')
     const docType = docTypeEl.content as DOC_TYPE_KEY || ''
 
     return {
@@ -162,8 +154,13 @@ export async function extractBaseInfo(xml: string | Buffer | XmlDocument): Promi
 //   return level
 // }
 
-function findXPath(fileDoc: XmlDocument, xpath: string, namespaces: Record<string, string>): XmlElement {
-  const xpathNode = fileDoc.find(xpath, namespaces)
+/**
+ * Find by local names: `//rsm:A/ram:B` matches `A`/`B` whatever prefix the document binds to their
+ * namespaces (Namespaces in XML 1.0 §3: prefixes are not significant). The error keeps the readable path.
+ */
+function findXPath(fileDoc: XmlDocument, xpath: string): XmlElement {
+  const byLocalName = xpath.replace(/(\/\/?)[a-z]+:([A-Za-z]+)/g, `$1*[local-name()='$2']`)
+  const xpathNode = fileDoc.find(byLocalName)
   if (!xpathNode.length) {
     throw new Error(`No ${xpath} found in the document`)
   }

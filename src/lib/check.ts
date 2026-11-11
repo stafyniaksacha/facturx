@@ -7,6 +7,10 @@ import { validateSchematron } from './schematron'
 import { getFlavor, getLevel } from './xml'
 import { getXsd } from './xsd'
 
+// XPath dynamic errors caused by the document's values (XPath and XQuery Functions and Operators 3.1
+// §C): FORG casts, FOCA/FOAR arithmetic, FODT/FORX date and regex values, XPTY0004 type mismatches.
+const DATA_ERROR_CODE = /^(?:FORG|FOCA|FOAR|FODT|XPTY0004)/
+
 export async function check(options: {
   xml: string | Buffer | XmlDocument
   flavor?: string
@@ -92,16 +96,18 @@ export async function check(options: {
 
   // The business-rule transforms assume XSD-valid data: on an invalid value (e.g. a non-decimal
   // amount) SaxonJS aborts with a dynamic error such as FORG0001. Keep the XSD diagnostics in that
-  // case instead of rejecting; on an XSD-valid document the error is a genuine failure and is rethrown.
+  // case instead of rejecting. Only data-dependent XPath errors (casts, arithmetic, dates, type
+  // mismatches) are absorbed, and only on XSD-invalid input; anything else (e.g. FODC0002, a missing
+  // codedb) and every error on XSD-valid input is a genuine failure and is rethrown.
   const runOnInvalid = async (stage: string, run: () => Promise<SchematronResult>): Promise<SchematronResult> => {
     try {
       return await run()
     }
     catch (error) {
-      if (xsdValid || (error as { name?: string })?.name !== 'XError')
+      const { name, code } = error as { name?: string, code?: string }
+      if (xsdValid || name !== 'XError' || !DATA_ERROR_CODE.test(code ?? ''))
         throw error
       // The code only: SaxonJS messages quote the offending invoice value.
-      const code = String((error as { code?: string }).code ?? 'unknown')
       return {
         valid: false,
         errors: [{ message: `${stage} could not run on this XSD-invalid document (${code}): fix the XSD errors first`, severity: 'error' }],
