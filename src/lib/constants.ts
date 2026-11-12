@@ -3,11 +3,14 @@ export const ZUGFERD_FILENAMES = ['zugferd-invoice.xml', 'ZUGFeRD-invoice.xml']
 export const ORDERX_FILENAME = 'order-x.xml'
 
 export type FACTURX_SCHEMA_TYPE = keyof typeof FACTURX_SCHEMA
+// MINIMUM and BASIC: Factur-X 1.09 FINAL. BASIC WL, EN 16931 and EXTENDED: Factur-X
+// 1.09.2.fixFR04 as shipped by FNFE-MPE "Schematrons FR CTC 1.4.0.04", which only covers
+// the profiles in scope of the French reform (CONFORMANCE.md CG-16).
 export const FACTURX_SCHEMA = {
   basic: './xsd/facturx/basic/Factur-X_1.09_BASIC.xsd',
-  basicwl: './xsd/facturx/basicwl/Factur-X_1.09_BASICWL.xsd',
-  en16931: './xsd/facturx/en16931/Factur-X_1.09_EN16931.xsd',
-  extended: './xsd/facturx/extended/Factur-X_1.09_EXTENDED.xsd',
+  basicwl: './xsd/facturx/basicwl/Factur-X_BASICWL.xsd',
+  en16931: './xsd/facturx/en16931/Factur-X_EN16931.xsd',
+  extended: './xsd/facturx/extended/Factur-X_EXTENDED.xsd',
   minimum: './xsd/facturx/minimum/Factur-X_1.09_MINIMUM.xsd',
 } as const
 export const FACTURX_CONFORMANCE_LEVEL = {
