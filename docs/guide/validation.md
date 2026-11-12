@@ -88,6 +88,7 @@ interface SchematronError {
   /**
    * Rule id from a "[BR-16]" tag in the message (validateSchematron). Undefined when the message
    * has none, e.g. for structural checks; the raw SVRL id, if the rule sets one, is in `assertId`.
+   * BR-FR findings (validateFrCtc) take it from the assert id instead, e.g. "BR-FR-05".
    */
   id?: string
   /** Raw SVRL assert id, when the rule sets one (e.g. "FX-SCH-A-000372"). */
