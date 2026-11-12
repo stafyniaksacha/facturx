@@ -83,7 +83,7 @@ What you may notice:
 | BASIC WL, EN 16931 | `BR-CO-27` is now reported as `CII-SR-470` (same check). |
 | BASIC WL | New blocking rules `BR-CO-18` and `CII-SR-467` … `CII-SR-473`. The warning `BR-FXEXT-Z-08rev` is no longer emitted. `BR-51` is gone, but it could not fire on BASIC WL anyway: the XSD has no payment card. |
 | EN 16931 | `BR-FXEXT-12` is gone, so some documents it used to reject now pass. New blocking rules `CII-SR-467` … `CII-SR-469` and `CII-SR-471` … `CII-SR-473`. New warning rules `CII-SR-474/475/476`. The warnings `BR-FX-EN-04` and `BR-FXEXT-Z-08rev` are no longer emitted. |
-| EXTENDED | `BR-S-01`, `BR-Z-01`, `BR-E-01`, `BR-AE-01`, `BR-IC-01`, `BR-G-01`, `BR-O-01`, `BR-AF-01`, `BR-AG-01` become `BR-FXEXT-<category>-01`. They count `DETAIL` lines, document allowances and charges, and logistics charges, and accept several breakdowns of one category. |
+| EXTENDED | `BR-S-01`, `BR-Z-01`, `BR-E-01`, `BR-AE-01`, `BR-IC-01`, `BR-G-01`, `BR-O-01`, `BR-AF-01`, `BR-AG-01` become `BR-FXEXT-<category>-01`. They count `DETAIL` lines, document allowances and charges, and logistics charges, and no longer reject several breakdowns of one category by themselves. The per-category `-08b` basis rules still compare each breakdown with the category total, so a split such as two `Z` breakdowns still fails `BR-FXEXT-Z-08b`. |
 | EXTENDED | New blocking rules `CII-SR-467` … `CII-SR-469` and `CII-SR-471` … `CII-SR-473`. New warning rules `CII-SR-475/476`. |
 | EXTENDED | `BR-54` becomes `BR-FXEXT-BR-54-1` and `BR-FXEXT-BR-54-2`. `BR-CO-27` is no longer checked. |
 | EXTENDED | The XSD makes a VAT block's `TypeCode` / `CategoryCode` optional, so information and group sub-lines can leave them out. The Schematron still requires them on detail lines, on the VAT breakdown (BG-23) and on document-level allowances and charges. |
@@ -118,7 +118,9 @@ These shipped on `main` after 0.6.1 and are included in the next release.
 - **`generate()` accepts PDFs that already have a trailer `/ID`** ([#39](https://github.com/stafyniaksacha/facturx/pull/39)). Most real-world PDFs have
   one, and 0.6.1 threw `Not implemented yet: Document ID already set` on them. The permanent first
   element is now kept. In exchange, `generate()` now **rejects**, before writing the invoice:
-  encrypted or signed PDFs, PDFs that already embed an invoice, PDFs with a `/Kids` name tree, a
+  encrypted or signed PDFs, PDFs that already embed an invoice (detected best effort: an attachment
+  whose content can't be read and whose name isn't a known invoice name can be missed, CG-14), PDFs
+  with a `/Kids` name tree, a
   reused `PDFDocument`, and PDFs with too many or too large attachments to inspect. The full list of
   error messages is in [`generate()`](/api/generate#source-pdfs-that-are-rejected). If you pass a
   `pdf-lib` `PDFDocument` rather than bytes, load it again after a rejection: from the
