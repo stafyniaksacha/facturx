@@ -88,6 +88,12 @@ pnpm docs             # VitePress dev server; regenerates docs/api/models/ from 
   help text, `docs/guide/profiles-and-flavors.md`, tests.
 - **Style:** `@antfu/eslint-config` (no semicolons, single quotes, `node:` imports, ESM only). Comments
   explain *why*, usually citing the spec. Match the surrounding code.
+- **Backward compatibility:** never remove or rename a public export, option, result field, model
+  class or model property (TypeScript type *and* JS runtime). Keep the old name as an alias marked
+  `@deprecated` (pointing to the new one) and make the code read and write both, so callers on the
+  old name keep working. `tests/api-surface.test.ts` checks the runtime surface against the last
+  release (`tests/fixtures/api-surface-<version>.json`, generated from the released build); behaviour
+  changes go in `docs/guide/upgrading.md`.
 - **Commits:** Conventional Commits (`feat(facturx): …`, `fix(cli): …`); `CHANGELOG.md` is generated at
   release, so don't edit it by hand.
 - **Generated, never hand-edited:** `dist/`, `docs/api/models/`, `spec/factur-x-*/text/`, `CHANGELOG.md`.
