@@ -1,0 +1,492 @@
+{
+  "index": [
+    "Models",
+    "check",
+    "extract",
+    "generate",
+    "invoiceToXml",
+    "validateSchematron",
+    "xmlToInvoice"
+  ],
+  "models": {
+    "AccountingAccountTypeCodeType": [
+      "value"
+    ],
+    "AdvancePaymentType": [
+      "formattedReceivedDateTime",
+      "includedTradeTax",
+      "invoiceSpecifiedReferencedDocument",
+      "paidAmount"
+    ],
+    "AllowanceChargeReasonCodeType": [
+      "value"
+    ],
+    "AmountType": [
+      "currencyID",
+      "value"
+    ],
+    "BinaryObjectType": [
+      "filename",
+      "mimeCode",
+      "value"
+    ],
+    "CodeType": [
+      "listID",
+      "listVersionID",
+      "value"
+    ],
+    "ContactTypeCodeType": [
+      "value"
+    ],
+    "CountryIDType": [
+      "value"
+    ],
+    "CreditorFinancialAccountType": [
+      "accountName",
+      "ibanID",
+      "proprietaryID"
+    ],
+    "CreditorFinancialInstitutionType": [
+      "bicID"
+    ],
+    "CrossIndustryInvoiceType": [
+      "exchangedDocument",
+      "exchangedDocumentContext",
+      "supplyChainTradeTransaction"
+    ],
+    "CurrencyCodeType": [
+      "value"
+    ],
+    "DateTimeType": [
+      "dateTimeString",
+      "format"
+    ],
+    "DateType": [
+      "dateString",
+      "format"
+    ],
+    "DebtorFinancialAccountType": [
+      "accountName",
+      "ibanID"
+    ],
+    "DebtorFinancialInstitutionType": [
+      "bicID"
+    ],
+    "DeliveryTermsCodeType": [
+      "value"
+    ],
+    "DocumentCodeType": [
+      "value"
+    ],
+    "DocumentContextParameterType": [
+      "id"
+    ],
+    "DocumentLineDocumentType": [
+      "includedNote",
+      "lineID",
+      "lineStatusCode",
+      "lineStatusReasonCode",
+      "parentLineID"
+    ],
+    "ExchangedDocumentContextType": [
+      "businessProcessSpecifiedDocumentContextParameter",
+      "guidelineSpecifiedDocumentContextParameter",
+      "testIndicator"
+    ],
+    "ExchangedDocumentType": [
+      "copyIndicator",
+      "effectiveSpecifiedPeriod",
+      "id",
+      "includedNote",
+      "issueDateTime",
+      "languageID",
+      "name",
+      "typeCode"
+    ],
+    "FinancialAdjustmentType": [
+      "actualAmount",
+      "reason"
+    ],
+    "FormattedDateTimeType": [
+      "dateTimeString",
+      "format"
+    ],
+    "HeaderTradeAgreementType": [
+      "additionalReferencedDocument",
+      "applicableTradeDeliveryTerms",
+      "buyerAgentTradeParty",
+      "buyerOrderReferencedDocument",
+      "buyerReference",
+      "buyerTaxRepresentativeTradeParty",
+      "buyerTradeParty",
+      "contractReferencedDocument",
+      "productEndUserTradeParty",
+      "quotationReferencedDocument",
+      "salesAgentTradeParty",
+      "sellerOrderReferencedDocument",
+      "sellerTaxRepresentativeTradeParty",
+      "sellerTradeParty",
+      "specifiedProcuringProject",
+      "ultimateCustomerOrderReferencedDocument"
+    ],
+    "HeaderTradeDeliveryType": [
+      "actualDeliverySupplyChainEvent",
+      "deliveryNoteReferencedDocument",
+      "despatchAdviceReferencedDocument",
+      "receivingAdviceReferencedDocument",
+      "relatedSupplyChainConsignment",
+      "shipFromTradeParty",
+      "shipToTradeParty",
+      "ultimateShipToTradeParty"
+    ],
+    "HeaderTradeSettlementType": [
+      "applicableTradeTax",
+      "billingSpecifiedPeriod",
+      "creditorReferenceID",
+      "invoiceCurrencyCode",
+      "invoiceIssuerReference",
+      "invoiceReferencedDocument",
+      "invoiceeTradeParty",
+      "invoicerTradeParty",
+      "payeeTradeParty",
+      "payerTradeParty",
+      "paymentReference",
+      "receivableSpecifiedTradeAccountingAccount",
+      "specifiedAdvancePayment",
+      "specifiedFinancialAdjustment",
+      "specifiedLogisticsServiceCharge",
+      "specifiedTradeAllowanceCharge",
+      "specifiedTradePaymentTerms",
+      "specifiedTradeSettlementHeaderMonetarySummation",
+      "specifiedTradeSettlementPaymentMeans",
+      "taxApplicableTradeCurrencyExchange",
+      "taxCurrencyCode"
+    ],
+    "IDType": [
+      "schemeID",
+      "value"
+    ],
+    "IndicatorType": [
+      "indicator"
+    ],
+    "LegalOrganizationType": [
+      "id",
+      "postalTradeAddress",
+      "tradingBusinessName"
+    ],
+    "LineStatusCodeType": [
+      "value"
+    ],
+    "LineTradeAgreementType": [
+      "additionalReferencedDocument",
+      "applicableTradeDeliveryTerms",
+      "buyerOrderReferencedDocument",
+      "contractReferencedDocument",
+      "grossPriceProductTradePrice",
+      "itemSellerTradeParty",
+      "netPriceProductTradePrice",
+      "quotationReferencedDocument",
+      "sellerOrderReferencedDocument",
+      "ultimateCustomerOrderReferencedDocument"
+    ],
+    "LineTradeDeliveryType": [
+      "actualDeliverySupplyChainEvent",
+      "billedQuantity",
+      "chargeFreeQuantity",
+      "deliveryNoteReferencedDocument",
+      "despatchAdviceReferencedDocument",
+      "packageQuantity",
+      "perPackageUnitQuantity",
+      "receivingAdviceReferencedDocument",
+      "shipToTradeParty",
+      "ultimateShipToTradeParty"
+    ],
+    "LineTradeSettlementType": [
+      "additionalReferencedDocument",
+      "applicableTradeTax",
+      "billingSpecifiedPeriod",
+      "invoiceReferencedDocument",
+      "receivableSpecifiedTradeAccountingAccount",
+      "specifiedTradeAllowanceCharge",
+      "specifiedTradeSettlementLineMonetarySummation"
+    ],
+    "LogisticsServiceChargeType": [
+      "appliedAmount",
+      "appliedTradeTax",
+      "description"
+    ],
+    "LogisticsTransportMovementType": [
+      "modeCode"
+    ],
+    "MeasureType": [
+      "unitCode",
+      "value"
+    ],
+    "NoteType": [
+      "content",
+      "contentCode",
+      "subjectCode"
+    ],
+    "NumericType": [
+      "value"
+    ],
+    "PartyRoleCodeType": [
+      "value"
+    ],
+    "PaymentMeansCodeType": [
+      "value"
+    ],
+    "PercentType": [
+      "value"
+    ],
+    "ProcuringProjectType": [
+      "id",
+      "name"
+    ],
+    "ProductCharacteristicType": [
+      "description",
+      "typeCode",
+      "value",
+      "valueMeasure"
+    ],
+    "ProductClassificationType": [
+      "classCode",
+      "className"
+    ],
+    "QuantityType": [
+      "unitCode",
+      "value"
+    ],
+    "RateType": [
+      "value"
+    ],
+    "ReferenceCodeType": [
+      "value"
+    ],
+    "ReferencedDocumentType": [
+      "attachmentBinaryObject",
+      "formattedIssueDateTime",
+      "issuerAssignedID",
+      "lineID",
+      "name",
+      "referenceTypeCode",
+      "typeCode",
+      "uriID"
+    ],
+    "ReferencedProductType": [
+      "buyerAssignedID",
+      "description",
+      "globalID",
+      "id",
+      "industryAssignedID",
+      "name",
+      "sellerAssignedID",
+      "unitQuantity"
+    ],
+    "SpecifiedPeriodType": [
+      "completeDateTime",
+      "description",
+      "endDateTime",
+      "startDateTime"
+    ],
+    "SupplyChainConsignmentType": [
+      "specifiedLogisticsTransportMovement"
+    ],
+    "SupplyChainEventType": [
+      "occurrenceDateTime"
+    ],
+    "SupplyChainTradeLineItemType": [
+      "associatedDocumentLineDocument",
+      "specifiedLineTradeAgreement",
+      "specifiedLineTradeDelivery",
+      "specifiedLineTradeSettlement",
+      "specifiedTradeProduct"
+    ],
+    "SupplyChainTradeTransactionType": [
+      "applicableHeaderTradeAgreement",
+      "applicableHeaderTradeDelivery",
+      "applicableHeaderTradeSettlement",
+      "includedSupplyChainTradeLineItem"
+    ],
+    "TaxCategoryCodeType": [
+      "value"
+    ],
+    "TaxRegistrationType": [
+      "id"
+    ],
+    "TaxTypeCodeType": [
+      "value"
+    ],
+    "TextType": [
+      "value"
+    ],
+    "TimeReferenceCodeType": [
+      "value"
+    ],
+    "TradeAccountingAccountType": [
+      "id",
+      "typeCode"
+    ],
+    "TradeAddressType": [
+      "cityName",
+      "countryID",
+      "countrySubDivisionName",
+      "lineOne",
+      "lineThree",
+      "lineTwo",
+      "postcodeCode"
+    ],
+    "TradeAllowanceChargeType": [
+      "actualAmount",
+      "basisAmount",
+      "basisQuantity",
+      "calculationPercent",
+      "categoryTradeTax",
+      "chargeIndicator",
+      "reason",
+      "reasonCode",
+      "sequenceNumeric"
+    ],
+    "TradeContactType": [
+      "departmentName",
+      "emailURIUniversalCommunication",
+      "faxUniversalCommunication",
+      "personName",
+      "telephoneUniversalCommunication",
+      "typeCode"
+    ],
+    "TradeCountryType": [
+      "id"
+    ],
+    "TradeCurrencyExchangeType": [
+      "conversionRate",
+      "conversionRateDateTime",
+      "sourceCurrencyCode",
+      "targetCurrencyCode"
+    ],
+    "TradeDeliveryTermsType": [
+      "deliveryTypeCode",
+      "relevantTradeLocation"
+    ],
+    "TradeLocationType": [
+      "countryID",
+      "name"
+    ],
+    "TradePartyType": [
+      "definedTradeContact",
+      "description",
+      "globalID",
+      "id",
+      "name",
+      "postalTradeAddress",
+      "roleCode",
+      "specifiedLegalOrganization",
+      "specifiedTaxRegistration",
+      "uriUniversalCommunication"
+    ],
+    "TradePaymentDiscountTermsType": [
+      "actualDiscountAmount",
+      "basisAmount",
+      "basisDateTime",
+      "basisPeriodMeasure",
+      "calculationPercent"
+    ],
+    "TradePaymentPenaltyTermsType": [
+      "actualPenaltyAmount",
+      "basisAmount",
+      "basisDateTime",
+      "basisPeriodMeasure",
+      "calculationPercent"
+    ],
+    "TradePaymentTermsType": [
+      "applicableTradePaymentDiscountTerms",
+      "applicableTradePaymentPenaltyTerms",
+      "description",
+      "directDebitMandateID",
+      "dueDateDateTime",
+      "partialPaymentAmount",
+      "payeeTradeParty"
+    ],
+    "TradePriceType": [
+      "appliedTradeAllowanceCharge",
+      "basisQuantity",
+      "chargeAmount",
+      "includedTradeTax"
+    ],
+    "TradeProductInstanceType": [
+      "batchID",
+      "supplierAssignedSerialID"
+    ],
+    "TradeProductType": [
+      "applicableProductCharacteristic",
+      "batchID",
+      "brandName",
+      "buyerAssignedID",
+      "description",
+      "designatedProductClassification",
+      "globalID",
+      "id",
+      "includedReferencedProduct",
+      "individualTradeProductInstance",
+      "industryAssignedID",
+      "manufacturerTradeParty",
+      "modelID",
+      "modelName",
+      "name",
+      "originTradeCountry",
+      "sellerAssignedID"
+    ],
+    "TradeSettlementFinancialCardType": [
+      "cardholderName",
+      "id"
+    ],
+    "TradeSettlementHeaderMonetarySummationType": [
+      "allowanceTotalAmount",
+      "chargeTotalAmount",
+      "duePayableAmount",
+      "grandTotalAmount",
+      "lineTotalAmount",
+      "roundingAmount",
+      "taxBasisTotalAmount",
+      "taxTotalAmount",
+      "totalPrepaidAmount"
+    ],
+    "TradeSettlementLineMonetarySummationType": [
+      "allowanceTotalAmount",
+      "chargeTotalAmount",
+      "grandTotalAmount",
+      "lineTotalAmount",
+      "taxTotalAmount",
+      "totalAllowanceChargeAmount"
+    ],
+    "TradeSettlementPaymentMeansType": [
+      "applicableTradeSettlementFinancialCard",
+      "information",
+      "payeePartyCreditorFinancialAccount",
+      "payeeSpecifiedCreditorFinancialInstitution",
+      "payerPartyDebtorFinancialAccount",
+      "payerSpecifiedDebtorFinancialInstitution",
+      "typeCode"
+    ],
+    "TradeTaxType": [
+      "allowanceChargeBasisAmount",
+      "basisAmount",
+      "calculatedAmount",
+      "categoryCode",
+      "dueDateTypeCode",
+      "exemptionReason",
+      "exemptionReasonCode",
+      "lineTotalBasisAmount",
+      "rateApplicablePercent",
+      "taxPointDate",
+      "typeCode"
+    ],
+    "TransportModeCodeType": [
+      "value"
+    ],
+    "UniversalCommunicationType": [
+      "completeNumber",
+      "uriID"
+    ]
+  }
+}

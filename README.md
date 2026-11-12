@@ -60,6 +60,7 @@ Full guides and the complete API reference live on the docs site:
 - **[Profiles & flavors](https://stafyniaksacha.github.io/facturx/guide/profiles-and-flavors)** — which flavor/level to target
 - **[Validation](https://stafyniaksacha.github.io/facturx/guide/validation)** — XSD vs Schematron, and how to read the errors
 - **[French e-invoicing rules](https://stafyniaksacha.github.io/facturx/guide/french-ctc)** — the `BR-FR` rules of the reform (not legal advice)
+- **[Upgrading from 0.6.1](https://stafyniaksacha.github.io/facturx/guide/upgrading)** — breaking changes (Schematron warnings, 1.09.2.fixFR04 rule ids, `categoryCode`) and new features
 - **[CLI reference](https://stafyniaksacha.github.io/facturx/cli/)** — every command and flag
 - **[SDK reference](https://stafyniaksacha.github.io/facturx/api/)** — `generate` / `extract` / `check` / parsing
 - **[Model reference](https://stafyniaksacha.github.io/facturx/api/models)** — the Cross Industry Invoice tree and how to build one from scratch
