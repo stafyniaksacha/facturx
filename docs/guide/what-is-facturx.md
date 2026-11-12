@@ -86,7 +86,7 @@ TypeScript / JavaScript:
 - [**Generate**](/api/generate) a compliant PDF/A-3 by embedding XML into a PDF.
 - [**Extract**](/api/extract) the XML back out of a Factur-X / Order-X / ZUGFeRD PDF.
 - [**Parse & build**](/api/parsing) — turn XML into a typed model and back.
-- [**Validate**](/guide/validation) against the official XSD and the EN 16931 Schematron rules.
+- [**Validate**](/guide/validation) against the Factur-X XSD and the EN 16931 Schematron rules, and optionally the French CTC `BR-FR` rules.
 
 Ready to try it? Head to [Getting started](/guide/getting-started).
 

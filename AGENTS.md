@@ -19,7 +19,8 @@ specification, not against the current code, tests or docs.
 2. **Never make something pass by weakening the check.** Don't edit vendored files in
    `spec/factur-x-*/distribution/` or `src/lib/xsd/` by hand, don't loosen or skip a validation, and
    don't rewrite a test expectation so it matches buggy output. Vendored assets change only through
-   [`SCHEMATRON.md`](src/lib/xsd/facturx/SCHEMATRON.md), followed by `pnpm spec:verify`.
+   [`SCHEMATRON.md`](src/lib/xsd/facturx/SCHEMATRON.md) (French CTC rules:
+   [`src/lib/xsd/fr-ctc/SCHEMATRON.md`](src/lib/xsd/fr-ctc/SCHEMATRON.md)), followed by `pnpm spec:verify`.
 3. **Cite and reproduce.** A conformance claim or finding names its rule (`BR-*`, `BR-HYBRID-*`, an
    XSD element, or `§x.y p.N` of the spec PDF) and comes with a command that shows it.
 4. **Keep the register current.** [`CONFORMANCE.md`](CONFORMANCE.md) lists what is verified and every
@@ -55,7 +56,8 @@ pnpm docs             # VitePress dev server; regenerates docs/api/models/ from 
 | --- | --- |
 | `src/index.ts` | Public API: `check`, `extract`, `generate`, `invoiceToXml`, `xmlToInvoice`, `validateSchematron`, `Models`. Subpath exports `./models`, `./cli` |
 | `src/lib/check.ts`, `xsd.ts` | XSD validation via libxml2-wasm `XsdValidator`; schemas cached per flavor/level. `xsd.ts` registers `fileInputProvider` (`input-provider.ts`, which also handles Windows drive paths and `file:` URLs) at import time so XSD imports resolve, which gives libxml2 process-wide filesystem access |
-| `src/lib/schematron.ts` | Business rules: gunzips the SEF next to its `codedb.xml` in a temp dir, runs SaxonJS, parses SVRL. Factur-X only |
+| `src/lib/schematron.ts` | Business rules: gunzips the SEF next to its `codedb.xml` in a temp dir, runs SaxonJS, parses SVRL; `runSchematron` is shared with `fr-ctc.ts` |
+| `src/lib/fr-ctc.ts` | Opt-in French CTC rules (`BR-FR-Flux2`, FNFE-MPE): checks the document is a CII invoice at BASIC WL/EN16931/EXTENDED, then runs the vendored SEF from `src/lib/xsd/fr-ctc/` |
 | `src/lib/xml.ts` | Flavor from the root element; level from the last `:` segment of `GuidelineSpecifiedDocumentContextParameter/ID`; base info for PDF metadata |
 | `src/lib/generate.ts`, `xmp.ts`, `metadata.ts` | Attach the XML (`AFRelationship`), set Info dict + PDF/A XMP. Does **not** make the PDF PDF/A (CG-05) |
 | `src/lib/extract.ts`, `pdf.ts` | Find the attachment by filename (`factur-x.xml`, `order-x.xml`, ZUGFeRD names) |
@@ -63,7 +65,7 @@ pnpm docs             # VitePress dev server; regenerates docs/api/models/ from 
 | `src/lib/models/facturx/` | Classes mirroring CII D22B (`rsm`/`ram`/`qdt`/`udt`). JSDoc `@profile` = lowest profile using the type; feeds `docs/scripts/gen-models.mjs` |
 | `src/lib/converters/facturx.ts` | Model → XML, emitted in the **EXTENDED `xs:sequence` order** (a superset of all profiles) |
 | `src/lib/parsers/facturx.ts` | XML → model; must read back everything the converter writes |
-| `src/lib/xsd/` | Vendored assets. Build ships only `*.xsd`, `*.sef.json.gz`, `*_codedb.xml` (`build.config.ts`) |
+| `src/lib/xsd/` | Vendored assets: `facturx/`, `orderx/`, `fr-ctc/` (BR-FR-Flux2). Build ships only `*.xsd`, `*.sef.json.gz`, `*_codedb.xml` (`build.config.ts`) |
 | `src/commands/` | citty CLI subcommands |
 | `spec/` | Vendored spec + derived `text/`. `spec/scripts/` is a standalone package, not in the workspace |
 | `tests/`, `examples/`, `docs/` | Workspace packages. Examples are embedded in docs via `#region` snippets |

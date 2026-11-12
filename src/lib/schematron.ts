@@ -6,9 +6,11 @@ import { gunzipSync } from 'node:zlib'
 import SaxonJS from 'saxon-js'
 
 /**
- * Schematron (business-rule) validation for Factur-X 1.09.
+ * Schematron (business-rule) validation for Factur-X: 1.09 FINAL for MINIMUM and
+ * BASIC, 1.09.2.fixFR04 (FNFE-MPE) for BASIC WL, EN16931 and EXTENDED (CG-16).
+ * `runSchematron` is shared with the French CTC rules (fr-ctc.ts).
  *
- * The official spec ships ISO-Schematron compiled to XSLT 2.0 (one per profile)
+ * The spec ships ISO-Schematron compiled to XSLT 2.0 (one per profile)
  * that emits SVRL and validates code lists via `document(...codedb.xml)`. We
  * vendor those transforms precompiled to a relocatable Saxon SEF (gzipped) plus
  * the matching codedb, and run them with SaxonJS. XSD validation (see check.ts)
@@ -25,7 +27,12 @@ export interface SchematronError {
    * (e.g. "Element 'ram:SellerTradeParty' must occur exactly 1 times") have no id.
    */
   id?: string
-  /** Raw SVRL `id` attribute of the assert, when the rule sets one (e.g. "FX-SCH-A-000372"). */
+  /**
+   * Raw SVRL `id` attribute of the assert, when the rule sets one: an internal
+   * number for Factur-X structural checks (e.g. "FX-SCH-A-000372"), sometimes the
+   * rule itself in 1.09.2 (e.g. "BR-CO-18"), the exact assertion for BR-FR
+   * (e.g. "BR-FR-05_BT-22_PMT").
+   */
   assertId?: string
   /** The failing XPath test expression. */
   test?: string
@@ -62,8 +69,10 @@ export interface SchematronConfig {
   codedbName?: string
   /**
    * Use the SVRL `id` attribute as the rule id when the message has no `[ID]`
-   * prefix. Set it for Schematrons whose @id is the business rule (FNFE BR-FR-*),
-   * not for Factur-X, whose @id is an internal number (FX-SCH-A-…).
+   * prefix. Set it for Schematrons whose @id always names the business rule (FNFE
+   * BR-FR-*), not for Factur-X: there @id is an internal number (FX-SCH-A-…) for
+   * structural checks, and only 1.09.2 business rules, which also carry the
+   * `[ID]` message prefix, use the rule id.
    */
   idFromAssert?: boolean
 }
