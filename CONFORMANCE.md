@@ -200,8 +200,11 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   - Dates: `sed -n 255,268p $R/text/release-notes-en.txt` (p.6: reception "NO LATER THAN OCTOBER 1",
     the standard version on sending side "STARTING SEPTEMBER 1ST 2026"); `sed -n 10p $R/distribution/CII/EN16931/schematron/BR-FR-Flux2-Schematron-CII.sch`
     → "EN RECEPTION AU PLUS TARD LE 1ER OCTOBRE 2026 ET EN EMISSION A COMPTER DU 1ER OCTOBRE 2026".
-  - Severity: `sed -n 462,463p $R/text/release-notes-en.txt` (p.11: "All implemented BR-FR-Flux2
-    Schematron rules are set to “warning” mode, except for those related to Multi-Vendor");
+  - Severity: `sed -n 462,466p $R/text/release-notes-en.txt` (p.11: "All implemented BR-FR-Flux2
+    Schematron rules are set to “warning” mode, except for those related to Multi-Vendor, and are
+    therefore non-blocking (“fatal”), so that they can be used without blocking the exchange of
+    invoices (since the France-specific rules will apply no later than September 1st 2026)". The
+    sentence itself calls the non-blocking mode "fatal", so p.11 is ambiguous on its own);
     `grep -c 'name="flag">fatal' $R/distribution/CII/EN16931/2xslt/BR-FR-Flux2-Schematron-CII.xslt` → 171 and
     `grep -c 'name="flag">warning'` on the same file → 0 (standard variant);
     `grep -c 'name="flag">fatal' $R/distribution/CII/EN16931/2xslt/BR-FR-Flux2-Schematron-CII_WARNING.xslt` → 26.
