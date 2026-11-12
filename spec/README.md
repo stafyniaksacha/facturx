@@ -56,8 +56,92 @@ vendored on the basis of the Apache 2.0 statement; the licensing of the spreadsh
 not stated separately. Revisit before redistributing outside this repository (it is not shipped in the
 npm package: `package.json` `files` only includes `bin` and `dist`).
 
+## `fnfe-ctc-fr-1.4.0.04/` — FNFE-MPE Schematrons FR CTC v1.4.0, fix 04 (2026-09-04)
+
+Validation components for the French e-invoicing reform (CTC, XP Z12-012 v1.4.0), published by
+FNFE-MPE. Upstream: <https://github.com/fnfempe/France_RFE>. This copy was supplied by the maintainer
+as a zip; cross-check `SHA256SUMS` against the upstream tag before relying on it.
+
+| Path | What it is | Edit? |
+| --- | --- | --- |
+| `distribution/` | The release, **verbatim** (only macOS `.DS_Store` files removed) | never |
+| `SHA256SUMS` | Checksums of every file in `distribution/` | regenerate on upgrade |
+| `text/` | `release-notes-{en,fr}.txt`, derived from the two PDFs by [`scripts/extract.mjs`](scripts/extract.mjs) | never — regenerate |
+
+Contents of `distribution/`:
+
+| Path | What it is |
+| --- | --- |
+| `2026_06_30_FNFE_SCHEMATRONS_FR_CTC_V1.4.0{,_EN}.pdf` | Release notes (FR / EN): validation steps (XSD → profile Schematron → `BR-FR-Flux2`, plus an optional B2G step 4, p.9), profiles in scope, error vs `_WARNING` variants, dates |
+| `Factur-X_1.09.2.fixFR04/{BASICWL,EN16931,EXTENDED}/` | Factur-X **1.09.2** XSD + Schematron for the three profiles in scope of the reform (no MINIMUM / BASIC), plus `BR-FR-Flux2` per profile |
+| `CII/` | Plain CII D22B: EN16931 (CEN validation) and the `EXTENDED-CTC-FR` profile (since V1.3.0), each with `BR-FR-Flux2` |
+| `UBL/` | UBL 2.1: EN16931 and `EXTENDED-CTC-FR`, each with `BR-FR-Flux2-…-UBL` |
+| `CDAR/` | Cross Domain Acknowledgement and Response D22B (invoice lifecycle statuses) + `BR-FR-CDV` |
+| `Flux10/` | E-reporting (flux 10) XSD + Schematron |
+
+This is **not** the official Factur-X 1.09.2 distribution: it has no specification PDF, no field
+matrix and no examples, and only covers BASIC WL, EN16931 and EXTENDED. `factur-x-1.09/` stays the
+source for MINIMUM, BASIC, the specification text and the example corpus.
+
+Known inconsistencies, to keep in mind when citing it (see `CONFORMANCE.md`):
+
+- **Licence.** The EN release notes (p.8) state Apache-2.0, the `BR-FR-*` `.sch` headers say
+  "EUPL version 1.4.0" (no such EUPL version exists), every PDF page footer says "All rights
+  reserved", and `Flux10/` carries no licence. The maintainer decided to ship compiled `BR-FR-Flux2`
+  rules in the npm package (once that module lands) on the basis of the Apache-2.0 statement;
+  clarification is to be requested upstream. See CG-15.
+- **Version and dates.** The PDFs describe 1.4.0 (2026-06-30); the files are fix 04 (2026-09-04) and
+  the Factur-X 1.09.2 `.sch` metadata says released 2026-08-04, effective 2026-09-01. The headers of
+  the FATAL `BR-FR-*` and `EXTENDED-CTC-FR` `.sch` files give October 1, 2026 for sending, where both
+  release notes (p.6) give September 1; the reception deadline (no later than October 1) agrees.
+
+```bash
+(cd spec/fnfe-ctc-fr-1.4.0.04/distribution && shasum -a 256 -c --quiet ../SHA256SUMS)
+pnpm --dir spec/scripts run extract fnfe-ctc-fr-1.4.0.04
+```
+
+## `afnor-xp-z12-012-1.4/` — XP Z12-012 v1.4 annexes A and B (2026-06-30)
+
+Annexes of the AFNOR standard XP Z12-012 v1.4 ("Formats and profiles for invoice messages and life
+cycle statuses", French e-invoicing reform), from the FNFE-MPE zip
+`FR_and_ENG_XP_Z12-012_Annexes_A_et_B_EXEMPLES_V1.4.zip` (fnfe-mpe.org, July 2026).
+
+| Path | What it is | Edit? |
+| --- | --- | --- |
+| `distribution/XP_Z12-012_Annexe_A_2026_V1.4_VF.xlsx` | Annex A: field matrices per syntax/profile (CII/UBL, EN16931, EXTENDED-CTC-FR, BASIC WL), BR-FR rules incl. `BR-FR-CTC-CPRO`, code lists, CDAR lifecycle statuses, Flux 1 / Flux 10 / directory | never |
+| `distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/` | Annex B: official example invoices (Factur-X PDF, CII, UBL; EN16931, EXTENDED, EXTENDED-CTC-FR) and CDAR lifecycle messages, with explanatory PDFs | never |
+| `SHA256SUMS` | Checksums of every file in `distribution/` | regenerate on upgrade |
+| `text/` | `annex-a--*.csv` (one per worksheet) and `annex-b-examples-en.txt` | never — regenerate |
+
+The standard itself (`ENG_XP Z12-012_FORMATS_AND_PROFILES_FOR_INVOICE_MESSAGES_V1.4.pdf`, in the same
+zip) is **not** vendored: it is marked "© AFNOR — All rights reserved"; get it free of charge from
+AFNOR or impots.gouv.fr. The annexes carry no licence statement; they are vendored as reference and
+test data (fictitious official examples) and are not shipped in the npm package.
+
+Known inconsistencies in the Annex B examples (left as published; tests that rely on them must not
+assume the opposite):
+
+- **BT-25 (preceding invoice) is one digit short.** The UC5b credit note
+  (`Factures/Facture et Avoir/UC5b_F202500011_*`) references `F20250007` (CII line 244, UBL line 35),
+  but the invoice it credits identifies itself as `F202500007` (UC5, BT-1). The UC4b corrective invoice
+  (`Factures/Facture et Facture Rectificative/UC4b_F202500010_*`) references `F20250006` (CII line
+  244, UBL line 36) for the original `F202500006` (UC4, BT-1). Matching these documents by BT-25
+  fails.
+- **UC11 dates.** `UC11_F202600022_MULTI-VENDEUR_EXTENDED-CTC-FR_CII_Commentee.xml` is issued on
+  2025-01-05 (BT-2, line 19) and due on 2025-02-04 (BT-9, line 505), while its billing period is
+  2025-12-01 to 2025-12-31 (BT-73/BT-74) and one line covers 2026-01-01 to 2026-01-31
+  (BT-134/BT-135, lines 122/125). Annex B doesn't say whether this is intentional (advance billing)
+  or a typo for 2026.
+
+```bash
+(cd spec/afnor-xp-z12-012-1.4/distribution && shasum -a 256 -c --quiet ../SHA256SUMS)
+pnpm --dir spec/scripts run extract afnor-xp-z12-012-1.4
+```
+
 ## Not vendored
 
+- **XP Z12-012 standard text** (AFNOR copyright, see above) and **XP Z12-013** (API between company
+  systems and approved platforms, OpenAPI swaggers): out of scope for this library.
 - **Order-X** specification: `src/lib/xsd/orderx/` cannot be traced to a vendored source yet. The
   Factur-X hybrid code lists above do cover Order-X XMP values (`ORDER`, `ORDER_CHANGE`,
   `ORDER_RESPONSE`, `BASIC` / `COMFORT` / `EXTENDED`, `order-x.xml`).

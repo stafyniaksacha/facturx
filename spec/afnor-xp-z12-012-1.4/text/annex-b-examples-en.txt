@@ -1,0 +1,1208 @@
+
+=== PDF page 1 ===
+XP Z12-012 - Message formats and profiles for invoices and life cycle statuses, constituting the
+minimum standard applicable to the Electronic Invoicing Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR life cycle messages
+Page1/ 24
+AFNOR Electronic Invoicing Standardization Committee
+XP Z12-014
+Annex B
+Examples of invoices (flow 2) and CDAR life cycle messages
+Version 1.4 of June 30
+th
+, 2026
+Author: FNFE-MPE, based on initial work by the DPFE of the DGFIP and the AIFE and in accordance with the work of
+the AFNOR Electronic Invoicing Standardization Commission, all of its members, and the working group meetings.
+VERSION MANAGEMENT
+Version No. Version date Description of changes
+V1.0 2025 07 31 Initial version
+V1.2 2025 10 31
+PDP modification => PA
+Correction of several errors in the life cycle examples:
+• Management dependent on PPF CDVs between PAs: MDT-2, MDT-3
+• Presence of MDT-4 (also dependent on PPF/PA CDVs)
+Removal of spaces in certain REASONS for statuses
+V1.3 2026 02 26
+Addition of UBL EXTENDED examples
+Addition of examples of invoices with sub-lines (UBL, CII, Factur-x)
+Addition of multi-seller invoices (UBL, CII, Factur-X)
+V1.4 2026 06 30 
+Examples Updated
+Addition of a two-way self billed invoice
+
+=== PDF page 2 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 2 / 24
+Table of Contents
+1 General .............................................................................................................................................. 3
+1.1 Invoices ....................................................................................................................................................................................... 3
+1.2 Life Cycle - CDAR .................................................................................................................................................................... 4
+2 Examples ........................................................................................................................................... 6
+2.1 Examples of invoices ............................................................................................................................................................. 6
+2.2 Examples of CDV messages in CDAR ........................................................................................................................... 21
+2.2.1 Nominal case...........................................................................................................................................................................................21
+2.2.2 Case of an incorrect invoice to illustrate a dispute status ................................................................................................24
+
+=== PDF page 3 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 3 / 24
+1 General
+1.1 Invoices
+The invoice examples are presented in the three minimum formats, as described in standard XP Z12-012, at this stage
+only for the EN 16931 profile:
+• The UN/CEFACT CII format contains comments on each line containing data, allowing the identification code
+(BT-XX) to be recalled.
+• The Factur-x format provides a readable representation, giving all the invoice data in a readable form. The
+factur-x.xml attached to the Factur-x is the UNCEFACT/CII above, but without the comments.
+• The UBL format was created from the same data set with comments on each line containing data, allowing the
+identification code (BT-XX) to be recalled.
+As explained in the documentation, syntaxes have their own semantic data structure, which leads to certain
+implementation choices that should be kept in mind:
+• Note management consists of content (BT-22) and a subject code (BT-21). While this structure exists in CII,
+it does not exist in UBL. It was therefore decided to precede the content of the Note with its subject code
+between #. Example
+✓ #PMT#Flat-rate compensation for collection costs in the event of late payment: $40.
+In addition, the standard allows multiple cardinalities for Notes (several Notes). If the cardinality of the Note
+is multiple in UBL, this is to allow it to be provided in several languages. Consequently, although the xsd and
+schematrons accept multiple UBL Notes, strict compliance with UBL would require that there be only one note
+per invoice. It is therefore possible to see UBL invoices with all notes concatenated. If there is no subject code,
+it should be separated with a double #. Example:
+✓ #Code#Text#Code2#text2##text3 …
+This is not done in the UBL examples, which nevertheless allows for better visibility.
+• The management of Party Identifiers, which can either be private (just an Identifier) or be an Identifier
+qualified by a schemeID (0009 for SIRET, 0088 for a GLN, etc.). Management differs depending on whether
+you are in UBL or CII:
+✓ In UBL, an ID element is used, with its schemeID, which is optional (cardinality 0..1). This is therefore in
+line with the EN 16931 standard.
+✓ In CII, there are two identifiers:
+▪ ID, which has no schemeID and is only used for unqualified private IDs.
+▪ GlobalID, which requires a @schemeID.
+• Use of block BG-24 (Additional Documents) for BT-17 (Reference to the Tender or Lot, only in CII) and BT-
+18 (Invoiced Item, in CII and UBL). To do this, additional data is required in block BG-24 to distinguish
+between the two or three BTs:
+✓ Document TypeCode, which takes the following values:
+▪ In UBL: in cac:AdditionalDocumentReference/cbc:ID: value 130 to qualify BT-18 data (Invoiced Item),
+the schemeID of the invoiced item to be selected from list 1153 must be positioned in
+cac:AdditionalDocumentReference/cbc:ID/@schemeID. And no value in this field for a BG-24.
+▪ In CII: in /ram:AdditionalReferencedDocument/ram:TypeCode with values 130 for a BT-18, 50 for a
+BT-17, and 916 for a BG-24. The qualifier for the invoiced item is entered in
+AdditionalReferencedDocument/ram:ReferenceTypeCode, to be selected from list 1153.
+Example in CII:
+<ram:AdditionalReferencedDocument>
+<ram:IssuerAssignedID&gt;REF_ANNEXE_009875&lt;/ram:IssuerAssignedID> < !-- BT-122 (Supporting document identifier): REF_ANNEXE_009875 --&gt;
+<ram:URIID> url:gffter&lt;/ram:URIID> < !-- BT-124 (External document location): url:gffter --&gt;
+<ram:TypeCode> 916&lt;/ram:TypeCode> < !-- BT-122-0 (Type code (916)): 916 --&gt;
+<ram:Name> DOCUMENT_ANNEXE&lt;/ram:Name> < !-- BT-123 (Supporting document description): DOCUMENT_ANNEXE --&gt;
+&lt;/ram:AdditionalReferencedDocument>
+<ram:AdditionalReferencedDocument>
+<ram:IssuerAssignedID> APPEL_OFFRE-FRE0087&lt;/ram:IssuerAssignedID> < !-- BT-17 (Tender or lot identifier): APPEL_OFFRE-FRE0087 --&gt;
+<ram:TypeCode> 50&lt;/ram:TypeCode> < !-- BT-17-0 (Type code (50)): 50 --&gt;
+
+=== PDF page 4 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 4 / 24
+&lt;/ram:AdditionalReferencedDocument>
+<ram:AdditionalReferencedDocument>
+<ram:IssuerAssignedID> REF_CLIENT2514&lt;/ram:IssuerAssignedID> < !-- BT-18 (Invoiced object identifier): REF_CLIENT2514 --&gt;
+<ram:TypeCode> 130&lt;/ram:TypeCode> < !-- BT-18-0 (Type code (130)): 130 --&gt;
+<ram:ReferenceTypeCode> IT&lt;/ram:ReferenceTypeCode> < !-- BT-18-1 (Scheme identifier): IT --&gt;
+&lt;/ram:AdditionalReferencedDocument>
+• Management of BT-8 (VAT on receipt or debit):
+✓ In UBL, this data is managed at the document level as a single piece of data, using a code list that is not the
+same as in UN/CEAT CII: 432 to indicate VAT on receipt and 3 (invoice date) to indicate VAT on debit.
+✓ In CII, the data is in the VAT breakdown (BG-23), which has a cardinality of 0..n (because multiple rates or
+exemptions are possible), which means that it must either be provided in one of the occurrences of BG-23
+or the same value must be provided in each iteration of the BG-23 block in CII. The values to be used are
+72 to express VAT on receipt, and 5 (invoice date) to indicate VAT on debit.
+PLEASE NOTE: in UBL, there is a dedicated message for these (Credit Note), which is very similar to the INVOICE
+message, but with a few differences.
+1.2 Life Cycle - CDAR
+Examples of the life cycle are presented for the nominal case, starting with invoice UC1_F202500003_00-
+INV_20250701.
+All statuses are presented, with two files for "Mandatory" statuses, as the life cycle transmitted to the PPF differs
+slightly from that exchanged between Accredited Platforms ("Plateformes Agréées") (PA). This is because Accredited
+Platforms are identified and named in the Life cycle messages transmitted to the PPF, whereas they are simply
+qualified (WK in CodeRole) for statuses exchanged between Accredited Platforms.
+The reason for this is that life cycle messages are intended to be exchanged as is with the Issuers and Recipients, which
+requires that the Accredited Platforms used by one party remain anonymous to the other.
+As a reminder, the CDAR message is broken down as follows (example with a status message, one of the most
+complete):
+• A header providing the context of the exchange
+✓ The type of business process: REGULATED for invoices subject to e-invoicing in MDT-2 (nothing is
+required by the PPF and this data is limited to 3 characters.
+✓ A profile type (MDT-3): here, there is only one, which means that it is a flow 6 (CDV on invoice Flow 2 or
+Flow 3):
+▪ urn.cpro.gouv.fr:1p0:CDV:invoice for CDVs between Accredited Platforms.
+▪ urn.cpro.gouv.fr:1p0:CDV:einvoicingF2 for CDVs sent to the PPF.
+Example for CDV to be exchanged between Accredited Platforms:
+<rsm:ExchangedDocumentContext>
+< ram:BusinessProcessSpecifiedDocumentContextParameter>
+< ram:ID> REGULATED&lt;/ram:ID> &lt;!-- MDT-2 (Business process type (billing framework)): REGULATED --&gt;
+&lt;/ram:BusinessProcessSpecifiedDocumentContextParameter>
+< ram:GuidelineSpecifiedDocumentContextParameter>
+< ram:ID> urn.cpro.gouv.fr:1p0:CDV:invoice&lt;/ram:ID> &lt;!-- MDT-3 (Profile type (e-invoicing, e-reporting, invoice, etc.)): urn.cpro.gouv.fr:1p0:CDV:invoice
+--&gt;
+&lt;/ram:GuidelineSpecifiedDocumentContextParameter>
+&lt;/rsm:ExchangedDocumentContext>
+• A document header, which indicates:
+✓ A Document Identifier (MDT-4): with a specific structure for CDVs intended for the PPF
+✓ The name of the document (MDT-5).
+✓ The date and time the Life Cycle Message was created: MDT-8
+✓ The parties: the status creator, the status issuer, and the recipient(s). See the "CDV Actors" sheet in Annex
+A to see who must be identified and how, for each status.
+Example:
+
+=== PDF page 5 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 5 / 24
+<rsm:ExchangedDocument>
+<ram:ID>F202500003_200_20250701151000#380_20250701</ram:ID> <!-- MDT-4 (Id document) : F202500003_200_20250701151000#380_20250701 -->
+<ram:Name>UC1_F202500003_07-CDV-212_Encaissée</ram:Name> <!-- MDT-5 (Nom document) : UC1_F202500003_07-CDV-212_Encaissée -->
+<ram:IssueDateTime>
+<udt:DateTimeString format="204">20250802100500</udt:DateTimeString> <!-- MDT-8 (Date-heure de création du CDV) : 20250802100500 -->
+</ram:IssueDateTime>
+<ram:SenderTradeParty>
+<ram:RoleCode>WK</ram:RoleCode> <!-- MDT-21 (Code rôle) : WK -->
+</ram:SenderTradeParty>
+<ram:IssuerTradeParty>
+<ram:GlobalID schemeID="0002">100000009</ram:GlobalID> <!-- MDT-38 (ID émetteur document (global)) : 100000009 -->
+<ram:Name>VENDEUR</ram:Name> <!-- MDT-39 (Raison sociale) : VENDEUR -->
+<ram:RoleCode>SE</ram:RoleCode> <!-- MDT-40 (Code rôle) : SE -->
+</ram:IssuerTradeParty>
+<ram:RecipientTradeParty>
+<ram:GlobalID schemeID="0002">200000008</ram:GlobalID> <!-- MDT-57 (ID destinataire (global)) : 200000008 -->
+<ram:Name>ACHETEUR</ram:Name> <!-- MDT-58 (Raison sociale) : ACHETEUR -->
+<ram:RoleCode>BY</ram:RoleCode> <!-- MDT-59 (Code rôle) : BY -->
+</ram:RecipientTradeParty>
+<ram:RecipientTradeParty>
+<ram:GlobalID schemeID="0238">9998</ram:GlobalID> <!-- MDT-57t (-) : 9998 -->
+<ram:Name>PPF</ram:Name> <!-- MDT-58t (-) : PPF -->
+<ram:RoleCode>DFH</ram:RoleCode> <!-- MDT-59t (-) : DFH -->
+</ram:RecipientTradeParty>
+</rsm:ExchangedDocument>
+• A life cycle grouping block, which is not used (only one document per CDV, except in very specific cases),
+containing:
+✓ Information indicating whether it is a transmission status (305) or processing status (23): MDT-77
+✓ A date and time when the status was submitted (by the user): MDT-78
+✓ A block detailing the characteristics of the invoice Subject of the life cycle message, as well as the coded
+status 2xx (212 for a "Received" status), then:
+▪ A status detail block indicating a status reason, a required action, and a final data detail sub-block (e.g.,
+the amount received, with applicable VAT rate).
+Example:
+<rsm:AcknowledgementDocument>
+<ram:MultipleReferencesIndicator>
+<udt:Indicator>false</udt:Indicator> <!-- MDT-74 (Indicateur CDV MONO (false) ou MULTI (true) Document) : false -->
+</ram:MultipleReferencesIndicator>
+<ram:TypeCode>23</ram:TypeCode> <!-- MDT-77 (Code type document) : 23 -->
+<ram:IssueDateTime>
+<udt:DateTimeString format="204">20250802100000</udt:DateTimeString> <!-- MDT-78 (Date-heure de dépôt du statut CDV) : 20250802100000 -->
+</ram:IssueDateTime>
+<ram:ReferenceReferencedDocument>
+<ram:IssuerAssignedID>F202500003</ram:IssuerAssignedID> <!-- MDT-87 (ID objet (BT-1 d'une facture)) : F202500003 -->
+<ram:StatusCode>47</ram:StatusCode> <!-- MDT-88 (Code statut) : 47 -->
+<ram:TypeCode>380</ram:TypeCode> <!-- MDT-91 (Code type de l'objet (BT-3 de la facture)) : 380 -->
+<ram:ReceiptDateTime>
+<udt:DateTimeString format="204">20250701151000</udt:DateTimeString> <!-- MDT-95 (Date-heure de réception de l'objet (pour une facture : date
+statut Déposée / Rejetée pour l'Emetteur ; date statut Reçue / Rejetée pour le Destinataire)) : 20250701151000 -->
+</ram:ReceiptDateTime>
+<ram:FormattedIssueDateTime>
+<qdt:DateTimeString format="102">20250701</qdt:DateTimeString> <!-- MDT-100 (Date-heure (Date de facture BT-2)) : 20250701 -->
+</ram:FormattedIssueDateTime>
+<ram:ProcessConditionCode>212</ram:ProcessConditionCode> <!-- MDT-105 (Code statut traitement) : 212 -->
+<ram:ProcessCondition>Encaissée</ram:ProcessCondition> <!-- MDT-106 (Libellé statut traitement) : Encaissée -->
+<ram:IssuerTradeParty>
+<ram:GlobalID schemeID="0002">100000009</ram:GlobalID> <!-- MDT-129 ( Id émetteur document référencé (global)) : 100000009 -->
+</ram:IssuerTradeParty>
+<ram:SpecifiedDocumentStatus>
+<ram:SpecifiedDocumentCharacteristic>
+<ram:TypeCode>MEN </ram:TypeCode> <!-- MDT-207 ( Code du type de donnée) : MEN -->
+<ram:ValueChangedIndicator>
+<udt:IndicatorString>false</udt:IndicatorString> <!-- MDT-209 ( Indicateur) : false -->
+</ram:ValueChangedIndicator>
+<ram:ValueAmount currencyID="EUR">12000</ram:ValueAmount> <!-- MDT-215 ( Montant (par exemple Encaissé)) : 12000 -->
+<ram:ValuePercent>20.00</ram:ValuePercent> <!-- MDT-224 ( Pourcentage (par exemple TVA pour un Encaissée)) : 20.00 -->
+</ram:SpecifiedDocumentCharacteristic>
+</ram:SpecifiedDocumentStatus>
+</ram:ReferenceReferencedDocument>
+</rsm:AcknowledgementDocument>
+Pay particular attention to dates and times, which are multiple:
+
+=== PDF page 6 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 6 / 24
+• The status date (MDT-8): corresponds to the date and time when the Life Cycle message was created.
+• The status submission date (MDT-78): corresponds to the date and time when the status is created (for
+example, when a status is set by a user in an application, before the application creates the CDV message that
+will then be transmitted).
+• The subject receipt date (MDT-95): corresponds to the date and time when the invoice was received by the
+person who set the status.
+✓ For statuses set by the Issuer or its AP-E: this is the date and time of the "Submitted" or "Rejected" status
+at the time of issuance (MDT-8 of these statuses).
+✓ For statuses set by the Recipient or its AP-R: this is the date and time of the "Received" or "Rejected" status
+(MDT-8 of these statuses).
+✓ For a given invoice and actor (CDV issuer/recipient), this field will therefore always show the same date
+and time throughout the life cycle.
+• The date of the subject (here the invoice) (MDT-100): corresponds to the date of the invoice (BT-2) to which
+the CDV relates.
+The "Data to be reported or expected value ("ram:SpecifiedDocumentCharacteristic") block is managed as follows:
+• MDT-207 (ram:TypeCode) is used to indicate the type of use: see BR-EN-CDV-CL-11
+• MDT-206 (ram:ID) provides the ID of the data that is in error or needs to be corrected
+• MDT-211 (ram:Name) gives the name of the data
+• MDT-213 (ram:Location) gives the Xpath of the data
+• The data is then presented by type.
+For the status "Received," the data type code is MEN (amount received with VAT), the amount is in MDT-215
+(ram:ValueAmount), and the VAT rate is MDT-224 (ram:ValuePercent).
+2 Examples
+2.1 Examples of invoices
+The following invoice examples are provided:
+• Invoice F202500001_INV_20250201: is an invoice that aims to include as much data as possible. This results
+in some functional inconsistencies (transfer and direct debit data, for example), but allows you to see how
+each piece of data is positioned in the syntax.
+• Invoice UC1_F202500003_00-INV_20250701: is a simple service invoice (Billing Framework S1) used to
+illustrate examples of Life Cycle statuses.
+• Invoice UC5_F202500007_00-INV_20250702 and the credit note that cancels it UC5b_F202500011_00-
+CN_20250703 (due to incorrect VAT)
+• Invoice UC4_F202500006_00-INV_20250701 and the corrected invoice that cancels and replaces it
+UC4b_F202500010_00-INVCORR_20250702.
+• Invoice UC12_F202600025_SOUS-LIGNE is an invoice with a sub-line illustrating the sale of a toy book.
+• Invoice UC10_F202600004_MULTI-VENDEUR is a multi-seller invoice.
+• Invoice UC11_F202600022_MULTI-VENDEUR is a multi-seller invoice showing an example of a water
+distribution invoice.
+• Selfbilled invoive UC13_AUTOF202600035_BIDIRECTIONNELLE is a two-way self-billed invoice.
+The annotated CII and UBL version and the readable Factur-X allow to view all the data present.
+The data from example F202500001_INV_20250201 is listed below. As BT-46 currently has a cardinality of 0..1 in the
+EN 16931 profile, a version in the EXTENDED-CTC-FR profile has been produced in CII and UBL to show the
+multiplicity of
+BT-46.
+
+=== PDF page 7 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 7 / 24
+BT Designation Data Line 2 Line 3 Line 4
+BT-1 Invoice number F202500001
+BT-2 
+Date of initial invoice /
+corrected invoice 
+02/01/2025
+BT-3 Invoice type code 380
+BT-5 Invoice currency code EUR
+BT-6 
+VAT accounting currency
+code
+BT-7 Value added tax due date
+BT-8 
+Value added tax due date
+code 
+5
+BT-9 
+Due date / Payment date in
+case of advance payment 
+45719
+BT-10 Buyer reference SERVEXEC
+BT-11 Project reference PROJET_2547
+BT-12 Contract reference CT2018120802
+BT-13 Purchase order reference PO201925478
+BT-14 Sales order number BON VENTE REF 2547
+BT-15 Receipt reference BON_RECEPT_002
+BT-16 Shipping notice reference AVISLIVRAISON_007654
+BT-17 Tender or lot reference APPEL_OFFRE-FRE0087
+BT-18 Invoiced item ID REF_CLIENT2514
+BT-18-1 Scheme identifier IT
+BT-19 Buyer's accounting reference REF COMPTABLE ACHETEUR
+BT-20 Payment terms PAIEMENT 30 JOURS NET
+BG-1 INVOICE NOTE
+
+=== PDF page 8 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 8 / 24
+BT-21 Invoice note subject code REG
+BT-22 Invoice note 
+VENDEUR SARL au capital de
+50 000 EUR
+BT-21 Invoice note subject code ABL
+BT-22 Invoice note RCS MAVILLE 100 000 009
+BT-21 Invoice note subject code AAI
+BT-22 Invoice note
+35 ma rue a moi,75018 PARIS,
+FR – contact@vendeur.fr -
+www.levendeur.fr – N° TVA :
+FR88 100 000 009
+BT-21 Invoice note subject code PMD
+BT-22 Invoice note
+Tout retard de paiement
+engendre une pénalité
+exigible à compter de la date
+d'échéance, calculée sur la
+base de trois fois le taux
+d'intérêt légal.
+BT-21 Invoice note subject code PMT
+BT-22 Invoice note
+Indemnité forfaitaire pour
+frais de recouvrement en cas
+de retard de paiement : €40.
+BT-21 Invoice note subject code AAB
+BT-22 Invoice note
+Les règlements reçus avant la
+date d'échéance ne donneront
+pas lieu à escompte.
+BT-21 Invoice note subject code TXD
+BT-22 Invoice memo MEMBRE_ASSUJETTI_UNIQUE
+BG-2 PROCESS CONTROL
+BT-23 
+Business process type (billing
+framework) 
+B1
+BT-24 
+Profile type (e-invoicing, e-
+reporting, invoice, etc.) 
+urn:cen.eu:en16931:2017
+BG-3 
+REFERENCE TO A PREVIOUS
+INVOICE
+BT-25 
+Reference to a previous
+invoice
+BT-26 Date of previous invoice
+
+=== PDF page 9 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 9 / 24
+BG-4 SELLER
+BT-27 Seller's company name LE VENDEUR
+BT-28 Seller's trade name 
+VENDEUR NOM
+COMMERCIAL
+BT-29 Private identifier of the seller PRIVATE_123
+BT-29 Scheme identifier 587451236587
+BT-29-1 Scheme ID 0088
+BT-29b Seller ID (SIRET) 10000000900017
+BT-29b-1 Scheme identifier (SIRET) 0009
+BT-29c Seller identifier (routing) DUNS1235487
+BT-29c-1 Scheme identifier (routing) 0060
+BT-29d 
+Seller ID (Single taxable
+entity) 
+500000005
+BT-29d-1 
+Scheme identifier (Single
+taxable entity) 
+0231
+BT-30 SIREN number 100000009
+BT-30-1 Scheme identifier 0002
+BT-31 Seller's VAT ID FR88100000009
+BT-31-0 
+Qualifier for seller's VAT ID
+number
+BT-32 
+Seller's tax identification
+number
+BT-32-0 
+Qualifying as the Seller's Tax
+Identification Number
+BT-33 
+Legal form and share capital
+for companies
+SARL AU CAPITAL DE 50 000
+EUROS
+BT-34 Seller's electronic address 100000009_STATUTS
+BT-34-1 Scheme identifier 0225
+BG-5 SELLER'S POSTAL ADDRESS
+
+=== PDF page 10 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 10 / 24
+BT-35 Seller's address - Line 1 35 rue d'ici
+BT-36 Seller's address - Line 2 ligne 2 vendeur
+BT-162 Seller's address - Line 3
+BT-37 Seller's location PARIS
+BT-38 Seller's postal code 75018
+BT-39 Seller's country subdivision
+BT-40 Seller's country code FR
+BG-6 SELLER CONTACT
+BT-41 Seller contact point MME CONTACT
+BT-42 
+Seller's contact phone
+number 
+01 02 03 54 87
+BT-43 
+Seller's contact electronic
+address 
+contact@vendeur.fr
+BG-7 BUYER
+BT-44 Buyer's company name LE CLIENT
+BT-45 Trade name of the buyer CLIENT NOM COMMERCIAL
+BT-46 Additional buyer identifier privateID
+BT-46 Additional buyer ID 3654789851
+BT-46-1 Scheme identifier 0088
+BT-46b 
+Buyer ID (SIRET)
+EXTENDED PROFILE 
+20000000800025
+BT-46b-1 
+Scheme identifier (SIRET)
+EXTENDED PROFILE 
+0009
+BT-46c 
+Buyer identifier (routing)
+EXTENDED PROFILE 
+CDROUT1
+BT-46c-1 
+Scheme identifier (routing)
+EXTENDED PROFILE 
+0224
+BT-47 SIREN number 200000008
+
+=== PDF page 11 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 11 / 24
+BT-47-1 Scheme identifier 0002
+BT-48 VAT ID number of the buyer FR37200000008
+BT-48-0 
+Qualifying as the buyer's tax
+identification number
+BT-49 Address identifier 200000008
+BT-49-1 
+Address identifier scheme
+identifier 
+0225
+BG-8 BUYER'S POSTAL ADDRESS
+BT-50 Buyer's address - Line 1 MON ADRESSE LIGNE 1
+BT-51 Buyer's address - Line 2 acheteur ligne 2
+BT-163 Buyer's address - Line 3 acheteur ligne 3
+BT-52 Buyer's location MA VILLE
+BT-53 Buyer's postal code 06000
+BT-54 Buyer's country subdivision
+BT-55 Buyer's country code FR
+BG-9 BUYER CONTACT
+BT-56 Buyer's contact point Contact ACHETEUR
+BT-57 
+Buyer’s contact phone
+number 
+01 01 25 45 87
+BT-58 
+Buyer’s contact electronic
+address 
+contact@acheteur.fr
+BG-10 BENEFICIARY
+BT-59 Name of beneficiary TIERS Bénéficiaire
+BT-60 
+Beneficiary's additional
+identifier
+BT-60-1 Scheme identifier 0088
+BT-61 
+Beneficiary's legal registration
+identifier 
+300000007
+
+=== PDF page 12 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 12 / 24
+BT-61-1 Scheme identifier 0002
+BG-11 
+SELLER'S TAX
+REPRESENTATIVE
+BT-62 
+Name of the seller's tax
+representative
+ASSUJETTI UNIQUE
+VENDEUR
+BT-63 
+VAT identification number of
+the seller's tax representative 
+FR78500000005
+BT-63-1
+Identification number of the
+tax representative's VAT
+identification number scheme
+BG-12
+POSTAL ADDRESS OF THE
+SELLER'S TAX
+REPRESENTATIVE
+BT-64 
+Address of the tax
+representative - Line 1 
+75 rue labas
+BT-65 
+Address of tax representative
+- Line 2 
+Assujetti Unique ligne 2
+BT-164 
+Tax representative address -
+Line 3
+BT-66 Location of tax representative PARIS
+BT-67 
+Postal code of the tax
+representative 
+75007
+BT-68 
+Country subdivision of the tax
+representative
+BT-69 
+Country code of the tax
+representative 
+FR
+BG-13 DELIVERY INFORMATION
+BT-70 Delivered to NOM LIVRé
+BT-71 Delivery location identifier PRIVATE_ID_DELIVERY
+BT-71-1 
+Delivery establishment
+scheme identifier
+BT-72 Effective delivery date 01/31/2025
+BG-14 BILLING PERIOD
+BT-73 Start date of billing period 01/01/2025
+BT-74 End date of billing period 01/31/2025
+BG-15 DELIVERY ADDRESS
+
+=== PDF page 13 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 13 / 24
+BT-75 Delivery address - Line 1 ADRESSE LIVRAISON LIGNE 1
+BT-76 Delivery address - Line 2 AD LIV ligne 2
+BT-165 Delivery address - Line 3
+BT-77 Location Delivery address NICE
+BT-78 Postal code Delivery address 06000
+BT-79 Country subdivision
+BT-80 Country code FR
+BG-16 PAYMENT INSTRUCTIONS
+BT-81 Payment method type code 30
+BT-82 Payment method description Virement
+BT-83 Payment notice F202500001_200000008
+BG-17 TRANSFER
+BT-84 Payment account identifier 
+FR20 1254 2547 2569 8542
+5874 698
+BT-85 Payment account name MON COMPTE BANCAIRE
+BT-86 
+Payment service provider
+identifier 
+BIC_MONCOMPTE
+BG-18 
+PAYMENT CARD
+INFORMATION
+BT-87 Payment account identifier
+BT-88 Payment account name
+BG-19 DEBIT
+BT-89 Mandate reference identifier REF MANDAT ICS
+BT-90 Creditor's bank identifier
+BT-91 
+Debit account identifier
+(IBAN) 
+CPTE DEBIT
+
+=== PDF page 14 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 14 / 24
+BG-20 
+DOCUMENT LEVEL
+ALLOWANCES
+BT-92 
+Amount of the allowance at
+document level 
+5
+BT-93 
+Basis for the document level
+adjustment 
+100
+BT-94 
+Percentage of document
+leveling 
+5
+BT-95 
+VAT type code for the
+document allowance 
+S
+BT-96 
+VAT rate of the allowance at
+document level 
+20
+BT-97 
+Reason for adjustment at
+document level 
+REMISE COMMERCIALE_1
+BT-98 
+Document upgrade reason
+code 
+95
+BG-20 
+DOCUMENT-LEVEL
+ALLOWANCES -2nd
+BT-92 
+Amount of document level
+adjustment 
+1
+BT-93 
+Basis for the document level
+adjustment 
+100
+BT-94 
+Percentage of document
+leveling 
+1
+BT-95 
+VAT type code for the
+document level allowance 
+S
+BT-96 
+VAT rate of the allowance at
+document level 
+20
+BT-97 
+Reason for adjustment at
+document level 
+REMISE COMMERCIALE_2
+BT-98 
+Document upgrade reason
+code 
+100
+BG-20 
+DOCUMENT-LEVEL
+ALLOWANCES 3rd
+BT-92 
+Amount of the document
+level adjustment 
+1
+BT-93 
+Basis for the document
+upgrade 
+100
+BT-94 
+Percentage of document
+allowance 
+1
+BT-95 
+VAT type code for the
+document level allowance 
+S
+BT-96 
+VAT rate of the allowance at
+document level 
+20
+
+=== PDF page 15 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 15 / 24
+BT-97 
+Reason for adjustment at
+document level 
+REMISE COMMERCIALE_3
+BT-98 
+Document upgrade reason
+code 
+100
+BG-20 
+DOCUMENT-LEVEL
+ALLOWANCES 4th
+BT-92 
+Amount of the document
+level adjustment 
+2
+BT-93 
+Basis for the document
+upgrade 
+100
+BT-94 
+Percentage of document
+leveling 
+2
+BT-95 
+VAT type code for the
+document-level allowance 
+S
+BT-96 
+VAT rate of the allowance at
+document level 
+10
+BT-97 
+Reason for adjustment at
+document level 
+REMISE COMMERCIALE_4
+BT-98 
+Document upgrade reason
+code
+BG-21 
+CHARGES OR FEES AT
+DOCUMENT LEVEL
+BT-99 Amount of charges 10
+BT-100 
+Basis for document-level
+charges or fees 
+100
+BT-101 
+Percentage of charges or
+expenses at document level 
+10
+BT-102 Expense VAT type code S
+BT-103 
+VAT rate for expenses or fees
+at document level 
+20
+BT-104 
+Reason for charges or
+expenses at document level 
+FRAIS DEPLACEMENT_1
+BT-105 
+Reason code for charges or
+expenses at document level 
+FC
+BG-21 
+CHARGES OR EXPENSES AT
+DOCUMENT LEVEL 2nd
+BT-99 Amount of charges 1
+BT-100 
+Basis for charges or expenses
+at document level 
+100
+BT-101 
+Percentage of charges or fees
+at document level 
+1
+
+=== PDF page 16 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 16 / 24
+BT-102 VAT type code for charges S
+BT-103 
+VAT rate for expenses or
+charges at document level 
+20
+BT-104 
+Reason for charges or
+expenses at document level 
+AUTRE CHARGE
+BT-105 
+Reason code for charges or
+expenses at document level 
+ADR
+BG-21 
+CHARGES OR EXPENSES AT
+DOCUMENT LEVEL 3rd
+BT-99 Amount of charges 2
+BT-100 
+Basis for charges or expenses
+at document level
+BT-101 
+Percentage of charges or
+expenses at document level
+BT-102 VAT type code for charges K
+BT-103 
+VAT rate for charges or
+expenses at document level 
+0
+BT-104 
+Reason for charges or
+expenses at document level 
+FRAIS DEPLACEMENT_2
+BT-105 
+Reason code for charges or
+fees at document level 
+FC
+BG-21 
+CHARGES OR EXPENSES AT
+DOCUMENT LEVEL 4th
+BT-99 Amount of charges 1
+BT-100 
+Basis for charges or expenses
+at document level
+BT-101 
+Percentage of charges or
+expenses at document level
+BT-102 VAT type code for charges S
+BT-103 
+VAT rate for charges or
+expenses at document level 
+10
+BT-104 
+Reason for charges or
+expenses at document level 
+FRAIS DEPLACEMENT_3
+BT-105 
+Reason code for charges or
+expenses at document level 
+FC
+BG-22 DOCUMENT TOTALS
+BT-106 
+Sum of the net amounts of
+the invoice lines 
+105
+
+=== PDF page 17 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 17 / 24
+BT-107 
+Sum of allowances at
+document level 
+9
+BT-108 
+Sum of charges or fees at
+document level 
+14
+BT-109 
+Total amount of the invoice
+without VAT 
+110
+BT-110 
+Total amount of VAT on the
+invoice 
+8.7
+BT-110-1 Currency code
+BT-111 
+Total VAT amount on the
+invoice (accounting currency)
+BT-111-1 Currency code
+BT-112 
+Total amount of the invoice,
+with VAT. 
+118.7
+BT-113 Amount paid 0
+BT-114 Rounded amount 0
+BT-115 Amount payable 118.7
+BG-23 VAT BREAKDOWN
+BT-116 Taxable amount for VAT type 39
+BT-117 
+VAT amount for each VAT
+type 
+7.8
+BT-118 VAT type code S
+BT-119 VAT rate type 20
+BT-120 Reason for VAT exemption
+BT-121 VAT exemption reason code
+BG-23 VAT BREAKDOWN 2nd
+BT-116 
+Taxable amount of the VAT
+type 
+60
+BT-117 
+VAT amount for each VAT
+type 
+0
+BT-118 VAT type code E
+
+=== PDF page 18 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 18 / 24
+BT-119 VAT type rate 0
+BT-120 Reason for VAT exemption REMBOURSEMENT
+BT-121 VAT exemption code VATEX-EU-79-C
+BG-23 VAT BREAKDOWN 3rd
+BT-116 
+Taxable amount of the VAT
+type
+BT-117 
+VAT amount for each VAT
+type 
+0.9
+BT-118 VAT type code S
+BT-119 VAT rate type 10
+BT-120 Reason for VAT exemption
+BT-121 VAT exemption reason code
+BG-23 VAT BREAKDOWN 4th
+BT-116 
+Taxable amount of the VAT
+type 
+2
+BT-117 
+VAT amount for each VAT
+type 
+0
+BT-118 VAT type code K
+BT-119 VAT type rate 0
+BT-120 Reason for VAT exemption 
+LIVRAISON
+INTRACOMMUNAUTAIRE
+BT-121 VAT exemption code VATEX-EU-IC
+BG-24 
+ADDITIONAL SUPPORTING
+DOCUMENTS
+BT-122 
+Supporting document
+reference 
+REF_ANNEXE_009875
+BT-123 
+Description of supporting
+document 
+DOCUMENT_ANNEXE
+BT-124 External document location url:gffter
+BT-125 Attached document
+
+=== PDF page 19 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 19 / 24
+BT-125-1 
+MIME code of the attached
+document
+BT-125-2 
+File name of the attached
+document
+BG-25 INVOICE LINE
+BT-126 Invoice line identifier 1 2 3 4
+BT-127-
+00 
+Invoice line note
+BT-127 Invoice line note 
+DONT 0,50 EUR de
+DEEE
+BT-128 Invoice line item identifier TARIF_2022
+BT-128-1 Scheme identifier AFG
+BT-129 Quantity billed 1 30 1 2
+BT-130
+Code for the unit of
+measurement of the quantity
+invoiced
+C62 C62 C62 HUR
+BT-131 Net invoice line amount 60 21 10 14
+BT-132 
+Reference of the referenced
+purchase order line 
+1 4 3 2
+BT-133 
+Accounting reference of the
+buyer of the invoice line 
+BUY_ACC_REF BUY_ACC_REF1 BUY_ACC_REF2 BUY_ACC_REF3
+BG-26 BILLING PERIOD FOR A LINE
+BT-134 
+Start date of billing period for
+a line 
+01/01/2025 01/01/2025 01/01/2025 01/01/2025
+BT-135 
+End date of billing period for
+a line 
+01/31/2025 01/31/2025 01/31/2025 01/31/2025
+BG-27 INVOICE LINE ALLOWANCE
+BT-136 
+Amount of an allowance,
+without VAT 
+1
+BT-137 
+Basis for the invoice line
+allowance 
+100
+BT-138 
+Percentage of invoice line
+allowance 
+1
+BT-139 
+Reason for invoice line
+allowance 
+REMISE VOLUME
+BT-140 
+Invoice line allowance reason
+code 
+71
+
+=== PDF page 20 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 20 / 24
+BG-28 
+CHARGE OR FEE FOR A
+BILLING LINE
+BT-141 Amount of charges or fees 1
+BT-142 
+Basis for charges or fees
+applicable to the invoice line
+BT-143
+Percentage of charges or
+expenses applicable to the
+invoice line
+BT-144 
+Reason for charges or fees
+applicable to the invoice line 
+FRAIS PREPARATION
+BT-145
+Code for reason for charges
+or fees applicable to the
+invoice line
+BG-29 PRICE DETAILS
+BT-146 Net price of the item 60 0.7 30 7
+BT-147 
+Discount on the price of the
+item 
+0.1 3
+BT-148 Gross price of the item 60 0.8 30 10
+BT-149 
+Base quantity of the item
+price 
+1 1 3 1
+BT-150
+Code for the unit of
+measurement of the base
+quantity of the item price
+C62 C62 C62 HUR
+BG-30 INFORMATION ON VAT
+BT-151 
+VAT type code of the invoiced
+item 
+E S S S
+BT-152 VAT rate for the invoiced item 0 20 10 20
+BG-31 ARTICLE INFORMATION
+BT-153 Item name REMBOURSEMENT COMPOSANT FOURNITURES MOULE SUPPORT TEL
+BT-154 Description of the item 
+Description du
+remboursement 
+Description de l'article Description du moule
+Description de la
+prestation de
+support associée
+BT-155 Item seller ID ART_1254 ART_9874
+BT-156 Item buyer ID REF5487 REF9854
+BT-157 Standard item identifier 598785412598745 598785414325437
+
+=== PDF page 21 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 21 / 24
+BT-157-1 Scheme ID 0160 0160
+BT-158 Article classification identifier SKU2578
+BT-158-1 Scheme identifier SK
+BT-158-2 Scheme version identifier
+BT-159 Country of origin of the article FR
+BG-32 ARTICLE ATTRIBUTES
+BT-160 Article attribute name CO2(g) COULEUR
+BT-161 Item attribute value 12 BLANC
+BT-160 Item attribute name CO2(g)
+BT-161 Item attribute value 30
+2.2 Examples of CDV messages in CDAR
+2.2.1 Nominal case
+The case presented is based on an invoice exchanged without rejection, refusal, or dispute.
+The main data in the invoice is as follows:
+Characteristic Completion
+Invoice file names (3 formats) Invoice-X: UC1_F202500003_00-INV_20250701.pdf
+CII: UC1_F202500003_00-INV_20250701_CII.xml
+UBL: UC1_F202500003_00-INV_20250701_UBL.xml
+Invoice ID F202500003
+Date 07/01/2025
+Type E-invoicing invoice (type code: 380)
+Seller’s name LE VENDEUR
+Legal ID of the Seller 100000009
+Seller's electronic address (schemeId 0225) 100000009_STATUTS
+Buyer's name LE CLIENT
+Buyer's legal ID 200000008
+Buyer's electronic address (schemeId 0225) 200000008
+Number of lines 2
+VAT rate (%) 2
+
+=== PDF page 22 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 22 / 24
+Characteristic Completion
+Unit price line 1 (€) 40
+Unit for P.U. line 1 HOUR
+Quantity line 1 2
+Unit price line 2 (€) 4
+Unit for P.U. line 2 DAY
+Quantity line 2 5
+Total line 1 without VAT (€) 8
+Total without VAT line 2 (€) 2
+Total document without VAT (€) 10,000
+Total VAT (€) 2,000
+Total document with VAT (€) 12,000
+
+=== PDF page 23 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 23 / 24
+The life cycle sequence is as follows:
+Step DATE Time Event
+UC1_00 07/01/2025 15:00 The SELLER sends its invoice to the Seller's AP-E.
+UC1_01
+07/01 15: AP-E performs checks and sets status to Submitted
+07/01/2025 3:15 AP-E creates the "Submitted" CDV. Status available to THE SELLER.
+Transmission to the PPF within 24 hours.
+07/01 16 AP-E transmits the invoice (flow 2) to AP-R
+UC1_02
+0 16:10 AP-R performs checks and sets status to Received
+01 16: AP-R creates CDV Received for the SELLER and sends it to AP-E. Status
+made available to the BUYER.
+01 16 AP-R sends the invoice to the BUYER or notifies them that it is available.
+UC1_03
+0 16: AP-R sets MAD (Made Available) status for the BUYER
+07/01/2025 16 AP-R creates MAD CDV for the SELLER and sends it to AP-E. Status made
+available to the BUYER.
+07/01 16 AP-E makes MAD status available to the SELLER.
+UC1_04
+0 18 The BUYER sets a PEC (Acceptance) status.
+07/01/2025 18: AP-R (or BUYER) sets the PEC status and sends it to the SELLER via
+their AP-E
+07/01 18 AP-E makes the PEC status available to the SELLER.
+UC1_05
+02 10 The BUYER sets the status to "Approved."
+07/02 10:05 AP-R (or BUYER) sets the status to Approved and sends it to VE via its
+AP-E
+07/02 10:10 AP-E assigns the status Approved to the SELLER
+UC1_06
+07/30/2025 10:00 BUYER sets status Payment sent
+30 10:05 AP-R (or BUYER) sets the status to Payment transmitted and sends it to
+VE via its AP-E.
+07/30 10:10 AP-E makes the Payment transmitted status available to the SELLER.
+UC1_07
+02 10:00 SELLER sets status to "Received"
+08/02/2025 10:05 AP-E (or VE) sets the status to "Received" and sends it to the BUYER via
+their AP-R
+Transmission to the PPF.
+08/02 10:10 AP-R makes the "Received" status available to the BUYER.
+
+=== PDF page 24 ===
+XP Z12-014 - Formats and profiles for invoice messages and life cycle statuses, constituting the
+minimum requirements applicable to the Electronic Invoice Reform in France.
+ANNEX B (normative): Examples of invoices (flow 2) and CDAR messages for the life cycle
+Page 24 / 24
+The files for the different life cycle statuses are as follows (and contain comments to identify the MDT-XXX data codes):
+Status XML file name
+Submitted UC1_F202500003_01-CDV-200_Deposee
+UC1_F202500003_01-CDV-200_Deposee_POUR_PPF
+Received UC1_F202500003_02-CDV-202_Recue
+Made available UC1_F202500003_03-CDV-203_Mise_a_disposition
+Taken UC1_F202500003_04-CDV-204_Prise_en_charge
+Approved UC1_F202500003_05-CDV-205_Approuvee
+Payment sent UC1_F202500003_06-CDV-211_Paiement_transmis
+12,000 € on 07/30/2025
+Payment Received UC1_F202500003_07-CDV-212_Encaissee
+UC1_F202500003_07-CDV-212_Encaissee_POUR_PPF
+2.2.2 Case of an incorrect invoice to illustrate a dispute status
+For invoices UC4_F202500006_00-INV_20250701 and UC5_F202500007_00-INV_20250702, which are similar, the
+dispute statuses illustrate how to indicate a dispute, with a REASON (in MDT-113 as a code and MDT-114 as text, here
+Incorrect VAT rate), then how to indicate an expected action (corrected invoice or credit note) in MDT-121 and MDT-
+122, and finally how to indicate invalid data and the data that is expected instead:
+• UC4_F202500006_04-CDV-207_En_litige.xml
+• UC5_F202500007_04-CDV-207_En_litige.xml

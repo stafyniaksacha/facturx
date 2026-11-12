@@ -11,7 +11,7 @@
  *
  * Usage (from the repo root):
  *   pnpm --dir spec/scripts install --ignore-workspace
- *   pnpm --dir spec/scripts run extract [factur-x-1.09]
+ *   pnpm --dir spec/scripts run extract [factur-x-1.09 | fnfe-ctc-fr-1.4.0.04 | afnor-xp-z12-012-1.4]
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -25,19 +25,42 @@ const version = process.argv[2] || 'factur-x-1.09'
 const dist = join(specRoot, version, 'distribution')
 const out = join(specRoot, version, 'text')
 
-const PDFS = [
-  ['1. FACTUR-X 1.09 2026 06 10 EN.pdf', 'spec-main.txt'],
-  ['7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/0.Factur-X_1.09_ZUGFeRD_2.5_technical_appendix_profile_minimum.pdf', 'appendix-minimum.txt'],
-  ['7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/1.Factur-X_1.09_ZUGFeRD_2.5_technical_appendix_profile_basic_wl.pdf', 'appendix-basic_wl.txt'],
-  ['7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/2.Factur-X_1.09_ZUGFeRD_2.5_technical_appendix_profile_basic.pdf', 'appendix-basic.txt'],
-  ['7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/3.Factur-X_1.09_ZUGFeRD_2.5_technical_appendix_profile_en16931.pdf', 'appendix-en16931.txt'],
-  ['7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/4.Factur-X_1.09_ZUGFeRD_2.5_technical_appendix_profile_extended.pdf', 'appendix-extended.txt'],
-]
+// Per-version list of documents to extract. Paths are relative to distribution/.
+const SOURCES = {
+  'factur-x-1.09': {
+    pdfs: [
+      ['1. FACTUR-X 1.09 2026 06 10 EN.pdf', 'spec-main.txt'],
+      ['7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/0.Factur-X_1.09_ZUGFeRD_2.5_technical_appendix_profile_minimum.pdf', 'appendix-minimum.txt'],
+      ['7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/1.Factur-X_1.09_ZUGFeRD_2.5_technical_appendix_profile_basic_wl.pdf', 'appendix-basic_wl.txt'],
+      ['7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/2.Factur-X_1.09_ZUGFeRD_2.5_technical_appendix_profile_basic.pdf', 'appendix-basic.txt'],
+      ['7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/3.Factur-X_1.09_ZUGFeRD_2.5_technical_appendix_profile_en16931.pdf', 'appendix-en16931.txt'],
+      ['7. FACTUR-X 1.09_Zugferd 2.5 technical appendices/4.Factur-X_1.09_ZUGFeRD_2.5_technical_appendix_profile_extended.pdf', 'appendix-extended.txt'],
+    ],
+    workbooks: [
+      ['3. FACTUR-X 1.09 - 2026 06 10 - EN FR VF.xlsx', 'fields'],
+      ['EN16931 code lists values v17b - used from 2026-05-15 - Fx 1.09.xlsx', 'codelists'],
+    ],
+  },
+  'afnor-xp-z12-012-1.4': {
+    pdfs: [
+      ['XP_Z12-012_Annexe_B_EXEMPLES_V1.4/XP_Z12-012_Annexe_B_EXEMPLES_V1.4_EN.pdf', 'annex-b-examples-en.txt'],
+    ],
+    workbooks: [
+      ['XP_Z12-012_Annexe_A_2026_V1.4_VF.xlsx', 'annex-a'],
+    ],
+  },
+  'fnfe-ctc-fr-1.4.0.04': {
+    pdfs: [
+      ['2026_06_30_FNFE_SCHEMATRONS_FR_CTC_V1.4.0_EN.pdf', 'release-notes-en.txt'],
+      ['2026_06_30_FNFE_SCHEMATRONS_FR_CTC_V1.4.0.pdf', 'release-notes-fr.txt'],
+    ],
+    workbooks: [],
+  },
+}
 
-const WORKBOOKS = [
-  ['3. FACTUR-X 1.09 - 2026 06 10 - EN FR VF.xlsx', 'fields'],
-  ['EN16931 code lists values v17b - used from 2026-05-15 - Fx 1.09.xlsx', 'codelists'],
-]
+if (!Object.hasOwn(SOURCES, version))
+  throw new Error(`No extraction list for "${version}"; add it to SOURCES in extract.mjs`)
+const { pdfs: PDFS, workbooks: WORKBOOKS } = SOURCES[version]
 
 async function pdfToText(file) {
   const doc = await getDocument({ data: new Uint8Array(readFileSync(file)), useSystemFonts: true }).promise
