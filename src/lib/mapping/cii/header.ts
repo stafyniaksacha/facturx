@@ -326,8 +326,9 @@ export function assertHeaderComplete(invoice: Invoice, level: En16931Level): voi
         throw new Error(`toCii: BT-22 (invoice note) is mandatory and empty in each BG-1 at level "${level}"; a note without text needs level "extended" or "extended-ctc-fr"`)
     }
   }
-  // A note with neither text nor subject code carries nothing: it would write an empty `ram:IncludedNote`
-  // (PEPPOL-EN16931-R008, empty element).
+  // A note with neither text nor subject code carries nothing: it would write an empty `ram:IncludedNote`.
+  // At `extended` that avoids PEPPOL-EN16931-R008 (empty element); at `extended-ctc-fr`, whose Schematron has
+  // no such rule, it is a deliberate choice, stricter than the level's Schematron.
   if (level === 'extended' || level === 'extended-ctc-fr') {
     for (const note of invoice.notes ?? []) {
       if (empty(note.note) && empty(note.subjectCode))

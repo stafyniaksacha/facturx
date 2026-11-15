@@ -849,7 +849,8 @@ paths and the code supports both, so nothing here is picked.
 - **Model:** `InvoiceNote.note` and `LineNote.note` are optional (the wider cardinality). `toCii()` refuses a
   note without text at `basic` and `en16931`, refuses a subject code without text at `extended`
   (BR-FXEXT-01 / -02), refuses a note with neither text nor subject code at both extended levels (it would
-  write an empty `ram:IncludedNote`, PEPPOL-EN16931-R008), and otherwise writes a note without text without
+  write an empty `ram:IncludedNote`: at `extended` that avoids PEPPOL-EN16931-R008, at `extended-ctc-fr`, whose
+  Schematron has no such rule, it is a deliberate choice, stricter than that level's Schematron), and otherwise writes a note without text without
   `ram:Content`. The coded texts
   BT-X-5 / BT-X-9 are true `BT-X` fields outside the model (reported in `dropped`).
 - **Effect:** a Factur-X EXTENDED note holding a subject code and only a coded text reads into the model with

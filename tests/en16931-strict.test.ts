@@ -304,7 +304,7 @@ describe('en 16931 model: mandatory terms of credit transfers, attachments and l
   })
 
   // A note with neither text nor subject code carries nothing and would write an empty `ram:IncludedNote`
-  // (PEPPOL-EN16931-R008).
+  // (avoids PEPPOL-EN16931-R008 at extended; a deliberate choice at extended-ctc-fr).
   it.each(['extended', 'extended-ctc-fr'] as const)('at %s, refuses a note with neither text nor subject code, never quoting content', async (level) => {
     for (const fields of [{}, { note: '' }, { note: ' \t\r\n' }]) {
       const header = await enInvoice()
@@ -421,6 +421,17 @@ describe('en 16931 model: an Amount has at most 2 decimals', () => {
     const invoice = await enInvoice()
     invoice.totals.invoiceTotalVatAmount = 20.125
     expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/BT-110.*2 decimals/)
+  })
+
+  it('treats a whitespace-only BT-6 as missing for BT-111 and EXT-FR-FE-182', async () => {
+    const bt111 = await enInvoice()
+    bt111.vatAccountingCurrencyCode = ' '
+    bt111.totals.invoiceTotalVatAmountInAccountingCurrency = 22
+    expect(() => toCii(bt111, { level: 'en16931' })).toThrow(/^toCii: BT-111 .*needs BT-6/)
+    const line = await enInvoice()
+    line.vatAccountingCurrencyCode = ' '
+    line.lines[0]!.vatAmountInAccountingCurrency = 3
+    expect(() => toCii(line, { level: 'extended' })).toThrow(/^toCii: EXT-FR-FE-182 .*needs BT-6/)
   })
 
   it('names a lone BT-111 by its currency, not its position', async () => {

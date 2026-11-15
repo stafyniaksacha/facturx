@@ -564,7 +564,7 @@ export function assertLinesComplete(invoice: Invoice, level: En16931Level): void
       throw new Error(`toCii: ${id} (${term}) must be a finite number`)
   }
   for (const line of invoice.lines) {
-    if (line.vatAmountInAccountingCurrency !== undefined && (invoice.vatAccountingCurrencyCode === undefined || invoice.vatAccountingCurrencyCode === ''))
+    if (line.vatAmountInAccountingCurrency !== undefined && isBlank(invoice.vatAccountingCurrencyCode))
       throw new Error('toCii: EXT-FR-FE-182 (line total VAT amount in accounting currency) needs BT-6 (VAT accounting currency code)')
     for (const charge of line.charges) {
       if (charge.reasonCode !== undefined && charge.nonVatTaxCode !== undefined)

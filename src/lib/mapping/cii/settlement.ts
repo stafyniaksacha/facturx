@@ -411,7 +411,7 @@ export function assertSettlementComplete(invoice: Invoice): void {
       throw new Error(`toCii: ${id} (${term}) must be a finite number`)
   }
   // CII writes the VAT amount in accounting currency with BT-6 as its `@currencyID` (matrix BT-111-0).
-  if (totals.invoiceTotalVatAmountInAccountingCurrency !== undefined && (invoice.vatAccountingCurrencyCode === undefined || invoice.vatAccountingCurrencyCode === ''))
+  if (totals.invoiceTotalVatAmountInAccountingCurrency !== undefined && isBlank(invoice.vatAccountingCurrencyCode))
     throw new Error('toCii: BT-111 (invoice total VAT amount in accounting currency) needs BT-6 (VAT accounting currency code)')
   for (const charge of invoice.charges) {
     if (charge.reasonCode !== undefined && charge.nonVatTaxCode !== undefined)

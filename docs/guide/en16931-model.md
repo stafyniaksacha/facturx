@@ -39,7 +39,8 @@ Conventions:
   mandatory, the EXTENDED XSD and annex A EXTENDED-CTC-FR do not. `fromCii()` reads `undefined` for a note
   without text. `toCii()` refuses a note without text at `basic` and `en16931`; at `extended` and
   `extended-ctc-fr` it writes the note without `ram:Content` when it has a subject code, and refuses a note
-  with neither text nor subject code (it would write an empty `ram:IncludedNote`), except that Factur-X EXTENDED wants the text
+  with neither text nor subject code (it would write an empty `ram:IncludedNote`: at `extended` that avoids
+  PEPPOL-EN16931-R008, at `extended-ctc-fr` it is a deliberate choice, stricter than that level's Schematron), except that Factur-X EXTENDED wants the text
   with a subject code (BR-FXEXT-01 / -02, CG-57), so a subject code alone needs `extended-ctc-fr`.
 - An invoice can be a plain object instead of class instances. The TypeScript types still require the
   array properties, but at runtime (plain JavaScript, data from JSON) `toCii()` guards them: an optional
