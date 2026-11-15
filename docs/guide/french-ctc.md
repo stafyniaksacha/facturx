@@ -3,11 +3,11 @@
 France's e-invoicing reform (CTC, *contrôle continu des transactions*) adds French business rules on
 top of EN 16931. They are defined by the AFNOR standard **XP Z12-012 v1.4.0** and published as
 Schematron by FNFE-MPE ("Schematrons FR CTC" v1.4.0). This library ships the rules for invoices in
-CII, hence for Factur-X: **`BR-FR-Flux2`**, from release v1.4.0.04 (fix 04, 2026-09-04).
+CII, hence for Factur-X: **`BR-FR-Flux2`**, from release v1.4.0.04 (fix 04).
 
 ::: warning Not legal advice
 This page describes what the library checks, not what the law requires of you. The release gives
-conflicting dates for when the rules apply (see `CONFORMANCE.md`, CG-15). Confirm your obligations
+conflicting dates for when the rules apply. Confirm your obligations
 with the official reform sources.
 :::
 
@@ -18,7 +18,7 @@ The FNFE-MPE release notes define three validation steps for an invoice:
 | Step | What | In this library |
 | --- | --- | --- |
 | 1 | XSD of the profile | `check()` (always) |
-| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`: Factur-X **1.09.2.fixFR04** Schematrons from this release for BASIC WL, EN16931 and EXTENDED (CG-16) |
+| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`: Factur-X **1.09.2.fixFR04** Schematrons from this release for BASIC WL, EN16931 and EXTENDED |
 | 3 | French rules `BR-FR-Flux2` | `frCtc: true` |
 
 `frCtc` runs step 3 only: it neither requires nor implies `schematron`. Pass both to run the whole
@@ -52,17 +52,17 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
   differs from the one the document declares **throws** instead of passing silently. A plain-CII
   `EXTENDED-CTC-FR` invoice is checked as `extended`: the release notes say the Factur-X
   EXTENDED components can validate it, but the Factur-X EXTENDED Schematron rejects its guideline ID,
-  so only XSD + BR-FR pass on it (CG-24). `validateFrCtc()` detects this profile by itself, but
-  `check()` doesn't recognise its guideline ID (CG-18): pass `level: 'extended'`, e.g.
+  so only XSD + BR-FR pass on it. `validateFrCtc()` detects this profile by itself, but
+  `check()` doesn't recognise its guideline ID: pass `level: 'extended'`, e.g.
   `check({ xml, level: 'extended', frCtc: true })`.
 - The rules **the published Schematron implements**: 59 of the `BR-FR-*` rules of XP Z12-012 Annex A
   (`BR-FR-01…32`, `-CO-*`, `-DEC-*`, `-MV-*`, `-BD-*`, with gaps). A pass doesn't mean every Annex A
   rule holds: some depend on external data or aren't published yet, e.g. `BR-FR-CO-01` (no
-  post-dating) or the Chorus Pro rules `BR-FR-CPRO-*` (step 4). See `CONFORMANCE.md`, CG-22.
+  post-dating) or the Chorus Pro rules `BR-FR-CPRO-*` (step 4).
 - The **standard ("fatal") variant**: every rule is an error. The `_WARNING` variant was meant for a
   transition window that has closed and is not shipped.
 - Not covered: UBL invoices, the `EXTENDED-CTC-FR` profile's own XSD and Schematron, lifecycle
-  statuses (CDAR, `BR-FR-CDV`) and e-reporting (flux 10). See `CONFORMANCE.md`, CG-18 to CG-21.
+  statuses (CDAR, `BR-FR-CDV`) and e-reporting (flux 10).
 
 ## Reading BR-FR errors
 

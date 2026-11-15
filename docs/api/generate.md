@@ -90,7 +90,7 @@ turn into a correct hybrid document instead of producing a broken one:
 | --- | --- |
 | `Encrypted PDFs are not supported` | The source is encrypted. A Factur-X document must not be encrypted. |
 | `Signed PDFs are not supported: sign the document after generate()` | The source has a signed signature field or DocMDP/UR3 permissions. Saving would invalidate the signature; sign the generated PDF instead. |
-| `The PDF already has an embedded invoice (<filename>)` | The source already embeds an invoice XML. It is detected from the XML root element whatever the file name, and also by a known invoice file name (`factur-x.xml`, `xrechnung.xml`, ZUGFeRD names). Only one invoice XML is allowed per document: start from the plain PDF. For Order-X the message says `order`. Other XML attachments, such as a supporting purchase order, are allowed. Detection is best effort: an invoice whose content can't be read and whose name isn't recognised can be missed (CG-14 in [`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md)). |
+| `The PDF already has an embedded invoice (<filename>)` | The source already embeds an invoice XML. It is detected from the XML root element whatever the file name, and also by a known invoice file name (`factur-x.xml`, `xrechnung.xml`, ZUGFeRD names). Only one invoice XML is allowed per document: start from the plain PDF. For Order-X the message says `order`. Other XML attachments, such as a supporting purchase order, are allowed. Detection is best effort: an invoice whose content can't be read and whose name isn't recognised can be missed. |
 | `The PDF already has an embedded file named <filename>` | An attachment already uses the file name `generate()` is about to write (e.g. `factur-x.xml`), even if it isn't an invoice. |
 | `The PDF has more than 256 distinct embedded file streams: …` / `The PDF's embedded files are too large to check for an existing invoice` | Too many or too large attachments to inspect safely (limits: 256 distinct streams, 128 MiB decompressed). The PDF is rejected rather than accepted unchecked. |
 | `This PDFDocument was already passed to generate(): load a new one for each call` | The same `pdf-lib` `PDFDocument` object was passed again, even if the earlier call failed. Load the PDF again for each call. |
@@ -107,10 +107,9 @@ PDF you pass must already be PDF/A-3 (PDF/A-3b at least). Produce it with your P
 export, or see the repo's `tests/generate/index.ts` for a `pdf-lib` base with an embedded font and an
 sRGB output intent.
 
-Given a PDF/A-3b base, the output stayed PDF/A-3b in a manual veraPDF run on every Factur-X profile
-(2026-11-15, on the code before this release's XMP and Info dictionary changes). No automated test
-checks this yet; see CG-05 in
-[`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md). Validate your
+Given a PDF/A-3b base, the output stayed PDF/A-3b in a manual veraPDF run on every Factur-X profile,
+on the code before this release's XMP and Info dictionary changes. No automated test checks this
+yet. Validate your
 own output with a PDF/A validator such as veraPDF.
 
 ## Example
