@@ -18,6 +18,7 @@ const PARTIES = {
   buyer: new EN16931.Buyer({ name: 'Buyer SA', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
   totals: new EN16931.DocumentTotals({ sumOfInvoiceLineNetAmount: 100, invoiceTotalAmountWithoutVat: 100, invoiceTotalAmountWithVat: 120, amountDueForPayment: 120 }),
   vatBreakdown: [new EN16931.VatBreakdown({ categoryTaxableAmount: 100, categoryTaxAmount: 20, categoryCode: 'S', categoryRate: 20 })],
+  lines: [new EN16931.InvoiceLine({ identifier: '1', invoicedQuantity: 1, invoicedQuantityUnitCode: 'C62', netAmount: 100, price: new EN16931.PriceDetails({ netPrice: 100 }), vat: new EN16931.LineVat({ categoryCode: 'S', rate: 20 }), item: new EN16931.Item({ name: 'Item' }) })],
 }
 
 function pdfs(folder: string): string[] {

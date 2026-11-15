@@ -68,10 +68,11 @@ const PARTIES = {
   buyer: new EN16931.Buyer({ name: 'B', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
   totals: new EN16931.DocumentTotals({ sumOfInvoiceLineNetAmount: 100, invoiceTotalAmountWithoutVat: 100, invoiceTotalAmountWithVat: 120, amountDueForPayment: 120 }),
   vatBreakdown: [new EN16931.VatBreakdown({ categoryTaxableAmount: 100, categoryTaxAmount: 20, categoryCode: 'S', categoryRate: 20 })],
+  lines: [new EN16931.InvoiceLine({ identifier: '1', invoicedQuantity: 1, invoicedQuantityUnitCode: 'C62', netAmount: 100, price: new EN16931.PriceDetails({ netPrice: 100 }), vat: new EN16931.LineVat({ categoryCode: 'S', rate: 20 }), item: new EN16931.Item({ name: 'Item' }) })],
 }
 
 // The mandatory settlement groups: the party tests do not look at them (tests/en16931-settlement.test.ts does).
-const SETTLEMENT = { totals: PARTIES.totals, vatBreakdown: PARTIES.vatBreakdown }
+const SETTLEMENT = { totals: PARTIES.totals, vatBreakdown: PARTIES.vatBreakdown, lines: PARTIES.lines }
 
 function address(prefix: string) {
   return new EN16931.PostalAddress({

@@ -85,3 +85,14 @@ export function agreed<T>(values: (T | undefined)[]): T | undefined {
 export function unmapped<T>(): T {
   return undefined as T
 }
+
+/**
+ * BT-8 and EXT-FR-FE-180 code lists: the model holds UNTDID 2005 as EN 16931 defines it (also what UBL writes), CII
+ * holds UNTDID 2475. Pairs from the two bindings' usage notes (Factur-X matrix BT-8: 5 invoice date,
+ * 29 delivery date, 72 payment date; annex A Flux_2_UBL BT-8: 3, 35, 432 with the same meanings),
+ * confirmed by annex B UC1 (CII 72, UBL 432) and F202500001 (CII 5, UBL 3). The CII Schematron
+ * allows only 5, 29, 72 (codedb list 28), EN16931-UBL only 3, 35, 432 (BR-CL-06).
+ */
+// Maps, not object literals: the CII code is untrusted input, and `'constructor'` must not match.
+export const BT8_TO_CII = new Map([['3', '5'], ['35', '29'], ['432', '72']])
+export const BT8_FROM_CII = new Map([...BT8_TO_CII].map(([en, cii]) => [cii, en]))

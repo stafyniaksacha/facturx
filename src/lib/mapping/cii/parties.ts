@@ -51,8 +51,8 @@ type PartyKeys = 'seller' | 'buyer' | 'payee' | 'sellerTaxRepresentative' | 'del
 export type PartiesInit = Pick<ConstructorParameters<typeof Invoice>[0], PartyKeys>
 
 /** `ram:SpecifiedTaxRegistration/ram:ID/@schemeID` of a VAT identifier and of a tax registration number (matrix BT-31-0, BT-32-0). */
-const VAT = 'VA'
-const TAX = 'FC'
+export const VAT = 'VA'
+export const TAX = 'FC'
 
 /** Parties and delivery terms that need EN 16931, or EXTENDED, to be written (BASIC lacks them; the EXT-FR-FE ones are EXTENDED only). */
 export const PARTY_GATES: readonly TermGate[] = [
@@ -78,7 +78,7 @@ export const PARTY_GATES: readonly TermGate[] = [
 // CII → model
 // ---------------------------------------------------------------------------
 
-function addressFromCii(address: ram.TradeAddressType | undefined): PostalAddress | undefined {
+export function addressFromCii(address: ram.TradeAddressType | undefined): PostalAddress | undefined {
   if (!address)
     return undefined
   return new PostalAddress({
@@ -112,7 +112,7 @@ function contactFromCii(contacts: ram.TradeContactType[] | undefined, department
   })
 }
 
-function identifierFromCii(id: udt.IDType | undefined): Identifier | undefined {
+export function identifierFromCii(id: udt.IDType | undefined): Identifier | undefined {
   return id === undefined ? undefined : new Identifier({ value: id.value, schemeId: id.schemeID })
 }
 
@@ -121,14 +121,14 @@ function identifierFromCii(id: udt.IDType | undefined): Identifier | undefined {
  * one a `GlobalID` with its scheme (seller, buyer, payee, delivery); otherwise every identifier is
  * a `GlobalID`, with an optional scheme (EXTENDED-CTC-FR parties). Anything else is left to `dropped`.
  */
-function identifiersFromCii(party: ram.TradePartyType | undefined, split: boolean): Identifier[] {
+export function identifiersFromCii(party: ram.TradePartyType | undefined, split: boolean): Identifier[] {
   const global = (party?.globalID ?? []).filter(g => !split || g.schemeID !== undefined).map(g => new Identifier({ value: g.value, schemeId: g.schemeID }))
   if (!split)
     return global
   return [...(party?.id ?? []).filter(i => i.schemeID === undefined).map(i => new Identifier({ value: i.value })), ...global]
 }
 
-function registrationFromCii(party: ram.TradePartyType | undefined, scheme: string): string | undefined {
+export function registrationFromCii(party: ram.TradePartyType | undefined, scheme: string): string | undefined {
   return party?.specifiedTaxRegistration?.find(t => t.id?.schemeID === scheme)?.id.value
 }
 
@@ -217,7 +217,7 @@ export function partiesFromCii(cii: CrossIndustryInvoiceType): PartiesInit {
 // model → CII
 // ---------------------------------------------------------------------------
 
-function addressToCii(address: PostalAddress | undefined): ram.TradeAddressType | undefined {
+export function addressToCii(address: PostalAddress | undefined): ram.TradeAddressType | undefined {
   if (!address)
     return undefined
   return new ram.TradeAddressType({
@@ -246,7 +246,7 @@ function contactToCii(contact: Contact | undefined): ram.TradeContactType[] {
   })]
 }
 
-interface PartyFields {
+export interface PartyFields {
   identifiers?: Identifier[]
   name?: string
   roleCode?: string
@@ -264,7 +264,7 @@ function registration(value: string | undefined, scheme: string): ram.TaxRegistr
   return value === undefined ? [] : [new ram.TaxRegistrationType({ id: new udt.IDType({ value, schemeID: scheme }) })]
 }
 
-function partyToCii(party: PartyFields, split: boolean): ram.TradePartyType {
+export function partyToCii(party: PartyFields, split: boolean): ram.TradePartyType {
   const identifiers = party.identifiers ?? []
   const legal = party.legalRegistrationIdentifier
   return new ram.TradePartyType({

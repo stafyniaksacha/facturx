@@ -10,6 +10,7 @@
 import type { Invoice } from '../../models/en16931/invoice'
 import type { En16931Level } from '../../models/en16931/level'
 import type { TermGate } from './levels'
+import type { LinesInit } from './lines'
 import type { PartiesInit } from './parties'
 import type { SettlementInit } from './settlement'
 import { Identifier } from '../../models/en16931/common'
@@ -33,10 +34,13 @@ import * as qdt from '../../models/facturx/qualifiedTypes'
 import * as ram from '../../models/facturx/reusableTypes'
 import * as udt from '../../models/facturx/unqualifiedTypes'
 import { GUIDELINE_IDS, isSet } from './levels'
+import { linesToCii } from './lines'
 import { partiesToCii } from './parties'
 import { settlementToCii } from './settlement'
 import {
   agreed,
+  BT8_FROM_CII,
+  BT8_TO_CII,
   ciiCode,
   ciiDate,
   ciiDateTime,
@@ -61,17 +65,6 @@ const INVOICED_OBJECT = '130'
  */
 const DEFAULT_PROJECT_NAME = 'Project reference'
 
-/**
- * BT-8 code lists: the model holds UNTDID 2005 as EN 16931 defines it (also what UBL writes), CII
- * holds UNTDID 2475. Pairs from the two bindings' usage notes (Factur-X matrix BT-8: 5 invoice date,
- * 29 delivery date, 72 payment date; annex A Flux_2_UBL BT-8: 3, 35, 432 with the same meanings),
- * confirmed by annex B UC1 (CII 72, UBL 432) and F202500001 (CII 5, UBL 3). The CII Schematron
- * allows only 5, 29, 72 (codedb list 28), EN16931-UBL only 3, 35, 432 (BR-CL-06).
- */
-// Maps, not object literals: the CII code is untrusted input, and `'constructor'` must not match.
-const BT8_TO_CII = new Map([['3', '5'], ['35', '29'], ['432', '72']])
-const BT8_FROM_CII = new Map([...BT8_TO_CII].map(([en, cii]) => [cii, en]))
-
 /** Header terms Factur-X BASIC (missing from its matrix) or EN 16931 (EXT-FR-FE) cannot carry. */
 export const HEADER_GATES: readonly TermGate[] = [
   { id: 'BT-7', term: 'value added tax point date', from: 'en16931', present: i => isSet(i.valueAddedTaxPointDate) },
@@ -89,7 +82,7 @@ export const HEADER_GATES: readonly TermGate[] = [
   { id: 'EXT-FR-FE-199', term: 'contract date', from: 'extended', present: i => isSet(i.contractDate) },
 ]
 
-type HeaderInit = Omit<ConstructorParameters<typeof Invoice>[0], keyof PartiesInit | keyof SettlementInit>
+type HeaderInit = Omit<ConstructorParameters<typeof Invoice>[0], keyof PartiesInit | keyof SettlementInit | keyof LinesInit>
 
 /** The header terms of a CII invoice. */
 export function headerFromCii(cii: CrossIndustryInvoiceType): HeaderInit {
@@ -183,10 +176,7 @@ function referencedDocument(fields: Partial<ram.ReferencedDocumentType>): ram.Re
   return new ram.ReferencedDocumentType({ ...fields, name: fields.name ?? [] })
 }
 
-/**
- * The CII skeleton with the header terms, the party groups and the settlement groups in place.
- * Aggregates CII requires that no mapping fills yet (the lines) are left unset for the other group mappings.
- */
+/** The CII skeleton with the header terms, the party groups, the settlement groups and the lines in place. */
 export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustryInvoiceType {
   // Validated here even though the VAT breakdown entries that carry them come from the settlement
   // mapping, so a bad value fails at the first toCii() call.
@@ -239,6 +229,7 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
       })),
     }),
     supplyChainTradeTransaction: new SupplyChainTradeTransactionType({
+      includedSupplyChainTradeLineItem: linesToCii(invoice),
       applicableHeaderTradeAgreement: new HeaderTradeAgreementType({
         buyerReference: ciiText(invoice.buyerReference),
         ...parties.agreement,

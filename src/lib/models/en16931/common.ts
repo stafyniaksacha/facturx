@@ -26,9 +26,11 @@ export class Identifier {
 /**
  * A postal address: the seller's (BG-5), the buyer's (BG-8), the seller tax representative's
  * (BG-12), the deliver-to address (BG-15), or the address of an EXTENDED-CTC-FR party: buyer agent
- * (EXT-FR-FE-14), payee (-31), payer (-54), seller agent (-77), invoicee (-100), billing party (-123).
+ * (EXT-FR-FE-14), payee (-31), payer (-54), seller agent (-77), invoicee (-100), billing party (-123),
+ * and, on an invoice line, the deliver-to address (-150, fields -151 ... -157) and the line seller's
+ * address (EXT-FR-FE-BG-13, fields -171 ... -177).
  * @bg BG-5 BG-8 BG-12 BG-15
- * @ext EXT-FR-FE-14 EXT-FR-FE-31 EXT-FR-FE-54 EXT-FR-FE-77 EXT-FR-FE-100 EXT-FR-FE-123
+ * @ext EXT-FR-FE-14 EXT-FR-FE-31 EXT-FR-FE-54 EXT-FR-FE-77 EXT-FR-FE-100 EXT-FR-FE-123 EXT-FR-FE-150 EXT-FR-FE-BG-13
  */
 export class PostalAddress {
   constructor({
@@ -59,51 +61,52 @@ export class PostalAddress {
 
   /**
    * Address line 1: seller BT-35, buyer BT-50, tax representative BT-64, deliver to BT-75.
-   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-15, EXT-FR-FE-32, EXT-FR-FE-55, EXT-FR-FE-78, EXT-FR-FE-101, EXT-FR-FE-124.
+   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-15, EXT-FR-FE-32, EXT-FR-FE-55, EXT-FR-FE-78, EXT-FR-FE-101, EXT-FR-FE-124; on an invoice line EXT-FR-FE-151 (deliver to), EXT-FR-FE-171 (seller).
    * @bt BT-35 BT-50 BT-64 BT-75
-   * @ext EXT-FR-FE-15 EXT-FR-FE-32 EXT-FR-FE-55 EXT-FR-FE-78 EXT-FR-FE-101 EXT-FR-FE-124
+   * @ext EXT-FR-FE-15 EXT-FR-FE-32 EXT-FR-FE-55 EXT-FR-FE-78 EXT-FR-FE-101 EXT-FR-FE-124 EXT-FR-FE-151 EXT-FR-FE-171
    */
   addressLine1?: string
   /**
    * Address line 2: seller BT-36, buyer BT-51, tax representative BT-65, deliver to BT-76.
-   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-16, EXT-FR-FE-33, EXT-FR-FE-56, EXT-FR-FE-79, EXT-FR-FE-102, EXT-FR-FE-125.
+   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-16, EXT-FR-FE-33, EXT-FR-FE-56, EXT-FR-FE-79, EXT-FR-FE-102, EXT-FR-FE-125; on an invoice line EXT-FR-FE-152 (deliver to), EXT-FR-FE-172 (seller).
    * @bt BT-36 BT-51 BT-65 BT-76
-   * @ext EXT-FR-FE-16 EXT-FR-FE-33 EXT-FR-FE-56 EXT-FR-FE-79 EXT-FR-FE-102 EXT-FR-FE-125
+   * @ext EXT-FR-FE-16 EXT-FR-FE-33 EXT-FR-FE-56 EXT-FR-FE-79 EXT-FR-FE-102 EXT-FR-FE-125 EXT-FR-FE-152 EXT-FR-FE-172
    */
   addressLine2?: string
   /**
    * Address line 3: seller BT-162, buyer BT-163, tax representative BT-164, deliver to BT-165.
-   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-17, EXT-FR-FE-34, EXT-FR-FE-57, EXT-FR-FE-80, EXT-FR-FE-103, EXT-FR-FE-126.
+   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-17, EXT-FR-FE-34, EXT-FR-FE-57, EXT-FR-FE-80, EXT-FR-FE-103, EXT-FR-FE-126; on an invoice line EXT-FR-FE-153 (deliver to), EXT-FR-FE-173 (seller).
    * @bt BT-162 BT-163 BT-164 BT-165
-   * @ext EXT-FR-FE-17 EXT-FR-FE-34 EXT-FR-FE-57 EXT-FR-FE-80 EXT-FR-FE-103 EXT-FR-FE-126
+   * @ext EXT-FR-FE-17 EXT-FR-FE-34 EXT-FR-FE-57 EXT-FR-FE-80 EXT-FR-FE-103 EXT-FR-FE-126 EXT-FR-FE-153 EXT-FR-FE-173
    */
   addressLine3?: string
   /**
    * City: seller BT-37, buyer BT-52, tax representative BT-66, deliver to BT-77.
-   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-19, EXT-FR-FE-35, EXT-FR-FE-58, EXT-FR-FE-82, EXT-FR-FE-104, EXT-FR-FE-127.
+   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-19, EXT-FR-FE-35, EXT-FR-FE-58, EXT-FR-FE-82, EXT-FR-FE-104, EXT-FR-FE-127; on an invoice line EXT-FR-FE-154 (deliver to), EXT-FR-FE-174 (seller).
    * @bt BT-37 BT-52 BT-66 BT-77
-   * @ext EXT-FR-FE-19 EXT-FR-FE-35 EXT-FR-FE-58 EXT-FR-FE-82 EXT-FR-FE-104 EXT-FR-FE-127
+   * @ext EXT-FR-FE-19 EXT-FR-FE-35 EXT-FR-FE-58 EXT-FR-FE-82 EXT-FR-FE-104 EXT-FR-FE-127 EXT-FR-FE-154 EXT-FR-FE-174
    */
   city?: string
   /**
    * Post code: seller BT-38, buyer BT-53, tax representative BT-67, deliver to BT-78.
-   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-18, EXT-FR-FE-36, EXT-FR-FE-59, EXT-FR-FE-81, EXT-FR-FE-105, EXT-FR-FE-128.
+   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-18, EXT-FR-FE-36, EXT-FR-FE-59, EXT-FR-FE-81, EXT-FR-FE-105, EXT-FR-FE-128; on an invoice line EXT-FR-FE-155 (deliver to), EXT-FR-FE-175 (seller).
    * @bt BT-38 BT-53 BT-67 BT-78
-   * @ext EXT-FR-FE-18 EXT-FR-FE-36 EXT-FR-FE-59 EXT-FR-FE-81 EXT-FR-FE-105 EXT-FR-FE-128
+   * @ext EXT-FR-FE-18 EXT-FR-FE-36 EXT-FR-FE-59 EXT-FR-FE-81 EXT-FR-FE-105 EXT-FR-FE-128 EXT-FR-FE-155 EXT-FR-FE-175
    */
   postCode?: string
   /**
    * Country subdivision: seller BT-39, buyer BT-54, tax representative BT-68, deliver to BT-79.
-   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-20, EXT-FR-FE-37, EXT-FR-FE-60, EXT-FR-FE-83, EXT-FR-FE-106, EXT-FR-FE-129.
+   * Same position in the EXTENDED-CTC-FR parties: EXT-FR-FE-20, EXT-FR-FE-37, EXT-FR-FE-60, EXT-FR-FE-83, EXT-FR-FE-106, EXT-FR-FE-129; on an invoice line EXT-FR-FE-156 (deliver to), EXT-FR-FE-176 (seller).
    * @bt BT-39 BT-54 BT-68 BT-79
-   * @ext EXT-FR-FE-20 EXT-FR-FE-37 EXT-FR-FE-60 EXT-FR-FE-83 EXT-FR-FE-106 EXT-FR-FE-129
+   * @ext EXT-FR-FE-20 EXT-FR-FE-37 EXT-FR-FE-60 EXT-FR-FE-83 EXT-FR-FE-106 EXT-FR-FE-129 EXT-FR-FE-156 EXT-FR-FE-176
    */
   countrySubdivision?: string
   /**
    * Country code (ISO 3166-1 alpha-2): seller BT-40, buyer BT-55, tax representative BT-69,
-   * deliver to BT-80, and in the EXTENDED-CTC-FR parties.
+   * deliver to BT-80, and in the EXTENDED-CTC-FR parties and invoice line addresses (EXT-FR-FE-157
+   * deliver to, EXT-FR-FE-177 seller).
    * @bt BT-40 BT-55 BT-69 BT-80
-   * @ext EXT-FR-FE-21 EXT-FR-FE-38 EXT-FR-FE-61 EXT-FR-FE-84 EXT-FR-FE-107 EXT-FR-FE-130
+   * @ext EXT-FR-FE-21 EXT-FR-FE-38 EXT-FR-FE-61 EXT-FR-FE-84 EXT-FR-FE-107 EXT-FR-FE-130 EXT-FR-FE-157 EXT-FR-FE-177
    */
   countryCode: string
 }

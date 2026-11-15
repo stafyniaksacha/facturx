@@ -10,6 +10,7 @@ import { levelFromGuidelineId } from '../../xml'
 import { diffPaths } from './dropped'
 import { HEADER_GATES, headerFromCii, headerToCii } from './header'
 import { assertLevelCarries, EN16931_LEVELS, GUIDELINE_IDS, isEn16931Level } from './levels'
+import { assertLinesComplete, LINE_GATES, linesFromCii } from './lines'
 import { assertPartiesComplete, partiesFromCii, PARTY_GATES } from './parties'
 import { assertSettlementComplete, SETTLEMENT_GATES, settlementFromCii } from './settlement'
 
@@ -61,7 +62,7 @@ function buildCii(invoice: Invoice, level: En16931Level): CrossIndustryInvoiceTy
  */
 export function fromCii(cii: CrossIndustryInvoiceType): FromCiiResult {
   const level = levelOf(cii)
-  const invoice = new Invoice({ ...headerFromCii(cii), ...partiesFromCii(cii), ...settlementFromCii(cii) })
+  const invoice = new Invoice({ ...headerFromCii(cii), ...partiesFromCii(cii), ...settlementFromCii(cii), ...linesFromCii(cii) })
   return { invoice, dropped: diffPaths(cii, buildCii(invoice, level)) }
 }
 
@@ -91,7 +92,8 @@ export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInv
   }
   assertPartiesComplete(invoice)
   assertSettlementComplete(invoice)
-  assertLevelCarries(invoice, level, [...HEADER_GATES, ...PARTY_GATES, ...SETTLEMENT_GATES])
+  assertLinesComplete(invoice, level)
+  assertLevelCarries(invoice, level, [...HEADER_GATES, ...PARTY_GATES, ...SETTLEMENT_GATES, ...LINE_GATES])
   // CII has the project name only inside the project reference: writing it alone would lose it.
   if (invoice.projectName !== undefined && invoice.projectReference === undefined)
     throw new Error('toCii: BT-11-0 (project name) needs BT-11 (project reference)')

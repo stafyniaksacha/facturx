@@ -9,6 +9,7 @@
  */
 
 import type { Identifier } from './common'
+import type { InvoiceLine } from './lines'
 import type {
   BillingParty,
   Buyer,
@@ -217,6 +218,7 @@ export class Invoice {
     paymentInstructions,
     allowances,
     charges,
+    lines,
     totals,
     vatBreakdown,
     vatCurrencyExchange,
@@ -265,6 +267,7 @@ export class Invoice {
     paymentInstructions?: PaymentInstructions
     allowances?: DocumentAllowance[]
     charges?: DocumentCharge[]
+    lines: InvoiceLine[]
     totals: DocumentTotals
     vatBreakdown: VatBreakdown[]
     vatCurrencyExchange?: VatCurrencyExchange
@@ -313,6 +316,7 @@ export class Invoice {
     this.paymentInstructions = paymentInstructions
     this.allowances = allowances ?? []
     this.charges = charges ?? []
+    this.lines = lines
     this.totals = totals
     this.vatBreakdown = vatBreakdown
     this.vatCurrencyExchange = vatCurrencyExchange
@@ -556,6 +560,11 @@ export class Invoice {
    * @bg BG-21
    */
   charges: DocumentCharge[]
+  /**
+   * Invoice lines, at least one. Sub-lines stay flat here (`InvoiceLine.parentLineIdentifier`).
+   * @bg BG-25
+   */
+  lines: InvoiceLine[]
   /**
    * Document totals. `fromCii()` stands in `NaN` for a missing mandatory amount; `toCii()` throws on it
    * and on a missing group.

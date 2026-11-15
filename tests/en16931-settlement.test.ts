@@ -83,6 +83,7 @@ const base = {
   ...PARTIES,
   totals: TOTALS(),
   vatBreakdown: [VAT()],
+  lines: [new EN16931.InvoiceLine({ identifier: '1', invoicedQuantity: 1, invoicedQuantityUnitCode: 'C62', netAmount: 100, price: new EN16931.PriceDetails({ netPrice: 100 }), vat: new EN16931.LineVat({ categoryCode: 'S', rate: 20 }), item: new EN16931.Item({ name: 'Item' }) })],
 }
 
 const levelOf = (file: string) => file.includes('EXTENDED-CTC-FR') ? 'extended-ctc-fr' : 'en16931'

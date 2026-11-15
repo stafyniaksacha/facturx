@@ -5,5 +5,8 @@
 
 export * from './common'
 export * from './invoice'
+export * from './line-extensions'
+export * from './line-item'
+export * from './lines'
 export * from './parties'
 export * from './settlement'
