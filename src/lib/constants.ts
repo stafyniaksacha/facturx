@@ -1,4 +1,6 @@
 export const FACTURX_FILENAME = 'factur-x.xml'
+// Reference profile XRECHNUNG (§7.7, codelists--Filename.csv): a CII invoice, read like factur-x.xml.
+export const XRECHNUNG_FILENAME = 'xrechnung.xml'
 export const ZUGFERD_FILENAMES = ['zugferd-invoice.xml', 'ZUGFeRD-invoice.xml']
 export const ORDERX_FILENAME = 'order-x.xml'
 

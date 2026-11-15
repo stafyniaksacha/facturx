@@ -9,7 +9,7 @@ omit them.
 
 | Flavor | Levels | Validation | Embedded filename |
 | --- | --- | --- | --- |
-| `facturx` | `minimum`, `basicwl`, `basic`, `en16931`, `extended` | XSD **+ Schematron** | `factur-x.xml` |
+| `facturx` | `minimum`, `basicwl`, `basic`, `en16931`, `extended` | XSD **+ Schematron** | `factur-x.xml` (`xrechnung.xml` is extracted as `facturx` too) |
 | `orderx` | `basic`, `comfort`, `extended` | XSD | `order-x.xml` |
 | `zugferd` | — | extraction only | `zugferd-invoice.xml`, `ZUGFeRD-invoice.xml` |
 
@@ -54,8 +54,8 @@ When you don't pass `flavor` / `level`, the library reads them from the XML itse
   `…/GuidelineSpecifiedDocumentContextParameter/ID` — e.g. `urn:factur-x.eu:1p0:minimum` resolves to
   `minimum`, `urn:cen.eu:en16931:2017` resolves to `en16931`.
 
-On **extraction**, the flavor is determined from the *embedded attachment filename* (`factur-x.xml`,
-`order-x.xml`, or a ZUGFeRD filename). `extract()` does not detect the level: its `level` field is
+On **extraction**, the flavor is determined from the *embedded attachment filename* (`factur-x.xml` or
+`xrechnung.xml` → `facturx`, `order-x.xml`, or a ZUGFeRD filename). `extract()` does not detect the level: its `level` field is
 only what you passed in. Run [`check()`](/api/check) on the extracted XML to get it.
 
 You only need to pass `flavor` / `level` explicitly to **override** detection or to fail fast when a

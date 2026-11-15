@@ -25,8 +25,8 @@ facturx extract <pdf> [options]
 
 ## Behaviour
 
-- Locates the embedded attachment by filename (`factur-x.xml`, `order-x.xml`, or a ZUGFeRD
-  filename) and writes its XML out.
+- Locates the embedded attachment by filename (`factur-x.xml`, `xrechnung.xml`, `order-x.xml`, or a
+  ZUGFeRD filename) and writes its XML out.
 - The flavor is determined from the attachment filename; pass `--flavor` to assert an expectation
   (mismatches throw).
 - With `--check` (default), the extracted XML is XSD-validated and the command fails on invalid XML.

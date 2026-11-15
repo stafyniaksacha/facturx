@@ -38,8 +38,10 @@ function extract(options: {
 
 ## Behaviour
 
-- Scans the PDF attachments for a recognised e-invoice filename (`factur-x.xml`, `order-x.xml`, or a
-  ZUGFeRD filename) and returns the first match.
+- Scans the PDF attachments for a recognised e-invoice filename (`factur-x.xml`, `xrechnung.xml`,
+  `order-x.xml`, or a ZUGFeRD filename) and returns the first match. `xrechnung.xml` (reference
+  profile XRECHNUNG, Factur-X §7.7) is reported as flavor `facturx`, but `check()` does not know the
+  XRECHNUNG level yet.
 - The flavor is inferred from the attachment filename. Passing `flavor` asserts an expectation:
   e.g. `flavor: 'facturx'` throws `Invalid flavor, expected facturx but found orderx` if the PDF
   actually contains an Order-X file.
