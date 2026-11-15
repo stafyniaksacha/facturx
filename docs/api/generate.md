@@ -56,7 +56,7 @@ interface PdfMetadata {
 - Throws `Invalid XML format (<flavor> - <level>)` when `check` is enabled and validation fails, and
   `Unknown schema flavor` for an unrecognised flavor.
 - Throws `Cannot generate the "zugferd" flavor: …` for `flavor: 'zugferd'` or a ZUGFeRD 1.0
-  (`CrossIndustryDocument`) XML, before reading the PDF. The `zugferd-invoice.xml` filename and the
+  (`CrossIndustryDocument`) XML, whatever the flavor option, before reading the PDF. The `zugferd-invoice.xml` filename and the
   `zf:` XMP schema are the deprecated ZUGFeRD 2.0 legacy settings (§6.3.2 p.29), and the filename is
   not in the hybrid filename code list (BR-HYBRID-08/13). A ZUGFeRD 2.x invoice is a Factur-X
   `CrossIndustryInvoice`: generate it as `facturx`.

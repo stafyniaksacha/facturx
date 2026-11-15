@@ -116,14 +116,18 @@ export function setPDFA3BMetadata(
 // eslint-disable-next-line no-control-regex
 const XML_INVALID_CHARS = /[\u0000-\u0008\v\f\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
 
+/** Drops the characters XML 1.0 cannot carry, escaped or not. */
+export function stripXmlInvalidChars(value: string | undefined | null): string {
+  return String(value ?? '').replace(XML_INVALID_CHARS, '')
+}
+
 /**
  * Escapes a value for XML text or attribute content (CG-03): invoice fields such as the seller
  * name reach the XMP packet, so `&` or `<` would make it malformed (BR-HYBRID-03) and markup in
  * them could inject XMP properties such as a second `fx:ConformanceLevel`.
  */
 export function xmlEscape(value: string | undefined | null): string {
-  return String(value ?? '')
-    .replace(XML_INVALID_CHARS, '')
+  return stripXmlInvalidChars(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

@@ -745,6 +745,9 @@ describe('generate', () => {
     expect(xmp.title).toEqual([meta.title])
     expect(xmp.description).toEqual([meta.subject])
     expect(xmp.creator).toEqual(['Ctrl char'])
+    // The Info dictionary carries the same value as the XMP.
+    expect(output.getAuthor()).toBe('Ctrl char')
+    expect(output.getTitle()).toBe(meta.title)
   })
 
   it('writes the XMP packet as UTF-8 (CG-02)', async () => {
@@ -773,9 +776,11 @@ describe('generate', () => {
     await expect(generate({ pdf, xml })).resolves.toBeInstanceOf(Uint8Array)
   })
 
-  it('rejects an auto-detected ZUGFeRD 1.0 document (CG-09)', async () => {
+  it('rejects a ZUGFeRD 1.0 document, auto-detected or under an explicit facturx flavor (CG-09)', async () => {
     const xml = '<rsm:CrossIndustryDocument xmlns:rsm="urn:ferd:CrossIndustryDocument:invoice:1p0"/>'
+    const meta = { title: 't', subject: 's', author: 'a', keywords: [], date: new Date('2026-01-02T03:04:05Z') }
 
     await expect(generate({ pdf: await sourcePdf(), xml })).rejects.toThrow('Cannot generate the "zugferd" flavor')
+    await expect(generate({ pdf: await sourcePdf(), xml, flavor: 'facturx', level: 'en16931', meta })).rejects.toThrow('Cannot generate the "zugferd" flavor')
   })
 })

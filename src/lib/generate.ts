@@ -27,7 +27,7 @@ import { embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExc
 
 import { resolvePdf, resolveXml } from './resolve'
 import { extractBaseInfo, getFlavor, getLevel } from './xml'
-import { setPDFA3BMetadata } from './xmp'
+import { setPDFA3BMetadata, stripXmlInvalidChars } from './xmp'
 
 // PDFDocument objects generate() has already attached an invoice to. pdf-lib only writes the
 // attachment into the name tree on save(), so the tree alone cannot detect a reused document.
@@ -46,7 +46,9 @@ export async function generate(options: {
 
   try {
     const flavor = options.flavor || getFlavor(xml)
-    if (flavor === 'zugferd') {
+    // Checked on the root too, so an explicit `flavor: 'facturx'` cannot embed a ZUGFeRD 1.0
+    // document as factur-x.xml.
+    if (flavor === 'zugferd' || xml.root?.name === 'CrossIndustryDocument') {
       // `zugferd-invoice.xml` is not a HybridDocumentFilename (BR-HYBRID-08/13, Fatal); it and the
       // `zf:` XMP schema are the deprecated ZUGFeRD 2.0 settings (§6.3.2 p.29, CG-27), which this
       // library does not write. ZUGFeRD 1.0 (`CrossIndustryDocument`) has no vendored spec.
@@ -73,6 +75,15 @@ export async function generate(options: {
       meta = baseInfo2PdfMetadata(info)
     }
     meta.date ||= new Date()
+    // The XMP cannot carry characters XML 1.0 forbids, so drop them once for both the Info
+    // dictionary and the XMP, which must agree (PDF/A, CG-04).
+    meta = {
+      ...meta,
+      title: stripXmlInvalidChars(meta.title),
+      subject: stripXmlInvalidChars(meta.subject),
+      author: stripXmlInvalidChars(meta.author),
+      keywords: (meta.keywords ?? []).map(stripXmlInvalidChars),
+    }
 
     let description = ''
     let filename = ''
