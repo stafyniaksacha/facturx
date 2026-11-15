@@ -86,6 +86,13 @@ interface PdfMetadata {
   `Unknown schema flavor` for an unrecognised flavor. An explicit `flavor` that contradicts the XML
   root element (an invoice as `orderx`, an order as `facturx`) throws `The XML root element … does not
   match the … flavor`.
+- Throws `generate() refuses XML with a DOCTYPE: remove the DOCTYPE` for XML with a DOCTYPE
+  (internal subset, `SYSTEM` or `PUBLIC` id, or none), and `generate() needs XML 1.0, but the XML
+  declaration says version="…"` for an XML declaration naming any version other than 1.0 (such as
+  1.1), whether the XML is a `string`, a
+  `Buffer` or an `XmlDocument`, before reading the PDF. libxml2's re-serialization would keep both
+  in the embedded invoice; CII documents have no DOCTYPE. With `preserveXmlBytes: true` the same
+  checks name `preserveXmlBytes` instead.
 - Throws `Cannot generate the "zugferd" flavor: …` for `flavor: 'zugferd'` or a ZUGFeRD 1.0
   (`CrossIndustryDocument`) XML, whatever the flavor option, before reading the PDF. The `zugferd-invoice.xml` filename and the
   `zf:` XMP schema are the deprecated ZUGFeRD 2.0 legacy settings, and the filename is
