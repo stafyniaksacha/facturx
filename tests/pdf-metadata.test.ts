@@ -135,6 +135,26 @@ describe('generate() Info / XMP consistency (CG-04)', () => {
     expect(xmpTexts(pdf, '//pdf:Keywords')).toEqual([expected])
   })
 
+  // A literal CR in the XMP would be read back as LF (XML 1.0 §2.11) while Info keeps it.
+  it('with CR, LF and TAB in title, subject, author and keywords', async () => {
+    const meta = {
+      author: 'Dupont\r\nFils',
+      title: 'Facture\r1',
+      subject: 'ligne 1\nligne 2\tfin',
+      keywords: ['a\rb', 'c\r\nd'],
+      date: new Date(),
+    }
+    const pdf = await PDFDocument.load(await generate({ pdf: await blankPdf(), xml: getEN16931XML(), meta }), { updateMetadata: false })
+    expect(pdf.getAuthor()).toBe(meta.author)
+    expect(pdf.getTitle()).toBe(meta.title)
+    expect(pdf.getSubject()).toBe(meta.subject)
+    expect(pdf.getKeywords()).toBe('a\rb c\r\nd')
+    expect(xmpTexts(pdf, '//dc:creator/rdf:Seq/rdf:li')).toEqual([pdf.getAuthor()])
+    expect(xmpTexts(pdf, '//dc:title/rdf:Alt/rdf:li')).toEqual([pdf.getTitle()])
+    expect(xmpTexts(pdf, '//dc:description/rdf:Alt/rdf:li')).toEqual([pdf.getSubject()])
+    expect(xmpTexts(pdf, '//pdf:Keywords')).toEqual([pdf.getKeywords()])
+  })
+
   it('overrides the Producer of a PDFDocument pdf-lib already stamped', async () => {
     const source = await blankPdf()
     expect(source.getProducer()).toMatch(/pdf-lib/)

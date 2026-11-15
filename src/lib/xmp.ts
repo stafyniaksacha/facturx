@@ -126,6 +126,11 @@ export function stripXmlInvalidChars(value: string | undefined | null): string {
  * Escapes a value for XML text or attribute content (CG-03): invoice fields such as the seller
  * name reach the XMP packet, so `&` or `<` would make it malformed (BR-HYBRID-03) and markup in
  * them could inject XMP properties such as a second `fx:ConformanceLevel`.
+ *
+ * CR, LF and TAB are written as character references. A parser turns a literal CR (or CR LF)
+ * into LF (XML 1.0 §2.11), so the XMP would no longer equal the Info dictionary, which keeps the
+ * CR (CG-04). In an attribute value it also turns literal LF and TAB into spaces (§3.3.3). A
+ * reference survives both normalizations, so every context reads back the original value.
  */
 export function xmlEscape(value: string | undefined | null): string {
   return stripXmlInvalidChars(value)
@@ -134,6 +139,9 @@ export function xmlEscape(value: string | undefined | null): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;')
+    .replace(/\r/g, '&#13;')
+    .replace(/\n/g, '&#10;')
+    .replace(/\t/g, '&#9;')
 }
 
 // remove millisecond from date
