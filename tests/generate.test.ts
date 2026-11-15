@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { extract, generate, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { XmlDocument } from 'libxml2-wasm'
 import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNull, PDFRawStream, PDFString } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
@@ -37,6 +38,32 @@ function xmpPacket(pdf: PDFDocument): string {
   if (!(stream instanceof PDFRawStream))
     throw new Error('No XMP metadata stream')
   return new TextDecoder().decode(stream.getContents())
+}
+
+const XMP_NS = {
+  rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+  dc: 'http://purl.org/dc/elements/1.1/',
+  pdf: 'http://ns.adobe.com/pdf/1.3/',
+  fx: 'urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#',
+}
+
+// Parses the /Metadata stream of a generated PDF and returns the texts of the properties the
+// tests look at. Parsing fails on malformed XMP, which is what CG-03 produced.
+function readXmp(pdf: PDFDocument): { title: string[], creator: string[], description: string[], producer: string[], conformanceLevel: string[] } {
+  const doc = XmlDocument.fromString(xmpPacket(pdf))
+  try {
+    const texts = (xpath: string): string[] => doc.find(xpath, XMP_NS).map(node => node.content)
+    return {
+      title: texts('//dc:title/rdf:Alt/rdf:li'),
+      creator: texts('//dc:creator/rdf:Seq/rdf:li'),
+      description: texts('//dc:description/rdf:Alt/rdf:li'),
+      producer: texts('//pdf:Producer'),
+      conformanceLevel: texts('//fx:ConformanceLevel'),
+    }
+  }
+  finally {
+    doc.dispose()
+  }
 }
 
 describe('generate', () => {
@@ -681,5 +708,42 @@ describe('generate', () => {
     const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml }))
 
     expect(xmpPacket(output)).toMatch(new RegExp(`^<\\?xpacket begin="[^"]*" id="${XMP_PACKET_ID}"\\?>`))
+  })
+
+  it('escapes the values it writes into the XMP packet (CG-03)', async () => {
+    // A seller name with markup, as it reads once the invoice XML is parsed: it must stay text
+    // and must not add a second fx:ConformanceLevel.
+    const seller = 'Dupont & Fils <x/> "A" \'B\' </rdf:li></rdf:Seq></dc:creator></rdf:Description><rdf:Description xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" rdf:about=""><fx:ConformanceLevel>EXTENDED</fx:ConformanceLevel></rdf:Description><rdf:Description><dc:creator><rdf:Seq><rdf:li>'
+    const escaped = seller.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const xml = (await readFile(SOURCE_XML, 'utf8')).replace('<ram:Name>Au bon moulin</ram:Name>', `<ram:Name>${escaped}</ram:Name>`)
+    expect(xml).toContain(escaped)
+
+    const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml }))
+    const xmp = readXmp(output)
+
+    expect(xmp.conformanceLevel).toEqual(['EN 16931'])
+    expect(xmp.creator).toEqual([seller])
+    expect(xmp.title).toHaveLength(1)
+    expect(xmp.title[0]).toMatch(new RegExp(`^${seller.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: .* FA-2017-0010$`))
+    expect(xmp.description[0]).toContain(seller)
+  })
+
+  it('escapes caller-supplied metadata and drops characters XML 1.0 cannot carry (CG-03)', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const meta = {
+      title: 'A & B <c> "d" \'e\'',
+      subject: '</rdf:li><fx:ConformanceLevel>EXTENDED</fx:ConformanceLevel><rdf:li>',
+      author: 'Ctrl\u0000\u0001\u001F char',
+      keywords: [],
+      date: new Date('2026-01-02T03:04:05Z'),
+    }
+
+    const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml, meta }))
+    const xmp = readXmp(output)
+
+    expect(xmp.conformanceLevel).toEqual(['EN 16931'])
+    expect(xmp.title).toEqual([meta.title])
+    expect(xmp.description).toEqual([meta.subject])
+    expect(xmp.creator).toEqual(['Ctrl char'])
   })
 })

@@ -35,6 +35,7 @@ open entry is "known", anything else is new.
 | Schematron findings are classified by the rule's own SVRL `flag`: `warning`/`information` are reported in `warnings` and don't affect validity unless `warningsAsErrors` is set; unflagged and `fatal` ones are errors. Fired `<report>`s count like failed `<assert>`s (the Factur-X Schematrons express profile restrictions such as "@schemeID not used in the given context" as reports; before this they were silently dropped). In the vendored Factur-X XSLTs the warning-flagged rules are: MINIMUM `BR-FXEXT-{G,IC,O,Z}-08ini/-08rev`; BASIC `PEPPOL-EN16931-R008`, `BR-FX-EN-04`, `BR-FXEXT-Z-08rev`; BASIC WL none; EN 16931 `PEPPOL-EN16931-R008`, `CII-SR-474/475/476`; EXTENDED `PEPPOL-EN16931-R008`, `BR-FXEXT-04`, `CII-SR-475/476` and the `-08ini/-08rev` pairs, each backed by a blocking `-08b` rule (spelled `BR-FXEXT-S08b` for S upstream) | `pnpm build && pnpm vitest run tests/schematron.test.ts tests/fixfr04.test.ts` (severity inventory) |
 | README and docs no longer claim `extract()` detects the level: it returns the flavor (from the attachment filename) and echoes `options.level`; the quick start reads the level from `check()` on the extracted XML (was CG-11) | `pnpm build && pnpm --filter @stafyniaksacha/facturx-examples run examples` (quickstart prints `facturx en16931`, not `facturx undefined`) |
 | French CTC rules `BR-FR-Flux2` (FNFE-MPE Schematrons FR CTC v1.4.0.04, step 3 of the release notes p.9): the vendored `src/lib/xsd/fr-ctc/BR-FR-Flux2-Schematron-CII.xslt` is byte-identical to all five copies in the release, standard (all 171 asserts `fatal`) variant only, and its shipped SEF is reproducible and embeds no local path. `validateFrCtc` / `check({ frCtc: true })` check the document itself (the rules read neither root nor profile) and accept only a CII invoice declaring BASIC WL, EN16931 or EXTENDED (p.9, p.11; plain-CII `EXTENDED-CTC-FR` as `extended`); they throw for MINIMUM, BASIC, Order-X, UBL and a `level` that contradicts the document. All 24 Factur-X examples of XP Z12-012 v1.4 Annex B (EN16931 and EXTENDED, incl. multi-vendor, bidirectional, sub-line) pass XSD + the Factur-X profile Schematron (1.09.2.fixFR04, CG-16) + BR-FR with no finding, and the 6 plain-CII `EXTENDED-CTC-FR` examples pass BR-FR at level `extended`. Over the 34 in-scope official Factur-X 1.09 examples, 28 pass and 6 (`_Factur-X_1.08-Exemples_CS/*/Facture_F2026003{0,1}-*`) fail `BR-FR-32` (SIREN `303 656 847` written with spaces) and `BR-FR-CO-10` (seller GlobalID scheme `0088` twice), both genuine in the example data. `id` is the rule (`BR-FR-05`), taken from the SVRL `@id`, never from the message | `pnpm spec:verify`; `pnpm build && pnpm vitest run tests/fr-ctc.test.ts` |
+| Every value `generate()` writes into the XMP packet (title, subject, author from the invoice or `meta`, producer, creator, filename, conformance level) is XML-escaped and stripped of characters XML 1.0 cannot carry, so a seller name with `&`, `<` or markup parses back as the same text and cannot inject properties such as a second `fx:ConformanceLevel` (BR-HYBRID-03; was CG-03) | `pnpm build && pnpm vitest run tests/generate.test.ts -t CG-03` |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no test or CI run; manual veraPDF
 runs are recorded in CG-02, CG-04 and CG-05), any Order-X
@@ -47,7 +48,6 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | --- | --- | --- | --- | --- |
 | CG-01 | converter | §7.1.5 p.35 | data-loss | Unit prices truncated to 2 decimals |
 | CG-02 | XMP | BR-HYBRID-02/03 | Fatal | XMP packet not UTF-8 |
-| CG-03 | XMP, security | BR-HYBRID-03 | Fatal | XMP values not XML-escaped (malformed XMP, metadata injection) |
 | CG-04 | PDF/A | BR-HYBRID-02 | Fatal | Info dictionary and XMP disagree (Producer, Keywords) |
 | CG-05 | PDF/A | BR-HYBRID-02 | Fatal | `generate()` does not make the PDF PDF/A-3; docs claim it does |
 | CG-07 | embedding | §6.2.2 p.26–27, BR-HYBRID-11 | Warning | `AFRelationship` hard-coded to `Data` |
@@ -100,16 +100,6 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   apart. Through the library alone, each defect on its own makes the XMP unparseable: `Société €`
   gives "Invalid bytes in character encoding", and `Dupont &amp; Fils` gives
   `xmlParseEntityRef: no name`.
-
-### CG-03 — XMP values not XML-escaped (also a security issue)
-
-- **Code:** `src/lib/xmp.ts:14-100` interpolates `title`, `subject`, `author`, `producer`, `creator`,
-  `filename`, `conformanceLevel` raw into XML. Title/subject/author come from the invoice (seller,
-  buyer, number) via `baseInfo2PdfMetadata`.
-- **Effect:** a seller name containing `&` or `<` yields malformed XMP (fails BR-HYBRID-03). A crafted
-  seller name can inject XMP elements, e.g. a second `fx:ConformanceLevel`.
-- **Evidence:** seller name `Dupont &amp; Fils` → XMP fails to parse (`xmlParseEntityRef: no name`).
-  For the external validator result on a mixed input, see CG-02.
 
 ### CG-04 — Info dictionary and XMP disagree
 
