@@ -378,6 +378,20 @@ describe('generate() into a name tree with /Kids (CG-13)', () => {
     expect(contentOf(pdf, root, 'a.txt')).toBe('a.txt')
   })
 
+  // The reader bounds nodes, not keys: a leaf with 200000 keys (one shared file specification) must
+  // not overflow the stack when the keys are collected (CodeRabbit on #75).
+  it('handles a leaf with 200000 keys', async () => {
+    const doc = await source((d) => {
+      const spec = plainSpec(d, 'a.txt')
+      const names: PDFObject[] = []
+      for (let i = 0; i < 200_000; i++)
+        names.push(PDFString.of(`k${String(i).padStart(6, '0')}`), spec)
+      return [d.context.obj({ Names: names })]
+    })
+    const output = await generate({ pdf: Buffer.from(await doc.save()), xml: getEN16931XML() })
+    expect((await extract({ pdf: Buffer.from(output) })).filename).toBe('factur-x.xml')
+  })
+
   it('refuses to grow a tree past 4096 nodes, which extract() would refuse', async () => {
     // Root + 4095 intermediate nodes with an empty /Kids: a new leaf would be node 4097.
     const doc = await source(d => Array.from({ length: 4095 }, () => d.context.obj({ Kids: [] })))

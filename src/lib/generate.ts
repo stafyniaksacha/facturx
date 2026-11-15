@@ -671,14 +671,15 @@ function moveRootNamesIntoLeaves(pdf: PDFDocument, invoiceFilename: string): voi
   readEmbeddedFilesNames(pdf)
 }
 
-function nameTreeKeys(pdf: PDFDocument, node: PDFDict): Uint8Array[] {
-  const keys: Uint8Array[] = []
+// Collects into one array: a leaf can hold any number of keys (the reader bounds nodes, not keys),
+// and spreading them into push() would overflow the argument stack.
+function nameTreeKeys(pdf: PDFDocument, node: PDFDict, keys: Uint8Array[] = []): Uint8Array[] {
   const kids = pdf.context.lookup(node.get(PDFName.of('Kids')))
   if (kids instanceof PDFArray) {
     for (const kid of kids.asArray()) {
       const dict = pdf.context.lookup(kid)
       if (dict instanceof PDFDict)
-        keys.push(...nameTreeKeys(pdf, dict))
+        nameTreeKeys(pdf, dict, keys)
     }
     return keys
   }
