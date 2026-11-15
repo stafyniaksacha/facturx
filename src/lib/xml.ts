@@ -10,6 +10,8 @@ import {
   EXTENDED_CTC_FR_GUIDELINE_ID,
   FACTURX_SCHEMA,
   ORDERX_SCHEMA,
+  XRECHNUNG_CIUS_GUIDELINE_ID,
+  XRECHNUNG_GUIDELINE_ID_MARKER,
 } from './constants'
 import { resolveXml } from './resolve'
 
@@ -37,6 +39,11 @@ export function getLevel(xmlDoc: XmlDocument): string {
  * Level from a guideline ID (BT-24), e.g. `urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended`.
  * The last `:` segment, or the one before it when the last is a date revision (Order-X, and plain
  * `urn:cen.eu:en16931:2017` for EN 16931).
+ *
+ * An XRechnung CIUS ID (reference profile XRECHNUNG, §7.7) gives `en16931`: a CIUS is a restriction of
+ * EN 16931, so the EN 16931 schemas are the ones the library has that apply. The KoSIT rules
+ * (BR-DE-*) are not vendored, so this checks EN 16931, not XRechnung (CG-12). An XRechnung extension
+ * ID throws, since an extension is not EN 16931.
  */
 export function levelFromGuidelineId(id: string | undefined): string {
   // BT-24 is an xs:token (udt:IDType): surrounding whitespace is not significant.
@@ -44,6 +51,11 @@ export function levelFromGuidelineId(id: string | undefined): string {
   if (!value) {
     throw new Error('No text found in the ID node')
   }
+
+  if (XRECHNUNG_CIUS_GUIDELINE_ID.test(value))
+    return 'en16931'
+  if (value.includes(XRECHNUNG_GUIDELINE_ID_MARKER))
+    throw new Error(`Unknown level: "${value}" (only the XRechnung CIUS, validated as EN 16931, is supported; an XRechnung extension is not)`)
 
   const doc_id = value.split(':')
   let level = doc_id[doc_id.length - 1]
@@ -74,6 +86,15 @@ export function declaresExtendedCtcFr(xml: XmlDocument): boolean {
   catch {
     return false
   }
+}
+
+/**
+ * Whether the document's BT-24 is a KoSIT XRechnung guideline ID (CIUS or extension), read like
+ * getLevel() does. False when BT-24 is missing.
+ */
+export function declaresXRechnung(xml: XmlDocument): boolean {
+  const id = xml.find(`//*[local-name()='ExchangedDocumentContext']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']/*[local-name()='ID']`)[0]
+  return id?.content.trim().includes(XRECHNUNG_GUIDELINE_ID_MARKER) ?? false
 }
 
 export function getFlavor(fileDoc: XmlDocument): string {

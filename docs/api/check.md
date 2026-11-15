@@ -55,6 +55,16 @@ function check(options: {
 
 `valid` is `true` only if **every** layer that ran passes: the XSD, plus the Schematron with `schematron: true`, plus BR-FR with `frCtc: true`.
 
+### XRechnung
+
+An invoice whose guideline ID (BT-24) is the XRechnung CIUS, e.g.
+`urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0` (reference profile XRECHNUNG),
+is checked as `en16931`, and `level` is `en16931`: a CIUS is a restriction of EN 16931. This checks
+EN 16931 only, not XRechnung: the KoSIT rules (`BR-DE-*`) are not part of this library. With
+`schematron: true`, the Factur-X EN 16931 rules report the XRechnung guideline ID itself
+(`FX-SCH-A-000556`, they only accept `urn:cen.eu:en16931:2017`), so `valid` is `false`. An XRechnung
+*extension* ID (`…#conformant#urn:xeinkauf.de:kosit:extension:…`) throws `Unknown level`.
+
 When the XSD fails and a business-rule transform cannot run on the invalid data (for example a
 non-decimal amount), `check()` keeps the XSD errors and reports that layer as invalid with a single
 `could not run on this XSD-invalid document (<code>)` entry, where `<code>` is the SaxonJS error code such as `FORG0001`, instead of throwing.

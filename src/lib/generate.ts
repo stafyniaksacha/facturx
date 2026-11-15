@@ -26,7 +26,7 @@ import { baseInfo2PdfMetadata } from './metadata'
 import { decodeName, embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
-import { declaresExtendedCtcFr, extractBaseInfo, getFlavor, getLevel } from './xml'
+import { declaresExtendedCtcFr, declaresXRechnung, extractBaseInfo, getFlavor, getLevel } from './xml'
 import { setPDFA3BMetadata, stripXmlInvalidChars } from './xmp'
 
 // PDFDocument objects generate() has already attached an invoice to. pdf-lib only writes the
@@ -97,6 +97,12 @@ export async function generate(options: {
     const isOrder = xml.root?.name === 'SCRDMCCBDACIOMessageStructure'
     if ((flavor === 'orderx') !== isOrder)
       throw new Error(`The XML root element "${xml.root?.name}" does not match the "${flavor}" flavor`)
+    // Reference profile XRECHNUNG (§7.7 p.69–71) is embedded as xrechnung.xml with fx:ConformanceLevel
+    // XRECHNUNG and AFRelationship Alternative, never as factur-x.xml (codelists--Filename.csv). Not
+    // written by generate() (CG-12): refused by its BT-24, whatever `level` says, since getLevel()
+    // reads an XRechnung CIUS as en16931. Thrown before the PDF is read.
+    if (declaresXRechnung(xml))
+      throw new Error('Cannot generate a PDF for an XRechnung (reference profile XRECHNUNG): it must be embedded as xrechnung.xml with the XRECHNUNG conformance level, which generate() does not write')
     // A blank `level` means "not given", as `''` always did.
     // Only the flavors generate() writes a conformance level for (GENERATE_LEVELS) get the lenient
     // spelling and the check below.

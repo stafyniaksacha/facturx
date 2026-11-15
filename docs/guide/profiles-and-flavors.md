@@ -66,7 +66,9 @@ When you don't pass `flavor` / `level`, the library reads them from the XML itse
   `SCRDMCCBDACIOMessageStructure` → `orderx`, `CrossIndustryDocument` → `zugferd`.
 - **Level** comes from the **specification identifier** in
   `…/GuidelineSpecifiedDocumentContextParameter/ID` — e.g. `urn:factur-x.eu:1p0:minimum` resolves to
-  `minimum`, `urn:cen.eu:en16931:2017` resolves to `en16931`.
+  `minimum`, `urn:cen.eu:en16931:2017` resolves to `en16931`. An XRechnung CIUS ID
+  (`…#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0`) resolves to `en16931` too, for validation
+  only: see [`check()`](/api/check#xrechnung).
 
 On **extraction**, the flavor is determined from the *embedded attachment filename* (`factur-x.xml` or
 `xrechnung.xml` → `facturx`, `order-x.xml`, or a ZUGFeRD filename). `extract()` does not detect the level: its `level` field is

@@ -23,6 +23,15 @@ export const FACTURX_SCHEMA = {
 // XP Z12-012 Annex A, BT-24 row (`annex-a--CII_D22B_FX_EXT-CTC-FR.csv`): the only guideline ID of the
 // EXTENDED-CTC-FR profile. Matched exactly, since its dedicated Schematron does not check BT-24.
 export const EXTENDED_CTC_FR_GUIDELINE_ID = 'urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr'
+// Reference profile XRECHNUNG (§7.7 p.69): BT-24 of the KoSIT CIUS XRechnung, e.g.
+// `urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0`. The ID is defined by KoSIT,
+// not by the vendored spec (§7.7 points to xeinkauf.de), so the form is matched, not a list of
+// versions. `#compliant#` is EN 16931's own marker for a CIUS (a restriction of EN 16931); the
+// XRechnung *extension* (`…#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_…`) is not, and is
+// not matched (CG-12).
+export const XRECHNUNG_CIUS_GUIDELINE_ID = /^urn:cen\.eu:en16931:2017#compliant#urn:xeinkauf\.de:kosit:xrechnung_\d+\.\d+$/
+// Any KoSIT XRechnung guideline ID, CIUS or extension.
+export const XRECHNUNG_GUIDELINE_ID_MARKER = 'urn:xeinkauf.de:kosit:'
 
 export const FACTURX_CONFORMANCE_LEVEL = {
   basic: 'BASIC',

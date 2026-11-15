@@ -1,4 +1,6 @@
 import { Buffer } from 'node:buffer'
+import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { check } from '@stafyniaksacha/facturx'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -150,5 +152,36 @@ describe('check', () => {
     expect(result.errors).toStrictEqual([])
     expect(result.flavor).toBe('orderx')
     expect(result.level).toBe('basic')
+  })
+})
+
+// CG-12 (partial): reference profile XRECHNUNG (§7.7 p.69). No XRechnung is vendored, so the XML is
+// examples/Facture_FR_EN16931.xml with BT-24 set to a KoSIT XRechnung guideline ID.
+describe('check() on an XRechnung (CG-12)', () => {
+  const CIUS = 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0'
+  const EXTENSION = `${CIUS}#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0`
+  async function xrechnung(id: string): Promise<string> {
+    const xml = (await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.xml'), 'utf8'))
+      .replace('<ram:ID>urn:cen.eu:en16931:2017</ram:ID>', `<ram:ID>${id}</ram:ID>`)
+    expect(xml).toContain(`<ram:ID>${id}</ram:ID>`)
+    return xml
+  }
+
+  it.each(['xrechnung_2.3', 'xrechnung_3.0'])('validates a CIUS %s as EN 16931', async (version) => {
+    const result = await check({ xml: await xrechnung(CIUS.replace('xrechnung_3.0', version)) })
+    expect(result).toMatchObject({ valid: true, errors: [], flavor: 'facturx', level: 'en16931' })
+  })
+
+  // The Factur-X EN 16931 Schematron only accepts `urn:cen.eu:en16931:2017` as BT-24 (codedb list 1),
+  // so it reports the XRechnung ID. Kept as reported: the KoSIT rules that do accept it are not vendored.
+  it('reports the XRechnung BT-24 under the Factur-X EN 16931 Schematron', async () => {
+    const result = await check({ xml: await xrechnung(CIUS), schematron: true })
+    expect(result.errors).toEqual([])
+    expect(result.valid).toBe(false)
+    expect(result.schematronErrors?.map(e => e.assertId)).toEqual(['FX-SCH-A-000556'])
+  })
+
+  it('refuses an XRechnung extension, which is not EN 16931', async () => {
+    await expect(check({ xml: await xrechnung(EXTENSION) })).rejects.toThrow('an XRechnung extension is not')
   })
 })

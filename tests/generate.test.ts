@@ -877,8 +877,21 @@ describe('generate', () => {
     })
 
     it('rejects an explicit level when BT-24 names no level it can be compared with', async () => {
-      const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0')
-      await expect(generate({ pdf: await sourcePdf(), xml, level: 'en16931' })).rejects.toThrow('Unknown level: "kosit"')
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', 'urn:cen.eu:en16931:2017#compliant#urn:example.org:cius:unknown_1.0')
+      await expect(generate({ pdf: await sourcePdf(), xml, level: 'en16931' })).rejects.toThrow('Unknown level: "cius"')
+    })
+
+    // CG-12: check() reads an XRechnung CIUS as en16931, but generate() does not write the reference
+    // profile XRECHNUNG (xrechnung.xml, fx:ConformanceLevel XRECHNUNG, §7.7 p.69–71), and must not
+    // embed it as factur-x.xml either (codelists--Filename.csv). Refused whatever `level` says.
+    it.each([
+      ['no level', 'xrechnung_3.0', undefined],
+      ['level en16931', 'xrechnung_3.0', 'en16931'],
+      ['level extended', 'xrechnung_3.0', 'extended'],
+      ['an XRechnung extension', 'xrechnung_3.0#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0', undefined],
+    ])('refuses an XRechnung (%s)', async (_, suffix, level) => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', `urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:${suffix}`)
+      await expect(generate({ pdf: await sourcePdf(), xml, level })).rejects.toThrow('Cannot generate a PDF for an XRechnung (reference profile XRECHNUNG)')
     })
 
     it('rejects an explicit level when the document has no BT-24 at all', async () => {

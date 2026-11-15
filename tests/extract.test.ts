@@ -44,10 +44,20 @@ describe('extract() xrechnung.xml (CG-12)', () => {
     await expect(extract({ pdf, flavor: 'orderx' })).rejects.toThrow('expected orderx but found facturx')
   })
 
-  // The XML here keeps the example's EN 16931 guideline ID, so check() can validate it. A real
-  // XRECHNUNG guideline ID is still not understood by getLevel() (CG-12).
+  // The XML here keeps the example's EN 16931 guideline ID; the next test uses an XRechnung one.
   it('checks the extracted XML', async () => {
     const result = await extract({ pdf: await renamedExample('xrechnung.xml'), check: true })
+    expect(result.flavor).toBe('facturx')
+  })
+
+  // No XRechnung is vendored: the XML is examples/Facture_FR_EN16931.xml with BT-24 set to the KoSIT
+  // CIUS XRechnung 3.0 ID. check() validates it as EN 16931 (XSD), like any EN 16931 CIUS.
+  it('checks an xrechnung.xml whose BT-24 is an XRechnung CIUS ID, as EN 16931', async () => {
+    const xml = (await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.xml'), 'utf8'))
+      .replace('<ram:ID>urn:cen.eu:en16931:2017</ram:ID>', '<ram:ID>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</ram:ID>')
+    expect(xml).toContain('kosit:xrechnung_3.0')
+    const result = await extract({ pdf: await pdfWithAttachment('xrechnung.xml', xml), check: true })
+    expect(result.filename).toBe('xrechnung.xml')
     expect(result.flavor).toBe('facturx')
   })
 
