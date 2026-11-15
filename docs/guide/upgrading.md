@@ -160,6 +160,16 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   relied on the rounding, round the prices yourself before building the model.
 - **The XMP packet id** is the fixed `W5M0MpCehiHzreSzNTczkc9d` from the reference packet.
   `XmpMetadata.documentId` is kept but deprecated.
+- **PDF dates are the generation time, in UTC** (CG-25). When you don't pass `meta`, 0.6.1 used the
+  invoice issue date (BT-2) at midnight in the server's time zone for the Info `CreationDate` /
+  `ModDate`, the XMP `CreateDate` / `ModifyDate` / `MetadataDate` and the embedded file's `Params`
+  dates, so the output changed with `TZ`. They are now the time `generate()` runs. The title and
+  subject still show the issue date as a calendar date (`dated 20260131`). To keep a fixed date, pass
+  `meta` with your own `date`; it is used as before.
+- **`extract()` finds `xrechnung.xml`** (Factur-X §7.7) and reports it as flavor `facturx`, and
+  **reads attachment lists with one or two `/Kids` levels** (§6.2.2 p.27), which 0.6.1 reported as
+  `No attachment found`. Deeper or larger trees throw `Unsupported EmbeddedFiles name tree: …`.
+  `generate()` still rejects sources with `/Kids`.
 
 ## New features
 
@@ -189,6 +199,13 @@ UBL documents throw. The messages are in French and quote invoice values, so tre
 data in logs. See [French e-invoicing rules](/guide/french-ctc) for scope and known gaps. This is not
 legal advice.
 
+### `afRelationship` option for `generate()`
+
+`generate({ pdf, xml, afRelationship: 'Alternative' })` (CLI `--afRelationship Alternative`) sets the
+`AFRelationship` of the embedded XML. The default stays `Data`. MINIMUM and BASIC WL accept only `Data`
+(Factur-X §6.2.2); Germany expects `Alternative` for BASIC and above. See
+[`generate()`](/api/generate#behaviour).
+
 ### New fields on `SchematronError`
 
 | Field | Meaning |
@@ -214,3 +231,7 @@ left undefined.
       workaround. Then check the new rejection list against your source PDFs.
 - [ ] If you call `generate()` with `flavor: 'zugferd'`, use `facturx` instead.
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).
+- [ ] If you compare PDF dates with the invoice date, or snapshot `generate()` output, pass `meta.date`
+      or expect the generation time.
+- [ ] Make sure the PDF you pass to `generate()` is already PDF/A-3: it is not converted (the docs
+      used to say otherwise).

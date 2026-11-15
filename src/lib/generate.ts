@@ -80,7 +80,9 @@ export async function generate(options: {
 
     if (!meta) {
       const info = await extractBaseInfo(xml)
-      meta = baseInfo2PdfMetadata(info)
+      // The PDF, XMP and embedded-file dates are those of this file, so they are the generation
+      // time, not the issue date (BT-2), which stays in the title and subject (CG-25).
+      meta = { ...baseInfo2PdfMetadata(info), date: new Date() }
     }
     meta.date ||= new Date()
     // The XMP cannot carry characters XML 1.0 forbids, so drop them once for both the Info
