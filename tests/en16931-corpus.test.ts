@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { check, extract, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
+import { diffPaths } from '../src/lib/mapping/cii/dropped'
 import { FIRST_ENTRY_ONLY, spreadVatPoint } from './fixtures/vat-point'
 
 /**
@@ -168,10 +169,13 @@ describe('en 16931 model: corpus', () => {
     const cii = await xmlToInvoice(xml)
     const { invoice, dropped } = fromCii(cii)
     expect(dropped.flatMap(notBtX)).toEqual([])
-    // Nothing else changes: the rest of the CII model comes back the same.
+    // Nothing else changes: the rest of the CII model comes back the same, so the only values of the
+    // source missing after the trip are the dropped ones (deep equality when nothing is dropped).
     const expected = FIRST_ENTRY_ONLY.test(name) ? spreadVatPoint(cii) : cii
+    const again = await xmlToInvoice((await invoiceToXml(toCii(invoice, { level }))).toString())
+    expect(diffPaths(expected, again)).toEqual(dropped)
     if (!dropped.length)
-      expect(await xmlToInvoice((await invoiceToXml(toCii(invoice, { level }))).toString())).toEqual(expected)
+      expect(again).toEqual(expected)
   })
 
   it('reports Factur-X-only content in dropped and the checker accepts it as BT-X', async () => {
@@ -182,8 +186,12 @@ describe('en 16931 model: corpus', () => {
       .replace('</ram:AssociatedDocumentLineDocument>', '<ram:LineStatusCode>NEW</ram:LineStatusCode></ram:AssociatedDocumentLineDocument>')
       .replace('<ram:GuidelineSpecifiedDocumentContextParameter>', '<ram:TestIndicator><udt:Indicator>false</udt:Indicator></ram:TestIndicator><ram:GuidelineSpecifiedDocumentContextParameter>')
     expect(xml).not.toBe(source.xml)
-    const { dropped } = fromCii(await xmlToInvoice(xml))
+    const cii = await xmlToInvoice(xml)
+    const { invoice, dropped } = fromCii(cii)
     expect(dropped.length).toBeGreaterThan(0)
+    // Everything else comes back: the values missing after the trip are exactly the dropped ones.
+    const again = await xmlToInvoice((await invoiceToXml(toCii(invoice, { level: source.level }))).toString())
+    expect(diffPaths(cii, again)).toEqual(dropped)
     expect(dropped.some(p => p.endsWith('/ram:LineStatusCode'))).toBe(true)
     expect(dropped.flatMap(notBtX)).toEqual([])
     // The classifier is not vacuous: a path with an EXT-FR-FE id, an unknown path and a ruled-out id are told apart.

@@ -375,7 +375,8 @@ const out = (await invoiceToXml(toCii(invoice, { level: 'en16931' }))).toString(
 
 `toCii()` throws, naming the business term, when the invoice cannot be written at the level; `fromCii()` throws
 for MINIMUM and BASIC WL. UBL reading and writing are not part of this release. See the
-[EN 16931 model guide](/guide/en16931-model). It is also exported from `@stafyniaksacha/facturx/en16931`.
+[EN 16931 model guide](/guide/en16931-model). The classes (without the `EN16931.` prefix), `fromCii()` and `toCii()` are also
+exported from the subpath `@stafyniaksacha/facturx/en16931`.
 
 ### `afRelationship` option for `generate()`
 

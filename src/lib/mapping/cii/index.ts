@@ -7,11 +7,12 @@ import type { En16931Level } from '../../models/en16931/level'
 import type { CrossIndustryInvoiceType } from '../../models/facturx/crossIndustryInvoice'
 import { Invoice } from '../../models/en16931/invoice'
 import { levelFromGuidelineId } from '../../xml'
+import { assertAmountDecimals } from './amounts'
 import { diffPaths } from './dropped'
-import { HEADER_GATES, headerFromCii, headerToCii } from './header'
+import { assertHeaderComplete, HEADER_GATES, headerFromCii, headerToCii } from './header'
 import { assertLevelCarries, EN16931_LEVELS, GUIDELINE_IDS, isEn16931Level } from './levels'
 import { assertLinesComplete, LINE_GATES, linesFromCii } from './lines'
-import { assertPartiesComplete, partiesFromCii, PARTY_GATES } from './parties'
+import { assertPartiesComplete, assertPartyIdentifierCounts, partiesFromCii, PARTY_GATES } from './parties'
 import { assertSettlementComplete, SETTLEMENT_GATES, settlementFromCii } from './settlement'
 
 /** What `fromCii()` returns. */
@@ -19,9 +20,10 @@ export interface FromCiiResult {
   /** The invoice, keyed by EN 16931 business term. */
   invoice: Invoice
   /**
-   * XPath-like paths (`/rsm:CrossIndustryInvoice/…/ram:X[n]`) of every CII value the model has no
-   * place for (typically Factur-X `BT-X-*` fields), so nothing is lost silently. Positions only:
-   * never the values.
+   * XPath-like paths (`/rsm:CrossIndustryInvoice/…/ram:X[n]`, an index only on repeatable elements)
+   * of every CII value the model has no place for (typically Factur-X `BT-X-*` fields). Positions
+   * only, never the values. Repeated elements are matched by value first (a writer may reorder them),
+   * then by position, and a path carries the element's position in the source document.
    */
   dropped: string[]
 }
@@ -74,12 +76,21 @@ const MANDATORY: readonly [string, string, (invoice: Invoice) => string][] = [
   ['BT-5', 'invoice currency code', i => i.currencyCode],
 ]
 
+// The Amount decimals rule runs on what is written (`fromCii()` stays tolerant).
+function checked(cii: CrossIndustryInvoiceType): CrossIndustryInvoiceType {
+  assertAmountDecimals(cii)
+  return cii
+}
+
 /**
  * Write an EN 16931 invoice as a CII model at `level`, for `invoiceToXml()`. Throws, naming the
  * business term, when a mandatory term (BT-1, BT-2, BT-3, BT-5) is empty, when the invoice holds a
  * value `level` cannot carry (an `EXT-FR-FE-*` field below `extended`, a term Factur-X BASIC lacks
  * at `basic`), when BT-24 is set to anything but the exact identifier of `level`, or when a date is
- * not a valid ISO `YYYY-MM-DD` date, or when BT-11-0 is set without BT-11. Never quotes invoice content.
+ * not a valid ISO `YYYY-MM-DD` date, or when BT-11-0 is set without BT-11, or when a mandatory term of
+ * a header group (BT-25, BT-122, BG-14, BT-22) is empty, or when the buyer or payee holds more identifiers
+ * than the level carries (BT-46, BT-60), or when an *Amount* has more than two decimals (spec §7.1.5).
+ * Never quotes invoice content.
  */
 export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInvoiceType {
   const level = options?.level
@@ -90,7 +101,9 @@ export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInv
     if (value === undefined || value === '')
       throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
   }
+  assertHeaderComplete(invoice)
   assertPartiesComplete(invoice)
+  assertPartyIdentifierCounts(invoice, level)
   assertSettlementComplete(invoice)
   assertLinesComplete(invoice, level)
   assertLevelCarries(invoice, level, [...HEADER_GATES, ...PARTY_GATES, ...SETTLEMENT_GATES, ...LINE_GATES])
@@ -101,8 +114,8 @@ export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInv
   // identifier would make the written document claim a profile it was not checked against.
   const specification = invoice.specificationIdentifier
   if (specification === '')
-    return buildCii(new Invoice({ ...invoice, specificationIdentifier: undefined }), level)
+    return checked(buildCii(new Invoice({ ...invoice, specificationIdentifier: undefined }), level))
   if (specification !== undefined && specification !== GUIDELINE_IDS[level])
     throw new Error(`toCii: BT-24 (specification identifier) is not the identifier of level "${level}"; clear it to write that identifier, or set ${GUIDELINE_IDS[level]}`)
-  return buildCii(invoice, level)
+  return checked(buildCii(invoice, level))
 }

@@ -10,6 +10,7 @@
  */
 
 import type { Invoice } from '../../models/en16931/invoice'
+import type { En16931Level } from '../../models/en16931/level'
 import type { CrossIndustryInvoiceType } from '../../models/facturx/crossIndustryInvoice'
 import type { TermGate } from './levels'
 import { BillingParty, BuyerAgent, Invoicee, Payee, Payer, SellerAgent } from '../../models/en16931/additional-parties'
@@ -422,5 +423,27 @@ export function assertPartiesComplete(invoice: Invoice): void {
   for (const [id, term, value] of schemes) {
     if (value === undefined || value === '')
       throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
+  }
+}
+
+/**
+ * Throws, naming the business term, when a party holds more identifiers than the level's XSD and
+ * Schematron carry (Factur-X matrices, FX-SCH-A-000163 / -000164 / -000467): the buyer's private
+ * identifier BT-46 and the payee's BT-60 (a `ram:ID`) are single below EXTENDED-CTC-FR, and the
+ * global ones BT-46-0 / BT-60-0 (`ram:GlobalID` with a scheme) are single at basic and en16931
+ * (EXTENDED `0..n`). EXTENDED-CTC-FR uses the plain CII XSD and allows several.
+ */
+export function assertPartyIdentifierCounts(invoice: Invoice, level: En16931Level): void {
+  if (level === 'extended-ctc-fr')
+    return
+  const groups: [string, string, Identifier[] | undefined][] = [
+    ['BT-46', 'buyer', invoice.buyer?.identifiers],
+    ['BT-60', 'payee', invoice.payee?.identifiers],
+  ]
+  for (const [id, party, identifiers] of groups) {
+    if ((identifiers ?? []).filter(i => i.schemeId === undefined).length > 1)
+      throw new Error(`toCii: ${id} (${party} identifier) is carried once at level "${level}"; several need level "extended-ctc-fr"`)
+    if (level !== 'extended' && (identifiers ?? []).filter(i => i.schemeId !== undefined).length > 1)
+      throw new Error(`toCii: ${id}-0 (${party} global identifier) is carried once at level "${level}"; several need level "extended" or "extended-ctc-fr"`)
   }
 }

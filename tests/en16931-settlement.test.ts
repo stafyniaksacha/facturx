@@ -181,8 +181,8 @@ function fullInvoice() {
     }),
     allowances: [
       new EN16931.DocumentAllowance({
-        amount: 3.14159,
-        baseAmount: 31.4159,
+        amount: 3.14,
+        baseAmount: 31.42,
         percentage: 10.123456,
         vatCategoryCode: 'E',
         vatRate: 0,
@@ -195,8 +195,8 @@ function fullInvoice() {
     ],
     charges: [
       new EN16931.DocumentCharge({
-        amount: 2.71828,
-        baseAmount: 27.1828,
+        amount: 2.72,
+        baseAmount: 27.18,
         percentage: 7.654321,
         vatCategoryCode: 'E',
         vatRate: 0,
@@ -208,11 +208,11 @@ function fullInvoice() {
       new EN16931.DocumentCharge({ amount: 5, vatCategoryCode: 'S', vatRate: 20, nonVatTaxCode: 'AAJ' }),
     ],
     totals: new EN16931.DocumentTotals({
-      sumOfInvoiceLineNetAmount: 100.123456,
-      sumOfAllowancesOnDocumentLevel: 4.14159,
-      sumOfChargesOnDocumentLevel: 7.71828,
+      sumOfInvoiceLineNetAmount: 100.12,
+      sumOfAllowancesOnDocumentLevel: 4.14,
+      sumOfChargesOnDocumentLevel: 7.72,
       invoiceTotalAmountWithoutVat: 103.7,
-      invoiceTotalVatAmount: 20.123,
+      invoiceTotalVatAmount: 20.12,
       invoiceTotalVatAmountInAccountingCurrency: 18.5,
       roundingAmount: -0.01,
       invoiceTotalAmountWithVat: 123.8,
@@ -221,7 +221,7 @@ function fullInvoice() {
     }),
     vatBreakdown: [
       new EN16931.VatBreakdown({ categoryTaxableAmount: 50.5, categoryTaxAmount: 10.1, categoryCode: 'S', categoryRate: 20 }),
-      new EN16931.VatBreakdown({ categoryTaxableAmount: 53.2, categoryTaxAmount: 10.023, categoryCode: 'S', categoryRate: 7.123456 }),
+      new EN16931.VatBreakdown({ categoryTaxableAmount: 53.2, categoryTaxAmount: 10.02, categoryCode: 'S', categoryRate: 7.123456 }),
       new EN16931.VatBreakdown({ categoryTaxableAmount: 0, categoryTaxAmount: 0, categoryCode: 'E', categoryRate: 0, exemptionReasonText: 'Exonéré & <x>', exemptionReasonCode: 'VATEX-EU-132' }),
     ],
     vatCurrencyExchange: new EN16931.VatCurrencyExchange({ sourceCurrencyCode: 'EUR', targetCurrencyCode: 'USD', exchangeRate: 1.123456789, exchangeRateDate: '2025-06-30' }),
@@ -284,7 +284,7 @@ describe('en 16931 model: settlement terms', () => {
     expect(s.applicableTradeTax[2].exemptionReasonCode!.value).toBe('VATEX-EU-132')
     // BG-22: only the two VAT amounts carry a currency (BT-5 and BT-6).
     const sum = s.specifiedTradeSettlementHeaderMonetarySummation
-    expect(sum.taxTotalAmount).toEqual([{ value: 20.123, currencyID: 'EUR' }, { value: 18.5, currencyID: 'USD' }])
+    expect(sum.taxTotalAmount).toEqual([{ value: 20.12, currencyID: 'EUR' }, { value: 18.5, currencyID: 'USD' }])
     expect(sum.lineTotalAmount!.currencyID).toBeUndefined()
     expect(sum.roundingAmount!.value).toBe(-0.01)
     // CG-18: the VAT currency exchange.
@@ -316,7 +316,7 @@ describe('en 16931 model: settlement terms', () => {
   it('reads BT-110 and BT-111 by their currency', () => {
     const cii = toCii(fullInvoice(), { level: 'extended-ctc-fr' })
     const read = fromCii(cii).invoice
-    expect(read.totals.invoiceTotalVatAmount).toBe(20.123)
+    expect(read.totals.invoiceTotalVatAmount).toBe(20.12)
     expect(read.totals.invoiceTotalVatAmountInAccountingCurrency).toBe(18.5)
     // A VAT amount in a currency that is neither BT-5 nor BT-6 is not read: it is dropped.
     const sum = cii.supplyChainTradeTransaction.applicableHeaderTradeSettlement.specifiedTradeSettlementHeaderMonetarySummation

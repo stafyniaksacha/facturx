@@ -11,8 +11,8 @@ writes CII XML: `toCii()` produces a CII model, and you serialize that as before
 
 ```ts
 import { EN16931, fromCii, invoiceToXml, toCii } from '@stafyniaksacha/facturx'
-// or, without the rest of the package:
-import { EN16931, fromCii, toCii } from '@stafyniaksacha/facturx/en16931'
+// or from the subpath, where the classes are exported flat (no `EN16931.` prefix):
+import { fromCii, Invoice, toCii } from '@stafyniaksacha/facturx/en16931'
 ```
 
 ## Build, write and read
@@ -83,6 +83,14 @@ specification identifier) and which terms may be present.
 - BT-24 (`specificationIdentifier`) is set to anything but the exact identifier of the level (another level's
   id, an Order-X id or a CIUS identifier would make the document claim a profile it was not checked against).
   Leave it unset, or set it to `''`, to get the identifier of the level;
+- a mandatory term of a header group is empty: BT-25 in a preceding invoice reference (BR-55), BT-122 in a supporting
+  document (BR-52), BT-22 in a note, BT-17 or BT-18 set but empty, a BG-14 invoicing period with neither BT-73
+  nor BT-74 (BR-CO-19);
+- the buyer (BT-46, BT-46-0) or the payee (BT-60, BT-60-0) holds more identifiers than the level carries:
+  one private identifier below `extended-ctc-fr`, one global identifier (with a scheme) at `basic` and `en16931`;
+- an *Amount* has more than two decimals (spec §7.1.5, BR-DEC): the XML writer would round it to cents, so
+  `toCii()` refuses it and you round it first. Unit prices, quantities, percentages and rates are not *Amounts*
+  and keep their decimals;
 - a date is not a valid ISO date, or a sub-term is set without its parent (BT-11-0 without BT-11).
 
 This is the same rule for every writer of the model: a value the caller put in the invoice and the target
@@ -98,9 +106,12 @@ const { invoice, dropped } = fromCii(await xmlToInvoice(xml))
 ```
 
 `dropped` lists the XPath-like path of **every value in the document that the model has no place for**
-(`/rsm:CrossIndustryInvoice/…/ram:LineStatusCode[1]`), positions only, never the values. It is computed by
-mapping the invoice back to CII and comparing with the document, so it cannot miss a value the CII parser
-reads. It is empty for the official examples of Factur-X 1.09 and of XP Z12-012 annex B; it holds only
+(`/rsm:CrossIndustryInvoice/…/ram:AssociatedDocumentLineDocument/ram:LineStatusCode`), positions only, never the
+values; an index (`[2]`) appears only on repeatable elements. It is computed by mapping the invoice back to CII
+and comparing with the document. Repeated elements (several additional documents, tax registrations,
+allowances and charges, VAT totals) are paired by value first, at any position, because the writer
+orders some of them differently from the source; the elements left over are then compared by position.
+A path carries the element's position in the source document. It is empty for the official examples of Factur-X 1.09 and of XP Z12-012 annex B; it holds only
 `BT-X-*` content (and the excluded rows above) on Factur-X EXTENDED documents.
 
 `fromCii()` throws for MINIMUM and BASIC WL.
@@ -111,15 +122,17 @@ the CII model, so neither `fromCii()` nor `dropped` can see it.
 ## Where a few terms land in CII
 
 - **BT-7 and BT-8** (VAT point date and date code) are written on **every** `ApplicableTradeTax` of the VAT
-  breakdown, as the matrices and annex B do. A source document that has them on the first entry only reads the
+  breakdown. This is the library's choice: annex B writes them that way, and annex A's note on BT-8 makes a
+  repeated value identical. A source document that has them on the first entry only reads the
   same into the model and is written back with them on each entry. BT-8 is UNTDID 2005 in the model and
   UNTDID 2475 in CII (35 becomes 29), the same map is used for `EXT-FR-FE-180`, the line level BT-8.
 - **BT-24** is kept as read: `fromCii()` sets `specificationIdentifier` to the document's own, and `toCii()`
   accepts only the exact identifier of the level.
 - **BT-11-0** (project name) is the `Name` of the project and is written only with BT-11.
-- **Amounts** are written with two decimals by the XML writer (spec §7.1.5: only an *Amount* is limited to
-  two decimals). Unit prices (BT-146, BT-148, …), quantities and percentages are not
-  rounded, so a unit price of `489.057` is written as is. The model holds the `number` you gave it.
+- **Amounts** are limited to two decimals (spec §7.1.5: only an *Amount* is), so `toCii()` throws, naming the term,
+  on an *Amount* with more (floating point noise such as `0.1 + 0.2` is accepted and written as `0.30`). Unit
+  prices (BT-146, BT-147, BT-148, …), quantities, percentages and rates are not limited and are
+  not rounded, so a unit price of `489.057` is written as is. The model holds the `number` you gave it.
 - **Sub-lines** (annex B UC12) are flat: a line carries `parentLineIdentifier`, the hierarchy is the parent
   references, as in CII.
 

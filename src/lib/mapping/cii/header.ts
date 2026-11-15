@@ -281,3 +281,34 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
     }),
   })
 }
+
+/**
+ * Throws, naming the business term and rule, when a mandatory term of a header group the invoice holds
+ * is missing or empty: BT-25 in each BG-3 (BR-55), BT-122 in each BG-24 (BR-52), BT-17 and BT-18 when set
+ * (BR-52 also reads the empty `ram:IssuerAssignedID` of their type-code 50 / 130 documents), BT-73 or
+ * BT-74 in a BG-14 (BR-CO-19), BT-22 in each BG-1. Never quotes invoice content; `buildCii` stays
+ * tolerant, so `fromCii()` can still read such a document.
+ */
+export function assertHeaderComplete(invoice: Invoice): void {
+  const empty = (value: string | undefined): boolean => value === undefined || value === ''
+  for (const reference of invoice.precedingInvoiceReferences ?? []) {
+    if (empty(reference.reference))
+      throw new Error('toCii: BT-25 (preceding invoice reference) is mandatory and empty in each BG-3 (BR-55)')
+  }
+  for (const document of invoice.additionalDocuments ?? []) {
+    if (empty(document.reference))
+      throw new Error('toCii: BT-122 (supporting document reference) is mandatory and empty in each BG-24 (BR-52)')
+  }
+  if (invoice.tenderOrLotReference === '')
+    throw new Error('toCii: BT-17 (tender or lot reference) is set but empty (BR-52)')
+  for (const object of invoice.invoicedObjectIdentifiers ?? []) {
+    if (empty(object.value))
+      throw new Error('toCii: BT-18 (invoiced object identifier) is set but empty (BR-52)')
+  }
+  if (invoice.invoicingPeriod && empty(invoice.invoicingPeriod.startDate) && empty(invoice.invoicingPeriod.endDate))
+    throw new Error('toCii: BG-14 (invoicing period) needs BT-73 (start date) or BT-74 (end date) (BR-CO-19)')
+  for (const note of invoice.notes ?? []) {
+    if (empty(note.note))
+      throw new Error('toCii: BT-22 (invoice note) is mandatory and empty in each BG-1')
+  }
+}
