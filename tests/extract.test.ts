@@ -61,6 +61,15 @@ describe('extract() xrechnung.xml (CG-12)', () => {
     expect(result.flavor).toBe('facturx')
   })
 
+  // §7.7 p.69 and codelists--Filename.csv: an XRechnung is xrechnung.xml, never factur-x.xml.
+  it('refuses an XRechnung embedded as factur-x.xml when checking', async () => {
+    const xml = (await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.xml'), 'utf8'))
+      .replace('<ram:ID>urn:cen.eu:en16931:2017</ram:ID>', '<ram:ID>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</ram:ID>')
+    const pdf = await pdfWithAttachment('factur-x.xml', xml)
+    await expect(extract({ pdf, check: true })).rejects.toThrow('factur-x.xml holds an XRechnung')
+    await expect(extract({ pdf })).resolves.toMatchObject({ filename: 'factur-x.xml' })
+  })
+
   it('still ignores other XML file names', async () => {
     await expect(extract({ pdf: await renamedExample('invoice.xml') })).rejects.toThrow('No attachment found')
   })

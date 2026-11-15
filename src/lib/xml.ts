@@ -11,7 +11,7 @@ import {
   FACTURX_SCHEMA,
   ORDERX_SCHEMA,
   XRECHNUNG_CIUS_GUIDELINE_ID,
-  XRECHNUNG_GUIDELINE_ID_MARKER,
+  XRECHNUNG_GUIDELINE_ID_MARKERS,
 } from './constants'
 import { resolveXml } from './resolve'
 
@@ -54,7 +54,7 @@ export function levelFromGuidelineId(id: string | undefined): string {
 
   if (XRECHNUNG_CIUS_GUIDELINE_ID.test(value))
     return 'en16931'
-  if (value.includes(XRECHNUNG_GUIDELINE_ID_MARKER))
+  if (isXRechnungGuidelineId(value))
     throw new Error(`Unknown level: "${value}" (only the XRechnung CIUS, validated as EN 16931, is supported; an XRechnung extension is not)`)
 
   const doc_id = value.split(':')
@@ -94,7 +94,12 @@ export function declaresExtendedCtcFr(xml: XmlDocument): boolean {
  */
 export function declaresXRechnung(xml: XmlDocument): boolean {
   const id = xml.find(`//*[local-name()='ExchangedDocumentContext']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']/*[local-name()='ID']`)[0]
-  return id?.content.trim().includes(XRECHNUNG_GUIDELINE_ID_MARKER) ?? false
+  return id !== undefined && isXRechnungGuidelineId(id.content)
+}
+
+/** Whether a guideline ID (BT-24) is a KoSIT XRechnung one (CIUS or extension, either form). */
+export function isXRechnungGuidelineId(id: string): boolean {
+  return XRECHNUNG_GUIDELINE_ID_MARKERS.some(marker => id.includes(marker))
 }
 
 export function getFlavor(fileDoc: XmlDocument): string {

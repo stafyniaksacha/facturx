@@ -889,8 +889,10 @@ describe('generate', () => {
       ['level en16931', 'xrechnung_3.0', 'en16931'],
       ['level extended', 'xrechnung_3.0', 'extended'],
       ['an XRechnung extension', 'xrechnung_3.0#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0', undefined],
+      ['the urn:xoev-de form', 'urn:xoev-de:kosit:standard:xrechnung_2.3', 'en16931'],
     ])('refuses an XRechnung (%s)', async (_, suffix, level) => {
-      const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', `urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:${suffix}`)
+      const id = suffix.startsWith('urn:') ? suffix : `urn:xeinkauf.de:kosit:${suffix}`
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', `urn:cen.eu:en16931:2017#compliant#${id}`)
       await expect(generate({ pdf: await sourcePdf(), xml, level })).rejects.toThrow('Cannot generate a PDF for an XRechnung (reference profile XRECHNUNG)')
     })
 

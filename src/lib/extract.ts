@@ -9,7 +9,7 @@ import { check } from './check'
 import { FACTURX_FILENAME, ORDERX_FILENAME, XRECHNUNG_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { decodeName, EmbeddedFileDecodeError, embeddedFileStream, EmbeddedFileTooLargeError, InflateBudget, InflateBudgetExceededError, readEmbeddedFile, readEmbeddedFilesNames } from './pdf'
 import { resolvePdf, resolveXml } from './resolve'
-import { declaresExtendedCtcFr, getFlavor } from './xml'
+import { declaresExtendedCtcFr, declaresXRechnung, getFlavor } from './xml'
 
 /**
  * The flavor to validate an attachment with. `zugferd` comes from the legacy ZUGFeRD file names and
@@ -138,6 +138,11 @@ export async function extract(options: {
       // (BR-HYBRID-07/15). Read from the XML, so an explicit `level` cannot hide it.
       if (checkFlavor === 'facturx' && declaresExtendedCtcFr(xml))
         throw new Error('Invalid XML: the embedded invoice declares EXTENDED-CTC-FR, a plain CII profile that is not a Factur-X profile')
+      // An XRechnung is embedded as xrechnung.xml, and factur-x.xml's conformance level MUST NOT be
+      // XRECHNUNG (§7.7 p.69, codelists--Filename.csv). check() reads an XRechnung CIUS as en16931,
+      // so this is refused here, by its BT-24.
+      if (file.filename === FACTURX_FILENAME && declaresXRechnung(xml))
+        throw new Error('Invalid XML: factur-x.xml holds an XRechnung, which must be embedded as xrechnung.xml')
       const result = await check({
         xml,
         flavor: checkFlavor,

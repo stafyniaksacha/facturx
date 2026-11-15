@@ -101,7 +101,8 @@ interface PdfMetadata {
   not in the hybrid filename code list. A ZUGFeRD 2.x invoice is a Factur-X
   `CrossIndustryInvoice`: generate it as `facturx`.
 - Throws `Cannot generate a PDF for an XRechnung (reference profile XRECHNUNG): …`, before reading
-  the PDF, when the guideline ID (BT-24) is a KoSIT XRechnung one, whatever `level` says. XRECHNUNG
+  the PDF, when the guideline ID (BT-24) is a KoSIT XRechnung one (`urn:xeinkauf.de:kosit:` or
+  `urn:xoev-de:kosit:`), whatever `level` says. XRECHNUNG
   is embedded as `xrechnung.xml` with the `XRECHNUNG` conformance level (Factur-X §7.7), which
   `generate()` does not write, and it must not be embedded as `factur-x.xml`.
 - Throws `Unknown level "<level>" for the <flavor> flavor: expected one of …`, before reading the

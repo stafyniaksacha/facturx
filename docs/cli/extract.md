@@ -28,8 +28,10 @@ facturx extract <pdf> [options]
 
 - Locates the embedded attachment by filename (`factur-x.xml`, `xrechnung.xml`, `order-x.xml`, or a
   ZUGFeRD filename) and writes its XML out.
-- An `xrechnung.xml` with a real XRECHNUNG guideline ID fails the default check (its level is not
-  recognised yet): pass `--no-check` to extract it.
+- An `xrechnung.xml` whose guideline ID is the XRechnung CIUS passes the default check as EN 16931
+  (not against the KoSIT rules, see [`check()`](/api/check#xrechnung)). An XRechnung extension ID
+  fails it (`Unknown level`), and so does an XRechnung embedded as `factur-x.xml`: pass `--no-check`
+  to extract them anyway.
 - The flavor is determined from the attachment filename; pass `--flavor` to assert an expectation
   (mismatches throw).
 - With `--check` (default), the extracted XML is XSD-validated and the command fails on invalid XML.

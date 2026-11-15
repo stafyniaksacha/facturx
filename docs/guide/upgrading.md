@@ -302,8 +302,10 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   `urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0` threw `Unknown level:
   "kosit"` in `check()`, `extract({ check: true })` and the CLI `extract`; it now gives `level`
   `en16931` and runs the EN 16931 XSD (and Schematron, which reports the XRechnung BT-24 as
-  `FX-SCH-A-000556`). The KoSIT XRechnung rules are not run. An XRechnung extension ID still throws
-  `Unknown level`. `generate()` refuses any XRechnung with `Cannot generate a PDF for an XRechnung
+  `FX-SCH-A-000556`). The KoSIT XRechnung rules are not run. Without an explicit `level`, an
+  XRechnung extension ID still throws `Unknown level`; `frCtc: true` throws on any XRechnung (not
+  applicable in France), and `extract({ check: true })` throws on an XRechnung embedded as
+  `factur-x.xml`. `generate()` refuses any XRechnung with `Cannot generate a PDF for an XRechnung
   (reference profile XRECHNUNG): …`, whatever `level` says; 0.6.1 embedded it as `factur-x.xml` when
   given a `level`.
 

@@ -167,8 +167,12 @@ describe('check() on an XRechnung (CG-12)', () => {
     return xml
   }
 
-  it.each(['xrechnung_2.3', 'xrechnung_3.0'])('validates a CIUS %s as EN 16931', async (version) => {
-    const result = await check({ xml: await xrechnung(CIUS.replace('xrechnung_3.0', version)) })
+  // The two KoSIT forms: `urn:xoev-de:kosit:standard:` (XRechnung 2.x) and `urn:xeinkauf.de:kosit:` (3.x).
+  it.each([
+    'urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_2.3',
+    CIUS,
+  ])('validates the CIUS %s as EN 16931', async (id) => {
+    const result = await check({ xml: await xrechnung(id) })
     expect(result).toMatchObject({ valid: true, errors: [], flavor: 'facturx', level: 'en16931' })
   })
 
@@ -179,6 +183,11 @@ describe('check() on an XRechnung (CG-12)', () => {
     expect(result.errors).toEqual([])
     expect(result.valid).toBe(false)
     expect(result.schematronErrors?.map(e => e.assertId)).toEqual(['FX-SCH-A-000556'])
+  })
+
+  // codelists--HybridConformance.csv: XRECHNUNG is "Not applicable in France".
+  it('refuses the French CTC rules on an XRechnung', async () => {
+    await expect(check({ xml: await xrechnung(CIUS), frCtc: true })).rejects.toThrow('do not apply to an XRechnung')
   })
 
   it('refuses an XRechnung extension, which is not EN 16931', async () => {

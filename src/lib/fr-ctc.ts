@@ -2,7 +2,7 @@ import type { Buffer } from 'node:buffer'
 import type { SchematronConfig, SchematronError, SchematronResult } from './schematron'
 import { resolveXml } from './resolve'
 import { runSchematron } from './schematron'
-import { levelFromGuidelineId } from './xml'
+import { isXRechnungGuidelineId, levelFromGuidelineId } from './xml'
 
 /**
  * French CTC business rules (`BR-FR-Flux2`) for invoices in UN/CEFACT CII D22B, hence for Factur-X.
@@ -110,6 +110,11 @@ async function declaredLevel(xml: string | Buffer): Promise<string> {
     // the document's own prefixes and fails on an invoice that binds the CII namespace to another one.
     if (id === undefined)
       throw new Error('No ID found in the document')
+    // XRECHNUNG is "Not applicable in France" (codelists--HybridConformance.csv; BR-HYBRID-FR-01 for
+    // a French buyer and seller). levelFromGuidelineId() reads a CIUS as en16931, which would run the
+    // BR-FR rules on it as if it were a French invoice.
+    if (isXRechnungGuidelineId(id))
+      throw new Error('French CTC rules (BR-FR) do not apply to an XRechnung: the reference profile XRECHNUNG is not applicable in France')
     return levelFromGuidelineId(id)
   }
   finally {
