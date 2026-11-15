@@ -22,6 +22,14 @@ import type {
   SellerAgent,
   SellerTaxRepresentative,
 } from './parties'
+import type {
+  DocumentAllowance,
+  DocumentCharge,
+  DocumentTotals,
+  PaymentInstructions,
+  VatBreakdown,
+  VatCurrencyExchange,
+} from './settlement'
 
 /**
  * A textual note on the invoice, with the subject it is about.
@@ -205,6 +213,13 @@ export class Invoice {
     payer,
     billingParty,
     deliveryTerms,
+    paymentTerms,
+    paymentInstructions,
+    allowances,
+    charges,
+    totals,
+    vatBreakdown,
+    vatCurrencyExchange,
   }: {
     number: string
     issueDate: string
@@ -246,6 +261,13 @@ export class Invoice {
     payer?: Payer
     billingParty?: BillingParty
     deliveryTerms?: DeliveryTerms
+    paymentTerms?: string
+    paymentInstructions?: PaymentInstructions
+    allowances?: DocumentAllowance[]
+    charges?: DocumentCharge[]
+    totals: DocumentTotals
+    vatBreakdown?: VatBreakdown[]
+    vatCurrencyExchange?: VatCurrencyExchange
   }) {
     this.number = number
     this.issueDate = issueDate
@@ -287,6 +309,13 @@ export class Invoice {
     this.payer = payer
     this.billingParty = billingParty
     this.deliveryTerms = deliveryTerms
+    this.paymentTerms = paymentTerms
+    this.paymentInstructions = paymentInstructions
+    this.allowances = allowances ?? []
+    this.charges = charges ?? []
+    this.totals = totals
+    this.vatBreakdown = vatBreakdown ?? []
+    this.vatCurrencyExchange = vatCurrencyExchange
   }
 
   /**
@@ -507,4 +536,41 @@ export class Invoice {
    * @ext EXT-FR-FE-BG-14
    */
   deliveryTerms?: DeliveryTerms
+  /**
+   * Payment terms.
+   * @bt BT-20
+   */
+  paymentTerms?: string
+  /**
+   * Payment instructions.
+   * @bg BG-16
+   */
+  paymentInstructions?: PaymentInstructions
+  /**
+   * Document level allowances.
+   * @bg BG-20
+   */
+  allowances: DocumentAllowance[]
+  /**
+   * Document level charges.
+   * @bg BG-21
+   */
+  charges: DocumentCharge[]
+  /**
+   * Document totals. `fromCii()` stands in `NaN` for a missing mandatory amount; `toCii()` throws on it
+   * and on a missing group.
+   * @bg BG-22
+   */
+  totals: DocumentTotals
+  /**
+   * VAT breakdown, one entry per VAT category (and rate or exemption reason), at least one.
+   * @bg BG-23
+   */
+  vatBreakdown: VatBreakdown[]
+  /**
+   * VAT currency exchange: the rate BT-111 was converted at (CG-18). EXTENDED-CTC-FR.
+   * @bt BT-167 BT-167-1 BT-167-2
+   * @ext EXT-FR-FE-192
+   */
+  vatCurrencyExchange?: VatCurrencyExchange
 }

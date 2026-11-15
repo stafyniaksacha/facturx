@@ -66,7 +66,12 @@ const OWNED = /\/ram:(?:SellerTradeParty|BuyerTradeParty|SalesAgentTradeParty|Se
 const PARTIES = {
   seller: new EN16931.Seller({ name: 'S', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
   buyer: new EN16931.Buyer({ name: 'B', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
+  totals: new EN16931.DocumentTotals({ sumOfInvoiceLineNetAmount: 100, invoiceTotalAmountWithoutVat: 100, invoiceTotalAmountWithVat: 120, amountDueForPayment: 120 }),
+  vatBreakdown: [new EN16931.VatBreakdown({ categoryTaxableAmount: 100, categoryTaxAmount: 20, categoryCode: 'S', categoryRate: 20 })],
 }
+
+// The mandatory settlement groups: the party tests do not look at them (tests/en16931-settlement.test.ts does).
+const SETTLEMENT = { totals: PARTIES.totals, vatBreakdown: PARTIES.vatBreakdown }
 
 function address(prefix: string) {
   return new EN16931.PostalAddress({
@@ -142,6 +147,7 @@ describe('en 16931 model: parties and delivery round trip', () => {
       issueDate: '2025-07-01',
       typeCode: '380',
       currencyCode: 'EUR',
+      ...SETTLEMENT,
       seller: new EN16931.Seller({
         identifiers: [new EN16931.Identifier({ value: 'PRIV-1' }), new EN16931.Identifier({ value: 'GLOB-1', schemeId: '0088' }), new EN16931.Identifier({ value: 'GLOB-2', schemeId: '0060' })],
         name: 'Vendeur & Fils <SA> « é »',
@@ -198,6 +204,7 @@ describe('en 16931 model: parties and delivery round trip', () => {
       issueDate: '2025-07-01',
       typeCode: '380',
       currencyCode: 'EUR',
+      ...SETTLEMENT,
       seller: new EN16931.Seller({ identifiers: [new EN16931.Identifier({ value: 'P' }), new EN16931.Identifier({ value: 'G', schemeId: '0088' })], name: 'S', vatIdentifier: 'FR1', taxRegistrationIdentifier: 'T1', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
       buyer: new EN16931.Buyer({ name: 'B', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
       sellerAgent: new EN16931.SellerAgent({ name: 'SA', identifiers: [new EN16931.Identifier({ value: 'X', schemeId: '0088' })] }),
@@ -226,6 +233,7 @@ describe('en 16931 model: the dropped contract of the parties', () => {
     issueDate: '2025-07-01',
     typeCode: '380',
     currencyCode: 'EUR',
+    ...SETTLEMENT,
     seller: new EN16931.Seller({ name: 'S', vatIdentifier: 'FR1', address: new EN16931.PostalAddress({ countryCode: 'FR' }), contact: new EN16931.Contact({ point: 'P' }) }),
     buyer: new EN16931.Buyer({ name: 'B', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
     delivery: new EN16931.Delivery({ name: 'D', actualDeliveryDate: '2025-06-30' }),
@@ -322,6 +330,7 @@ describe('en 16931 model: levels and mandatory terms of the parties', () => {
     issueDate: '2025-07-01',
     typeCode: '380',
     currencyCode: 'EUR',
+    ...SETTLEMENT,
     seller: new EN16931.Seller({ name: 'Seller', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
     buyer: new EN16931.Buyer({ name: 'Buyer', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
   }

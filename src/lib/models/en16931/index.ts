@@ -6,3 +6,4 @@
 export * from './common'
 export * from './invoice'
 export * from './parties'
+export * from './settlement'

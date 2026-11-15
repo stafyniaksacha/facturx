@@ -11,6 +11,7 @@ import type { Invoice } from '../../models/en16931/invoice'
 import type { En16931Level } from '../../models/en16931/level'
 import type { TermGate } from './levels'
 import type { PartiesInit } from './parties'
+import type { SettlementInit } from './settlement'
 import { Identifier } from '../../models/en16931/common'
 import {
   AdditionalSupportingDocument,
@@ -33,6 +34,7 @@ import * as ram from '../../models/facturx/reusableTypes'
 import * as udt from '../../models/facturx/unqualifiedTypes'
 import { GUIDELINE_IDS, isSet } from './levels'
 import { partiesToCii } from './parties'
+import { settlementToCii } from './settlement'
 import {
   agreed,
   ciiCode,
@@ -42,7 +44,6 @@ import {
   ciiId,
   ciiText,
   isoFromCii,
-  unmapped,
 } from './values'
 
 /**
@@ -88,7 +89,7 @@ export const HEADER_GATES: readonly TermGate[] = [
   { id: 'EXT-FR-FE-199', term: 'contract date', from: 'extended', present: i => isSet(i.contractDate) },
 ]
 
-type HeaderInit = Omit<ConstructorParameters<typeof Invoice>[0], keyof PartiesInit>
+type HeaderInit = Omit<ConstructorParameters<typeof Invoice>[0], keyof PartiesInit | keyof SettlementInit>
 
 /** The header terms of a CII invoice. */
 export function headerFromCii(cii: CrossIndustryInvoiceType): HeaderInit {
@@ -183,14 +184,15 @@ function referencedDocument(fields: Partial<ram.ReferencedDocumentType>): ram.Re
 }
 
 /**
- * The CII skeleton with the header terms and the party groups in place. Aggregates CII requires
- * that no mapping fills yet (totals) are left unset for the other group mappings.
+ * The CII skeleton with the header terms, the party groups and the settlement groups in place.
+ * Aggregates CII requires that no mapping fills yet (the lines) are left unset for the other group mappings.
  */
 export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustryInvoiceType {
   // Validated here even though the VAT breakdown entries that carry them come from the settlement
   // mapping, so a bad value fails at the first toCii() call.
   valueAddedTaxPointToCii(invoice)
   const parties = partiesToCii(invoice)
+  const settlement = settlementToCii(invoice, valueAddedTaxPointToCii)
 
   const additionalReferencedDocument: ram.ReferencedDocumentType[] = [
     ...invoice.additionalDocuments.map(d => new ram.ReferencedDocumentType({
@@ -274,10 +276,7 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
               endDateTime: ciiDateTime(invoice.invoicingPeriod.endDate, 'BT-74'),
             })
           : undefined,
-        specifiedTradePaymentTerms: invoice.paymentDueDate === undefined
-          ? []
-          : [new ram.TradePaymentTermsType({ dueDateDateTime: ciiDateTime(invoice.paymentDueDate, 'BT-9') })],
-        specifiedTradeSettlementHeaderMonetarySummation: unmapped(),
+        ...settlement,
         invoiceReferencedDocument: invoice.precedingInvoiceReferences.map(p => new ram.ReferencedDocumentType({
           issuerAssignedID: ciiId(p.reference),
           typeCode: p.typeCode === undefined ? undefined : new qdt.DocumentCodeType({ value: p.typeCode }),
