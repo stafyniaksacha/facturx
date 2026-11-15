@@ -948,6 +948,9 @@ export class TradeSettlementHeaderMonetarySummationType {
 
 /**
  * A product attribute, given as a description and value, optionally with a measured value and type code.
+ *
+ * `description` (BT-160) and `value` (BT-161) are required up to EN 16931 but optional in EXTENDED
+ * (Factur-X 1.09), so they are typed optional and stay absent when the XML has no such element.
  * @profile EN 16931
  */
 export class ProductCharacteristicType {
@@ -958,9 +961,9 @@ export class ProductCharacteristicType {
     value,
   }: {
     typeCode?: udt.CodeType
-    description: udt.TextType
+    description?: udt.TextType
     valueMeasure?: udt.MeasureType
-    value: udt.TextType
+    value?: udt.TextType
   }) {
     this.typeCode = typeCode
     this.description = description
@@ -969,9 +972,9 @@ export class ProductCharacteristicType {
   }
 
   typeCode?: udt.CodeType
-  description: udt.TextType
+  description?: udt.TextType
   valueMeasure?: udt.MeasureType
-  value: udt.TextType
+  value?: udt.TextType
 }
 
 /**
@@ -1288,6 +1291,9 @@ export class LineTradeDeliveryType {
 
 /**
  * Line-level monetary totals: the net line amount plus any charge, allowance and tax totals.
+ *
+ * `lineTotalAmount` (BT-131) is required up to EN 16931; EXTENDED (Factur-X 1.09) makes it optional
+ * for sublines, so it is typed optional and stays absent when the XML has no such element.
  * @profile BASIC
  */
 export class TradeSettlementLineMonetarySummationType {
@@ -1300,7 +1306,7 @@ export class TradeSettlementLineMonetarySummationType {
     grandTotalAmount,
     totalAllowanceChargeAmount,
   }: {
-    lineTotalAmount: udt.AmountType
+    lineTotalAmount?: udt.AmountType
     chargeTotalAmount?: udt.AmountType
     allowanceTotalAmount?: udt.AmountType
     taxTotalAmount?: udt.AmountType
@@ -1317,7 +1323,7 @@ export class TradeSettlementLineMonetarySummationType {
     this.totalAllowanceChargeAmount = totalAllowanceChargeAmount
   }
 
-  lineTotalAmount: udt.AmountType
+  lineTotalAmount?: udt.AmountType
   chargeTotalAmount?: udt.AmountType
   allowanceTotalAmount?: udt.AmountType
   /**

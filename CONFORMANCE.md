@@ -50,14 +50,16 @@ open entry is "known", anything else is new.
 | `generate()` also looks for an existing invoice (or order, for Order-X) in page-level associated files (a page's `/AF`, §6.2.1 p.25: the file specification "can be found in either the Document dictionary or the Page dictionary"), in annotation `/AF` (PDF 2.0 / PDF/A-3, not vendored: an inference) and in the `/FS` of `/FileAttachment` annotations (ISO 32000-1 §12.5.6.15, not vendored; direct or indirect annotation dictionaries), on every page including under intermediate `/Pages` nodes, with the same content and name rules as the name tree and catalog `/AF` (§6 p.24). The page tree is untrusted: it is walked iteratively without pdf-lib's traversal; each page tree node, annotation, `/AF` and `/Annots` array, file specification and file name string is read once however often it is referenced (a 1000-entry `/AF` shared by an annotation listed 65536 times took ~27 s when re-read; 4000 specifications sharing a 50000-character `/F` took ~8 s; both now run in well under 3–5 s), and a name longer than 1024 bytes is decoded from its first 1024 bytes only (a 300000-character name overflowed pdf-lib's decoder; this also applies to `extract()`); a node reached twice through `/Kids` (a cycle, or a node listed twice, as pdf-lib's `addPage()` of an existing page writes) is rejected as `Malformed page tree`, since pdf-lib's recursive page count in `save()` overflows on a cycle and is exponential on shared nodes (single `/Parent`: ISO 32000-1, not vendored); more than 65536 distinct page tree nodes or annotations, more than 1048576 `/Kids`, `/Annots` and `/AF` entries, or a page tree deeper than 256 levels (pdf-lib overflowed at ~20000) reject the PDF (`could not check it for an existing invoice`; 65536 distinct annotations are accepted). Their files count toward the existing 256-stream limit. A non-invoice attachment there and a file attachment pointing to an external file are still accepted (narrows CG-14) | `pnpm build && pnpm vitest run tests/page-attachments.test.ts` |
 | Plain-CII `EXTENDED-CTC-FR` invoices (XP Z12-012 v1.4, guideline ID `…urn.cpro.gouv.fr:1p0:extended-ctc-fr`) are detected as level `extended-ctc-fr` (flavor `facturx`) on that exact Annex A ID only (a BT-24 merely ending in `:extended-ctc-fr` is `Unknown level`, since nothing downstream checks BT-24 for this profile) and validated by the sequence of the FNFE-MPE release notes p.9: the "uncoupled" UN/CEFACT CII D22B XSD, which "SHALL BE USED" for CII (step 1), the dedicated `EXTENDED-CTC-FR-CII` Schematron (step 2; vendored with the documented `sum()` patch, 91 calls, applied for uniformity: same verdicts as unpatched on amounts with at most 2 decimals; 327 `fatal` and 446 `warning` asserts; see CG-33 and CG-40 for rules that never run), and BR-FR (step 3). All 6 `*_EXTENDED-CTC-FR_CII_*.xml` examples of Annex B pass all three with no error and no warning; a broken BT-112 fails `BR-FREXT-CO-15` and `BR-CO-16`; an unknown element fails the XSD. `generate()` refuses a document declaring the profile before reading the PDF, even with an explicit `level` or `flavor` (it also refuses any flavor that contradicts the root element), and `extract({ check: true })` refuses a `factur-x.xml` declaring it: it is not a HybridConformance value (BR-HYBRID-07/15). `validateFrCtc` accepts `extended-ctc-fr` and, as before, `extended` for such a document. The dedicated Schematron does not constrain the BT-24 value, so `validateSchematron({ level: 'extended-ctc-fr' })` checks it first (throws unless exact) and reports a repeated BT-24 container or ID as `CII-SR-009` / `CII-SR-010` instead of letting the transform abort with an XPTY0004 that quotes document values; it reads the input once and copies a `Buffer`, so the precheck and the transform see the same bytes. Using it resolves the practical side of CG-24 (release notes p.9 say Factur-X EXTENDED can validate the profile; its Schematron rejects the guideline ID, `FX-SCH-A-000636`): with `level: 'extended'` that rejection is unchanged and pinned by a test. CG-24 is closed by its own condition; the upstream contradiction (p.9 calls Factur-X EXTENDED both "broader" than EXTENDED-CTC-FR and its "subset") is still unreported (was CG-24; narrows CG-18) | `pnpm spec:verify`; `pnpm build && pnpm vitest run tests/extended-ctc-fr.test.ts` |
 | French lifecycle status messages (CDV) in CDAR D22B are validated by `validateCdar()` / `facturx check-cdar` with the two steps of the FNFE-MPE release notes p.10: the "uncoupled" CDAR D22B XSD (`CrossDomainAcknowledgementAndResponse_100pD22B.xsd`), then the published `BR-FR-CDV-Schematron-CDAR` (an assert for every Annex A `BR-FR-CDV-01…16`, `BR-FR-CDV-CL-01…11` and `BR-FR-04` id, though some cannot fail, see CG-34; standard variant, verbatim, 40 `fatal` and 3 `warning` asserts; `_WARNING` variant not vendored). XSDs and XSLT are byte-identical to `spec/fnfe-ctc-fr-1.4.0.04/distribution/CDAR/`, the SEF is reproducible and embeds no local path. All 11 CDAR examples of XP Z12-012 v1.4 Annex B (`Cycle de Vie - CDAR/`) pass both steps with no finding; a wrong MDT-77 fails `BR-FR-CDV-09`; an unknown MDT-105 status code is only a warning (`BR-FR-CDV-CL-06`, upstream's flag), an error with `warningsAsErrors`; an unknown element fails the XSD; a non-CDAR root throws. `id` is the rule, from the SVRL `@id`. Building CDAR messages is not supported (validate-only). A pass means the published rules pass, not that every Annex A rule holds (CG-34) (was CG-20) | `pnpm spec:verify`; `pnpm build && pnpm vitest run tests/cdar.test.ts` |
-| The fields Factur-X 1.09 added to EXTENDED (§version history p.7–8; matrix `text/fields--Factur-X_CII_D22B_EXTENDED.csv` "Change 1.09" column), each 0..1 unless noted, are in the models, written by `invoiceToXml()` at their EXTENDED XSD position and read back by `xmlToInvoice()`: BT-173/BT-174 and BT-175/BT-176 (`ExemptionReason`/`ExemptionReasonCode` of a document allowance's / charge's `CategoryTradeTax`); BT-177/BT-177-1, BT-193/BT-193-1 and BT-X-616/BT-X-616-1 (the `ReasonCode` of a document / line / gross price charge with `@listID="5153"`, a UNTDID 5153 non-VAT tax code; without the attribute the same element is BT-105 / BT-145 / BT-X-313, and the EXTENDED Schematron checks it against the charge list, so a 5153-only code such as `AAJ` passes only with the attribute); BT-215 (`PayerSpecifiedDebtorFinancialInstitution/BICID`); BT-216 (`PayerPartyDebtorFinancialAccount/AccountName`); BT-X-591/BT-X-592 (`ExemptionReason`/`ExemptionReasonCode` of a logistics service charge's `AppliedTradeTax`); BG-34 BT-179/BT-180 (`SpecifiedFinancialAdjustment` `Reason`/`ActualAmount`, 1..1). BT-X-590 (the second line `TaxTotalAmount`, VAT accounting currency) is covered by the EXTENDED-CTC-FR fields row below. An invoice carrying all of them (with `&`, `<` and non-ASCII text) is EXTENDED XSD valid, each value is at its matrix XPath, it survives a second round trip with an identical model, and the EXTENDED Schematron raises nothing on its `ReasonCode`s. The audit fixed two data losses the corpus round trip could not see (both sides go through the parser): `xmlToInvoice()` dropped every `SpecifiedLogisticsServiceCharge` (BG-X-42) and every `ReasonCode/@listID` (the model had no `listID`; added, optional). Not covered here: the BG-X-93 manufacturer block (read in code, not round-trip tested) and the 1.09 cardinality changes (CG-35); version-history inconsistencies are CG-36; other subtrees the parser drops are CG-32 | `pnpm build && pnpm vitest run tests/extended-109.test.ts` |
-| The XP Z12-012 v1.4 French extension fields of the plain-CII `EXTENDED-CTC-FR` profile (Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv`, 240 `EXT-FR-FE-*` rows) survive `xmlToInvoice()` then `invoiceToXml()`, except the 4 rows under `TaxApplicableTradeCurrencyExchange` (EXT-FR-FE-192, -192-00, -192-1 and the misplaced -199-1), which the parser does not read yet (CG-32). All of them are Factur-X EXTENDED elements (the all-groups test document is also valid against the Factur-X EXTENDED XSD once its guideline ID is EXTENDED), mostly `BT-X-*` fields Annex A re-labels, already in the models. The one data loss, for plain Factur-X EXTENDED too, was the second line `TaxTotalAmount`: BT-X-329 (EXT-FR-FE-181) and the 1.09 field BT-X-590 (EXT-FR-FE-182, VAT accounting currency, `currencyID` = BT-6; Annex A calls it `BT-X-ZZZ`) share the element, `0..2` in Annex A and the matrix (EXTENDED XSD `maxOccurs="2"`). The parser kept only the first; the second now goes to the new optional `TradeSettlementLineMonetarySummationType.taxTotalAmountInAccountingCurrency`, written right after `taxTotalAmount`. Both are read by position, not by `@currencyID` (no rule fixes their order; the XML order is kept), so a model with only the new property set reads back with the amount in `taxTotalAmount`. Proof: one synthetic invoice per field group (17 groups; most free-text values carry `&`, `<`, `>` and non-ASCII, incl. characters outside Latin-1) is valid against the uncoupled CII D22B XSD, has its values at the Annex A XPaths, and comes back from a round trip with the same elements and attributes (path, value and count; decimals by value), re-serialized XSD valid. All groups together are stable over a second round trip, and every Annex A `EXT-FR-FE` XPath (the 4 above excepted) occurs in that document. The 6 Annex B `*_EXTENDED-CTC-FR_CII_*.xml` examples, re-serialized, lose no path and still pass the XSD, the EXTENDED-CTC-FR Schematron and BR-FR. Annex A shifts several XPaths by one row (CG-39); the tests follow the Factur-X matrix there. A third line `TaxTotalAmount` (allowed by the uncoupled XSD, not by Annex A or Factur-X EXTENDED) is dropped (was CG-18) | `pnpm build && pnpm vitest run tests/extended-ctc-fr-fields.test.ts` |
+| The fields Factur-X 1.09 added to EXTENDED (§version history p.7–8; matrix `text/fields--Factur-X_CII_D22B_EXTENDED.csv` "Change 1.09" column), each 0..1 unless noted, are in the models, written by `invoiceToXml()` at their EXTENDED XSD position and read back by `xmlToInvoice()`: BT-173/BT-174 and BT-175/BT-176 (`ExemptionReason`/`ExemptionReasonCode` of a document allowance's / charge's `CategoryTradeTax`); BT-177/BT-177-1, BT-193/BT-193-1 and BT-X-616/BT-X-616-1 (the `ReasonCode` of a document / line / gross price charge with `@listID="5153"`, a UNTDID 5153 non-VAT tax code; without the attribute the same element is BT-105 / BT-145 / BT-X-313, and the EXTENDED Schematron checks it against the charge list, so a 5153-only code such as `AAJ` passes only with the attribute); BT-215 (`PayerSpecifiedDebtorFinancialInstitution/BICID`); BT-216 (`PayerPartyDebtorFinancialAccount/AccountName`); BT-X-591/BT-X-592 (`ExemptionReason`/`ExemptionReasonCode` of a logistics service charge's `AppliedTradeTax`); BG-34 BT-179/BT-180 (`SpecifiedFinancialAdjustment` `Reason`/`ActualAmount`, 1..1). BT-X-590 (the second line `TaxTotalAmount`, VAT accounting currency) is covered by the EXTENDED-CTC-FR fields row below. An invoice carrying all of them (with `&`, `<` and non-ASCII text) is EXTENDED XSD valid, each value is at its matrix XPath, it survives a second round trip with an identical model, and the EXTENDED Schematron raises nothing on its `ReasonCode`s. The audit fixed two data losses the corpus round trip could not see (both sides go through the parser): `xmlToInvoice()` dropped every `SpecifiedLogisticsServiceCharge` (BG-X-42) and every `ReasonCode/@listID` (the model had no `listID`; added, optional). Not covered here: the BG-X-93 manufacturer block beyond its name (read in code, not round-trip tested); the 1.09 cardinality changes of BT-131/BT-160/BT-161 are in the parser round-trip row below; version-history inconsistencies are CG-36 | `pnpm build && pnpm vitest run tests/extended-109.test.ts` |
+| The XP Z12-012 v1.4 French extension fields of the plain-CII `EXTENDED-CTC-FR` profile (Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv`, 240 `EXT-FR-FE-*` rows) survive `xmlToInvoice()` then `invoiceToXml()`, including the 4 rows under `TaxApplicableTradeCurrencyExchange` (EXT-FR-FE-192, -192-00, -192-1 and the misplaced -199-1), read since the parser round-trip fix (was CG-32). All of them are Factur-X EXTENDED elements (the all-groups test document is also valid against the Factur-X EXTENDED XSD once its guideline ID is EXTENDED), mostly `BT-X-*` fields Annex A re-labels, already in the models. The one data loss, for plain Factur-X EXTENDED too, was the second line `TaxTotalAmount`: BT-X-329 (EXT-FR-FE-181) and the 1.09 field BT-X-590 (EXT-FR-FE-182, VAT accounting currency, `currencyID` = BT-6; Annex A calls it `BT-X-ZZZ`) share the element, `0..2` in Annex A and the matrix (EXTENDED XSD `maxOccurs="2"`). The parser kept only the first; the second now goes to the new optional `TradeSettlementLineMonetarySummationType.taxTotalAmountInAccountingCurrency`, written right after `taxTotalAmount`. Both are read by position, not by `@currencyID` (no rule fixes their order; the XML order is kept), so a model with only the new property set reads back with the amount in `taxTotalAmount`. Proof: one synthetic invoice per field group (17 groups; most free-text values carry `&`, `<`, `>` and non-ASCII, incl. characters outside Latin-1) is valid against the uncoupled CII D22B XSD, has its values at the Annex A XPaths, and comes back from a round trip with the same elements and attributes (path, value and count; decimals by value), re-serialized XSD valid. All groups together are stable over a second round trip, and every Annex A `EXT-FR-FE` XPath (the 4 above excepted) occurs in that document. The 6 Annex B `*_EXTENDED-CTC-FR_CII_*.xml` examples, re-serialized, lose no path and still pass the XSD, the EXTENDED-CTC-FR Schematron and BR-FR. Annex A shifts several XPaths by one row (CG-39); the tests follow the Factur-X matrix there. A third line `TaxTotalAmount` (allowed by the uncoupled XSD, not by Annex A or Factur-X EXTENDED) is dropped (was CG-18) | `pnpm build && pnpm vitest run tests/extended-ctc-fr-fields.test.ts` |
+| `xmlToInvoice()` reads back every element and attribute `invoiceToXml()` writes (AGENTS.md lockstep convention; was CG-32): no element or attribute name the converter writes is missing from the parser's queries, and the tests below cover the dropped ones. It used to drop `SpecifiedAdvancePayment` (BG-X-45, with `IncludedTradeTax` BG-X-46, `PaidAmount/@currencyID` and the BG-X-85 preceding invoice reference), `TaxApplicableTradeCurrencyExchange` (BG-X-41, BT-X-258…261), `IndividualTradeProductInstance` (BG-X-84, BT-X-306 `BatchID`, BT-X-307), `IncludedReferencedProduct` (BG-X-1, BT-X-308, BT-X-309, BT-X-15/15-1, BT-X-16…20-1) and `RelatedSupplyChainConsignment` (BG-X-24, BT-X-152), and the `@schemeID` of the IDs it rebuilt from their text (context parameters BT-23 and BT-24, BT-1, BT-126, the procuring project, card, debtor IBAN and accounting account IDs). Optional code elements are read by presence, so a present-but-empty one (an empty BT-23, party `RoleCode`, allowance `ReasonCode`, …) stays present; it used to be dropped. Proof: an EXTENDED XSD-valid model with each subtree and attribute set (`&`, `<`, non-ASCII text, unit and rate decimals) goes `invoiceToXml` → `xmlToInvoice` → `invoiceToXml`; the element and attribute paths of both documents are compared both ways (nothing dropped, nothing fabricated), the two documents are identical, and the test asserts each expected path is present so an unset subtree cannot pass; it fails on the previous parser. The 56 official and 24 Annex B examples are also compared by path, original against re-serialized, which the model comparison (parser on both sides) cannot see; a third test round-trips an empty BT-23, `RoleCode` and `ReasonCode` (EXTENDED XSD valid) unchanged. Number formatting is CG-28 | `pnpm build && pnpm vitest run tests/parser-roundtrip.test.ts tests/spec-examples.test.ts tests/annex-b-examples.test.ts` |
+| The 1.09 EXTENDED cardinality changes are kept (matrix "Change 1.09"; EXTENDED XSD `minOccurs="0"`; was CG-35): a missing BT-131 `LineTotalAmount` and a missing BT-160 `Description` / BT-161 `Value` of an item attribute stay absent in the model and are not written back; they used to come back as `0.00` and as empty elements. A present but empty `Description`/`Value` stays present. The model properties are optional (TypeScript type change for readers, in `docs/guide/upgrading.md`). Proof: a subline with an empty line summation and attributes with only a name, only a value, neither, or empty ones is EXTENDED XSD valid, parses to `undefined` for each missing field, and is written back identical | `pnpm build && pnpm vitest run tests/parser-roundtrip.test.ts -t "stay absent"` |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no test or CI run; manual veraPDF
 runs are recorded in the XMP UTF-8 and Info/XMP consistency rows above and in CG-05), any Order-X
 asset (no Order-X spec vendored), field-by-field coverage of the EXTENDED profile beyond the 1.09
-additions audited above, including the 1.09 manufacturer block BG-X-93 (see CG-32 for subtrees the
-parser drops and CG-35 for the 1.09 cardinality changes).
+additions audited above, including the 1.09 manufacturer block BG-X-93. The parser round trip below
+covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG-18 for EXT-FR-FE).
 
 ## Open gaps
 
@@ -77,16 +79,16 @@ parser drops and CG-35 for the 1.09 cardinality changes).
 | CG-22 | French CTC, coverage | release notes p.8-10; Annex A `annex-a--BR-France_CTC.csv`, `annex-a--BR-France-CTC-CPRO.csv` | interop | Annex A BR-FR rules the published Schematron does not implement (incl. `BR-FR-CPRO-*`); release notes contradict each other and the XSLT on coverage |
 | CG-23 | French CTC, upstream | `BR-FR-Flux2-Schematron-CII.xslt` | — | SVRL `test` of 4 BR-FR asserts loses its regex quantifier (`^\d{9}$` reported as `^\d9$`) |
 | CG-27 | spec, ZUGFeRD | §6.3.2 p.29 vs BR-HYBRID-08/13, `codelists--Filename.csv` | — | Spec says ZUGFeRD 2.0 legacy XMP settings are still supported, but its filename `zugferd-invoice.xml` is not an allowed hybrid filename |
-| CG-28 | converter | XSD `xs:decimal`; §7.1.5 p.35 | Fatal (XSD) | Quantities, percentages and rates below 1e-6 are written in exponent notation |
+| CG-28 | converter | XSD `xs:decimal`; §7.1.5 p.35 | Fatal (XSD) | Quantities, percentages and rates below 1e-6 or from 1e21 up are written in exponent notation |
 | CG-29 | extraction, security | — | interop | `extract()` decodes every embedded file, with no budget, before matching the file name |
 | CG-30 | XMP | BR-HYBRID-07 | Fatal | A `level` option outside the lower-case keys (`BASIC WL`, `BASICWL`, `MINIMUM`) writes an empty `fx:ConformanceLevel` |
 | CG-31 | embedding, security | AGENTS.md Security | interop | Default `generate()` re-serializes but keeps a DOCTYPE (incl. `SYSTEM`/`PUBLIC` ids) and an XML 1.1 declaration in the embedded invoice |
 | CG-33 | spec, French CTC, upstream | `EXTENDED-CTC-FR-CII.sch` BR-DEC-19/20 | Fatal (rules not run) | The EXTENDED-CTC-FR Schematron never fires BR-DEC-19/20 on VAT breakdowns of categories that have their own rules (first-match shadowing) |
 | CG-40 | spec, French CTC, upstream | `EXTENDED-CTC-FR-CII.sch` BR-EXT-CL-07 | Fatal (rule not run) | The EXTENDED-CTC-FR Schematron never checks a `ReferenceTypeCode` against UNTDID 1153 (always-true guard) |
 | CG-34 | French CTC, lifecycle, upstream | Annex A `annex-a--BR-FR-CDV_pour_factures.csv`, `annex-a--Tableau_des_motifs_de_STATUTS.csv` vs `BR-FR-CDV-Schematron-CDAR` | interop | The published BR-FR-CDV Schematron cannot fail on several Annex A rules, and some of its code lists differ from Annex A |
-| CG-32 | parser | AGENTS.md lockstep convention | data-loss | `xmlToInvoice()` drops subtrees `invoiceToXml()` writes (advance payments, tax currency exchange, product instances, referenced products, consignment, …) |
-| CG-35 | parser, converter | matrix "Change 1.09": BT-131, BT-160, BT-161 `0..1` | data-loss | A missing BT-131 comes back as `0.00`, a missing BT-160/BT-161 as an empty element |
 | CG-36 | spec | §version history p.7–8 vs the EXTENDED field matrix | — | The 1.09 version history contradicts the field matrix on several new fields (unresolved) |
+| CG-37 | parser, models | EXTENDED XSD `NoteType/Content` `minOccurs="0"` | data-loss | A note without `Content` (BT-22 / BT-127) comes back with an empty `Content` element |
+| CG-38 | spec | EXTENDED field matrix, its two XPath columns | — | The two XPath columns of the field matrix disagree on 9 rows (BT-X-261/261-0, BT-X-550…554, BT-X-562, BT-X-565) |
 | CG-39 | spec, French CTC | Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv` vs `fields--Factur-X_CII_D22B_EXTENDED.csv` | — | Annex A gives several `EXT-FR-FE` rows the XPath of a neighbouring row (unresolved) |
 
 ### CG-05 — `generate()` does not produce PDF/A-3
@@ -375,15 +377,18 @@ parser drops and CG-35 for the 1.09 cardinality changes).
 - **Evidence:** `grep -n "6.3.2\|zugferd-invoice" spec/factur-x-1.09/text/spec-main.txt`;
   `cat spec/factur-x-1.09/text/codelists--Filename.csv`.
 
-### CG-28 — Exponent notation for small quantities, percentages and rates
+### CG-28 — Exponent notation for very small or very large quantities, percentages and rates
 
 - **Code:** `convertQuantity`, `convertMeasure`, the currency `ConversionRate` and the percentage
   writers in `src/lib/converters/facturx.ts` use `String(value)`, which writes values below 1e-6 as
-  `1e-7`. `xs:decimal` has no exponent, so the output fails the XSD. Unit prices use
+  `1e-7` and values from 1e21 up as `1.2345678901234569e+23`. `xs:decimal` has no exponent, so the output fails the XSD. Unit prices use
   `formatDecimal` since CG-01 and are not affected.
 - **Evidence:** read `examples/Facture_FR_EN16931.xml` with `xmlToInvoice`, set line 1
   `billedQuantity.value = 1e-7`, `invoiceToXml` → `<ram:BilledQuantity unitCode="C62">1e-7`;
   `check({ level: 'en16931' })` → `'1e-7' is not a valid value of the atomic type 'xs:decimal'`.
+- Since `xmlToInvoice()` reads `TaxApplicableTradeCurrencyExchange`, an XSD-valid input with
+  `<ram:ConversionRate>0.0000001</ram:ConversionRate>` is written back as `1e-7` and fails the XSD
+  (before, the parser dropped the whole subtree).
 - **Fix direction:** write every decimal through `formatDecimal`.
 
 ## Changing this file
@@ -522,45 +527,6 @@ reported to FNFE-MPE.
     - BR-FR-CDV-02: the POUR_PPF message with MDT-3 `CDV:invoice` passes.
 - **Close when:** FNFE-MPE publishes a Schematron that enforces these rules, or Annex A is aligned.
 
-### CG-32 — The parser drops subtrees the converter writes
-
-- **Rule:** AGENTS.md: converter ⇄ parser ⇄ model stay in lockstep ("the parser must read back
-  everything the converter writes"). The fields themselves are EXTENDED fields of the field matrix.
-- **Code:** `src/lib/parsers/facturx.ts` never queries these elements that
-  `src/lib/converters/facturx.ts` writes: `SpecifiedAdvancePayment` (incl. `PaidAmount`,
-  `FormattedReceivedDateTime`, `InvoiceSpecifiedReferencedDocument`), `TaxApplicableTradeCurrencyExchange`
-  (`SourceCurrencyCode`, `TargetCurrencyCode`, `ConversionRate`, `ConversionRateDateTime`, which is
-  EXTENDED-CTC-FR EXT-FR-FE-192; the last open part of the former CG-18),
-  `IndividualTradeProductInstance` (`SupplierAssignedSerialID`), `IncludedReferencedProduct`
-  (`ID`, `GlobalID`/`@schemeID`, `SellerAssignedID`, `BuyerAssignedID`, `IndustryAssignedID`, `Name`,
-  `Description`, `UnitQuantity`/`@unitCode`), `RelatedSupplyChainConsignment`
-  (`SpecifiedLogisticsTransportMovement`, `ModeCode`), `IndividualTradeProductInstance/BatchID`,
-  `SpecifiedAdvancePayment/IncludedTradeTax` (the parser reads `IncludedTradeTax` only under a gross
-  price) and `PaidAmount/@currencyID`. `xmlToInvoice()` returns models without them, so an EXTENDED
-  invoice loses them on a round trip. None of them occurs in the official or Annex B corpus.
-- **Why the corpus test misses it:** `tests/spec-examples.test.ts` compares `xmlToInvoice(original)`
-  with `xmlToInvoice(invoiceToXml(…))`: both sides go through the parser, so a field it drops is
-  dropped on both sides.
-- **Evidence:** spec review probe (2026-11-15): a model with each subtree set, run through
-  `invoiceToXml` → `xmlToInvoice` → `invoiceToXml` and diffed by element and attribute path, loses
-  the elements above. A name-only check (`comm -23` of the element names the converter writes and the
-  parser queries) finds the five subtrees but misses names read in another context.
-- **Fix direction:** parse each subtree in lockstep with a round-trip test per field, and add a
-  corpus check that compares the re-serialized XML with the original by XPath, not only by model.
-
-### CG-35 — 1.09 EXTENDED cardinality changes not kept on a round trip
-
-- **Spec:** Factur-X 1.09 makes BT-131 (line net amount, for sublines), BT-160 and BT-161 (item
-  attribute name and value) `0..1` in EXTENDED (§version history p.8; matrix "Change 1.09"; EXTENDED
-  XSD `minOccurs="0"`).
-- **Code:** `src/lib/parsers/facturx.ts` fills a missing `LineTotalAmount` with `0` and a missing
-  characteristic `Description`/`Value` with an empty text; the model types them as required. An
-  XSD-valid input without them comes back with `<ram:LineTotalAmount>0.00</ram:LineTotalAmount>` or
-  an empty `<ram:Description/>`.
-- **Evidence:** spec review probe (2026-11-15) on the EXTENDED fixture with those elements removed.
-- **Fix direction:** keep absence as absence in the parser and converter. Making the model properties
-  optional changes their TypeScript type for readers, so it needs an `upgrading.md` entry.
-
 ### CG-36 — Version history vs field matrix for the 1.09 EXTENDED additions (unresolved)
 
 - §version history p.7 writes BT-177-1 / BT-193-1 as `@listID (= 1153)`; the matrix rows say
@@ -578,6 +544,49 @@ reported to FNFE-MPE.
   column says "Ref ID CTC-FR, Card 0..2", not "New".
 - **Evidence:** `grep -n "1153\|BG-X-94" spec/factur-x-1.09/text/spec-main.txt`; the matrix rows
   `grep -n ',BT-177-1,\|,BT-193,\|,BT-215,' spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_EXTENDED.csv`.
+
+### CG-37 — A note without `Content` gets an empty one on a round trip
+
+- **XSD:** in the EXTENDED XSD, `NoteType` has `Content` with `minOccurs="0"` (`ContentCode`,
+  `Content`, `SubjectCode` are all optional). The field matrix gives BT-22 and BT-127 `1..1` in its
+  "XML Cardinality" column and `0..1` in its "EXT PROFILES Cardinality" column.
+- **Code:** `src/lib/parsers/facturx.ts` `parseNote()` fills a missing `Content` with an empty text,
+  because `NoteType.content` is typed required; `invoiceToXml()` then writes
+  `<ram:Content></ram:Content>`.
+- **Evidence:** an `IncludedNote` with only a `SubjectCode` goes `invoiceToXml` → `xmlToInvoice` →
+  `invoiceToXml` and comes back as
+  `<ram:IncludedNote><ram:Content></ram:Content><ram:SubjectCode>AAI</ram:SubjectCode></ram:IncludedNote>`.
+  Pinned as the expected loss by `tests/parser-roundtrip.test.ts` ("a note without Content (CG-37)",
+  `CG37_ROUND_TRIP_LOSS`, to set to `false` when this is fixed):
+  `pnpm build && pnpm vitest run tests/parser-roundtrip.test.ts -t "CG-37"`. Found by a scan
+  of the EXTENDED XSD `minOccurs="0"` elements against the model properties typed required: the only
+  others are BT-131/BT-160/BT-161 (fixed with CG-35) and `LineTradeSettlementType.applicableTradeTax`,
+  an array, so an empty one writes nothing.
+- **Fix direction:** make `NoteType.content` optional like `lineTotalAmount`, with an `upgrading.md`
+  entry; it is read on every invoice, so it was left out of the CG-35 change.
+
+### CG-38 — The two XPath columns of the EXTENDED field matrix disagree (unresolved)
+
+`text/fields--Factur-X_CII_D22B_EXTENDED.csv` gives each field two XPaths: one with spaces between
+the steps, one without. On these rows they name different elements (spaces removed):
+
+- **BT-X-261, BT-X-261-0** (exchange rate date and its `@format`): `…/ram:ConversionRateDateTime/qdt:DateTimeString`
+  vs `…/udt:DateTimeString`. The EXTENDED XSD types `ConversionRateDateTime` `udt:DateTimeType`, so
+  only `udt:` is valid; the converter writes and the parser reads `udt:`.
+- **BT-X-550 … BT-X-554** (`RoleCode` of the ship-to, ultimate ship-to, ship-from, invoicer and
+  invoicee parties): the first column puts the party under `ram:ApplicableHeaderTradeAgreement`, the
+  second under `ram:ApplicableHeaderTradeDelivery` (ship parties) or `ram:ApplicableHeaderTradeSettlement`
+  (invoicer, invoicee). The XSD has these parties only where the second column puts them, which is
+  where the code writes them.
+- **BT-X-562** (delivery terms code): header `ApplicableHeaderTradeAgreement` vs line
+  `SpecifiedLineTradeAgreement` `ApplicableTradeDeliveryTerms`.
+- **BT-X-565**: `RelevantTradeLocation/ram:Name` vs `RelevantTradeLocation/ram:CountryID`.
+
+The code follows the XSD where it decides; for BT-X-562 and BT-X-565 both readings are valid XSD
+paths and the code supports both, so nothing here is picked.
+- **Evidence:** compare the two XPath columns, e.g.
+  `grep -n ',BT-X-261,\|,BT-X-261-0,\|,BT-X-55[0-4],\|,BT-X-562,\|,BT-X-565,' spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_EXTENDED.csv`;
+  `grep -n 'ConversionRateDateTime' src/lib/xsd/facturx/extended/*ReusableAggregate*.xsd`.
 
 ### CG-39 — Annex A shifts some EXT-FR-FE XPaths by one row (unresolved)
 

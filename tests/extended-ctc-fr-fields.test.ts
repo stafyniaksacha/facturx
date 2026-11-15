@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 // `invoiceToXml()`. Almost all of them are Factur-X EXTENDED fields (`BT-X-*`) re-labelled by Annex A.
 //
 // The comparison is between the original XML and the re-serialized XML, by element and attribute path
-// with multiplicity: comparing models only would hide fields the parser drops (CG-32).
+// with multiplicity: comparing models only would hide fields the parser drops (was CG-32).
 const SPEC = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4')
 const ANNEX_A = join(SPEC, 'text/annex-a--CII_D22B_FX_EXT-CTC-FR.csv')
 const ANNEX_B = join(SPEC, 'distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4')
@@ -216,7 +216,7 @@ type Slot
     | 'lineGrossAllowance' | 'lineItemSeller' | 'linePerPackage' | 'lineShipTo' | 'lineActualDelivery'
     | 'lineDespatch' | 'lineReceiving' | 'lineTax' | 'lineTaxTotals' | 'lineInvoiceRef'
     | 'salesAgent' | 'deliveryTerms' | 'buyerOrderDate' | 'contract' | 'buyerAgent'
-    | 'despatchDate' | 'invoicer' | 'invoicee' | 'payee' | 'payer' | 'allowanceChargeTax' | 'invoiceRefType'
+    | 'despatchDate' | 'invoicer' | 'invoicee' | 'payee' | 'payer' | 'currencyExchange' | 'allowanceChargeTax' | 'invoiceRefType'
 
 type Slots = Partial<Record<Slot, string>>
 
@@ -282,6 +282,7 @@ function invoice(s: Slots): string {
       ${s.invoicee ?? ''}
       ${s.payee ?? ''}
       ${s.payer ?? ''}
+      ${s.currencyExchange ?? ''}
       <ram:ApplicableTradeTax>
         ${T('ram:CalculatedAmount', '20.00', ' currencyID="EUR"')}
         ${T('ram:TypeCode', 'VAT')}
@@ -495,6 +496,16 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    name: 'VAT currency exchange and its date',
+    slots: {
+      currencyExchange: `<ram:TaxApplicableTradeCurrencyExchange>${T('ram:SourceCurrencyCode', 'EUR')}${T('ram:TargetCurrencyCode', 'CHF')}${T('ram:ConversionRate', '0.937512')}${DATE('ram:ConversionRateDateTime', '20250131', 'udt')}</ram:TaxApplicableTradeCurrencyExchange>`,
+    },
+    at: [
+      ['EXT-FR-FE-192', `${SETTLEMENT}/ram:TaxApplicableTradeCurrencyExchange/ram:ConversionRateDateTime/udt:DateTimeString`, ['20250131']],
+      ['EXT-FR-FE-192-1', `${SETTLEMENT}/ram:TaxApplicableTradeCurrencyExchange/ram:ConversionRateDateTime/udt:DateTimeString/@format`, ['102']],
+    ],
+  },
+  {
     name: 'document allowance and charge VAT exemption',
     slots: {
       allowanceChargeTax: ['false', 'true'].map(charge => `<ram:SpecifiedTradeAllowanceCharge><ram:ChargeIndicator><udt:Indicator>${charge}</udt:Indicator></ram:ChargeIndicator>${T('ram:ActualAmount', '0.00')}${T('ram:Reason', 'Ajustement')}<ram:CategoryTradeTax>${T('ram:TypeCode', 'VAT')}${T('ram:ExemptionReason', `Exonération ${charge} « É » & <x>`)}${T('ram:CategoryCode', 'E')}${T('ram:ExemptionReasonCode', 'VATEX-EU-132')}${T('ram:RateApplicablePercent', '0')}</ram:CategoryTradeTax></ram:SpecifiedTradeAllowanceCharge>`).join(''),
@@ -581,8 +592,7 @@ describe('eXTENDED-CTC-FR fields (EXT-FR-FE-*) round trip (CG-18)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Traceability: every EXT-FR-FE XPath of Annex A occurs in the all-groups document, except the tax
-// currency exchange date (CG-32, the parser does not read TaxApplicableTradeCurrencyExchange yet).
+// Traceability: every EXT-FR-FE XPath of Annex A occurs in the all-groups document.
 // ---------------------------------------------------------------------------
 
 /** Minimal RFC 4180 reader (quoted fields may hold commas, quotes and newlines). */
@@ -639,21 +649,16 @@ const ANNEX_A_ROWS = readCsv(readFileSync(ANNEX_A, 'utf8'))
   .filter(r => r.length > 41 && r[3].startsWith('EXT-FR-FE-'))
   .map(r => ({ id: r[3], xpath: r[41].replace(/\s+/g, '') }))
 
-// Paths the parser does not read yet (CG-32): the VAT currency exchange.
-const NOT_YET = /\/ram:TaxApplicableTradeCurrencyExchange\//
-
 describe('annex A EXT-FR-FE traceability', () => {
   it('reads the 240 EXT-FR-FE rows of Annex A', () => {
     expect(ANNEX_A_ROWS).toHaveLength(240)
   })
 
-  it('every Annex A EXT-FR-FE XPath is in the all-groups document (except CG-32 paths)', () => {
+  it('every Annex A EXT-FR-FE XPath is in the all-groups document', () => {
     const paths = pathsOf(invoice(ALL_SLOTS))
     // Exact element or attribute path (group rows are element paths too).
-    const missing = ANNEX_A_ROWS.filter(r => !NOT_YET.test(r.xpath) && !paths.has(r.xpath))
+    const missing = ANNEX_A_ROWS.filter(r => !paths.has(r.xpath))
     expect(missing).toEqual([])
-    expect(ANNEX_A_ROWS.filter(r => NOT_YET.test(r.xpath)).map(r => r.id))
-      .toEqual(['EXT-FR-FE-199-1', 'EXT-FR-FE-192-00', 'EXT-FR-FE-192', 'EXT-FR-FE-192-1'])
   })
 })
 

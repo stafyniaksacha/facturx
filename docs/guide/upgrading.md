@@ -9,7 +9,8 @@ adopt at your own pace.
    your pipeline. If they should, pass `warningsAsErrors: true` (CLI: `-W`).
 2. If you match Schematron rule ids (`BR-CO-27`, `BR-S-01`, `BR-54`, …), update them for the
    BASIC WL, EN 16931 and EXTENDED profiles, which now run the Factur-X **1.09.2.fixFR04** rules.
-3. If you read `TradeTaxType.categoryCode` in TypeScript, handle `undefined`.
+3. If you read `TradeTaxType.categoryCode`, a line's `lineTotalAmount` or a product characteristic's
+   `description` / `value` in TypeScript, handle `undefined`.
 4. If you target the French e-invoicing reform, turn on the new `BR-FR` rules with `frCtc: true`
    (CLI: `--fr-ctc`).
 :::
@@ -110,6 +111,35 @@ if (code === undefined) {
 }
 ```
 
+### Line net amount and item attribute name/value are optional (TypeScript)
+
+In EXTENDED, Factur-X 1.09 makes three fields optional that the lower profiles require: the invoice
+line net amount (BT-131, for sublines) and the item attribute name and value (BT-160, BT-161). The
+model now types them as optional:
+
+- `TradeSettlementLineMonetarySummationType.lineTotalAmount`
+- `ProductCharacteristicType.description`
+- `ProductCharacteristicType.value`
+
+`xmlToInvoice()` leaves them `undefined` when the XML doesn't have them. It used to fill a missing
+line net amount with `0` and a missing name or value with an empty text, so `invoiceToXml()` wrote
+back a `<ram:LineTotalAmount>0.00</ram:LineTotalAmount>` or an empty element the source did not
+have. An element that is present but empty is still read as an empty text and written back.
+
+Constructors accept the same arguments as before, so code that builds models is unchanged. Code that
+reads these properties must handle the missing case:
+
+```ts
+const net = line.specifiedLineTradeSettlement
+  .specifiedTradeSettlementLineMonetarySummation
+  ?.lineTotalAmount
+  ?.value // number | undefined: absent on an EXTENDED subline that has no net amount
+
+const name = characteristic.description?.value // string | undefined
+```
+
+Don't substitute `0`: a missing amount on an EXTENDED subline means "not stated", not "free".
+
 ### `generate()` rejects the `zugferd` flavor
 
 `generate({ flavor: 'zugferd' })`, and `generate()` on a ZUGFeRD 1.0 `CrossIndustryDocument` XML,
@@ -147,6 +177,17 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   They were written by `invoiceToXml()` but dropped on parsing, so `specifiedLogisticsServiceCharge`
   was always undefined in parsed models. It is now an array: the charges, or `[]` when there are none,
   like the other repeated fields.
+- **`xmlToInvoice()` reads every EXTENDED subtree `invoiceToXml()` writes.** These were written but
+  dropped on parsing, so they were always undefined in parsed models and lost when you parse and
+  write an invoice again: advance payments (`specifiedAdvancePayment`, with their included taxes and
+  preceding invoice reference), the tax currency exchange (`taxApplicableTradeCurrencyExchange`), item
+  instances (`individualTradeProductInstance`, batch and serial IDs), included items
+  (`includedReferencedProduct`) and the header consignment (`relatedSupplyChainConsignment`, transport
+  modes). Repeated ones are arrays, `[]` when there are none, like the other repeated fields. The
+  `schemeID` of the document ID, line IDs, document context parameter IDs, procuring project ID,
+  payment card ID, debtor IBAN and accounting account ID is also read back now; it used to be dropped. An optional code element that is present but empty (a party `RoleCode`, a
+  charge `ReasonCode`, a tax `TypeCode`, …) is now read as an empty value instead of `undefined`, so
+  it is written back.
 - **Non-VAT tax codes on charges** (EXTENDED): `AllowanceChargeReasonCodeType` has an optional
   `listID`. Set it to `'5153'` to write a UNTDID 5153 tax code instead of a charge reason, on a
   document charge, a line charge or a gross price charge; `xmlToInvoice()` reads it back. It used to
@@ -275,7 +316,8 @@ left undefined.
 - [ ] Search your code for `schematronValid`, `schematronErrors` and `validateSchematron`, and decide
       on `warningsAsErrors`.
 - [ ] Update any rule-id mapping for BASIC WL, EN 16931 and EXTENDED (table above).
-- [ ] Run `tsc`: fix reads of `TradeTaxType.categoryCode`.
+- [ ] Run `tsc`: fix reads of `TradeTaxType.categoryCode`, of a line's `lineTotalAmount` and of a
+      product characteristic's `description` / `value`.
 - [ ] Re-run your invoice corpus with `check({ schematron: true })`: new `@schemeID`-style failures
       come from the `report` findings that are no longer dropped.
 - [ ] If `generate()` used to throw `Document ID already set` and you worked around it, drop the

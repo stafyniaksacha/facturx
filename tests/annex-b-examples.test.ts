@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
 import { check, extract, invoiceToXml, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
+import { xmlPaths } from './fixtures/xml-paths'
 
 // Official example invoices of XP Z12-012 v1.4 annex B (see spec/README.md): the Factur-X ones
 // (EN16931 and EXTENDED profiles, as hybrid PDF and as commented CII XML). They are the second
@@ -64,5 +65,8 @@ describe('official XP Z12-012 v1.4 annex B Factur-X examples', () => {
     // they used to be rounded to cents (was CG-01).
     const after = await xmlToInvoice(serialized)
     expect(after).toEqual(model)
+    // The model comparison goes through the parser on both sides, so it cannot see an element the
+    // parser drops: compare the element and attribute paths of the original and the re-serialized XML.
+    expect(xmlPaths(serialized)).toEqual(xmlPaths(xml))
   })
 })
