@@ -8,9 +8,10 @@ export const main = defineCommand({
     version: pkg.version,
   },
   subCommands: {
-    extract: () => import('./commands/extract').then(r => r.default),
-    generate: () => import('./commands/generate').then(r => r.default),
-    check: () => import('./commands/check').then(r => r.default),
+    'extract': () => import('./commands/extract').then(r => r.default),
+    'generate': () => import('./commands/generate').then(r => r.default),
+    'check': () => import('./commands/check').then(r => r.default),
+    'check-cdar': () => import('./commands/check-cdar').then(r => r.default),
   },
 })
 

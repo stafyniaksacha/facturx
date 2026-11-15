@@ -1,3 +1,4 @@
+import { validateCdar } from './lib/cdar'
 import { check } from './lib/check'
 import { invoiceToXml } from './lib/converters/facturx'
 import { extract } from './lib/extract'
@@ -13,9 +14,11 @@ export {
   generate,
   invoiceToXml,
   Models,
+  validateCdar,
   validateFrCtc,
   validateSchematron,
   xmlToInvoice,
 }
 
+export type { CdarResult } from './lib/cdar'
 export type { SchematronConfig, SchematronError, SchematronResult } from './lib/schematron'

@@ -23,6 +23,9 @@
  * vendored BR-FR-Flux2 XSLT must be byte-identical to every copy in the FNFE-MPE
  * release, embed no local path in its SEF, and its SEF must be reproducible.
  *
+ * CDAR (src/lib/xsd/cdar/, see verifyCdar): the uncoupled CDAR XSDs and the BR-FR-CDV XSLT must be
+ * byte-identical to the release, and the SEF reproducible with no local path.
+ *
  * Usage: node scripts/verify-spec-assets.mjs [--sef]
  */
 import { spawnSync } from 'node:child_process'
@@ -163,6 +166,41 @@ function verifyFrCtc() {
     console.log(`skip  fr-ctc   ${name}.sef.json.gz  (run with --sef to recompile)`)
 }
 
+/**
+ * CDAR lifecycle messages (FNFE-MPE Schematrons FR CTC v1.4.0.04, release notes p.10): the uncoupled
+ * CDAR D22B XSDs and the standard BR-FR-CDV transform, all byte-identical to the release (the transform
+ * needs no sum() patch); the SEF is reproducible and embeds no local path; the _WARNING variant is not
+ * vendored.
+ */
+function verifyCdar() {
+  const cdarDir = join(repoRoot, 'src/lib/xsd/cdar')
+  const release = join(repoRoot, 'spec/fnfe-ctc-fr-1.4.0.04/distribution/CDAR')
+  const name = 'BR-FR-CDV-Schematron-CDAR'
+  console.log('----  cdar     CDAR D22B uncoupled + BR-FR-CDV (FNFE-MPE FR CTC 1.4.0.04)')
+  for (const file of readdirSync(cdarDir).sort()) {
+    if (file === 'SCHEMATRON.md' || file === `${name}.sef.json.gz`)
+      continue
+    if (/_WARNING/.test(file)) {
+      report(false, 'cdar', file, 'the _WARNING variant must not be vendored')
+      continue
+    }
+    const source = join(release, file.endsWith('.xsd') ? '1xsd-CDAR_D22B_uncoupled' : '2xslt', file)
+    if (!existsSync(source)) {
+      report(false, 'cdar', file, 'no counterpart in spec/ — untraceable')
+      continue
+    }
+    report(same(source, join(cdarDir, file)), 'cdar', file)
+  }
+
+  const sef = gunzipSync(readFileSync(join(cdarDir, `${name}.sef.json.gz`))).toString('utf8')
+  const leak = [homedir(), repoRoot].find(p => sef.includes(p))
+  report(!leak, 'cdar', `${name}.sef.json.gz`, leak ? 'embeds a local path, recompile from a neutral directory' : 'no local path embedded')
+  if (withSef)
+    verifySef('cdar', join(cdarDir, `${name}.xslt`), `${name}.sef.json.gz`, cdarDir)
+  else
+    console.log(`skip  cdar     ${name}.sef.json.gz  (run with --sef to recompile)`)
+}
+
 try {
   const known = new Set(SOURCES.map(s => s.folder))
   for (const entry of readdirSync(vendored)) {
@@ -212,6 +250,7 @@ try {
   }
 
   verifyFrCtc()
+  verifyCdar()
 
   console.log('note  orderx   XSDs not verifiable: the Order-X specification is not vendored under spec/')
 }
@@ -223,4 +262,4 @@ if (failures) {
   console.error(`\n${failures} vendored asset(s) do not match the spec.`)
   process.exit(1)
 }
-console.log('\nAll vendored Factur-X and French CTC assets match their spec sources.')
+console.log('\nAll vendored Factur-X, French CTC and CDAR assets match their spec sources.')

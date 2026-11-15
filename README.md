@@ -13,7 +13,7 @@ Conforms to **Factur-X 1.09 / ZUGFeRD 2.5** (the EN 16931 European e-invoicing s
 - 🔁 **Parse** an XML invoice into a fully-typed model — `xmlToInvoice`
 - 🧱 **Build** a Cross Industry Invoice model and serialize it to XML — `invoiceToXml`
 - ✅ **Validate** against the Factur-X **XSD** (1.09 for MINIMUM/BASIC, the FNFE-MPE 1.09.2.fixFR04 assets for BASIC WL/EN 16931/EXTENDED), and optionally the **Schematron** EN 16931 `BR-*` business rules and code lists — `check` (`schematron: true`) / `validateSchematron`
-- 🇫🇷 **French e-invoicing rules** `BR-FR-Flux2` (XP Z12-012 v1.4.0) for Factur-X BASIC WL, EN16931 and EXTENDED (and plain-CII EXTENDED-CTC-FR, with its own XSD and Schematron), opt-in — `check` (`frCtc: true`) / `validateFrCtc` / `facturx check --fr-ctc`
+- 🇫🇷 **French e-invoicing rules** `BR-FR-Flux2` (XP Z12-012 v1.4.0) for Factur-X BASIC WL, EN16931 and EXTENDED (and plain-CII EXTENDED-CTC-FR, with its own XSD and Schematron), opt-in — `check` (`frCtc: true`) / `validateFrCtc` / `facturx check --fr-ctc`; lifecycle status messages (CDAR) with `validateCdar` / `facturx check-cdar`
 - 🗂 All five Factur-X profiles: `minimum`, `basicwl`, `basic`, `en16931`, `extended`
 
 See [Profiles & flavors](https://stafyniaksacha.github.io/facturx/guide/profiles-and-flavors) for the supported flavors, levels and autodetection rules.
