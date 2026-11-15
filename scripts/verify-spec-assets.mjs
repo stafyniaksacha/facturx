@@ -177,6 +177,32 @@ function verifyCdar() {
   const release = join(repoRoot, 'spec/fnfe-ctc-fr-1.4.0.04/distribution/CDAR')
   const name = 'BR-FR-CDV-Schematron-CDAR'
   console.log('----  cdar     CDAR D22B uncoupled + BR-FR-CDV (FNFE-MPE FR CTC 1.4.0.04)')
+
+  // Required inventory first: comparing only the files present would let a deleted schema pass.
+  // Every XSD of the release, the transform and its SEF must be vendored, and every schemaLocation
+  // reachable from the root schema must resolve inside the folder.
+  const xsdSource = join(release, '1xsd-CDAR_D22B_uncoupled')
+  const required = [...readdirSync(xsdSource).filter(f => f.endsWith('.xsd')), `${name}.xslt`, `${name}.sef.json.gz`]
+  for (const file of required) {
+    if (!existsSync(join(cdarDir, file)))
+      report(false, 'cdar', file, 'required file missing from src/lib/xsd/cdar/')
+  }
+  const root = 'CrossDomainAcknowledgementAndResponse_100pD22B.xsd'
+  const pending = [root]
+  const reached = new Set()
+  while (pending.length) {
+    const xsd = pending.pop()
+    if (reached.has(xsd))
+      continue
+    reached.add(xsd)
+    if (!existsSync(join(cdarDir, xsd))) {
+      report(false, 'cdar', xsd, 'imported schema missing from src/lib/xsd/cdar/')
+      continue
+    }
+    for (const [, location] of readFileSync(join(cdarDir, xsd), 'utf8').matchAll(/schemaLocation="([^"]+)"/g))
+      pending.push(location)
+  }
+  report(reached.size > 1, 'cdar', root, `import closure: ${reached.size} schemas`)
   for (const file of readdirSync(cdarDir).sort()) {
     if (file === 'SCHEMATRON.md' || file === `${name}.sef.json.gz`)
       continue

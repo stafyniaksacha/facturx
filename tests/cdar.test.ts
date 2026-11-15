@@ -10,7 +10,8 @@ const CDAR_DIR = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/dist
 
 const examples = readdirSync(CDAR_DIR, { withFileTypes: true, recursive: true })
   .filter(entry => entry.isFile() && entry.name.endsWith('.xml'))
-  .map(entry => join(entry.parentPath, entry.name))
+  // Dirent.parentPath only exists from Node 20.12; engines allows 20.11, which has `path`.
+  .map(entry => join(entry.parentPath ?? (entry as { path?: string }).path ?? CDAR_DIR, entry.name))
   .sort()
   .map(file => ({ file, name: relative(CDAR_DIR, file) }))
 
