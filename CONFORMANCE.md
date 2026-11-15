@@ -555,7 +555,10 @@ reported to FNFE-MPE.
   `<ram:Content></ram:Content>`.
 - **Evidence:** an `IncludedNote` with only a `SubjectCode` goes `invoiceToXml` → `xmlToInvoice` →
   `invoiceToXml` and comes back as
-  `<ram:IncludedNote><ram:Content></ram:Content><ram:SubjectCode>AAI</ram:SubjectCode></ram:IncludedNote>`. Found by a scan
+  `<ram:IncludedNote><ram:Content></ram:Content><ram:SubjectCode>AAI</ram:SubjectCode></ram:IncludedNote>`.
+  Pinned as the expected loss by `tests/parser-roundtrip.test.ts` ("a note without Content (CG-37)",
+  `CG37_ROUND_TRIP_LOSS`, to set to `false` when this is fixed):
+  `pnpm build && pnpm vitest run tests/parser-roundtrip.test.ts -t "CG-37"`. Found by a scan
   of the EXTENDED XSD `minOccurs="0"` elements against the model properties typed required: the only
   others are BT-131/BT-160/BT-161 (fixed with CG-35) and `LineTradeSettlementType.applicableTradeTax`,
   an array, so an empty one writes nothing.

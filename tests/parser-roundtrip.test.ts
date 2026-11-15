@@ -14,6 +14,7 @@ import {
   IDType,
   LogisticsTransportMovementType,
   MeasureType,
+  NoteType,
   PartyRoleCodeType,
   PaymentMeansCodeType,
   ProcuringProjectType,
@@ -318,5 +319,31 @@ describe('present-but-empty optional elements stay present', () => {
     const rewritten = (await invoiceToXml(await xmlToInvoice(written))).toString()
     expect(xmlPaths(rewritten)).toEqual(xmlPaths(written))
     expect(rewritten).toBe(written)
+  })
+})
+
+// CG-37 (open): NoteType.content is typed required although the EXTENDED XSD makes Content optional,
+// so the parser fills a missing one with an empty text and the converter writes it back. This pins
+// today's loss; when CG-37 is fixed, CG37_ROUND_TRIP_LOSS becomes false and the paths must be equal.
+const CG37_ROUND_TRIP_LOSS = true
+const NOTE_CONTENT = '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:IncludedNote/ram:Content'
+
+describe('a note without Content (CG-37)', () => {
+  it('comes back with an empty Content (expected CG-37 loss)', async () => {
+    const model = getExtendedFacturXModel()
+    // `content` is required in the type, but the converter skips it when unset: the XSD allows that.
+    model.exchangedDocument.includedNote = [new NoteType({ subjectCode: new CodeType({ value: 'AAI' }) } as unknown as ConstructorParameters<typeof NoteType>[0])]
+    const written = (await invoiceToXml(model)).toString()
+    expect((await check({ xml: written, level: 'extended' })).errors).toEqual([])
+    expect(xmlPaths(written)).not.toContain(NOTE_CONTENT)
+
+    const rewritten = (await invoiceToXml(await xmlToInvoice(written))).toString()
+    if (CG37_ROUND_TRIP_LOSS) {
+      expect(rewritten).toContain('<ram:IncludedNote><ram:Content></ram:Content><ram:SubjectCode>AAI</ram:SubjectCode></ram:IncludedNote>')
+      expect(xmlPaths(rewritten).filter(p => !xmlPaths(written).includes(p))).toEqual([NOTE_CONTENT])
+    }
+    else {
+      expect(xmlPaths(rewritten)).toEqual(xmlPaths(written))
+    }
   })
 })
