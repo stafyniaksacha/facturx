@@ -80,8 +80,8 @@ const PDF_LIB_SLICE = 64 * 1024
  *
  * Throws EmbeddedFileTooLargeError when a stage would produce more than `maxBytes`,
  * InflateBudgetExceededError when the budget runs out, and EmbeddedFileDecodeError for invalid
- * compressed data (truncated deflate data included), an unknown filter, or a `/Predictor` (pdf-lib ignores predictors, so it would
- * have returned wrong bytes).
+ * compressed data (truncated deflate data included), an unknown filter, or a `/Predictor` other than 1 (pdf-lib
+ * ignores predictors, so it would have returned wrong bytes).
  */
 export function readEmbeddedFile(stream: PDFStream, maxBytes: number, budget: InflateBudget): Uint8Array {
   const { dict } = stream
@@ -137,9 +137,10 @@ function inflateCapped(data: Uint8Array, maxBytes: number, budget: InflateBudget
 
 function decodeCapped(stream: PDFRawStream, maxBytes: number, budget: InflateBudget): Uint8Array {
   const decoder = decodePDFRawStream(stream)
-  const chunks: Uint8Array[] = []
   let total = 0
   try {
+    // Read in slices only to enforce the cap and the budget while decoding: the decoder keeps all
+    // its output in one buffer, which decode() returns once the stream has ended.
     for (;;) {
       const chunk = decoder.getBytes(PDF_LIB_SLICE)
       if (chunk.byteLength === 0)
@@ -148,21 +149,14 @@ function decodeCapped(stream: PDFRawStream, maxBytes: number, budget: InflateBud
       budget.charge(chunk.byteLength)
       if (total > maxBytes)
         throw new EmbeddedFileTooLargeError()
-      chunks.push(new Uint8Array(chunk)) // a copy: getBytes() returns a view of a growing buffer
     }
+    return decoder.decode()
   }
   catch (error) {
     if (error instanceof EmbeddedFileTooLargeError || error instanceof InflateBudgetExceededError)
       throw error
     throw new EmbeddedFileDecodeError('invalid encoded data')
   }
-  const out = new Uint8Array(total)
-  let offset = 0
-  for (const chunk of chunks) {
-    out.set(chunk, offset)
-    offset += chunk.byteLength
-  }
-  return out
 }
 
 // Bounds on the page tree and annotation walk, which reads untrusted input. Every distinct page

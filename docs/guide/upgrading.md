@@ -275,7 +275,7 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   When no name tree key is a known invoice name, the file specification's `/F` and `/UF` are tried
   too, so an invoice stored under another key is now found. A matching file specification without
   an embedded stream throws `Malformed embedded file <name>: …`, data that does not decode throws
-  `Cannot decode the embedded file <name>: …`, and so does a `/Predictor` (0.6.1 ignored it and
+  `Cannot decode the embedded file <name>: …`, and so does a `/Predictor` other than 1 (0.6.1 ignored it and
   returned the still-predicted bytes). Other attachments without `/EF` are no longer an error.
 
 ## New features

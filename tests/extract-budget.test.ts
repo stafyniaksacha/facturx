@@ -199,12 +199,21 @@ describe('extract() limits and errors on the matching attachment (CG-29)', () =>
     expect(Buffer.from((await extract({ pdf: input })).bytes).toString('utf8')).toBe(XML)
   })
 
-  it('refuses a chain whose later stage goes over the cap', async () => {
+  it('refuses a chain whose last stage alone goes over the cap', async () => {
     const pdf = await pdfWith(doc => [{
       key: 'factur-x.xml',
       stream: rawStream(doc, `${bomb.toString('hex')}>`, ['ASCIIHexDecode', 'FlateDecode']),
     }])
     await expect(extract({ pdf })).rejects.toThrow('The embedded file factur-x.xml is too large')
+  })
+
+  // Each stage stays under the 128 MiB cap, but together they pass the shared budget: Flate gives
+  // 96 MiB of hex digits, which ASCIIHex decodes to 48 MiB. Without the shared budget this would
+  // decode, then fail in libxml2 instead.
+  it('refuses a chain whose stages pass 128 MiB only together', async () => {
+    const hex = deflateSync(Buffer.alloc(96 * MIB, '0'))
+    const pdf = await pdfWith(doc => [{ key: 'factur-x.xml', stream: rawStream(doc, hex, ['FlateDecode', 'ASCIIHexDecode']) }])
+    await expect(extract({ pdf })).rejects.toThrow('The embedded file factur-x.xml is too large: more than 128 MiB once decoded')
   })
 })
 
