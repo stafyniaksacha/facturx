@@ -88,13 +88,14 @@ function requiredAddress(address: ram.TradeAddressType | undefined): PostalAddre
 }
 
 // Only the first contact: BG-6 / BG-9 are `0..1`; the others are reported in `dropped`.
-function contactFromCii(contacts: ram.TradeContactType[] | undefined): Contact | undefined {
+// `department`: only the seller and buyer contacts have a department name (BT-41-0, BT-56-0); in the EXT-FR-FE contacts it is left to `dropped`.
+function contactFromCii(contacts: ram.TradeContactType[] | undefined, department: boolean): Contact | undefined {
   const contact = contacts?.[0]
   if (!contact)
     return undefined
   return new Contact({
     point: contact.personName?.value,
-    departmentName: contact.departmentName?.value,
+    departmentName: department ? contact.departmentName?.value : undefined,
     telephoneNumber: contact.telephoneUniversalCommunication?.completeNumber?.value,
     emailAddress: contact.emailURIUniversalCommunication?.uriID?.value,
   })
@@ -130,7 +131,7 @@ interface CommonFields {
   contact?: Contact
 }
 
-function commonFromCii(party: ram.TradePartyType | undefined, split: boolean): CommonFields {
+function commonFromCii(party: ram.TradePartyType | undefined, split: boolean, department: boolean): CommonFields {
   return {
     identifiers: identifiersFromCii(party, split),
     name: party?.name?.value ?? '',
@@ -138,14 +139,16 @@ function commonFromCii(party: ram.TradePartyType | undefined, split: boolean): C
     legalRegistrationIdentifier: identifierFromCii(party?.specifiedLegalOrganization?.id),
     electronicAddress: identifierFromCii(party?.uriUniversalCommunication?.uriID),
     vatIdentifier: registrationFromCii(party, VAT),
-    contact: contactFromCii(party?.definedTradeContact),
+    contact: contactFromCii(party?.definedTradeContact, department),
   }
 }
 
+// The payee has no trading name in the matrix (no `TradingBusinessName` under `PayeeTradeParty`): `dropped` carries it.
 function additionalPartyFromCii<T extends AdditionalParty>(Role: new (init: ConstructorParameters<typeof AdditionalParty>[0]) => T, party: ram.TradePartyType | undefined, split: boolean): T | undefined {
   if (!party)
     return undefined
-  return new Role({ ...commonFromCii(party, split), roleCode: party.roleCode?.value, address: addressFromCii(party.postalTradeAddress) })
+  const common = commonFromCii(party, split, false)
+  return new Role({ ...common, tradingName: split ? undefined : common.tradingName, roleCode: party.roleCode?.value, address: addressFromCii(party.postalTradeAddress) })
 }
 
 /** The party groups and delivery terms of a CII invoice. */
@@ -165,7 +168,7 @@ export function partiesFromCii(cii: CrossIndustryInvoiceType): PartiesInit {
 
   return {
     seller: (() => {
-      const { identifiers, name, tradingName, legalRegistrationIdentifier, electronicAddress, vatIdentifier, contact } = commonFromCii(seller, true)
+      const { identifiers, name, tradingName, legalRegistrationIdentifier, electronicAddress, vatIdentifier, contact } = commonFromCii(seller, true, true)
       return new Seller({
         identifiers,
         name,
@@ -179,7 +182,7 @@ export function partiesFromCii(cii: CrossIndustryInvoiceType): PartiesInit {
         contact,
       })
     })(),
-    buyer: new Buyer({ ...commonFromCii(buyer, true), address: requiredAddress(buyer?.postalTradeAddress) }),
+    buyer: new Buyer({ ...commonFromCii(buyer, true, true), address: requiredAddress(buyer?.postalTradeAddress) }),
     payee: additionalPartyFromCii(Payee, settlement?.payeeTradeParty, true),
     sellerTaxRepresentative: taxRepresentative
       ? new SellerTaxRepresentative({
@@ -395,5 +398,12 @@ export function assertPartiesComplete(invoice: Invoice): void {
   for (const [id, term, value] of checks) {
     if (value === undefined || value === '')
       throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
+  }
+  // Terms the matrix has for some roles only: writing them elsewhere would put an element no profile defines.
+  if (invoice.payee?.tradingName !== undefined)
+    throw new Error('toCii: the payee (BG-10) has no trading name: the Factur-X matrix defines no element for it')
+  for (const party of [invoice.payee, invoice.sellerAgent, invoice.buyerAgent, invoice.invoicee, invoice.payer, invoice.billingParty]) {
+    if (party?.contact?.departmentName !== undefined)
+      throw new Error('toCii: a contact department name is only a term of the seller (BT-41-0) and buyer (BT-56-0) contacts')
   }
 }

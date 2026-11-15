@@ -132,7 +132,8 @@ export class Contact {
   point?: string
   /**
    * Contact department name (CII `DepartmentName`): seller BT-41-0, buyer BT-56-0. A Factur-X
-   * sub-term without a UBL element; not in Factur-X BASIC.
+   * sub-term without a UBL element; not in Factur-X BASIC. The EXTENDED-CTC-FR contacts have none:
+   * `fromCii()` reports it in `dropped` there and `toCii()` throws when it is set.
    * @bt BT-41-0 BT-56-0
    */
   departmentName?: string

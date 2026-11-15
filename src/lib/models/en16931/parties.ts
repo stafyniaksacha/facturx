@@ -248,7 +248,8 @@ export class AdditionalParty {
   roleCode?: string
   /**
    * Trading name: buyer agent EXT-FR-FE-05; payer -45; seller agent -68; invoicee -91; billing party
-   * -114. The payee has none.
+   * -114. The payee has none (the matrix has no element for it): `fromCii()` reports it in `dropped`
+   * and `toCii()` throws when it is set.
    * @ext EXT-FR-FE-05 EXT-FR-FE-45 EXT-FR-FE-68 EXT-FR-FE-91 EXT-FR-FE-114
    */
   tradingName?: string
@@ -356,8 +357,9 @@ export class SellerTaxRepresentative {
 }
 
 /**
- * Delivery information. Only the first delivery of the document is held: CII has one header
- * delivery, and UBL's `0..n` `cac:Delivery` of EXTENDED-CTC-FR is per line.
+ * Delivery information. Held once: CII has one header delivery, and both the EN 16931 and the
+ * EXTENDED-CTC-FR UBL Schematrons carry UBL-SR-24 (deliver to information occurs at most once),
+ * although annex A lists the EXTENDED-CTC-FR UBL BG-13 as `0..n`.
  * @bg BG-13
  */
 export class Delivery {

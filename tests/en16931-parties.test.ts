@@ -69,16 +69,18 @@ function address(prefix: string) {
   })
 }
 
-function contact(prefix: string) {
-  return new EN16931.Contact({ point: `${prefix} Zoë <Ng>`, departmentName: 'Compta & Co', telephoneNumber: '+33 1 02 03 04 05', emailAddress: `${prefix}@example.invalid` })
+// Only the seller and buyer contacts have a department name (BT-41-0, BT-56-0).
+function contact(prefix: string, departmentName?: string) {
+  return new EN16931.Contact({ point: `${prefix} Zoë <Ng>`, departmentName, telephoneNumber: '+33 1 02 03 04 05', emailAddress: `${prefix}@example.invalid` })
 }
 
+// The payee has no trading name in the matrix.
 function extraParty<T extends AdditionalParty>(Role: new (init: ConstructorParameters<typeof EN16931.AdditionalParty>[0]) => T, prefix: string): T {
   return new Role({
     identifiers: [new EN16931.Identifier({ value: `${prefix}-1`, schemeId: '0088' }), new EN16931.Identifier({ value: `${prefix}-2`, schemeId: '0060' })],
     name: `${prefix} & Fils <SA>`,
     roleCode: 'BY',
-    tradingName: `${prefix} Trading`,
+    tradingName: Role === EN16931.Payee ? undefined : `${prefix} Trading`,
     legalRegistrationIdentifier: new EN16931.Identifier({ value: '123456789', schemeId: '0002' }),
     electronicAddress: new EN16931.Identifier({ value: `${prefix}@example.invalid`, schemeId: 'EM' }),
     vatIdentifier: 'FR12345678901',
@@ -137,7 +139,7 @@ describe('en 16931 model: parties and delivery round trip', () => {
         vatIdentifier: 'FR12345678901',
         taxRegistrationIdentifier: '12345678901234',
         address: address('1'),
-        contact: contact('seller'),
+        contact: contact('seller', 'Compta & Co'),
       }),
       buyer: new EN16931.Buyer({
         identifiers: [new EN16931.Identifier({ value: 'B-PRIV' }), new EN16931.Identifier({ value: 'B-GLOB', schemeId: '0088' })],
@@ -147,7 +149,7 @@ describe('en 16931 model: parties and delivery round trip', () => {
         electronicAddress: new EN16931.Identifier({ value: 'buyer@example.invalid', schemeId: 'EM' }),
         vatIdentifier: 'FR98765432109',
         address: address('2'),
-        contact: contact('buyer'),
+        contact: contact('buyer', 'Achats'),
       }),
       payee: extraParty(EN16931.Payee, 'payee'),
       sellerTaxRepresentative: new EN16931.SellerTaxRepresentative({ name: 'Représentant', address: address('3'), vatIdentifier: 'DE123456789' }),
@@ -264,6 +266,22 @@ describe('en 16931 model: the dropped contract of the parties', () => {
     ])
   })
 
+  it('reports a payee trading name and an EXTENDED-CTC-FR contact department name, which have no term', () => {
+    const cii = toCii(new EN16931.Invoice({ ...invoice, payee: new EN16931.Payee({ name: 'P' }), payer: new EN16931.Payer({ name: 'Q', contact: new EN16931.Contact({ point: 'X' }) }) }), { level: 'extended' })
+    const payee = cii.supplyChainTradeTransaction.applicableHeaderTradeSettlement.payeeTradeParty!
+    payee.specifiedLegalOrganization = { tradingBusinessName: { value: 'Payee trading' } }
+    cii.supplyChainTradeTransaction.applicableHeaderTradeSettlement.payerTradeParty!.definedTradeContact![0].departmentName = { value: 'Dept' }
+    const { invoice: read, dropped } = fromCii(cii)
+    expect(read.payee).toBeInstanceOf(EN16931.Payee)
+    expect(read.payee?.tradingName).toBeUndefined()
+    expect(read.payer?.contact?.departmentName).toBeUndefined()
+    const settlement = `${TRADE}/ram:ApplicableHeaderTradeSettlement`
+    expect(dropped).toEqual([
+      `${settlement}/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName`,
+      `${settlement}/ram:PayerTradeParty/ram:DefinedTradeContact[1]/ram:DepartmentName`,
+    ])
+  })
+
   it('stands in empty mandatory parties for a document without them, which toCii rejects', () => {
     const cii = toCii(invoice, { level: 'en16931' })
     delete (agreement(cii) as { sellerTradeParty?: unknown }).sellerTradeParty
@@ -350,6 +368,18 @@ describe('en 16931 model: levels and mandatory terms of the parties', () => {
     ['EXT-FR-FE-84', { sellerAgent: new EN16931.SellerAgent({ name: 'A', address: new EN16931.PostalAddress({ countryCode: '' }) }) }],
   ] as const)('throws on a missing or empty mandatory %s', (id, extra) => {
     expect(message(new EN16931.Invoice({ ...base, ...extra } as never), 'extended-ctc-fr')).toMatch(new RegExp(`${id} `))
+  })
+
+  it('throws on a term the matrix defines for other roles only, without quoting it', () => {
+    const payee = message(new EN16931.Invoice({ ...base, payee: new EN16931.Payee({ name: 'Payee', tradingName: 'SECRET-TRADING' }) }), 'extended-ctc-fr')
+    expect(payee).toMatch(/BG-10.*trading name/)
+    expect(payee).not.toMatch(/SECRET/)
+    for (const Role of [EN16931.Payee, EN16931.SellerAgent, EN16931.Invoicee]) {
+      const text = message(new EN16931.Invoice({ ...base, [Role === EN16931.Payee ? 'payee' : Role === EN16931.SellerAgent ? 'sellerAgent' : 'invoicee']: new Role({ name: 'N', contact: new EN16931.Contact({ departmentName: 'SECRET-DEPT' }) }) }), 'extended-ctc-fr')
+      expect(text).toMatch(/BT-41-0.*BT-56-0/)
+      expect(text).not.toMatch(/SECRET/)
+    }
+    expect(message(new EN16931.Invoice({ ...base, seller: new EN16931.Seller({ ...base.seller, contact: new EN16931.Contact({ departmentName: 'D' }) }), buyer: new EN16931.Buyer({ ...base.buyer, contact: new EN16931.Contact({ departmentName: 'D' }) }) }), 'en16931')).toBe('')
   })
 
   it('rejects a delivery date that is not an ISO date, naming BT-72', () => {
