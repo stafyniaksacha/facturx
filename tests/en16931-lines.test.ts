@@ -762,8 +762,9 @@ describe('en 16931 model: line level gates and mandatory terms', () => {
     expect(message(new EN16931.Invoice(base([code])), 'extended')).toMatch(/EXT-FR-FE-180/)
   })
 
-  it('throws on a note subject code without its note, a non-ISO date and a non-finite optional number, naming the term', () => {
-    expect(message(withLine({ notes: [new EN16931.LineNote({ note: '', subjectCode: 'AAI' })] }), 'extended')).toMatch(/EXT-FR-FE-183/)
+  it('throws on a note subject code without its note at extended (BR-FXEXT-02), accepts it at extended-ctc-fr, throws on a non-ISO date and a non-finite optional number, naming the term', () => {
+    expect(message(withLine({ notes: [new EN16931.LineNote({ subjectCode: 'AAI' })] }), 'extended')).toMatch(/EXT-FR-FE-183.*BT-127.*BR-FXEXT-02/)
+    expect(message(withLine({ notes: [new EN16931.LineNote({ subjectCode: 'AAI' })] }), 'extended-ctc-fr')).toBe('')
     expect(message(withLine({ period: new EN16931.LinePeriod({ startDate: '20250101' }) }), 'en16931')).toMatch(/BT-134/)
     expect(message(withLine({ period: new EN16931.LinePeriod({ endDate: '2025-02-30' }) }), 'en16931')).toMatch(/BT-135/)
     expect(message(withLine({ actualDelivery: new EN16931.LineActualDelivery({ actualDeliveryDate: '2025-13-01' }) }), 'extended')).toMatch(/EXT-FR-FE-158/)

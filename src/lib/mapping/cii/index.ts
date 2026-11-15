@@ -8,6 +8,7 @@ import type { En16931Level } from '../../models/en16931/level'
 import type { InvoiceLine } from '../../models/en16931/lines'
 import type { CrossIndustryInvoiceType } from '../../models/facturx/crossIndustryInvoice'
 import { Invoice } from '../../models/en16931/invoice'
+import * as udt from '../../models/facturx/unqualifiedTypes'
 import { levelFromGuidelineId } from '../../xml'
 import { assertAmountDecimals } from './amounts'
 import { diffPaths } from './dropped'
@@ -68,7 +69,20 @@ function buildCii(invoice: Invoice, level: En16931Level): CrossIndustryInvoiceTy
 export function fromCii(cii: CrossIndustryInvoiceType): FromCiiResult {
   const level = levelOf(cii)
   const invoice = new Invoice({ ...headerFromCii(cii), ...partiesFromCii(cii), ...settlementFromCii(cii), ...linesFromCii(cii) })
-  return { invoice, dropped: diffPaths(cii, buildCii(invoice, level)) }
+  return { invoice, dropped: diffPaths(cii, withParserNoteContent(buildCii(invoice, level))) }
+}
+
+// `xmlToInvoice()` reads a note without `ram:Content` with an empty one (CG-37), and `fromCii()` reads that
+// as a note without text, which the writer writes without Content: give the written model the parser's
+// stand-in before comparing, so `dropped` does not report the empty text the source never had.
+function withParserNoteContent(cii: CrossIndustryInvoiceType): CrossIndustryInvoiceType {
+  const notes = [
+    ...(cii.exchangedDocument.includedNote ?? []),
+    ...(cii.supplyChainTradeTransaction.includedSupplyChainTradeLineItem ?? []).flatMap(l => l.associatedDocumentLineDocument.includedNote ?? []),
+  ]
+  for (const note of notes)
+    note.content ??= new udt.TextType({ value: '' })
+  return cii
 }
 
 // Mandatory header terms `fromCii()` stands in `''` for when the document lacks them.
@@ -155,7 +169,7 @@ function checked(cii: CrossIndustryInvoiceType): CrossIndustryInvoiceType {
  * Write an EN 16931 invoice as a CII model at `level`, for `invoiceToXml()`. Throws, naming the
  * business term (never quoting invoice content), when:
  * - a mandatory term is empty: BT-1, BT-2, BT-3, BT-5, the mandatory terms of the groups the invoice
- *   holds (BT-22 and BT-127 in each note, BT-25, BT-122, BT-125-1 / BT-125-2 with a BT-125, BT-84 or
+ *   holds (BT-22 and BT-127 in each note at `basic` and `en16931`, or with a subject code at `extended`, BT-25, BT-122, BT-125-1 / BT-125-2 with a BT-125, BT-84 or
  *   BT-84-0 in each credit transfer, BT-73 or BT-74 in a BG-14 ...), or a mandatory group (BG-4, BG-7,
  *   BG-22, BG-23, BG-25);
  * - an optional repeatable group of a plain-object invoice is neither absent nor an array (absent
@@ -177,7 +191,7 @@ export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInv
     if (value === undefined || value === '')
       throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
   }
-  assertHeaderComplete(full)
+  assertHeaderComplete(full, level)
   assertPartiesComplete(full)
   assertPartyIdentifierCounts(full, level)
   assertSettlementComplete(full)

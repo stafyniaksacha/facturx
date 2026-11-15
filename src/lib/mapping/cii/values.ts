@@ -96,3 +96,11 @@ export function unmapped<T>(): T {
 // Maps, not object literals: the CII code is untrusted input, and `'constructor'` must not match.
 export const BT8_TO_CII = new Map([['3', '5'], ['35', '29'], ['432', '72']])
 export const BT8_FROM_CII = new Map([...BT8_TO_CII].map(([en, cii]) => [cii, en]))
+
+/**
+ * `ram:Content` of a note: none for a note without text (the EXTENDED XSD `NoteType/Content` is
+ * `minOccurs="0"`). Typed required in the CII model, which mirrors the parser's stand-in (CG-37).
+ */
+export function noteContent(note: string | undefined): udt.TextType {
+  return (note === undefined || note === '' ? undefined : new udt.TextType({ value: note })) as udt.TextType
+}

@@ -28,20 +28,21 @@ import type { Item, LineVat, PriceDetails } from './line-item'
  * @bt BT-127
  */
 export class LineNote {
-  constructor({ note, subjectCode }: { note: string, subjectCode?: string }) {
+  constructor({ note, subjectCode }: { note?: string, subjectCode?: string }) {
     this.note = note
     this.subjectCode = subjectCode
   }
 
   /**
-   * Invoice line note: the mandatory term of the group (`toCii()` throws when it is empty). `fromCii()`
-   * reads `''` for a note without text, as the CII parser does.
+   * Invoice line note. Required in a line note at `basic` and `en16931` (`toCii()` throws when it is
+   * missing or empty), optional at EXTENDED and EXTENDED-CTC-FR, where a note without text (a subject
+   * code alone) is written without `ram:Content`. `fromCii()` reads `undefined` for a note without text.
    * @bt BT-127
    */
-  note: string
+  note?: string
   /**
-   * Invoice line note subject code (UNTDID 4451). Needs the note: CII holds the code in the same
-   * element as the text (`toCii()` throws on a code alone). EXTENDED-CTC-FR.
+   * Invoice line note subject code (UNTDID 4451). EXTENDED-CTC-FR. CII holds it in the same
+   * `ram:IncludedNote` as the text; at the `extended` levels it may stand alone.
    * @ext EXT-FR-FE-183
    */
   subjectCode?: string

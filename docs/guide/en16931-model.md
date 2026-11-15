@@ -31,15 +31,15 @@ Conventions:
   named in the JSDoc, and checked by the Schematron, not by the type system).
 - A repeatable term is an array and a mandatory term a required property. Where EN 16931 and
   EXTENDED-CTC-FR disagree on the cardinality, the model takes the **wider** (BT-60, for instance, is an array).
-  The note text is the exception: annex A leaves BT-22 optional at EXTENDED-CTC-FR, the model keeps it
-  mandatory, as EN 16931 does (CG-57).
 - Optional terms are `undefined` when absent. The model never invents a value; `toCii()` writes the
   Factur-X default `Project reference` for BT-11-0 when BT-11 is set without a name (CG-49), and
   `fromCii()` reads exactly that default back as no name (`projectName` `undefined`), so the CII written
   again is the same. Any other name, `Project Reference` included, is kept.
-- The text of a note (BT-22 in BG-1, BT-127 on a line) is the mandatory term of its group, so it is a
-  required `string`. `fromCii()` reads `''` for a note without text, as the CII parser does, and `toCii()`
-  refuses an empty one (CG-57).
+- The text of a note (BT-22 in BG-1, BT-127 on a line) is optional in the model: EN 16931 makes BT-22
+  mandatory, the EXTENDED XSD and annex A EXTENDED-CTC-FR do not. `fromCii()` reads `undefined` for a note
+  without text. `toCii()` refuses a note without text at `basic` and `en16931`; at `extended` and
+  `extended-ctc-fr` it writes the note without `ram:Content`, except that Factur-X EXTENDED wants the text
+  with a subject code (BR-FXEXT-01 / -02, CG-57), so a subject code alone needs `extended-ctc-fr`.
 - An invoice can be a plain object instead of class instances. The TypeScript types still require the
   array properties, but at runtime (plain JavaScript, data from JSON) `toCii()` guards them: an optional
   repeatable group left out (`notes`, `precedingInvoiceReferences`, a party's `identifiers`, a line's
@@ -96,8 +96,9 @@ specification identifier) and which terms may be present.
   id, an Order-X id or a CIUS identifier would make the document claim a profile it was not checked against).
   Leave it unset, or set it to `''`, to get the identifier of the level;
 - a mandatory term of a group is empty: BT-25 in a preceding invoice reference (BR-55), BT-122 in a supporting
-  document (BR-52), BT-125-1 (MIME code) and BT-125-2 (filename) of an attached document, BT-22 in a note,
-  BT-127 in a line note, BT-84 in a credit transfer (BR-50: an IBAN, or a national account number, BT-84-0),
+  document (BR-52), BT-125-1 (MIME code) and BT-125-2 (filename) of an attached document, BT-22 in a note and
+  BT-127 in a line note at `basic` and `en16931` (at `extended`, with a subject code: BR-FXEXT-01 / -02), BT-84
+  in a credit transfer (BR-50: an IBAN, or a national account number, BT-84-0),
   BT-17 or BT-18 set but empty, a BG-14 invoicing period with neither BT-73 nor BT-74 (BR-CO-19);
 - the buyer (BT-46, BT-46-0) or the payee (BT-60, BT-60-0) holds more identifiers than the level carries:
   one private identifier below `extended-ctc-fr`, one global identifier (with a scheme) at `basic` and `en16931`;

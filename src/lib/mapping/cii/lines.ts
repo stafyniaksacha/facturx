@@ -46,7 +46,7 @@ import {
   sellerOrderFromCii,
   sellerOrderToCii,
 } from './line-extensions'
-import { BT8_FROM_CII, BT8_TO_CII, ciiCode, ciiDateTime, ciiId, ciiText, isoFromCii } from './values'
+import { BT8_FROM_CII, BT8_TO_CII, ciiCode, ciiDateTime, ciiId, ciiText, isoFromCii, noteContent } from './values'
 
 /** The lines property of `Invoice`, as its constructor takes it. */
 export type LinesInit = Pick<ConstructorParameters<typeof Invoice>[0], 'lines'>
@@ -203,8 +203,8 @@ function lineFromCii(entry: ram.SupplyChainTradeLineItemType): InvoiceLine {
   return new InvoiceLine({
     identifier: doc?.lineID?.value ?? '',
     notes: (doc?.includedNote ?? []).map(n => new LineNote({
-      // BT-127 is the mandatory term of the line note: '' when the document lacks it (the parser reads the same).
-      note: n.content?.value ?? '',
+      // The parser stands in an empty text for a missing Content (CG-37): not a value.
+      note: n.content?.value === '' ? undefined : n.content?.value,
       subjectCode: n.subjectCode?.value,
     })),
     parentLineIdentifier: doc?.parentLineID?.value,
@@ -375,7 +375,7 @@ function lineToCii(line: InvoiceLine, invoice: Invoice): ram.SupplyChainTradeLin
       parentLineID: ciiId(line.parentLineIdentifier),
       lineStatusReasonCode: ciiCode(line.statusReasonCode),
       includedNote: line.notes.map(n => new ram.NoteType({
-        content: new udt.TextType({ value: n.note }),
+        content: noteContent(n.note),
         subjectCode: ciiCode(n.subjectCode),
       })),
     }),
@@ -456,12 +456,19 @@ export function assertLinesComplete(invoice: Invoice, level: En16931Level): void
     needs.push(['EXT-FR-FE-191-1', 'unit code of the number of units in a parent line unit', 'EXT-FR-FE-191', 'number of units in a parent line unit', line.unitsInParentLineUnitCode !== undefined && line.unitsInParentLine === undefined])
     finite.push(['BT-129', 'invoiced quantity', line.invoicedQuantity], ['EXT-FR-FE-191', 'number of units in a parent line unit', line.unitsInParentLine], ['EXT-FR-FE-181', 'line total VAT amount', line.vatAmount], ['EXT-FR-FE-182', 'line total VAT amount in accounting currency', line.vatAmountInAccountingCurrency], ['EXT-FR-FE-184', 'line grand total amount', line.grandTotalAmount])
 
-    // BT-127 is mandatory in each line note, as BT-22 in each BG-1; a subject code alone names the term it needs.
-    for (const note of line.notes) {
-      if (note.subjectCode !== undefined && empty(note.note))
-        needs.push(['EXT-FR-FE-183', 'invoice line note subject code', 'BT-127', 'invoice line note', true])
-      else
+    // Below EXTENDED a line note is its text (BT-127; EXT-FR-FE-183 is gated to the extended levels). At the
+    // extended levels the EXTENDED XSD and annex A leave the text optional: a subject code may stand alone.
+    if (!extended) {
+      for (const note of line.notes)
         mandatory.push(['BT-127', 'invoice line note', note.note])
+    }
+    // Factur-X EXTENDED: a subject code needs the text or the coded text BT-X-9 (BR-FXEXT-02), which the model
+    // does not hold. The EXTENDED-CTC-FR Schematron has no such rule.
+    if (level === 'extended') {
+      for (const note of line.notes) {
+        if (empty(note.note) && !empty(note.subjectCode))
+          throw new Error('toCii: EXT-FR-FE-183 (invoice line note subject code) needs BT-127 (invoice line note) at level "extended" (BR-FXEXT-02); a subject code alone needs level "extended-ctc-fr"')
+      }
     }
 
     const { price, vat, item } = line

@@ -201,7 +201,7 @@ describe('en 16931 model: mandatory terms of the header groups', () => {
   const cases: [string, RegExp, (i: Invoice) => void][] = [
     ['BT-25 empty in a BG-3', /BT-25.*BR-55/, (i) => { i.precedingInvoiceReferences = [new EN16931.PrecedingInvoiceReference({ reference: '' })] }],
     ['BT-122 empty in a BG-24', /BT-122.*BR-52/, (i) => { i.additionalDocuments = [new EN16931.AdditionalSupportingDocument({ reference: '' })] }],
-    ['BT-22 missing in a BG-1', /BT-22/, (i) => { i.notes = [new EN16931.InvoiceNote({ subjectCode: 'AAI', note: '' })] }],
+    ['BT-22 missing in a BG-1', /BT-22/, (i) => { i.notes = [new EN16931.InvoiceNote({ subjectCode: 'AAI' })] }],
     ['BG-14 without BT-73 or BT-74', /BG-14.*BR-CO-19/, (i) => { i.invoicingPeriod = new EN16931.InvoicingPeriod({}) }],
     ['BT-18 empty', /BT-18/, (i) => { i.invoicedObjectIdentifiers = [new EN16931.Identifier({ value: '' })] }],
     ['BT-17 empty', /BT-17/, (i) => { i.tenderOrLotReference = '' }],
@@ -217,7 +217,7 @@ describe('en 16931 model: mandatory terms of the header groups', () => {
     const invoice = await enInvoice()
     invoice.invoicingPeriod = new EN16931.InvoicingPeriod({ endDate: '2026-01-31' })
     expect(() => toCii(invoice, { level: 'en16931' })).not.toThrow()
-    invoice.notes = [new EN16931.InvoiceNote({ subjectCode: 'SECRET-CODE', note: '' })]
+    invoice.notes = [new EN16931.InvoiceNote({ subjectCode: 'SECRET-CODE' })]
     expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^(?:(?!SECRET-CODE).)*$/)
   })
 
@@ -258,19 +258,67 @@ describe('en 16931 model: mandatory terms of credit transfers, attachments and l
     expect(() => toCii(invoice, { level: 'en16931' })).not.toThrow()
   })
 
-  it('throws on an empty line note (BT-127) as on an empty invoice note (BT-22)', async () => {
-    const invoice = await enInvoice()
-    invoice.lines[0]!.notes = [new EN16931.LineNote({ note: '' })]
-    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^toCii: BT-127 \(invoice line note\) is mandatory and empty/)
-    invoice.lines[0]!.notes = []
-    invoice.notes = [new EN16931.InvoiceNote({ note: '' })]
-    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^toCii: BT-22 \(invoice note\) is mandatory and empty/)
+  it.each(['basic', 'en16931'] as const)('throws on a missing or empty invoice note (BT-22) and line note (BT-127) at %s', async (level) => {
+    for (const note of [undefined, '']) {
+      const invoice = await enInvoice()
+      invoice.notes = [new EN16931.InvoiceNote({ note })]
+      expect(() => toCii(invoice, { level })).toThrow(/^toCii: BT-22 \(invoice note\) is mandatory and empty/)
+      invoice.notes = []
+      invoice.lines[0]!.notes = [new EN16931.LineNote({ note })]
+      expect(() => toCii(invoice, { level })).toThrow(/^toCii: BT-127 \(invoice line note\) is mandatory and empty/)
+    }
   })
 
-  it('reads a note without text as \'\' (fromCii stays tolerant)', async () => {
+  // The EXTENDED XSD `NoteType/Content` is minOccurs="0" and annex A gives BT-22 / BT-127 0..1 at EXTENDED-CTC-FR.
+  it('writes notes with a subject code and no text without ram:Content at extended-ctc-fr, valid against the XSD and Schematron', async () => {
+    const level = 'extended-ctc-fr'
+    const invoice = await enInvoice()
+    invoice.notes = [new EN16931.InvoiceNote({ subjectCode: 'AAI' }), new EN16931.InvoiceNote({ note: 'kept' })]
+    invoice.lines[0]!.notes = [new EN16931.LineNote({ subjectCode: 'AAI' })]
+    const cii = toCii(invoice, { level })
+    expect(cii.exchangedDocument.includedNote![0]!.content).toBeUndefined()
+    const xml = (await invoiceToXml(cii)).toString()
+    expect(xml).toMatch(/<ram:IncludedNote>\s*<ram:SubjectCode>AAI<\/ram:SubjectCode>\s*<\/ram:IncludedNote>/)
+    expect(xml.match(/<ram:IncludedNote>\s*<ram:SubjectCode>/g)).toHaveLength(2)
+    const result = await check({ xml, schematron: true })
+    expect(result.level).toBe(level)
+    expect(result.errors).toEqual([])
+    expect(result.schematronErrors).toEqual([])
+    expect(result.valid).toBe(true)
+    // Read back: no text, nothing dropped (the parser's empty stand-in, CG-37, is not reported).
+    const back = fromCii(await xmlToInvoice(xml))
+    expect(back.dropped).toEqual([])
+    expect(back.invoice.notes[0]).toEqual(new EN16931.InvoiceNote({ subjectCode: 'AAI' }))
+    expect(back.invoice.lines[0]!.notes).toEqual([new EN16931.LineNote({ subjectCode: 'AAI' })])
+  })
+
+  // Factur-X EXTENDED: BR-FXEXT-01 / -02 want the text (or the coded text BT-X-5 / BT-X-9, outside the model)
+  // with a subject code; a note with neither is valid against its XSD and Schematron.
+  it('at extended, refuses a subject code without text (BR-FXEXT-01 / -02) and writes a note with neither without ram:Content', async () => {
+    const header = await enInvoice()
+    header.notes = [new EN16931.InvoiceNote({ subjectCode: 'AAI' })]
+    expect(() => toCii(header, { level: 'extended' })).toThrow(/^toCii: BT-21 .*BT-22.*BR-FXEXT-01/)
+    const invoice = await enInvoice()
+    invoice.notes = [new EN16931.InvoiceNote({}), new EN16931.InvoiceNote({ note: 'kept' })]
+    invoice.lines[0]!.notes = [new EN16931.LineNote({})]
+    const xml = (await invoiceToXml(toCii(invoice, { level: 'extended' }))).toString()
+    expect(xml.match(/<ram:IncludedNote>\s*<\/ram:IncludedNote>|<ram:IncludedNote\/>/g)).toHaveLength(2)
+    const result = await check({ xml, schematron: true })
+    expect(result.level).toBe('extended')
+    expect(result.errors).toEqual([])
+    expect(result.schematronErrors).toEqual([])
+    expect(result.valid).toBe(true)
+    const back = fromCii(await xmlToInvoice(xml))
+    expect(back.dropped).toEqual([])
+    expect(back.invoice.notes[0]).toEqual(new EN16931.InvoiceNote({}))
+  })
+
+  it('reads a note without text as undefined (fromCii stays tolerant)', async () => {
     const cii = await corpus('3.EN16931', 'F20260025')
-    cii.exchangedDocument.includedNote = [{ subjectCode: { value: 'AAI' } } as never]
-    expect(fromCii(cii).invoice.notes).toEqual([new EN16931.InvoiceNote({ subjectCode: 'AAI', note: '' })])
+    cii.exchangedDocument.includedNote = [{ content: { value: '' }, subjectCode: { value: 'AAI' } } as never]
+    const { invoice, dropped } = fromCii(cii)
+    expect(invoice.notes).toEqual([new EN16931.InvoiceNote({ subjectCode: 'AAI' })])
+    expect(dropped).toEqual([])
   })
 })
 

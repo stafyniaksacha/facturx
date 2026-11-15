@@ -48,6 +48,7 @@ import {
   ciiId,
   ciiText,
   isoFromCii,
+  noteContent,
 } from './values'
 
 /**
@@ -133,8 +134,8 @@ export function headerFromCii(cii: CrossIndustryInvoiceType): HeaderInit {
     specificationIdentifier: context?.guidelineSpecifiedDocumentContextParameter?.id?.value,
     notes: (document?.includedNote ?? []).map(n => new InvoiceNote({
       subjectCode: n.subjectCode?.value,
-      // BT-22 is the mandatory term of BG-1: '' when the document lacks it (the parser reads the same).
-      note: n.content?.value ?? '',
+      // The parser stands in an empty text for a missing Content (CG-37): not a value.
+      note: n.content?.value === '' ? undefined : n.content?.value,
     })),
     precedingInvoiceReferences: (settlement?.invoiceReferencedDocument ?? []).map(r => new PrecedingInvoiceReference({
       reference: r.issuerAssignedID?.value ?? '',
@@ -226,7 +227,8 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
       issueDateTime: ciiDateTime(invoice.issueDate === '' ? undefined : invoice.issueDate, 'BT-2')!,
       languageID: [],
       includedNote: invoice.notes.map(n => new ram.NoteType({
-        content: new udt.TextType({ value: n.note }),
+        // A note without text (allowed at the extended levels, refused below by `toCii()`) has no Content.
+        content: noteContent(n.note),
         subjectCode: ciiCode(n.subjectCode),
       })),
     }),
@@ -289,10 +291,10 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
  * is missing or empty: BT-25 in each BG-3 (BR-55), BT-122 in each BG-24 (BR-52), BT-125-1 and BT-125-2
  * with a BT-125, BT-17 and BT-18 when set
  * (BR-52 also reads the empty `ram:IssuerAssignedID` of their type-code 50 / 130 documents), BT-73 or
- * BT-74 in a BG-14 (BR-CO-19), BT-22 in each BG-1. Never quotes invoice content; `buildCii` stays
+ * BT-74 in a BG-14 (BR-CO-19), BT-22 in each BG-1 at `basic` and `en16931`. Never quotes invoice content; `buildCii` stays
  * tolerant, so `fromCii()` can still read such a document.
  */
-export function assertHeaderComplete(invoice: Invoice): void {
+export function assertHeaderComplete(invoice: Invoice, level: En16931Level): void {
   const empty = (value: string | undefined): boolean => value === undefined || value === ''
   for (const reference of invoice.precedingInvoiceReferences ?? []) {
     if (empty(reference.reference))
@@ -315,8 +317,20 @@ export function assertHeaderComplete(invoice: Invoice): void {
   }
   if (invoice.invoicingPeriod && empty(invoice.invoicingPeriod.startDate) && empty(invoice.invoicingPeriod.endDate))
     throw new Error('toCii: BG-14 (invoicing period) needs BT-73 (start date) or BT-74 (end date) (BR-CO-19)')
-  for (const note of invoice.notes ?? []) {
-    if (empty(note.note))
-      throw new Error('toCii: BT-22 (invoice note) is mandatory and empty in each BG-1')
+  // BT-22 is 1..1 in BG-1 in EN 16931 and the BASIC / EN 16931 matrices, 0..1 at EXTENDED-CTC-FR (annex A)
+  // and in the EXTENDED XSD (`NoteType/Content` `minOccurs="0"`).
+  if (level === 'basic' || level === 'en16931') {
+    for (const note of invoice.notes ?? []) {
+      if (empty(note.note))
+        throw new Error(`toCii: BT-22 (invoice note) is mandatory and empty in each BG-1 at level "${level}"; a note without text needs level "extended" or "extended-ctc-fr"`)
+    }
+  }
+  // Factur-X EXTENDED: a subject code needs the text or the coded text BT-X-5 (BR-FXEXT-01), which the model
+  // does not hold. The EXTENDED-CTC-FR Schematron has no such rule.
+  if (level === 'extended') {
+    for (const note of invoice.notes ?? []) {
+      if (empty(note.note) && !empty(note.subjectCode))
+        throw new Error('toCii: BT-21 (invoice note subject code) needs BT-22 (invoice note) at level "extended" (BR-FXEXT-01); a subject code alone needs level "extended-ctc-fr"')
+    }
   }
 }
