@@ -123,8 +123,10 @@ sRGB output intent.
 Given a PDF/A-3b base, the output stays PDF/A-3b: CI validates, with veraPDF, a `pdf-lib` PDF/A-3b
 base and `generate()` output on it for every Factur-X profile (`scripts/verify-pdfa.mjs`). The base's
 own XMP is replaced by the Factur-X one, and `generate()` writes the PDF/A-3B identification and a
-trailer `/ID` itself, so a base with an embedded font and an output intent but no XMP also comes out
-PDF/A-3b. On a base that is not PDF/A the output is not PDF/A either, yet its XMP still declares
+trailer `/ID` itself. So a base may lack exactly those two, but must meet every other PDF/A-3b
+requirement (embedded fonts and an output intent are only part of them: no JavaScript, no
+encryption, …). CI also checks that case, on its own test base (an embedded font and an sRGB output
+intent, nothing else on the page). On a base that is not PDF/A the output is not PDF/A either, yet its XMP still declares
 PDF/A-3B. Validate your own output with a PDF/A validator such as veraPDF.
 
 ## Example

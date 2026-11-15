@@ -64,7 +64,8 @@ const BASE_XMP = `<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
 </x:xmpmeta>
 <?xpacket end="w"?>`
 
-const { extract, generate } = await import(join(repoRoot, 'dist/index.mjs'))
+// A file URL, not a path: import() takes URLs, so a Windows drive or a `#` in the path would break.
+const { extract, generate } = await import(new URL('../dist/index.mjs', import.meta.url))
 
 /**
  * A pdf-lib base with an embedded font and an sRGB OutputIntent. With `pdfa`, also its own XMP
