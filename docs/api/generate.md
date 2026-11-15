@@ -47,7 +47,13 @@ interface PdfMetadata {
 ## Behaviour
 
 - Chooses the embedded filename from the flavor, `factur-x.xml` or `order-x.xml`, and writes the
-  matching PDF/A-3 XMP metadata (including the Factur-X `conformanceLevel` for the level).
+  PDF/A-3 XMP metadata (including the Factur-X `conformanceLevel` for the level).
+  ::: warning Order-X metadata is not conformant yet
+  For `orderx`, the XMP still says `fx:DocumentType` `INVOICE` and leaves `fx:ConformanceLevel`
+  empty, where the hybrid code lists require `ORDER` / `ORDER_CHANGE` / `ORDER_RESPONSE` and
+  `BASIC` / `COMFORT` / `EXTENDED` (BR-HYBRID-06/07, Fatal). See CG-08 in
+  [`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md).
+  :::
 - When `meta` is omitted, the title/author/subject/date are derived from the invoice XML.
 - Keeps the source PDF's document ID: the first (permanent) element of the trailer `/ID` is
   preserved and a new second (changing) element is written, as ISO 32000-1 §14.4 requires for a
