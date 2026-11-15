@@ -303,7 +303,7 @@ describe('uBL (BR-FR-Flux2-Schematron-UBL)', () => {
   it('still rejects UBL at a level outside the reform, or one the document does not declare', async () => {
     const xml = await readFile(enFile)
     for (const level of ['basic', 'basicwl', 'extended', 'minimum'])
-      await expect(validateFrCtc({ xml, level })).rejects.toThrow(/level/)
+      await expect(validateFrCtc({ xml, level })).rejects.toThrow(/apply to UBL invoices at the EN16931 and EXTENDED-CTC-FR levels only/)
     await expect(validateFrCtc({ xml, level: 'extended-ctc-fr' })).rejects.toThrow(/does not match/)
     await expect(validateFrCtc({ xml: await readFile(extFile), level: 'en16931' })).rejects.toThrow(/does not match/)
     await expect(validateFrCtc({ xml, level: 'en16931' })).resolves.toMatchObject({ valid: true })

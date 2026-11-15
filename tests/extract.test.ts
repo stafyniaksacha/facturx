@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { readdirSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { extract } from '@stafyniaksacha/facturx'
@@ -64,6 +65,16 @@ async function pdfWithAttachment(name: string, xml: string): Promise<Buffer> {
   return Buffer.from(await pdf.save())
 }
 
+// The first annex B UBL example (XP Z12-012 v1.4).
+async function ublXml(): Promise<string> {
+  const dir = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
+  const entry = readdirSync(dir, { withFileTypes: true, recursive: true })
+    .filter(e => e.isFile() && e.name.endsWith('_UBL_Commentee.xml'))
+    .sort((a, b) => a.name.localeCompare(b.name))[0]
+  // Dirent.parentPath only exists from Node 20.12; engines allows 20.11, which has `path`.
+  return readFile(resolve(entry.parentPath ?? (entry as { path?: string }).path ?? dir, entry.name), 'utf8')
+}
+
 // #38: the ZUGFeRD file names (legacy ZUGFeRD 1.0 / 2.0 hybrids) give the flavor `zugferd`, for which
 // there is no schema. check() validates what the XML is, read from its root element.
 describe('extract({ check: true }) on a ZUGFeRD file name (#38)', () => {
@@ -110,6 +121,15 @@ describe('extract({ check: true }) on a ZUGFeRD file name (#38)', () => {
     await expect(extract({ pdf: await pdfWithAttachment('zugferd-invoice.xml', xml), check: true }))
       .rejects
       .toThrow('holds an Order-X order, not an invoice')
+  })
+
+  // Hybrid PDFs carry a CII invoice only (§6.2 p.25, BR-HYBRID-*): a UBL file under an invoice
+  // file name is not a Factur-X / ZUGFeRD attachment, so `check` refuses it with an explicit message.
+  it.each(['factur-x.xml', 'xrechnung.xml', 'zugferd-invoice.xml'])('rejects a UBL invoice under the name %s', async (name) => {
+    const pdf = await pdfWithAttachment(name, await ublXml())
+    // Without `check`, extraction still hands the attachment over.
+    await expect(extract({ pdf })).resolves.toMatchObject({ filename: name })
+    await expect(extract({ pdf, check: true })).rejects.toThrow(/UBL invoice cannot be a Factur-X\/ZUGFeRD attachment/)
   })
 
   it('keeps the EXTENDED-CTC-FR rejection for a ZUGFeRD file name', async () => {

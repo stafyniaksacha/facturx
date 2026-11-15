@@ -1,6 +1,9 @@
-import { readdirSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join, relative, resolve } from 'node:path'
+import process from 'node:process'
 import { check, validateSchematron } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
 
@@ -139,6 +142,15 @@ describe('uBL profile Schematron (step 2)', () => {
     })
   }
 
+  // Pins today's outcome of CG-42 (not `it.fails`): goes red when upstream fixes the rule or the
+  // example, which is the cue to close CG-42 and drop the `it.fails` row above.
+  it('cG-42: F202500001 is valid with no error and exactly the warning BR-FREXT-IC-08rev', async () => {
+    const example = examples.find(e => cg42(e.name))!
+    const r = await check({ xml: await readFile(example.file), schematron: true })
+    expect(r).toMatchObject({ flavor: 'ubl', level: 'extended-ctc-fr', valid: true, errors: [], schematronErrors: [] })
+    expect(r.schematronWarnings!.map(w => w.id ?? w.assertId)).toEqual(['BR-FREXT-IC-08rev'])
+  })
+
   it('reports BR-CO-15 as an error when the totals do not add up', async () => {
     const xml = (await readFile(en.file, 'utf8')).replace(/(<cbc:TaxInclusiveAmount[^>]*>)[^<]*/, '$1999999.00')
     const r = await check({ xml, schematron: true })
@@ -189,6 +201,33 @@ describe('uBL full sequence (XSD + profile + BR-FR)', () => {
     const r = await check({ xml: await readFile(file), schematron: true, frCtc: true })
     // CG-42: the profile Schematron may warn (BR-FREXT-IC-08rev); that lands in schematronWarnings.
     expect(r).toMatchObject({ valid: true, errors: [], schematronErrors: [], frCtcValid: true, frCtcErrors: [], frCtcWarnings: [] })
-    // Three SEFs per document: slow under a loaded full run, so more than the default 5 s.
-  }, 60_000)
+    // Three SEFs per document: <0.4 s alone, so 20 s is a loaded-machine margin, not the default 5 s.
+  }, 20_000)
+})
+
+describe('facturx check on a UBL file', () => {
+  const CLI = resolve(import.meta.dirname, '../bin/facturx.mjs')
+  const run = (...args: string[]): { status: number | null, stdout: string, stderr: string } =>
+    spawnSync(process.execPath, [CLI, 'check', ...args], { encoding: 'utf8' })
+
+  it('validates a UBL example with the full sequence and names the flavor', () => {
+    const { status, stdout } = run(UC, '--schematron', '--fr-ctc')
+    expect(status).toBe(0)
+    expect(stdout).toContain('Valid XML format (ubl - en16931, XSD + Schematron + BR-FR)')
+  })
+
+  it('exits 1 on a UBL invoice that breaks a business rule', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'facturx-ubl-'))
+    try {
+      const file = join(dir, 'bad.xml')
+      writeFileSync(file, (await readFile(UC, 'utf8')).replace(/(<cbc:TaxInclusiveAmount[^>]*>)[^<]*/, '$1999999.00'))
+      const { status, stderr } = run(file, '--schematron')
+      expect(status).toBe(1)
+      expect(stderr).toContain('[Schematron]')
+      expect(stderr).toContain('BR-CO-15')
+    }
+    finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })

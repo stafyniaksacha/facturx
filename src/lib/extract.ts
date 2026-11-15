@@ -9,7 +9,7 @@ import { check } from './check'
 import { FACTURX_FILENAME, ORDERX_FILENAME, XRECHNUNG_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { decodeName, EmbeddedFileDecodeError, embeddedFileStream, EmbeddedFileTooLargeError, InflateBudget, InflateBudgetExceededError, readEmbeddedFile, readEmbeddedFilesNames } from './pdf'
 import { resolvePdf, resolveXml } from './resolve'
-import { declaresExtendedCtcFr, getFlavor } from './xml'
+import { declaresExtendedCtcFr, getFlavor, isUblDocument } from './xml'
 
 /**
  * The flavor to validate an attachment with. `zugferd` comes from the legacy ZUGFeRD file names and
@@ -133,6 +133,10 @@ export async function extract(options: {
 
   try {
     if (options.check === true) {
+      // A hybrid PDF carries a CII invoice only (§6.2 p.25, BR-HYBRID-*). UBL validates through
+      // check() on its own XML file, but is no valid attachment, whatever name it is stored under.
+      if (isUblDocument(xml))
+        throw new Error(`Invalid XML: a UBL invoice cannot be a Factur-X/ZUGFeRD attachment (${file.filename}); a hybrid PDF embeds a CII invoice. Validate the UBL file with check()`)
       const checkFlavor = validationFlavor(flavor, xml, file.filename)
       // A plain-CII EXTENDED-CTC-FR document is no Factur-X profile: a hybrid PDF cannot declare it
       // (BR-HYBRID-07/15). Read from the XML, so an explicit `level` cannot hide it.
