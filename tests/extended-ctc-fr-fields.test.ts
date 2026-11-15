@@ -22,9 +22,61 @@ const NS = {
   qdt: 'urn:un:unece:uncefact:data:standard:QualifiedDataType:100',
 }
 
+// Elements of a decimal data type (Amount, Quantity, Measure, Percent, Rate, Numeric) that
+// `invoiceToXml()` writes: the converter writes `60.0000` back as `60`, the same `xs:decimal`. Every
+// other text (identifiers such as `LineID`, codes, postcodes) is compared exactly.
+const DECIMAL_ELEMENTS = new Set([
+  'ActualAmount',
+  'ActualDiscountAmount',
+  'ActualPenaltyAmount',
+  'AllowanceChargeBasisAmount',
+  'AllowanceTotalAmount',
+  'AppliedAmount',
+  'BasisAmount',
+  'BasisPeriodMeasure',
+  'BasisQuantity',
+  'BilledQuantity',
+  'CalculatedAmount',
+  'CalculationPercent',
+  'ChargeAmount',
+  'ChargeFreeQuantity',
+  'ChargeTotalAmount',
+  'ConversionRate',
+  'DuePayableAmount',
+  'GrandTotalAmount',
+  'LineTotalAmount',
+  'LineTotalBasisAmount',
+  'PackageQuantity',
+  'PaidAmount',
+  'PartialPaymentAmount',
+  'PerPackageUnitQuantity',
+  'RateApplicablePercent',
+  'RoundingAmount',
+  'SequenceNumeric',
+  'TaxBasisTotalAmount',
+  'TaxTotalAmount',
+  'TotalAllowanceChargeAmount',
+  'TotalPrepaidAmount',
+  'UnitQuantity',
+  'ValueMeasure',
+])
+
+/** Canonical `xs:decimal` lexical form, by string (no float rounding): `060.500` → `60.5`, `-0.0` → `0`. */
+function canonicalDecimal(text: string): string {
+  const match = /^([+-]?)(\d*)(?:\.(\d*))?$/.exec(text)
+  if (!match || (match[2] === '' && !match[3]))
+    return text
+  const int = match[2].replace(/^0+(?=\d)/, '') || '0'
+  const frac = (match[3] ?? '').replace(/0+$/, '')
+  const body = frac ? `${int}.${frac}` : int
+  return match[1] === '-' && body !== '0' ? `-${body}` : body
+}
+
 /**
- * Every leaf element (`path=text`) and attribute (`path/@name=value`) of the document, with its count.
- * Decimal text is compared by value: the converter writes `60.0000` back as `60` (same `xs:decimal`).
+ * Every leaf element of the document as one record, `path[@attr=value …]=text` (attributes sorted), with
+ * its count; an element with child elements gives a record only if it has attributes. Keeping the
+ * attributes and the text in one record means a value that moves to a sibling with another `schemeID`,
+ * `currencyID` or `unitCode` is a difference.
  */
 function pathValues(xml: string): Map<string, number> {
   const doc = XmlDocument.fromString(xml)
@@ -32,7 +84,8 @@ function pathValues(xml: string): Map<string, number> {
   const add = (key: string) => out.set(key, (out.get(key) ?? 0) + 1)
   const walk = (el: XmlElement, parent: string) => {
     const path = `${parent}/${el.prefix}:${el.name}`
-    for (const a of el.attrs) add(`${path}/@${a.name}=${a.value}`)
+    const attrs = el.attrs.map(a => `@${a.name}=${a.value}`).sort().join(' ')
+    const record = attrs ? `${path}[${attrs}]` : path
     let leaf = true
     for (let child = el.firstChild; child; child = child.next) {
       if (child instanceof XmlElement) {
@@ -42,7 +95,32 @@ function pathValues(xml: string): Map<string, number> {
     }
     if (leaf) {
       const text = el.content.trim()
-      add(`${path}=${/^-?\d+(?:\.\d+)?$/.test(text) ? String(Number(text)) : text}`)
+      add(`${record}=${DECIMAL_ELEMENTS.has(el.name) ? canonicalDecimal(text) : text}`)
+    }
+    else if (attrs) {
+      add(record)
+    }
+  }
+  try {
+    walk(doc.root, '')
+  }
+  finally {
+    doc.dispose()
+  }
+  return out
+}
+
+/** Element paths and attribute paths (`path/@name`) present in the document. */
+function pathsOf(xml: string): Set<string> {
+  const doc = XmlDocument.fromString(xml)
+  const out = new Set<string>()
+  const walk = (el: XmlElement, parent: string) => {
+    const path = `${parent}/${el.prefix}:${el.name}`
+    out.add(path)
+    for (const a of el.attrs) out.add(`${path}/@${a.name}`)
+    for (let child = el.firstChild; child; child = child.next) {
+      if (child instanceof XmlElement)
+        walk(child, path)
     }
   }
   try {
@@ -437,6 +515,27 @@ const GROUPS: Group[] = [
 
 const ALL_SLOTS: Slots = Object.assign({}, ...GROUPS.map(g => g.slots))
 
+// The comparison must itself catch the losses it is meant to find.
+describe('path comparison helper', () => {
+  const agent = invoice({ salesAgent: party('SalesAgentTradeParty', 'SalesAgent') })
+
+  it('sees a value that moves to a sibling with another schemeID', () => {
+    const swapped = agent
+      .replace('>SalesAgent-GLN-1<', '>__SWAP__<')
+      .replace('>SalesAgent-GLN-2<', '>SalesAgent-GLN-1<')
+      .replace('>__SWAP__<', '>SalesAgent-GLN-2<')
+    expect(swapped).not.toBe(agent)
+    expect(pathDiff(agent, swapped)).not.toEqual([])
+  })
+
+  it('compares identifiers exactly and decimals by value, without float rounding', () => {
+    expect(pathDiff(agent, agent.replace('<ram:LineID>1</ram:LineID>', '<ram:LineID>1.0</ram:LineID>'))).not.toEqual([])
+    expect(pathDiff(agent, agent.replace('<ram:LineTotalAmount>100.00</ram:LineTotalAmount>', '<ram:LineTotalAmount>0100.0</ram:LineTotalAmount>'))).toEqual([])
+    const long = (v: string) => agent.replace('<ram:ChargeAmount>100</ram:ChargeAmount>', `<ram:ChargeAmount>${v}</ram:ChargeAmount>`)
+    expect(pathDiff(long('12345678901234567.1'), long('12345678901234567.2'))).not.toEqual([])
+  })
+})
+
 describe('eXTENDED-CTC-FR fields (EXT-FR-FE-*) round trip (CG-18)', () => {
   it.each(GROUPS)('$name', async ({ slots, at }) => {
     const xml = invoice(slots)
@@ -549,10 +648,9 @@ describe('annex A EXT-FR-FE traceability', () => {
   })
 
   it('every Annex A EXT-FR-FE XPath is in the all-groups document (except CG-32 paths)', () => {
-    const paths = new Set([...pathValues(invoice(ALL_SLOTS)).keys()].map(k => k.replace(/=.*$/s, '')))
-    // Exact match: a group element (BG) row is a leaf here only when it is itself a path's ancestor.
-    const ancestors = new Set([...paths].flatMap(p => p.split('/').map((_, i, a) => a.slice(0, i + 1).join('/'))))
-    const missing = ANNEX_A_ROWS.filter(r => !NOT_YET.test(r.xpath) && !paths.has(r.xpath) && !ancestors.has(r.xpath))
+    const paths = pathsOf(invoice(ALL_SLOTS))
+    // Exact element or attribute path (group rows are element paths too).
+    const missing = ANNEX_A_ROWS.filter(r => !NOT_YET.test(r.xpath) && !paths.has(r.xpath))
     expect(missing).toEqual([])
     expect(ANNEX_A_ROWS.filter(r => NOT_YET.test(r.xpath)).map(r => r.id))
       .toEqual(['EXT-FR-FE-199-1', 'EXT-FR-FE-192-00', 'EXT-FR-FE-192', 'EXT-FR-FE-192-1'])
