@@ -77,7 +77,7 @@ export const FACTURX_SCHEMATRON: Map<string, SchematronConfig> = new Map([
   ['basicwl', { sef: `${dir('basicwl')}/FACTUR-X_BASIC-WL.sef.json.gz`, codedb: `${dir('basicwl')}/FACTUR-X_BASIC-WL_codedb.xml`, codedbName: 'FACTUR-X_BASIC-WL_codedb.xml' }],
   ['basic', { sef: `${dir('basic')}/FACTUR-X_BASIC.sef.json.gz`, codedb: `${dir('basic')}/FACTUR-X_BASIC_codedb.xml`, codedbName: 'FACTUR-X_BASIC_codedb.xml' }],
   ['en16931', { sef: `${dir('en16931')}/FACTUR-X_EN16931.sef.json.gz`, codedb: `${dir('en16931')}/FACTUR-X_EN16931_codedb.xml`, codedbName: 'FACTUR-X_EN16931_codedb.xml' }],
-  ['extended', { sef: `${dir('extended')}/Factur-X_EXTENDED.sef.json.gz`, codedb: `${dir('extended')}/FACTUR-X_EXTENDED_codedb.xml`, codedbName: 'FACTUR-X_EXTENDED_codedb.xml' }],
+  ['extended', { sef: `${dir('extended')}/FACTUR-X_EXTENDED.sef.json.gz`, codedb: `${dir('extended')}/FACTUR-X_EXTENDED_codedb.xml`, codedbName: 'FACTUR-X_EXTENDED_codedb.xml' }],
 ])
 
 // Per-process cache of prepared stylesheet locations (decompressed SEF + codedb), keyed by SEF path.

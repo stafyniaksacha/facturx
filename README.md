@@ -12,7 +12,7 @@ Conforms to **Factur-X 1.09 / ZUGFeRD 2.5** (the EN 16931 European e-invoicing s
 - 📤 **Extract** the XML back out of a Factur-X / Order-X / ZUGFeRD PDF — `extract`
 - 🔁 **Parse** an XML invoice into a fully-typed model — `xmlToInvoice`
 - 🧱 **Build** a Cross Industry Invoice model and serialize it to XML — `invoiceToXml`
-- ✅ **Validate** against the official 1.09 **XSD**, and optionally the **Schematron** EN 16931 `BR-*` business rules and code lists — `check` (`schematron: true`) / `validateSchematron`
+- ✅ **Validate** against the Factur-X **XSD** (1.09 for MINIMUM/BASIC, the FNFE-MPE 1.09.2.fixFR04 assets for BASIC WL/EN 16931/EXTENDED), and optionally the **Schematron** EN 16931 `BR-*` business rules and code lists — `check` (`schematron: true`) / `validateSchematron`
 - 🗂 All five Factur-X profiles: `minimum`, `basicwl`, `basic`, `en16931`, `extended`
 
 See [Profiles & flavors](https://stafyniaksacha.github.io/facturx/guide/profiles-and-flavors) for the supported flavors, levels and autodetection rules.

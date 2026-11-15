@@ -2,7 +2,9 @@
 
 TypeScript library + CLI (`@stafyniaksacha/facturx`, ESM-only) to **generate**, **extract**, **parse**,
 **build** and **validate** Factur-X / ZUGFeRD e-invoices and Order-X orders: CII D22B XML embedded in
-PDF/A-3. Target spec: **Factur-X 1.09 / ZUGFeRD 2.5** (EN 16931), vendored in [`spec/`](spec/README.md).
+PDF/A-3. Target spec: **Factur-X 1.09 / ZUGFeRD 2.5** (EN 16931), vendored in [`spec/`](spec/README.md);
+BASIC WL, EN 16931 and EXTENDED validate against **Factur-X 1.09.2.fixFR04** from the FNFE-MPE
+Schematrons FR CTC 1.4.0.04 (`spec/fnfe-ctc-fr-1.4.0.04/`, see `CONFORMANCE.md` CG-16).
 
 ## Conformance comes first
 
@@ -37,6 +39,7 @@ pnpm install
 pnpm build            # REQUIRED before tests: tests import the built package (dist/), not src/
 pnpm test             # vitest; includes the official-example corpus (~16 s of the run)
 pnpm vitest run tests/spec-examples.test.ts   # just the corpus: 56 official PDFs
+pnpm vitest run tests/annex-b-examples.test.ts  # XP Z12-012 annex B Factur-X examples (24)
 pnpm spec:verify      # vendored XSD/codedb/XSLT/SEF ⇔ spec/ (~1 min, recompiles every SEF)
 pnpm lint             # @antfu/eslint-config
 pnpm typecheck        # tsc --noEmit (CI runs it after lint)
@@ -102,7 +105,8 @@ Searching the spec: `grep -n "<term>" spec/factur-x-1.09/text/spec-main.txt` (pa
 `text/fields--Business_Rules.csv`, code lists in `text/codelists--*.csv`. The PDFs themselves need
 poppler to read, which is often not installed; the extracts exist so you don't have to.
 
-Use only the spec's examples (`spec/…/5. FACTUR-X 1.09 - Examples/`), `examples/` and
+Use only the spec's examples (`spec/…/5. FACTUR-X 1.09 - Examples/`, XP Z12-012 annex B under
+`spec/afnor-xp-z12-012-1.4/`), `examples/` and
 `tests/fixtures/` as test data.
 
 ## Security
@@ -132,5 +136,6 @@ Known so you don't rediscover them; fix them deliberately, not as a side effect 
 - `extract({ check: true })` fails on ZUGFeRD attachments with `Unknown schema flavor` (#38).
 - `engines.node` is `>=20.11.0`, and Node 20 is end-of-life.
 - `tests/parser.test.ts:29` is skipped.
-- The shipped `.sef.json.gz` files embed the absolute path of the checkout they were compiled in.
+- The shipped `.sef.json.gz` files embed the absolute path they were compiled from: a neutral
+  `/tmp/facturx-sef/<level>/` (recorded as `file:///private/tmp/…` on macOS) since the 1.09.2.fixFR04 move (see `SCHEMATRON.md`); keep it that way.
 - Spec-level gaps: see `CONFORMANCE.md`.

@@ -10,21 +10,24 @@
  * type without changing the rule semantics (monetary sums are decimals).
  *
  * Usage: node scripts/patch-schematron-sum.mjs <file.xslt> [<file.xsl> ...]
- * Idempotent enough for our needs: re-running yields xs:decimal(xs:decimal(sum(...)))
- * which is harmless. Run against the spec's `_XSLT_<LEVEL>` transforms before
- * compiling them to SEF (see src/lib/xsd/facturx/SCHEMATRON.md).
+ * Idempotent: a `sum(` already written as `xs:decimal(sum(` (by an earlier run,
+ * or upstream, as some 1.09 and 1.09.2.fixFR04 transforms already do) is left
+ * alone, so re-running is a no-op. Run against the spec's Schematron XSLT before
+ * compiling it to SEF (see src/lib/xsd/facturx/SCHEMATRON.md).
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import process from 'node:process'
 
 const isNameChar = c => /[\w:.\-]/.test(c)
 
+const WRAP = 'xs:decimal('
+
 function wrapSums(src) {
   let out = ''
   let i = 0
   let count = 0
   while (i < src.length) {
-    if (src.startsWith('sum(', i) && (i === 0 || !isNameChar(src[i - 1]))) {
+    if (src.startsWith('sum(', i) && (i === 0 || !isNameChar(src[i - 1])) && !src.endsWith(WRAP, i)) {
       let depth = 0
       let j = i + 3
       let quote = null
@@ -48,7 +51,7 @@ function wrapSums(src) {
             break
         }
       }
-      out += `xs:decimal(${src.slice(i, j + 1)})`
+      out += `${WRAP}${src.slice(i, j + 1)})`
       i = j + 1
       count++
     }

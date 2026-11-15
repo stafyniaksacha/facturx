@@ -31,7 +31,7 @@ features:
     link: /api/parsing
   - icon: ✅
     title: Validate
-    details: Check structure against the official 1.09 XSD, and the EN 16931 BR-* business rules via Schematron.
+    details: Check structure against the Factur-X XSD (1.09, or 1.09.2.fixFR04 for BASIC WL, EN 16931 and EXTENDED), and the EN 16931 BR-* business rules via Schematron.
     link: /guide/validation
   - icon: 🗂
     title: All five profiles

@@ -33,7 +33,7 @@ describe('schematron validation', () => {
 
   it('reports severity and keeps warnings out of validity by default', async () => {
     // PEPPOL-EN16931-R008 ("Document MUST not contain empty elements") is flagged
-    // `warning` in the Factur-X 1.09 EN16931 Schematron.
+    // `warning` in the EN16931 Schematron (1.09 FINAL and 1.09.2.fixFR04).
     const xml = getEN16931XML().replace('<ram:Name>Au bon moulin</ram:Name>', '<ram:Name>Au bon moulin</ram:Name><ram:Description></ram:Description>')
 
     const lenient = await validateSchematron({ xml, flavor: 'facturx', level: 'en16931' })
@@ -74,11 +74,19 @@ describe('schematron validation', () => {
   it('does not expose internal Factur-X assert numbers as rule ids', async () => {
     const xml = getEN16931XML().replace('<ram:Name>Au bon moulin</ram:Name>', '<ram:Name>Au bon moulin</ram:Name><ram:Description></ram:Description>')
     const { warnings } = await validateSchematron({ xml, flavor: 'facturx', level: 'en16931' })
+    // EN16931 runs Factur-X 1.09.2.fixFR04, whose asserts carry the rule id as SVRL @id.
     const r008 = warnings.find(w => w.id === 'PEPPOL-EN16931-R008')
-    expect(r008?.assertId).toMatch(/^FX-SCH-A-/)
-    const all = (await validateSchematron({ xml: getEN16931XML().replace(/<ram:SellerTradeParty>[\s\S]*?<\/ram:SellerTradeParty>/, ''), flavor: 'facturx', level: 'en16931' })).errors
-    expect(all.length).toBeGreaterThan(0)
-    expect(all.every(e => !e.id?.startsWith('FX-SCH-'))).toBe(true)
+    expect(r008?.assertId).toBe('PEPPOL-EN16931-R008')
+
+    const noSeller = getEN16931XML().replace(/<ram:SellerTradeParty>[\s\S]*?<\/ram:SellerTradeParty>/, '')
+    for (const level of ['basic', 'en16931']) {
+      const all = (await validateSchematron({ xml: noSeller, flavor: 'facturx', level })).errors
+      expect(all.length).toBeGreaterThan(0)
+      expect(all.every(e => !e.id?.startsWith('FX-SCH-'))).toBe(true)
+    }
+    // BASIC stays on 1.09 FINAL, whose asserts carry an internal number as @id.
+    const basic = (await validateSchematron({ xml: noSeller, flavor: 'facturx', level: 'basic' })).errors
+    expect(basic.some(e => e.assertId?.startsWith('FX-SCH-A-'))).toBe(true)
   })
 
   it('throws for non-facturx flavors (no Order-X Schematron shipped)', async () => {
