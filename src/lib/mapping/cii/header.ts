@@ -65,8 +65,9 @@ const PROJECT_NAME = 'Project reference'
  * confirmed by annex B UC1 (CII 72, UBL 432) and F202500001 (CII 5, UBL 3). The CII Schematron
  * allows only 5, 29, 72 (codedb list 28), EN16931-UBL only 3, 35, 432 (BR-CL-06).
  */
-const BT8_TO_CII: Record<string, string> = { 3: '5', 35: '29', 432: '72' }
-const BT8_FROM_CII: Record<string, string> = { 5: '3', 29: '35', 72: '432' }
+// Maps, not object literals: the CII code is untrusted input, and `'constructor'` must not match.
+const BT8_TO_CII = new Map([['3', '5'], ['35', '29'], ['432', '72']])
+const BT8_FROM_CII = new Map([...BT8_TO_CII].map(([en, cii]) => [cii, en]))
 
 /** Header terms Factur-X BASIC (missing from its matrix) or EN 16931 (EXT-FR-FE) cannot carry. */
 export const HEADER_GATES: readonly TermGate[] = [
@@ -109,7 +110,7 @@ export function headerFromCii(cii: CrossIndustryInvoiceType): HeaderInit {
     // BT-7 and BT-8 repeat on every VAT breakdown entry that carries them (annex A: identical when
     // repeated); one value is read only when they all agree.
     valueAddedTaxPointDate: agreed(taxes.filter(t => t.taxPointDate).map(t => isoFromCii(t.taxPointDate))),
-    valueAddedTaxPointDateCode: agreed(taxes.filter(t => t.dueDateTypeCode).map(t => BT8_FROM_CII[t.dueDateTypeCode!.value])),
+    valueAddedTaxPointDateCode: agreed(taxes.filter(t => t.dueDateTypeCode).map(t => BT8_FROM_CII.get(t.dueDateTypeCode!.value))),
     paymentDueDate: isoFromCii(settlement?.specifiedTradePaymentTerms?.[0]?.dueDateDateTime),
     buyerReference: agreement?.buyerReference?.value,
     projectReference: agreement?.specifiedProcuringProject?.id?.value,
@@ -162,11 +163,12 @@ export function headerFromCii(cii: CrossIndustryInvoiceType): HeaderInit {
  */
 export function valueAddedTaxPointToCii(invoice: Invoice): Pick<ram.TradeTaxType, 'taxPointDate' | 'dueDateTypeCode'> {
   const code = invoice.valueAddedTaxPointDateCode
-  if (code !== undefined && !(code in BT8_TO_CII))
+  const untdid2475 = code === undefined ? undefined : BT8_TO_CII.get(code)
+  if (code !== undefined && untdid2475 === undefined)
     throw new Error('toCii: BT-8 (value added tax point date code) must be a UNTDID 2005 code 3, 35 or 432')
   return {
     taxPointDate: ciiDate(invoice.valueAddedTaxPointDate, 'BT-7'),
-    dueDateTypeCode: code === undefined ? undefined : new qdt.TimeReferenceCodeType({ value: BT8_TO_CII[code] }),
+    dueDateTypeCode: untdid2475 === undefined ? undefined : new qdt.TimeReferenceCodeType({ value: untdid2475 }),
   }
 }
 

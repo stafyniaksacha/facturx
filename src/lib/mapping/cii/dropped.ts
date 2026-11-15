@@ -51,7 +51,7 @@ function childPath(path: string, key: string, node: Node, owner: string | undefi
   }
   if (ATTRIBUTES.has(key))
     return `${path}/@${key}`
-  const name = ELEMENT_NAMES[key] ?? key.charAt(0).toUpperCase() + key.slice(1)
+  const name = Object.hasOwn(ELEMENT_NAMES, key) ? ELEMENT_NAMES[key] : key.charAt(0).toUpperCase() + key.slice(1)
   return `${path}/${path === ROOT && RSM.has(key) ? 'rsm' : 'ram'}:${name}`
 }
 

@@ -183,12 +183,17 @@ describe('en 16931 model: VAT point date (BT-7, BT-8)', () => {
       `${ROOT}/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax[2]/ram:DueDateTypeCode`,
     ]))
 
-    const unknown = fromCii(withTaxes({ dueDateTypeCode: { value: '999' } }))
-    expect(unknown.invoice.valueAddedTaxPointDateCode).toBeUndefined()
+    // Unknown codes, including object-prototype keys, are not read: they are dropped, never thrown on.
+    for (const value of ['999', 'constructor', '__proto__', 'toString']) {
+      const unknown = fromCii(withTaxes({ dueDateTypeCode: { value } }))
+      expect(unknown.invoice.valueAddedTaxPointDateCode).toBeUndefined()
+      expect(unknown.dropped).toContain(`${ROOT}/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax[1]/ram:DueDateTypeCode`)
+    }
   })
 
   it('rejects a BT-8 code outside UNTDID 2005 3 / 35 / 432 and BT-7 at basic', () => {
-    expect(() => toCii(new EN16931.Invoice({ ...header, valueAddedTaxPointDateCode: '72' }), { level: 'en16931' })).toThrow(/BT-8/)
+    for (const code of ['72', 'toString', 'constructor'])
+      expect(() => toCii(new EN16931.Invoice({ ...header, valueAddedTaxPointDateCode: code }), { level: 'en16931' })).toThrow(/BT-8/)
     expect(() => toCii(new EN16931.Invoice({ ...header, valueAddedTaxPointDate: '2025-06-30' }), { level: 'basic' })).toThrow(/BT-7/)
   })
 })

@@ -360,7 +360,7 @@ export class Invoice {
    */
   buyerAccountingReference?: string
   /**
-   * Business process type (in France, the "cadre de facturation", e.g. `S1`, `B1`).
+   * Business process type (in France, the "cadre de facturation").
    * @bt BT-23
    */
   businessProcessType?: string
