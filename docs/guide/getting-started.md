@@ -43,7 +43,7 @@ npx @stafyniaksacha/facturx extract invoice.pdf > factur-x.xml
 # Check that an XML invoice is valid (structure + business rules)
 npx @stafyniaksacha/facturx check factur-x.xml --schematron
 
-# Embed an XML into a PDF to produce a compliant PDF/A-3
+# Embed an XML into a PDF (start from a PDF/A-3 base: generate does not convert to PDF/A-3)
 npx @stafyniaksacha/facturx generate --pdf invoice.pdf --xml factur-x.xml --output facturx.pdf
 ```
 

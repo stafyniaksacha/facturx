@@ -31,7 +31,7 @@ import { AmountType, CrossIndustryInvoiceType, IDType /* … */ } from '@stafyni
 
 | Export | Kind | Description |
 | --- | --- | --- |
-| [`generate(options)`](/api/generate) | `() => Promise<Uint8Array>` | Embed XML into a PDF → PDF/A-3 bytes. |
+| [`generate(options)`](/api/generate) | `() => Promise<Uint8Array>` | Embed XML into a PDF/A-3 base → hybrid PDF bytes. |
 | [`extract(options)`](/api/extract) | `() => Promise<ExtractResult>` | Pull the embedded XML out of a PDF. |
 | [`check(options)`](/api/check) | `() => Promise<CheckResult>` | XSD (+ optional Schematron) validation. |
 | [`validateSchematron(options)`](/api/validate-schematron) | `() => Promise<{ valid, errors }>` | EN 16931 business-rule validation (Factur-X only). |

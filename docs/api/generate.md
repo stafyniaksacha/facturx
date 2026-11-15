@@ -1,6 +1,7 @@
 # `generate()`
 
-Embed an XML invoice into a PDF and return a compliant **PDF/A-3** as bytes.
+Embed an XML invoice into a PDF and return the resulting hybrid document as bytes. `generate()` does
+**not** convert the PDF to PDF/A-3: [supply a PDF/A-3 base](#supplying-the-pdf-base).
 
 ## Signature
 
@@ -42,7 +43,7 @@ interface PdfMetadata {
 
 ## Returns
 
-`Promise<Uint8Array>` — the bytes of the generated PDF/A-3, ready to write to disk or stream.
+`Promise<Uint8Array>` — the bytes of the generated PDF, ready to write to disk or stream.
 
 ## Behaviour
 
@@ -86,6 +87,20 @@ turn into a correct hybrid document instead of producing a broken one:
 | `This PDFDocument was already passed to generate(): load a new one for each call` | The same `pdf-lib` `PDFDocument` object was passed again, even if the earlier call failed. Load the PDF again for each call. |
 | `PDFs whose embedded files name tree has /Kids are not supported` | The source's attachments use a multi-level name tree, which `pdf-lib` cannot append to correctly. |
 | `Malformed EmbeddedFiles name tree: …` | The source's attachment list is corrupt (e.g. a name without a value). |
+
+## Supplying the PDF base
+
+Factur-X requires the hybrid document to be PDF/A-3 (or PDF/A-4f), BR-HYBRID-02. `generate()` only
+attaches the XML as an associated file, sets the Info dictionary and writes the PDF/A-3 + Factur-X XMP
+metadata. It does **not** embed fonts, add an output intent or fix anything else PDF/A needs, so the
+PDF you pass must already be PDF/A-3 (PDF/A-3b at least). Produce it with your PDF tool's PDF/A
+export, or see the repo's `tests/generate/index.ts` for a `pdf-lib` base with an embedded font and an
+sRGB output intent.
+
+Given a PDF/A-3b base, the output stayed PDF/A-3b in a manual veraPDF run on every Factur-X profile.
+No automated test checks this yet; see CG-05 in
+[`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md). Validate your
+own output with a PDF/A validator such as veraPDF.
 
 ## Example
 

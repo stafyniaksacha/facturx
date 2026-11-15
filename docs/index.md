@@ -19,7 +19,7 @@ hero:
 features:
   - icon: 📎
     title: Generate
-    details: Embed a Factur-X / Order-X / ZUGFeRD XML into a PDF to produce a compliant PDF/A-3 invoice.
+    details: Embed a Factur-X / Order-X / ZUGFeRD XML and its PDF/A-3 XMP metadata into a PDF/A-3 base you supply.
     link: /api/generate
   - icon: 📤
     title: Extract

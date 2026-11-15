@@ -37,7 +37,8 @@ npx @stafyniaksacha/facturx check factur-x.xml --schematron
 ```ts
 import { check, extract, generate } from '@stafyniaksacha/facturx'
 
-// Embed an XML invoice into a PDF → compliant PDF/A-3 bytes
+// Embed an XML invoice into a PDF → Factur-X hybrid bytes (start from a PDF/A-3 base:
+// generate() attaches the XML and writes the XMP, it does not convert to PDF/A-3)
 const facturxPdf = await generate({ pdf, xml })
 
 // Pull the embedded XML back out of a Factur-X / Order-X / ZUGFeRD PDF
