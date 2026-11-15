@@ -17,14 +17,19 @@ export class AccountingAccountTypeCodeType {
 
 /**
  * Coded reason for an allowance or charge (UNTDID 5189 for allowances, UNTDID 7161 for charges).
+ * In EXTENDED, `listID: '5153'` makes it a non-VAT tax code instead (UNTDID 5153): BT-177 on a
+ * document charge, BT-193 on a line charge, BT-X-616 on a gross price charge (Factur-X 1.09).
  * @profile BASIC WL
  */
 export class AllowanceChargeReasonCodeType {
-  constructor({ value }: { value: string }) {
+  constructor({ value, listID }: { value: string, listID?: string }) {
     this.value = value
+    this.listID = listID
   }
 
   value: string
+  /** `5153` for a non-VAT tax code (BT-177-1, BT-193-1, BT-X-616-1, EXTENDED); absent for a reason code. */
+  listID?: string
 }
 
 /**

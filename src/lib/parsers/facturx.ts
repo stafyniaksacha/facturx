@@ -618,14 +618,16 @@ function parseAllowanceCharge(node: XmlElement): ram.TradeAllowanceChargeType {
     basisAmount: parseAmount(get(node, './ram:BasisAmount')),
     basisQuantity: parseQuantity(get(node, './ram:BasisQuantity')),
     actualAmount: parseAmount(get(node, './ram:ActualAmount')) ?? new udt.AmountType({ value: 0 }),
-    reasonCode: textOf(get(node, './ram:ReasonCode')) ? new qdt.AllowanceChargeReasonCodeType({ value: textOf(get(node, './ram:ReasonCode'))! }) : undefined,
+    reasonCode: textOf(get(node, './ram:ReasonCode'))
+      ? new qdt.AllowanceChargeReasonCodeType({ value: textOf(get(node, './ram:ReasonCode'))!, listID: get(node, './ram:ReasonCode')!.attr('listID')?.value })
+      : undefined,
     reason: parseText(get(node, './ram:Reason')),
     categoryTradeTax: get(node, './ram:CategoryTradeTax') ? parseTradeTax(get(node, './ram:CategoryTradeTax')!) : undefined,
   })
 }
 
-// EXTENDED logistics service charges (BT-X-271…275, and BT-X-591 for the exemption reason of their
-// tax, Factur-X 1.09). The converter always wrote them; reading them back was missing.
+// EXTENDED logistics service charges (BG-X-42: BT-X-271…274, and BT-X-591/592 for the exemption
+// reason of their tax, Factur-X 1.09). The converter always wrote them; reading them back was missing.
 function parseLogisticsServiceCharge(node: XmlElement): ram.LogisticsServiceChargeType {
   const taxes = findAll(node, './ram:AppliedTradeTax').map(parseTradeTax)
   return new ram.LogisticsServiceChargeType({
