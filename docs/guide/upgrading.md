@@ -268,6 +268,15 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   `No attachment found`. Deeper or larger trees throw `Unsupported EmbeddedFiles name tree: …`.
   `generate()` still rejects sources with `/Kids`.
 
+- **`extract()` decodes only the invoice, within 128 MiB.** 0.6.1 decoded every attachment before
+  looking at the names. It now matches on names first, decodes only the matching attachment, and
+  throws `The embedded file <name> is too large: more than 128 MiB once decoded` past that size.
+  When no name tree key is a known invoice name, the file specification's `/F` and `/UF` are tried
+  too, so an invoice stored under another key is now found. A matching file specification without
+  an embedded stream throws `Malformed embedded file <name>: …`, data that does not decode throws
+  `Cannot decode the embedded file <name>: …`, and so does a `/Predictor` (0.6.1 ignored it and
+  returned the still-predicted bytes). Other attachments without `/EF` are no longer an error.
+
 ## New features
 
 ### French e-invoicing rules (BR-FR), opt-in

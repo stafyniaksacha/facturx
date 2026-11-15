@@ -52,6 +52,14 @@ function extract(options: {
   actually contains an Order-X file.
 - Does not detect the level. `level` in the result is the option you passed (or `undefined`); call
   [`check()`](/api/check) on the extracted XML to get the detected level.
+- Matches on names only, so no other attachment is decoded: the name tree keys first, in tree
+  order, then, when no key is a recognised name, each file specification's `/F` and `/UF`.
+  `filename` is the name that matched.
+- Decodes the matching attachment once, with its `/Filter` chain (`FlateDecode`, `LZWDecode`,
+  `ASCII85Decode`, `ASCIIHexDecode`, `RunLengthDecode`), and throws
+  `The embedded file <name> is too large: more than 128 MiB once decoded` past that size. A matching
+  file specification without an embedded stream throws `Malformed embedded file <name>: …`; another
+  filter, a `/Predictor` or corrupt data throws `Cannot decode the embedded file <name>: …`.
 - Throws `No attachment found` when no recognised XML is present.
 - Throws `Malformed EmbeddedFiles name tree: …` when the PDF's attachment list is corrupt (for
   example a name without a value), instead of an internal `pdf-lib` error.

@@ -1,11 +1,13 @@
 import type { XmlDocument } from 'libxml2-wasm'
-import type { PDFDocument } from 'pdf-lib'
+import type { PDFDict, PDFDocument } from 'pdf-lib'
 
 import { Buffer } from 'node:buffer'
 
+import { PDFHexString, PDFName, PDFString } from 'pdf-lib'
+
 import { check } from './check'
 import { FACTURX_FILENAME, ORDERX_FILENAME, XRECHNUNG_FILENAME, ZUGFERD_FILENAMES } from './constants'
-import { extractAttachments } from './pdf'
+import { decodeName, EmbeddedFileDecodeError, embeddedFileStream, EmbeddedFileTooLargeError, InflateBudget, InflateBudgetExceededError, readEmbeddedFile, readEmbeddedFilesNames } from './pdf'
 import { resolvePdf, resolveXml } from './resolve'
 import { declaresExtendedCtcFr, getFlavor } from './xml'
 
@@ -23,6 +25,71 @@ function validationFlavor(flavor: string | undefined, xml: XmlDocument, filename
   if (root === 'orderx')
     throw new Error(`Invalid XML: ${filename} holds an Order-X order, not an invoice`)
   return root
+}
+
+// The flavor of each recognized attachment name. xrechnung.xml holds a CII invoice too (§6.2 p.25,
+// §7.7), so its flavor is facturx, the one getFlavor() gives its CrossIndustryInvoice root.
+const FILE_FLAVORS = new Map<string, string>([
+  [FACTURX_FILENAME, 'facturx'],
+  [XRECHNUNG_FILENAME, 'facturx'],
+  [ORDERX_FILENAME, 'orderx'],
+  ...ZUGFERD_FILENAMES.map(name => [name, 'zugferd'] as [string, string]),
+])
+
+// The most bytes one invoice may decode to, and the inflate budget of one extract() call. An
+// EXTENDED invoice of tens of thousands of lines stays far below it.
+const MAX_EXTRACTED_BYTES = 128 * 1024 * 1024
+
+interface InvoiceFile {
+  filename: string
+  flavor: string
+  fileSpec: PDFDict
+}
+
+/**
+ * The first EmbeddedFiles name tree entry with a recognized name, matched on names only, so no
+ * other file is decoded (was CG-29: every entry was decoded first). Tree keys are tried first, in
+ * tree order, as before; only when no key matches are the file specifications' `/F` and `/UF` tried
+ * (ISO 32000-1 §7.11.3, not vendored: readers may name a file by either). `filename` is the name
+ * that matched.
+ */
+function findInvoiceFile(pdf: PDFDocument): InvoiceFile | undefined {
+  const entries = readEmbeddedFilesNames(pdf)
+  for (const { fileName, fileSpec } of entries) {
+    const name = decodeName(fileName)
+    const flavor = FILE_FLAVORS.get(name)
+    if (flavor)
+      return { filename: name, flavor, fileSpec }
+  }
+  for (const { fileSpec } of entries) {
+    for (const key of ['F', 'UF']) {
+      const value = fileSpec.lookup(PDFName.of(key))
+      if (!(value instanceof PDFString || value instanceof PDFHexString))
+        continue
+      const name = decodeName(value)
+      const flavor = FILE_FLAVORS.get(name)
+      if (flavor)
+        return { filename: name, flavor, fileSpec }
+    }
+  }
+  return undefined
+}
+
+/** The decoded bytes of the matched file, read once, within MAX_EXTRACTED_BYTES (was CG-29). */
+function readInvoiceFile({ filename, fileSpec }: InvoiceFile): Uint8Array {
+  const stream = embeddedFileStream(fileSpec)
+  if (!stream)
+    throw new Error(`Malformed embedded file ${filename}: its file specification has no embedded file stream (/EF)`)
+  try {
+    return readEmbeddedFile(stream, MAX_EXTRACTED_BYTES, new InflateBudget(MAX_EXTRACTED_BYTES))
+  }
+  catch (error) {
+    if (error instanceof EmbeddedFileTooLargeError || error instanceof InflateBudgetExceededError)
+      throw new Error(`The embedded file ${filename} is too large: more than ${MAX_EXTRACTED_BYTES / 1024 / 1024} MiB once decoded`)
+    if (error instanceof EmbeddedFileDecodeError)
+      throw new Error(`Cannot decode the embedded file ${filename}: ${error.message}`)
+    throw error
+  }
 }
 
 interface ExtractResult {
@@ -45,61 +112,23 @@ export async function extract(options: {
   level?: string
   flavor?: string
 }): Promise<ExtractResult> {
-  let file = null
-
   const pdf = await resolvePdf(options.pdf)
 
-  let flavor = options.flavor
   const level = options.level
-  const attachments = extractAttachments(pdf)
-
-  if (attachments?.length) {
-    for (const attachment of attachments) {
-      // xrechnung.xml holds a CII invoice too (§6.2 p.25, §7.7), so its flavor is facturx, the one
-      // getFlavor() gives its CrossIndustryInvoice root.
-      if (attachment.name === FACTURX_FILENAME || attachment.name === XRECHNUNG_FILENAME) {
-        if (!options.flavor || options.flavor === 'facturx') {
-          flavor = 'facturx'
-        }
-        else {
-          throw new Error(`Invalid flavor, expected ${options.flavor} but found facturx`)
-        }
-        file = attachment
-        break
-      }
-      if (attachment.name === ORDERX_FILENAME) {
-        if (!options.flavor || options.flavor === 'orderx') {
-          flavor = 'orderx'
-        }
-        else {
-          throw new Error(`Invalid flavor, expected ${options.flavor} but found orderx`)
-        }
-
-        file = attachment
-        break
-      }
-      if (ZUGFERD_FILENAMES.includes(attachment.name)) {
-        if (!options.flavor || options.flavor === 'zugferd') {
-          flavor = 'zugferd'
-        }
-        else {
-          throw new Error(`Invalid flavor, expected ${options.flavor} but found zugferd`)
-        }
-        file = attachment
-        break
-      }
-    }
-  }
-
+  const file = findInvoiceFile(pdf)
   if (!file) {
     throw new Error('No attachment found')
   }
+  if (options.flavor && options.flavor !== file.flavor)
+    throw new Error(`Invalid flavor, expected ${options.flavor} but found ${file.flavor}`)
+  const flavor = file.flavor
 
-  const xml = await resolveXml(Buffer.from(file.data))
+  const data = readInvoiceFile(file)
+  const xml = await resolveXml(Buffer.from(data))
 
   try {
     if (options.check === true) {
-      const checkFlavor = validationFlavor(flavor, xml, file.name)
+      const checkFlavor = validationFlavor(flavor, xml, file.filename)
       // A plain-CII EXTENDED-CTC-FR document is no Factur-X profile: a hybrid PDF cannot declare it
       // (BR-HYBRID-07/15). Read from the XML, so an explicit `level` cannot hide it.
       if (checkFlavor === 'facturx' && declaresExtendedCtcFr(xml))
@@ -119,9 +148,9 @@ export async function extract(options: {
     }
 
     return {
-      filename: file.name,
+      filename: file.filename,
       xml: xml.toString(),
-      bytes: new Uint8Array(file.data),
+      bytes: data,
       flavor,
       level,
     }
