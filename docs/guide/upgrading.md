@@ -115,9 +115,9 @@ if (code === undefined) {
 
 `generate({ flavor: 'zugferd' })`, and `generate()` on a ZUGFeRD 1.0 `CrossIndustryDocument` XML,
 now throw `Cannot generate the "zugferd" flavor: …` before reading the PDF. 0.6.1 embedded the XML
-as `zugferd-invoice.xml` with Factur-X XMP and an empty conformance level, which no validator
-accepts: that filename is not a valid hybrid filename (BR-HYBRID-08/13), and the legacy ZUGFeRD 2.0
-hybrid that used it has its own `zf:` XMP schema (§6.3.2 p.29; CG-09). `zugferd` stays supported by
+as `zugferd-invoice.xml` with Factur-X `fx:` XMP and an empty conformance level: that filename is
+not in the hybrid filename code list (BR-HYBRID-08/13, Fatal), and the legacy ZUGFeRD 2.0 hybrid
+that used it has its own `zf:` XMP schema (§6.3.2 p.29), so the output matched neither (CG-09). `zugferd` stays supported by
 `extract()`.
 
 A ZUGFeRD 2.x invoice is a Factur-X `CrossIndustryInvoice`: drop `flavor: 'zugferd'` (it is then
