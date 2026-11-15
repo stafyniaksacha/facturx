@@ -8,12 +8,12 @@ import { extract } from '../index'
 export default defineCommand({
   meta: {
     name: 'extract',
-    description: 'Extracts Factur-X/Order-X XML file from a PDF-A/3 file',
+    description: 'Extracts the Factur-X/Order-X XML file from a PDF',
   },
   args: {
     pdf: {
       type: 'positional',
-      description: 'Input PDF-A/3 file',
+      description: 'Input PDF file',
       required: true,
     },
     check: {

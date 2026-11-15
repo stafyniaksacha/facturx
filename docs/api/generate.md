@@ -1,6 +1,7 @@
 # `generate()`
 
-Embed an XML invoice into a PDF and return a compliant **PDF/A-3** as bytes.
+Embed an XML invoice into a PDF and return the resulting hybrid document as bytes. `generate()` does
+**not** convert the PDF to PDF/A-3: [supply a PDF/A-3 base](#supplying-the-pdf-base).
 
 ## Signature
 
@@ -13,6 +14,7 @@ function generate(options: {
   level?: string
   language?: string
   meta?: PdfMetadata
+  afRelationship?: 'Data' | 'Alternative' | 'Source'
 }): Promise<Uint8Array>
 ```
 
@@ -27,6 +29,7 @@ function generate(options: {
 | `level` | `string` | autodetect | Schema level (e.g. `en16931`). |
 | `language` | `string` | — | PDF language code (RFC 3066), e.g. `en-GB`. |
 | `meta` | `PdfMetadata` | derived from XML | Override the PDF document metadata. |
+| `afRelationship` | `'Data' \| 'Alternative' \| 'Source'` | `'Data'` | Relationship between the embedded XML and the PDF (see below). |
 
 `PdfMetadata`:
 
@@ -42,7 +45,7 @@ interface PdfMetadata {
 
 ## Returns
 
-`Promise<Uint8Array>` — the bytes of the generated PDF/A-3, ready to write to disk or stream.
+`Promise<Uint8Array>` — the bytes of the generated PDF, ready to write to disk or stream.
 
 ## Behaviour
 
@@ -51,20 +54,26 @@ interface PdfMetadata {
   ::: warning Order-X metadata is not conformant yet
   For `orderx`, the XMP still says `fx:DocumentType` `INVOICE` and leaves `fx:ConformanceLevel`
   empty, where the hybrid code lists require `ORDER` / `ORDER_CHANGE` / `ORDER_RESPONSE` and
-  `BASIC` / `COMFORT` / `EXTENDED` (BR-HYBRID-06/07, Fatal). See CG-08 in
-  [`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md).
+  `BASIC` / `COMFORT` / `EXTENDED`.
   :::
-- When `meta` is omitted, the title/author/subject/date are derived from the invoice XML.
+- Writes the embedded XML with the `afRelationship` you pass, `Data` by default. Factur-X allows only `Data` for MINIMUM and BASIC WL, and `Alternative`,
+  `Source` or `Data` for BASIC, EN 16931 and EXTENDED. `generate()` throws
+  `afRelationship "<value>" is not allowed for the <level> profile` for the former, and
+  `Invalid afRelationship` for any other value. `Data` is valid for every profile in France; for
+  Germany, pass `Alternative` for BASIC and above (not enforced). Order-X is not restricted.
+- When `meta` is omitted, the title/author/subject are derived from the invoice XML (the subject
+  carries the issue date, BT-2) and the Info, XMP and embedded-file dates are the generation time,
+  in UTC. A `meta.date` you pass is used for all of them instead.
 - Keeps the source PDF's document ID: the first (permanent) element of the trailer `/ID` is
-  preserved and a new second (changing) element is written, as ISO 32000-1 §14.4 requires for a
+  preserved and a new second (changing) element is written, as the PDF standard requires for a
   modified file. A PDF without an `/ID` gets a new one.
 - Keeps the embedded files name tree sorted.
 - Throws `Invalid XML format (<flavor> - <level>)` when `check` is enabled and validation fails, and
   `Unknown schema flavor` for an unrecognised flavor.
 - Throws `Cannot generate the "zugferd" flavor: …` for `flavor: 'zugferd'` or a ZUGFeRD 1.0
   (`CrossIndustryDocument`) XML, whatever the flavor option, before reading the PDF. The `zugferd-invoice.xml` filename and the
-  `zf:` XMP schema are the deprecated ZUGFeRD 2.0 legacy settings (§6.3.2 p.29), and the filename is
-  not in the hybrid filename code list (BR-HYBRID-08/13). A ZUGFeRD 2.x invoice is a Factur-X
+  `zf:` XMP schema are the deprecated ZUGFeRD 2.0 legacy settings, and the filename is
+  not in the hybrid filename code list. A ZUGFeRD 2.x invoice is a Factur-X
   `CrossIndustryInvoice`: generate it as `facturx`.
 - Throws, before writing the invoice, when the source PDF cannot take the invoice correctly: see the
   table below. Bytes you pass are never modified. A `PDFDocument` you pass is marked as used before
@@ -80,12 +89,27 @@ turn into a correct hybrid document instead of producing a broken one:
 | --- | --- |
 | `Encrypted PDFs are not supported` | The source is encrypted. A Factur-X document must not be encrypted. |
 | `Signed PDFs are not supported: sign the document after generate()` | The source has a signed signature field or DocMDP/UR3 permissions. Saving would invalidate the signature; sign the generated PDF instead. |
-| `The PDF already has an embedded invoice (<filename>)` | The source already embeds an invoice XML. It is detected from the XML root element whatever the file name, and also by a known invoice file name (`factur-x.xml`, `xrechnung.xml`, ZUGFeRD names). Only one invoice XML is allowed per document: start from the plain PDF. For Order-X the message says `order`. Other XML attachments, such as a supporting purchase order, are allowed. Detection is best effort: an invoice whose content can't be read and whose name isn't recognised can be missed (CG-14 in [`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md)). |
+| `The PDF already has an embedded invoice (<filename>)` | The source already embeds an invoice XML. It is detected from the XML root element whatever the file name, and also by a known invoice file name (`factur-x.xml`, `xrechnung.xml`, ZUGFeRD names). Only one invoice XML is allowed per document: start from the plain PDF. For Order-X the message says `order`. Other XML attachments, such as a supporting purchase order, are allowed. Detection is best effort: an invoice whose content can't be read and whose name isn't recognised can be missed. |
 | `The PDF already has an embedded file named <filename>` | An attachment already uses the file name `generate()` is about to write (e.g. `factur-x.xml`), even if it isn't an invoice. |
 | `The PDF has more than 256 distinct embedded file streams: …` / `The PDF's embedded files are too large to check for an existing invoice` | Too many or too large attachments to inspect safely (limits: 256 distinct streams, 128 MiB decompressed). The PDF is rejected rather than accepted unchecked. |
 | `This PDFDocument was already passed to generate(): load a new one for each call` | The same `pdf-lib` `PDFDocument` object was passed again, even if the earlier call failed. Load the PDF again for each call. |
 | `PDFs whose embedded files name tree has /Kids are not supported` | The source's attachments use a multi-level name tree, which `pdf-lib` cannot append to correctly. |
 | `Malformed EmbeddedFiles name tree: …` | The source's attachment list is corrupt (e.g. a name without a value). |
+| `Unsupported EmbeddedFiles name tree: …` | The source's attachment list has more than two `/Kids` levels or more than 4096 nodes. |
+
+## Supplying the PDF base
+
+Factur-X requires the hybrid document to be PDF/A-3 (or PDF/A-4f). `generate()` only
+attaches the XML as an associated file, sets the Info dictionary and writes the PDF/A-3 + Factur-X XMP
+metadata. It does **not** embed fonts, add an output intent or fix anything else PDF/A needs, so the
+PDF you pass must already be PDF/A-3 (PDF/A-3b at least). Produce it with your PDF tool's PDF/A
+export, or see the repo's `tests/generate/index.ts` for a `pdf-lib` base with an embedded font and an
+sRGB output intent.
+
+Given a PDF/A-3b base, the output stayed PDF/A-3b in a manual veraPDF run on every Factur-X profile,
+on the code before this release's XMP and Info dictionary changes. No automated test checks this
+yet. Validate your
+own output with a PDF/A validator such as veraPDF.
 
 ## Example
 

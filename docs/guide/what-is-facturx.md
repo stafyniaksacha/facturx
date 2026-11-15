@@ -83,7 +83,7 @@ these mandates, which is why being able to produce and validate it from code is 
 `@stafyniaksacha/facturx` gives you the building blocks for working with these formats in
 TypeScript / JavaScript:
 
-- [**Generate**](/api/generate) a compliant PDF/A-3 by embedding XML into a PDF.
+- [**Generate**](/api/generate) a hybrid invoice by embedding XML into a PDF/A-3 base you supply.
 - [**Extract**](/api/extract) the XML back out of a Factur-X / Order-X / ZUGFeRD PDF.
 - [**Parse & build**](/api/parsing) — turn XML into a typed model and back.
 - [**Validate**](/guide/validation) against the Factur-X XSD and the EN 16931 Schematron rules, and optionally the French CTC `BR-FR` rules.

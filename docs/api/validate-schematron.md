@@ -77,7 +77,7 @@ interface SchematronError {
 
 ## How it works
 
-The library vendors the ISO-Schematron of each profile (official Factur-X 1.09 for MINIMUM/BASIC, FNFE-MPE 1.09.2.fixFR04 for BASIC WL/EN 16931/EXTENDED, see the conformance register CG-16), precompiled to a relocatable
+The library vendors the ISO-Schematron of each profile (official Factur-X 1.09 for MINIMUM/BASIC, FNFE-MPE 1.09.2.fixFR04 for BASIC WL/EN 16931/EXTENDED), precompiled to a relocatable
 Saxon transform (a gzipped SEF) plus the matching code-list database, and runs it with SaxonJS. The
 resulting SVRL report is parsed into the `SchematronError[]` above. The `id` (e.g. `BR-16`,
 `BR-CO-10`) maps to the rule numbers in the EN 16931 specification.

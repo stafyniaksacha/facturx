@@ -30,7 +30,7 @@ facturx <command> [options]
 
 | Command | Purpose |
 | --- | --- |
-| [`generate`](/cli/generate) | Embed an XML into a PDF to produce a Factur-X / Order-X PDF/A-3. |
+| [`generate`](/cli/generate) | Embed an XML into a PDF/A-3 to produce a Factur-X / Order-X hybrid. |
 | [`extract`](/cli/extract) | Extract the embedded XML from a PDF/A-3. |
 | [`check`](/cli/check) | Validate an XML invoice against the XSD (and optionally Schematron). |
 

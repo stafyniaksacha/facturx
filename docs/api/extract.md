@@ -38,15 +38,19 @@ function extract(options: {
 
 ## Behaviour
 
-- Scans the PDF attachments for a recognised e-invoice filename (`factur-x.xml`, `order-x.xml`, or a
-  ZUGFeRD filename) and returns the first match.
+- Scans the PDF attachments for a recognised e-invoice filename (`factur-x.xml`, `xrechnung.xml`,
+  `order-x.xml`, or a ZUGFeRD filename) and returns the first match. `xrechnung.xml` (reference
+  profile XRECHNUNG) is reported as flavor `facturx`, but `check()` does not know the
+  XRECHNUNG level yet.
+- Reads the attachment list whether it is a flat name tree or has one or two `/Kids` levels.
+  Deeper trees, trees with more than 4096 nodes and corrupt trees throw
+  `Unsupported EmbeddedFiles name tree: …` or `Malformed EmbeddedFiles name tree: …`.
 - The flavor is inferred from the attachment filename. Passing `flavor` asserts an expectation:
   e.g. `flavor: 'facturx'` throws `Invalid flavor, expected facturx but found orderx` if the PDF
   actually contains an Order-X file.
 - Does not detect the level. `level` in the result is the option you passed (or `undefined`); call
   [`check()`](/api/check) on the extracted XML to get the detected level.
-- Throws `No attachment found` when no recognised XML is present. This includes PDFs whose
-  attachments sit in a multi-level (`/Kids`) name tree, which is not read yet.
+- Throws `No attachment found` when no recognised XML is present.
 - Throws `Malformed EmbeddedFiles name tree: …` when the PDF's attachment list is corrupt (for
   example a name without a value), instead of an internal `pdf-lib` error.
 - Validation is **off by default**; pass `check: true` to XSD-validate the extracted XML (`Invalid

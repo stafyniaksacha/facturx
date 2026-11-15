@@ -158,23 +158,35 @@ export function readEmbeddedFilePrefix(stream: PDFRawStream, maxBytes: number, b
 }
 
 const MALFORMED_NAME_TREE = 'Malformed EmbeddedFiles name tree'
+const UNSUPPORTED_NAME_TREE = 'Unsupported EmbeddedFiles name tree'
 
-/**
- * Read the `/Names` array of the catalog's EmbeddedFiles name tree as validated
- * (key, file specification) pairs (ISO 32000-1 §7.9.6: keys are strings, the array alternates
- * key and value). Missing tree or missing `/Names` array gives `[]`; a `/Kids`-only tree is
- * not walked.
- *
- * Throws `Malformed EmbeddedFiles name tree: …` when catalog `/Names` or `/EmbeddedFiles` is not
- * a dictionary, `/Names` is not an array or has an odd length, a key is not a string (a `/Name`
- * key is rejected too), or a value does not resolve to a dictionary, instead of letting a raw
- * pdf-lib error escape (#40). `generate()` calls it before attaching so pdf-lib never appends to a
- * broken array. The message never includes document content.
- */
-export function readEmbeddedFilesNames(pdfDoc: PDFDocument): {
+// Factur-X §6.2.2 p.27 and §6.4 p.31 allow "one or two “/Kids” steps level between “/EmbeddedFiles”
+// and “/Names”". The tree is untrusted input, so deeper trees and very wide ones are refused
+// instead of walked.
+const MAX_KIDS_LEVELS = 2
+const MAX_NAME_TREE_NODES = 4096
+
+interface EmbeddedFilesEntry {
   fileName: PDFHexString | PDFString
   fileSpec: PDFDict
-}[] {
+}
+
+/**
+ * Read the catalog's EmbeddedFiles name tree as validated (key, file specification) pairs, in tree
+ * order (ISO 32000-1 §7.9.6: keys are strings, a `/Names` array alternates key and value). The
+ * root's own `/Names` array is read, or, when the root has `/Kids`, the `/Names` arrays of its
+ * leaves, up to two `/Kids` levels deep (Factur-X §6.2.2 p.27, §6.4 p.31). `/Limits` is ignored.
+ * Missing tree or a root with neither `/Names` nor `/Kids` gives `[]`.
+ *
+ * Throws `Malformed EmbeddedFiles name tree: …` when catalog `/Names` or `/EmbeddedFiles` is not
+ * a dictionary, a node has both `/Kids` and `/Names`, `/Kids` is not an array of dictionaries, a
+ * node is reached twice (a cycle or a shared kid), `/Names` is not an array or has an odd length, a
+ * key is not a string (a `/Name` key is rejected too), or a value does not resolve to a dictionary,
+ * instead of letting a raw pdf-lib error escape (#40). Throws `Unsupported EmbeddedFiles name tree:
+ * …` past two `/Kids` levels or 4096 nodes. `generate()` calls it before attaching so pdf-lib never
+ * appends to a broken array. The message never includes document content.
+ */
+export function readEmbeddedFilesNames(pdfDoc: PDFDocument): EmbeddedFilesEntry[] {
   if (!pdfDoc.catalog.has(PDFName.of('Names')))
     return []
   const Names = pdfDoc.catalog.lookup(PDFName.of('Names'))
@@ -187,32 +199,60 @@ export function readEmbeddedFilesNames(pdfDoc: PDFDocument): {
   if (!(EmbeddedFiles instanceof PDFDict))
     throw new Error(`${MALFORMED_NAME_TREE}: /EmbeddedFiles is not a dictionary`)
 
-  if (!EmbeddedFiles.has(PDFName.of('Names')))
-    return []
-  const EFNames = EmbeddedFiles.lookup(PDFName.of('Names'))
-  if (!(EFNames instanceof PDFArray))
+  const entries: EmbeddedFilesEntry[] = []
+  readNameTreeNode(EmbeddedFiles, 0, new Set(), entries)
+  return entries
+}
+
+function readNameTreeNode(node: PDFDict, level: number, visited: Set<PDFDict>, entries: EmbeddedFilesEntry[]): void {
+  if (visited.has(node))
+    throw new Error(`${MALFORMED_NAME_TREE}: a node is reached twice`)
+  visited.add(node)
+  if (visited.size > MAX_NAME_TREE_NODES)
+    throw new Error(`${UNSUPPORTED_NAME_TREE}: more than ${MAX_NAME_TREE_NODES} nodes`)
+
+  const hasKids = node.has(PDFName.of('Kids'))
+  const hasNames = node.has(PDFName.of('Names'))
+  // ISO 32000-1 §7.9.6 Table 36: a node has /Kids or /Names, never both.
+  if (hasKids && hasNames)
+    throw new Error(`${MALFORMED_NAME_TREE}: a node has both /Kids and /Names`)
+
+  if (hasKids) {
+    if (level >= MAX_KIDS_LEVELS)
+      throw new Error(`${UNSUPPORTED_NAME_TREE}: more than ${MAX_KIDS_LEVELS} /Kids levels`)
+    const kids = node.lookup(PDFName.of('Kids'))
+    if (!(kids instanceof PDFArray))
+      throw new Error(`${MALFORMED_NAME_TREE}: /Kids is not an array`)
+    if (visited.size + kids.size() > MAX_NAME_TREE_NODES)
+      throw new Error(`${UNSUPPORTED_NAME_TREE}: more than ${MAX_NAME_TREE_NODES} nodes`)
+    for (let idx = 0; idx < kids.size(); idx++) {
+      const kid = kids.lookup(idx)
+      if (!(kid instanceof PDFDict))
+        throw new Error(`${MALFORMED_NAME_TREE}: /Kids entry at index ${idx} is not a dictionary`)
+      readNameTreeNode(kid, level + 1, visited, entries)
+    }
+    return
+  }
+
+  if (!hasNames)
+    return
+  const names = node.lookup(PDFName.of('Names'))
+  if (!(names instanceof PDFArray))
     throw new Error(`${MALFORMED_NAME_TREE}: /Names is not an array`)
 
-  const len = EFNames.size()
+  const len = names.size()
   if (len % 2 !== 0)
     throw new Error(`${MALFORMED_NAME_TREE}: /Names has an odd number of entries (${len})`)
 
-  const entries = [] as {
-    fileName: PDFHexString | PDFString
-    fileSpec: PDFDict
-  }[]
-
   for (let idx = 0; idx < len; idx += 2) {
-    const fileName = EFNames.lookup(idx)
+    const fileName = names.lookup(idx)
     if (!(fileName instanceof PDFString || fileName instanceof PDFHexString))
       throw new Error(`${MALFORMED_NAME_TREE}: key at index ${idx} is not a string`)
 
-    const fileSpec = EFNames.lookup(idx + 1)
+    const fileSpec = names.lookup(idx + 1)
     if (!(fileSpec instanceof PDFDict))
       throw new Error(`${MALFORMED_NAME_TREE}: value at index ${idx + 1} is not a dictionary`)
 
     entries.push({ fileName, fileSpec })
   }
-
-  return entries
 }

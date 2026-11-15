@@ -41,6 +41,12 @@ export async function generate(options: {
   level?: string
   language?: string
   meta?: PdfMetadata
+  /**
+   * `AFRelationship` of the embedded XML (§6.2.2 p.26–27). Defaults to `Data`, valid for every
+   * Factur-X profile in France. MINIMUM and BASIC WL only allow `Data`; Germany requires
+   * `Alternative` for BASIC and above.
+   */
+  afRelationship?: 'Data' | 'Alternative' | 'Source'
 }): Promise<Uint8Array> {
   const xml = await resolveXml(options.xml)
 
@@ -68,11 +74,15 @@ export async function generate(options: {
       }
     }
 
+    const afRelationship = resolveAfRelationship(options.afRelationship, flavor, level)
+
     let meta = options.meta
 
     if (!meta) {
       const info = await extractBaseInfo(xml)
-      meta = baseInfo2PdfMetadata(info)
+      // The PDF, XMP and embedded-file dates are those of this file, so they are the generation
+      // time, not the issue date (BT-2), which stays in the title and subject (CG-25).
+      meta = { ...baseInfo2PdfMetadata(info), date: new Date() }
     }
     meta.date ||= new Date()
     // The XMP cannot carry characters XML 1.0 forbids, so drop them once for both the Info
@@ -121,7 +131,7 @@ export async function generate(options: {
     const uint8Array = encoder.encode(xml.toString())
 
     await pdf.attach(uint8Array, filename, {
-      afRelationship: AFRelationship.Data,
+      afRelationship,
       mimeType: 'text/xml',
       creationDate: meta.date,
       modificationDate: meta.date,
@@ -141,6 +151,8 @@ export async function generate(options: {
     pdf.setAuthor(meta.author)
     pdf.setKeywords(meta.keywords)
     pdf.setCreator(creator)
+    // Same value as the XMP pdf:Producer, instead of the pdf-lib default (CG-04).
+    pdf.setProducer(creator)
 
     setPDFA3BMetadata({
       ...meta,
@@ -161,6 +173,28 @@ export async function generate(options: {
       xml.dispose()
     }
   }
+}
+
+const AF_RELATIONSHIPS: Record<string, AFRelationship> = {
+  Data: AFRelationship.Data,
+  Alternative: AFRelationship.Alternative,
+  Source: AFRelationship.Source,
+}
+
+/**
+ * The AFRelationship to write, checked against §6.2.2 table p.27 (BR-HYBRID-11). Only `Data`,
+ * `Alternative` and `Source` appear in that table. MINIMUM and BASIC WL allow `Data` only: p.26
+ * says it "must be used" when the visual representation holds more invoicing data than the XML.
+ * The German column (`Alternative` for BASIC and above) is not enforced, `Data` stays valid in
+ * France. No table exists for Order-X, so its profiles are not restricted.
+ */
+function resolveAfRelationship(value: string | undefined, flavor: string, level: string): AFRelationship {
+  const relationship = value === undefined ? 'Data' : value
+  if (!Object.hasOwn(AF_RELATIONSHIPS, relationship))
+    throw new Error(`Invalid afRelationship "${relationship}": expected Data, Alternative or Source`)
+  if (flavor === 'facturx' && ['minimum', 'basicwl'].includes(level) && relationship !== 'Data')
+    throw new Error(`afRelationship "${relationship}" is not allowed for the ${level} profile: use Data (Factur-X §6.2.2)`)
+  return AF_RELATIONSHIPS[relationship]
 }
 
 /**

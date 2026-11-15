@@ -7,12 +7,12 @@ import { generate } from '../index'
 export default defineCommand({
   meta: {
     name: 'generate',
-    description: 'Generates a Factur-X/Order-X PDF-A/3 file from a PDF and a XML file',
+    description: 'Embeds an XML file into a PDF (pass a PDF/A-3 file: it is not converted to PDF/A-3)',
   },
   args: {
     pdf: {
       type: 'string',
-      description: 'Input PDF file',
+      description: 'Input PDF file (PDF/A-3)',
       required: true,
     },
     xml: {
@@ -22,7 +22,7 @@ export default defineCommand({
     },
     output: {
       type: 'string',
-      description: 'Output PDF-A/3 file',
+      description: 'Output PDF file',
       required: true,
       alias: 'o',
     },
@@ -45,6 +45,10 @@ export default defineCommand({
       type: 'string',
       description: 'Language code for the PDF (RFC 3066)',
     },
+    afRelationship: {
+      type: 'string',
+      description: 'AFRelationship of the embedded XML: Data (default), Alternative or Source (minimum and basicwl: Data only)',
+    },
   },
   run: async (args) => {
     const pdf = await readFile(resolve(args.args.pdf))
@@ -57,6 +61,7 @@ export default defineCommand({
       language: args.args.language,
       level: args.args.level,
       check: args.args.check,
+      afRelationship: args.args.afRelationship as 'Data' | 'Alternative' | 'Source' | undefined,
     })
 
     const out = resolve(args.args.output)

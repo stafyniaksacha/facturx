@@ -73,8 +73,7 @@ attribute the message points to.
 For the three profiles in scope of the French e-invoicing reform, the XSD and Schematron now come from
 the **1.09.2.fixFR04** assets that FNFE-MPE publishes with its CTC FR 1.4.0.04 release. MINIMUM and
 BASIC stay on Factur-X 1.09 FINAL. These assets don't come from an official Factur-X 1.09.2
-distribution; see CG-16 in
-[`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md).
+distribution.
 
 What you may notice:
 
@@ -91,7 +90,7 @@ What you may notice:
 The new blocking `CII-SR-*` rules check that BT-81 and BT-82 have a single value across payment means,
 and that BT-83, an allowance or charge amount, and an allowance or charge VAT block appear at most
 once. The messages of `CII-SR-471` / `CII-SR-472` say BT-95 / BT-96 must be present, but the rules
-only cap the count, and `CII-SR-472` can never fire (CG-16). Presence of the VAT category code is still
+only cap the count, and `CII-SR-472` can never fire. Presence of the VAT category code is still
 checked by `BR-32` / `BR-37`.
 
 If you filter or translate findings by `id`, update the mapping above.
@@ -116,8 +115,8 @@ if (code === undefined) {
 `generate({ flavor: 'zugferd' })`, and `generate()` on a ZUGFeRD 1.0 `CrossIndustryDocument` XML,
 now throw `Cannot generate the "zugferd" flavor: …` before reading the PDF. 0.6.1 embedded the XML
 as `zugferd-invoice.xml` with Factur-X `fx:` XMP and an empty conformance level: that filename is
-not in the hybrid filename code list (BR-HYBRID-08/13, Fatal), and the legacy ZUGFeRD 2.0 hybrid
-that used it has its own `zf:` XMP schema (§6.3.2 p.29), so the output matched neither (CG-09). `zugferd` stays supported by
+not in the hybrid filename code list, and the legacy ZUGFeRD 2.0 hybrid
+that used it has its own `zf:` XMP schema, so the output matched neither. `zugferd` stays supported by
 `extract()`.
 
 A ZUGFeRD 2.x invoice is a Factur-X `CrossIndustryInvoice`: drop `flavor: 'zugferd'` (it is then
@@ -131,7 +130,7 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   one, and 0.6.1 threw `Not implemented yet: Document ID already set` on them. The permanent first
   element is now kept. In exchange, `generate()` now **rejects**, before writing the invoice:
   encrypted or signed PDFs, PDFs that already embed an invoice (detected best effort: an attachment
-  whose content can't be read and whose name isn't a known invoice name can be missed, CG-14), PDFs
+  whose content can't be read and whose name isn't a known invoice name can be missed), PDFs
   with a `/Kids` name tree, a
   reused `PDFDocument`, and PDFs with too many or too large attachments to inspect. The full list of
   error messages is in [`generate()`](/api/generate#source-pdfs-that-are-rejected). If you pass a
@@ -147,19 +146,33 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   0.6.1 wrote them without their value.
 - **`check()`, `generate()`, `xmlToInvoice()` and the CLI work on Windows again** ([#26](https://github.com/stafyniaksacha/facturx/pull/26)): XSD imports
   failed to load on drive-letter paths.
-- **The XMP metadata `generate()` writes is well-formed UTF-8** (CG-02, CG-03). Values taken from
+- **The XMP metadata `generate()` writes is well-formed UTF-8**. Values taken from
   the invoice or `meta` (seller name, title, subject…) are XML-escaped, so a name with `&` or `<` no
   longer breaks the XMP and cannot inject XMP properties; characters XML 1.0 cannot carry (control
   characters) are dropped, from the Info dictionary too, so both carry the same value. Non-ASCII text such as `Société` or `€` is encoded as UTF-8 instead of
   being truncated to one byte per character.
-- **`invoiceToXml()` no longer rounds unit prices to cents** (CG-01). Item net and gross prices
+- **`invoiceToXml()` no longer rounds unit prices to cents**. Item net and gross prices
   (BT-146, BT-148), the price discount or charge (BT-147, BT-X-302) and their base amounts
-  (BT-X-35, BT-X-301) are *Unit Price Amount*s, which have no decimal limit (§7.1.5 p.35): `0.3456`
+  (BT-X-35, BT-X-301) are *Unit Price Amount*s, which have no decimal limit: `0.3456`
   is now written as `0.3456`, not `0.35`. They are written in their shortest form, so `4.10` reads
   back and is written again as `4.1`. All other amounts are still written with 2 decimals. If you
   relied on the rounding, round the prices yourself before building the model.
 - **The XMP packet id** is the fixed `W5M0MpCehiHzreSzNTczkc9d` from the reference packet.
   `XmpMetadata.documentId` is kept but deprecated.
+- **PDF dates are the generation time, in UTC**. When you don't pass `meta`, 0.6.1 used the
+  invoice issue date (BT-2) at midnight in the server's time zone for the Info `CreationDate` /
+  `ModDate`, the XMP `CreateDate` / `ModifyDate` / `MetadataDate` and the embedded file's `Params`
+  dates, so the output changed with `TZ`. They are now the time `generate()` runs. The title and
+  subject still show the issue date as a calendar date (`dated 20260131`). To keep a fixed date, pass
+  `meta` with your own `date`; it is used as before.
+- **The Info `Producer` is the library's name and version**, the same value as the XMP
+  `pdf:Producer`, instead of `pdf-lib (https://github.com/Hopding/pdf-lib)`. The XMP also gets a
+  `pdf:Keywords` equal to the Info `Keywords`.
+- **`extract()` finds `xrechnung.xml`** (reference profile XRECHNUNG) and reports it as flavor `facturx` (checking it still fails on a real
+  XRECHNUNG guideline ID: use `check: false` / `--no-check`), and
+  **reads attachment lists with one or two `/Kids` levels**, which 0.6.1 reported as
+  `No attachment found`. Deeper or larger trees throw `Unsupported EmbeddedFiles name tree: …`.
+  `generate()` still rejects sources with `/Kids`.
 
 ## New features
 
@@ -189,6 +202,13 @@ UBL documents throw. The messages are in French and quote invoice values, so tre
 data in logs. See [French e-invoicing rules](/guide/french-ctc) for scope and known gaps. This is not
 legal advice.
 
+### `afRelationship` option for `generate()`
+
+`generate({ pdf, xml, afRelationship: 'Alternative' })` (CLI `--afRelationship Alternative`) sets the
+`AFRelationship` of the embedded XML. The default stays `Data`. MINIMUM and BASIC WL accept only `Data`;
+Germany expects `Alternative` for BASIC and above. See
+[`generate()`](/api/generate#behaviour).
+
 ### New fields on `SchematronError`
 
 | Field | Meaning |
@@ -214,3 +234,7 @@ left undefined.
       workaround. Then check the new rejection list against your source PDFs.
 - [ ] If you call `generate()` with `flavor: 'zugferd'`, use `facturx` instead.
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).
+- [ ] If you compare PDF dates with the invoice date, or snapshot `generate()` output, pass `meta.date`
+      or expect the generation time.
+- [ ] Make sure the PDF you pass to `generate()` is already PDF/A-3: it is not converted (the docs
+      used to say otherwise).

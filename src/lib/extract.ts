@@ -3,7 +3,7 @@ import type { PDFDocument } from 'pdf-lib'
 import { Buffer } from 'node:buffer'
 
 import { check } from './check'
-import { FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
+import { FACTURX_FILENAME, ORDERX_FILENAME, XRECHNUNG_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { extractAttachments } from './pdf'
 import { resolvePdf, resolveXml } from './resolve'
 
@@ -30,7 +30,9 @@ export async function extract(options: {
 
   if (attachments?.length) {
     for (const attachment of attachments) {
-      if (attachment.name === FACTURX_FILENAME) {
+      // xrechnung.xml holds a CII invoice too (§6.2 p.25, §7.7), so its flavor is facturx, the one
+      // getFlavor() gives its CrossIndustryInvoice root.
+      if (attachment.name === FACTURX_FILENAME || attachment.name === XRECHNUNG_FILENAME) {
         if (!options.flavor || options.flavor === 'facturx') {
           flavor = 'facturx'
         }
