@@ -3,6 +3,7 @@ import { check, invoiceToXml, xmlToInvoice } from '@stafyniaksacha/facturx'
 import {
   AccountingAccountTypeCodeType,
   AdvancePaymentType,
+  AllowanceChargeReasonCodeType,
   AmountType,
   CodeType,
   CurrencyCodeType,
@@ -13,6 +14,7 @@ import {
   IDType,
   LogisticsTransportMovementType,
   MeasureType,
+  PartyRoleCodeType,
   PaymentMeansCodeType,
   ProcuringProjectType,
   ProductCharacteristicType,
@@ -297,6 +299,23 @@ describe('1.09 EXTENDED 0..1 fields stay absent (BT-131, BT-160, BT-161)', () =>
     ])
 
     const rewritten = (await invoiceToXml(parsed)).toString()
+    expect(xmlPaths(rewritten)).toEqual(xmlPaths(written))
+    expect(rewritten).toBe(written)
+  })
+})
+
+describe('present-but-empty optional elements stay present', () => {
+  it('keeps an empty business process ID, party RoleCode and allowance ReasonCode', async () => {
+    const model = getExtendedFacturXModel()
+    model.exchangedDocumentContext.businessProcessSpecifiedDocumentContextParameter = new DocumentContextParameterType({
+      id: new IDType({ value: '', schemeID: 'X' }),
+    })
+    model.supplyChainTradeTransaction.applicableHeaderTradeAgreement.sellerTradeParty.roleCode = new PartyRoleCodeType({ value: '' })
+    model.supplyChainTradeTransaction.applicableHeaderTradeSettlement.specifiedTradeAllowanceCharge![0].reasonCode = new AllowanceChargeReasonCodeType({ value: '' })
+
+    const written = (await invoiceToXml(model)).toString()
+    expect((await check({ xml: written, level: 'extended' })).errors).toEqual([])
+    const rewritten = (await invoiceToXml(await xmlToInvoice(written))).toString()
     expect(xmlPaths(rewritten)).toEqual(xmlPaths(written))
     expect(rewritten).toBe(written)
   })

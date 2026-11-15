@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 // `invoiceToXml()`. Almost all of them are Factur-X EXTENDED fields (`BT-X-*`) re-labelled by Annex A.
 //
 // The comparison is between the original XML and the re-serialized XML, by element and attribute path
-// with multiplicity: comparing models only would hide fields the parser drops (CG-32).
+// with multiplicity: comparing models only would hide fields the parser drops (was CG-32).
 const SPEC = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4')
 const ANNEX_A = join(SPEC, 'text/annex-a--CII_D22B_FX_EXT-CTC-FR.csv')
 const ANNEX_B = join(SPEC, 'distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4')

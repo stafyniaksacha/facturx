@@ -72,6 +72,8 @@ function attr(node: XmlElement | undefined, name: string): string | undefined {
   return node?.attr(name)?.value ?? undefined
 }
 
+// Optional elements are read by presence, not by value: the converter writes an element whenever
+// the model property is set, even to an empty value, so a present-but-empty element stays present.
 function textOf(node: XmlElement | undefined): string | undefined {
   const t = node?.content
   return t === undefined || t === '' ? undefined : t
@@ -193,7 +195,7 @@ function parseExchangedDocumentContext(root: XmlElement): ExchangedDocumentConte
 
   return new ExchangedDocumentContextType({
     testIndicator: parseIndicator(get(contextNode, './ram:TestIndicator')),
-    businessProcessSpecifiedDocumentContextParameter: businessID?.value
+    businessProcessSpecifiedDocumentContextParameter: businessID
       ? new ram.DocumentContextParameterType({ id: businessID })
       : undefined,
     guidelineSpecifiedDocumentContextParameter: new ram.DocumentContextParameterType({
@@ -270,8 +272,8 @@ function parseLineItem(node: XmlElement): ram.SupplyChainTradeLineItemType {
     associatedDocumentLineDocument: new ram.DocumentLineDocumentType({
       lineID: requiredID(get(docLine, './ram:LineID')),
       parentLineID: parseID(get(docLine, './ram:ParentLineID')),
-      lineStatusCode: textOf(get(docLine, './ram:LineStatusCode'))
-        ? new qdt.LineStatusCodeType({ value: textOf(get(docLine, './ram:LineStatusCode'))! })
+      lineStatusCode: get(docLine, './ram:LineStatusCode')
+        ? new qdt.LineStatusCodeType({ value: textOf(get(docLine, './ram:LineStatusCode')) ?? '' })
         : undefined,
       lineStatusReasonCode: parseCode(get(docLine, './ram:LineStatusReasonCode')),
       includedNote: findAll(docLine, './ram:IncludedNote').map(parseNote),
@@ -310,8 +312,8 @@ function parseTradeProduct(node: XmlElement | undefined): ram.TradeProductType {
       classCode: parseCode(get(c, './ram:ClassCode')),
       className: parseText(get(c, './ram:ClassName')),
     })),
-    originTradeCountry: textOf(get(node, './ram:OriginTradeCountry/ram:ID'))
-      ? new ram.TradeCountryType({ id: new qdt.CountryIDType({ value: textOf(get(node, './ram:OriginTradeCountry/ram:ID'))! }) })
+    originTradeCountry: get(node, './ram:OriginTradeCountry/ram:ID')
+      ? new ram.TradeCountryType({ id: new qdt.CountryIDType({ value: textOf(get(node, './ram:OriginTradeCountry/ram:ID')) ?? '' }) })
       : undefined,
     individualTradeProductInstance: findAll(node, './ram:IndividualTradeProductInstance').map(i => new ram.TradeProductInstanceType({
       batchID: parseID(get(i, './ram:BatchID')),
@@ -494,8 +496,8 @@ function parseHeaderTradeSettlement(node: XmlElement): HeaderTradeSettlementType
   return new HeaderTradeSettlementType({
     creditorReferenceID: parseID(get(settlement, './ram:CreditorReferenceID')),
     paymentReference: parseText(get(settlement, './ram:PaymentReference')),
-    taxCurrencyCode: textOf(get(settlement, './ram:TaxCurrencyCode'))
-      ? new qdt.CurrencyCodeType({ value: textOf(get(settlement, './ram:TaxCurrencyCode'))! })
+    taxCurrencyCode: get(settlement, './ram:TaxCurrencyCode')
+      ? new qdt.CurrencyCodeType({ value: textOf(get(settlement, './ram:TaxCurrencyCode')) ?? '' })
       : undefined,
     invoiceCurrencyCode: new qdt.CurrencyCodeType({ value: currency }),
     invoiceIssuerReference: parseText(get(settlement, './ram:InvoiceIssuerReference')),
@@ -579,7 +581,7 @@ function parseTradeParty(node: XmlElement | undefined): ram.TradePartyType | und
     id: findAll(node, './ram:ID').map(n => parseID(n)!),
     globalID: findAll(node, './ram:GlobalID').map(n => parseID(n)!),
     name: parseText(get(node, './ram:Name')),
-    roleCode: textOf(get(node, './ram:RoleCode')) ? new qdt.PartyRoleCodeType({ value: textOf(get(node, './ram:RoleCode'))! }) : undefined,
+    roleCode: get(node, './ram:RoleCode') ? new qdt.PartyRoleCodeType({ value: textOf(get(node, './ram:RoleCode')) ?? '' }) : undefined,
     description: parseText(get(node, './ram:Description')),
     specifiedLegalOrganization: legalOrg
       ? new ram.LegalOrganizationType({
@@ -604,7 +606,7 @@ function parseTradeContact(node: XmlElement): ram.TradeContactType {
   return new ram.TradeContactType({
     personName: parseText(get(node, './ram:PersonName')),
     departmentName: parseText(get(node, './ram:DepartmentName')),
-    typeCode: textOf(get(node, './ram:TypeCode')) ? new qdt.ContactTypeCodeType({ value: textOf(get(node, './ram:TypeCode'))! }) : undefined,
+    typeCode: get(node, './ram:TypeCode') ? new qdt.ContactTypeCodeType({ value: textOf(get(node, './ram:TypeCode')) ?? '' }) : undefined,
     telephoneUniversalCommunication: parseUniversalCommunication(get(node, './ram:TelephoneUniversalCommunication')),
     faxUniversalCommunication: parseUniversalCommunication(get(node, './ram:FaxUniversalCommunication')),
     emailURIUniversalCommunication: parseUniversalCommunication(get(node, './ram:EmailURIUniversalCommunication')),
@@ -645,7 +647,7 @@ function parseTradeDeliveryTerms(node: XmlElement | undefined): ram.TradeDeliver
     deliveryTypeCode: new qdt.DeliveryTermsCodeType({ value: textOf(get(node, './ram:DeliveryTypeCode')) ?? '' }),
     relevantTradeLocation: loc
       ? new ram.TradeLocationType({
-          countryID: textOf(get(loc, './ram:CountryID')) ? new qdt.CountryIDType({ value: textOf(get(loc, './ram:CountryID'))! }) : undefined,
+          countryID: get(loc, './ram:CountryID') ? new qdt.CountryIDType({ value: textOf(get(loc, './ram:CountryID')) ?? '' }) : undefined,
           name: parseText(get(loc, './ram:Name')),
         })
       : undefined,
@@ -655,7 +657,7 @@ function parseTradeDeliveryTerms(node: XmlElement | undefined): ram.TradeDeliver
 function parseTradeTax(node: XmlElement): ram.TradeTaxType {
   return new ram.TradeTaxType({
     calculatedAmount: parseAmount(get(node, './ram:CalculatedAmount')),
-    typeCode: textOf(get(node, './ram:TypeCode')) ? new qdt.TaxTypeCodeType({ value: textOf(get(node, './ram:TypeCode'))! }) : undefined,
+    typeCode: get(node, './ram:TypeCode') ? new qdt.TaxTypeCodeType({ value: textOf(get(node, './ram:TypeCode')) ?? '' }) : undefined,
     exemptionReason: parseText(get(node, './ram:ExemptionReason')),
     basisAmount: parseAmount(get(node, './ram:BasisAmount')),
     lineTotalBasisAmount: parseAmount(get(node, './ram:LineTotalBasisAmount')),
@@ -665,7 +667,7 @@ function parseTradeTax(node: XmlElement): ram.TradeTaxType {
     categoryCode: get(node, './ram:CategoryCode') ? new qdt.TaxCategoryCodeType({ value: textOf(get(node, './ram:CategoryCode')) ?? '' }) : undefined,
     exemptionReasonCode: parseCode(get(node, './ram:ExemptionReasonCode')),
     taxPointDate: parseDate(get(node, './ram:TaxPointDate')),
-    dueDateTypeCode: textOf(get(node, './ram:DueDateTypeCode')) ? new qdt.TimeReferenceCodeType({ value: textOf(get(node, './ram:DueDateTypeCode'))! }) : undefined,
+    dueDateTypeCode: get(node, './ram:DueDateTypeCode') ? new qdt.TimeReferenceCodeType({ value: textOf(get(node, './ram:DueDateTypeCode')) ?? '' }) : undefined,
     rateApplicablePercent: parsePercent(get(node, './ram:RateApplicablePercent')),
   })
 }
@@ -678,8 +680,8 @@ function parseAllowanceCharge(node: XmlElement): ram.TradeAllowanceChargeType {
     basisAmount: parseAmount(get(node, './ram:BasisAmount')),
     basisQuantity: parseQuantity(get(node, './ram:BasisQuantity')),
     actualAmount: parseAmount(get(node, './ram:ActualAmount')) ?? new udt.AmountType({ value: 0 }),
-    reasonCode: textOf(get(node, './ram:ReasonCode'))
-      ? new qdt.AllowanceChargeReasonCodeType({ value: textOf(get(node, './ram:ReasonCode'))!, listID: get(node, './ram:ReasonCode')!.attr('listID')?.value })
+    reasonCode: get(node, './ram:ReasonCode')
+      ? new qdt.AllowanceChargeReasonCodeType({ value: textOf(get(node, './ram:ReasonCode')) ?? '', listID: attr(get(node, './ram:ReasonCode'), 'listID') })
       : undefined,
     reason: parseText(get(node, './ram:Reason')),
     categoryTradeTax: get(node, './ram:CategoryTradeTax') ? parseTradeTax(get(node, './ram:CategoryTradeTax')!) : undefined,
@@ -768,7 +770,7 @@ function parsePaymentMeans(node: XmlElement): ram.TradeSettlementPaymentMeansTyp
 function parseAccountingAccount(node: XmlElement): ram.TradeAccountingAccountType {
   return new ram.TradeAccountingAccountType({
     id: requiredID(get(node, './ram:ID')),
-    typeCode: textOf(get(node, './ram:TypeCode')) ? new qdt.AccountingAccountTypeCodeType({ value: textOf(get(node, './ram:TypeCode'))! }) : undefined,
+    typeCode: get(node, './ram:TypeCode') ? new qdt.AccountingAccountTypeCodeType({ value: textOf(get(node, './ram:TypeCode')) ?? '' }) : undefined,
   })
 }
 
@@ -780,10 +782,10 @@ function parseReferencedDocument(node: XmlElement | undefined): ram.ReferencedDo
     issuerAssignedID: parseID(get(node, './ram:IssuerAssignedID')),
     uriID: parseID(get(node, './ram:URIID')),
     lineID: parseID(get(node, './ram:LineID')),
-    typeCode: textOf(get(node, './ram:TypeCode')) ? new qdt.DocumentCodeType({ value: textOf(get(node, './ram:TypeCode'))! }) : undefined,
+    typeCode: get(node, './ram:TypeCode') ? new qdt.DocumentCodeType({ value: textOf(get(node, './ram:TypeCode')) ?? '' }) : undefined,
     name: findAll(node, './ram:Name').map(n => parseText(n)!),
     attachmentBinaryObject: parseBinaryObject(get(node, './ram:AttachmentBinaryObject')),
-    referenceTypeCode: textOf(get(node, './ram:ReferenceTypeCode')) ? new qdt.ReferenceCodeType({ value: textOf(get(node, './ram:ReferenceTypeCode'))! }) : undefined,
+    referenceTypeCode: get(node, './ram:ReferenceTypeCode') ? new qdt.ReferenceCodeType({ value: textOf(get(node, './ram:ReferenceTypeCode')) ?? '' }) : undefined,
     formattedIssueDateTime: parseFormattedDateTime(get(node, './ram:FormattedIssueDateTime')),
   })
 }

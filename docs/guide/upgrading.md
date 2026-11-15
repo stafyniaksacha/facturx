@@ -185,7 +185,9 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   (`includedReferencedProduct`) and the header consignment (`relatedSupplyChainConsignment`, transport
   modes). Repeated ones are arrays, `[]` when there are none, like the other repeated fields. The
   `schemeID` of the document ID, line IDs, document context parameter IDs, procuring project ID,
-  payment card ID, debtor IBAN and accounting account ID is also read back now; it used to be dropped.
+  payment card ID, debtor IBAN and accounting account ID is also read back now; it used to be dropped. An optional code element that is present but empty (a party `RoleCode`, a
+  charge `ReasonCode`, a tax `TypeCode`, …) is now read as an empty value instead of `undefined`, so
+  it is written back.
 - **Non-VAT tax codes on charges** (EXTENDED): `AllowanceChargeReasonCodeType` has an optional
   `listID`. Set it to `'5153'` to write a UNTDID 5153 tax code instead of a charge reason, on a
   document charge, a line charge or a gross price charge; `xmlToInvoice()` reads it back. It used to
