@@ -184,8 +184,8 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   exist (the CEN EN16931 files say EUPL 1.2); every PDF page footer says "All rights reserved";
   `Flux10/` has no licence text. The maintainer decided to ship compiled `BR-FR-Flux2` rules on the
   basis of the Apache-2.0 statement and to ask FNFE upstream for clarification. Tier 3 (CG-18) ships
-  the compiled `EXTENDED-CTC-FR-CII` Schematron of the same release; whether that decision extends to
-  it is up to the maintainer. Two facts weaken the basis for it: release notes p.10 §2.1 list the
+  the compiled `EXTENDED-CTC-FR-CII` Schematron of the same release: the maintainer decided on
+  2026-11-15 to ship it on the same basis for now, knowing two facts that weaken that basis: release notes p.10 §2.1 list the
   publication's Schematrons as BR-FR-Flux2 (CII, UBL) and BR-FR-CDV only (p.9 does call
   EXTENDED-CTC-FR "a dedicated Schematron, published with this version 1.4.0"), and its `.sch` header
   reads "Schematron dérivé du schematron EN16931 preprocessed Licensed under … EUPL version 1.4.0",
