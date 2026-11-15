@@ -36,9 +36,10 @@ open entry is "known", anything else is new.
 | README and docs no longer claim `extract()` detects the level: it returns the flavor (from the attachment filename) and echoes `options.level`; the quick start reads the level from `check()` on the extracted XML (was CG-11) | `pnpm build && pnpm --filter @stafyniaksacha/facturx-examples run examples` (quickstart prints `facturx en16931`, not `facturx undefined`) |
 | French CTC rules `BR-FR-Flux2` (FNFE-MPE Schematrons FR CTC v1.4.0.04, step 3 of the release notes p.9): the vendored `src/lib/xsd/fr-ctc/BR-FR-Flux2-Schematron-CII.xslt` is byte-identical to all five copies in the release, standard (all 171 asserts `fatal`) variant only, and its shipped SEF is reproducible and embeds no local path. `validateFrCtc` / `check({ frCtc: true })` check the document itself (the rules read neither root nor profile) and accept only a CII invoice declaring BASIC WL, EN16931 or EXTENDED (p.9, p.11; plain-CII `EXTENDED-CTC-FR` as `extended`); they throw for MINIMUM, BASIC, Order-X, UBL and a `level` that contradicts the document. All 24 Factur-X examples of XP Z12-012 v1.4 Annex B (EN16931 and EXTENDED, incl. multi-vendor, bidirectional, sub-line) pass XSD + the Factur-X profile Schematron (1.09.2.fixFR04, CG-16) + BR-FR with no finding, and the 6 plain-CII `EXTENDED-CTC-FR` examples pass BR-FR at level `extended`. Over the 34 in-scope official Factur-X 1.09 examples, 28 pass and 6 (`_Factur-X_1.08-Exemples_CS/*/Facture_F2026003{0,1}-*`) fail `BR-FR-32` (SIREN `303 656 847` written with spaces) and `BR-FR-CO-10` (seller GlobalID scheme `0088` twice), both genuine in the example data. `id` is the rule (`BR-FR-05`), taken from the SVRL `@id`, never from the message | `pnpm spec:verify`; `pnpm build && pnpm vitest run tests/fr-ctc.test.ts` |
 | Every value `generate()` writes into the XMP packet (title, subject, author from the invoice or `meta`, producer, creator, filename, conformance level) is XML-escaped and stripped of characters XML 1.0 cannot carry, so a seller name with `&`, `<` or markup parses back as the same text and cannot inject properties such as a second `fx:ConformanceLevel` (BR-HYBRID-03; was CG-03) | `pnpm build && pnpm vitest run tests/generate.test.ts -t CG-03` |
+| The XMP packet is written as UTF-8 bytes (`begin=""`), with `/Length` its byte length: a seller name with `é`, `€` and a non-BMP character decodes strictly as UTF-8 and parses back unchanged (BR-HYBRID-03; was CG-02) | `pnpm build && pnpm vitest run tests/generate.test.ts -t CG-02` |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no test or CI run; manual veraPDF
-runs are recorded in CG-02, CG-04 and CG-05), any Order-X
+runs are recorded in CG-04 and CG-05), any Order-X
 asset (no Order-X spec vendored), field-by-field coverage of the 1.09 EXTENDED additions (BT-173…177,
 BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 
@@ -47,7 +48,6 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | ID | Area | Rule / citation | Severity | Summary |
 | --- | --- | --- | --- | --- |
 | CG-01 | converter | §7.1.5 p.35 | data-loss | Unit prices truncated to 2 decimals |
-| CG-02 | XMP | BR-HYBRID-02/03 | Fatal | XMP packet not UTF-8 |
 | CG-04 | PDF/A | BR-HYBRID-02 | Fatal | Info dictionary and XMP disagree (Producer, Keywords) |
 | CG-05 | PDF/A | BR-HYBRID-02 | Fatal | `generate()` does not make the PDF PDF/A-3; docs claim it does |
 | CG-07 | embedding | §6.2.2 p.26–27, BR-HYBRID-11 | Warning | `AFRelationship` hard-coded to `Data` |
@@ -84,22 +84,6 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   `0.69`, 4 lines) and UC13 (BT-146/BT-148 on 5 lines, e.g. `489.057` → `489.06`, `-3.049` → `-3.05`), pinned as expected round-trip losses in
   `tests/annex-b-examples.test.ts` (`CG01_ROUND_TRIP_LOSS`, to empty when this is fixed). Directly
   affects per-kWh energy pricing.
-
-### CG-02 — XMP packet not UTF-8
-
-- **Code:** `src/lib/xmp.ts:102` passes a JS string to `pdf.context.stream()`; pdf-lib keeps the low
-  byte of each UTF-16 code unit. `é` is written as `0xE9` (Latin-1), `€` as `0xAC`.
-- **Spec:** the XMP packet (`begin=""` ⇒ UTF-8) must be valid UTF-8 for BR-HYBRID-03 and PDF/A
-  metadata validation.
-- **Evidence:** `generate()` with seller name `Société … €`, read the `/Metadata` stream bytes.
-- **External validator (2026-11-15, `2741b28`):** veraPDF 1.30.4 (`verapdf/cli@sha256:f085855d442ad415e79fabbabcdd1803c2db4ee097cd5b94506c95ecdcfa1728`,
-  `--flavour 3b`). The input is an official EN16931 example XML whose seller name is set to
-  `Société Dupont & Fils <SARL> €`, embedded into a PDF/A-3b base derived from the same example. The
-  output fails `6.6.2.1 t4` ×5, `6.6.2.1 t5` ×5 and `6.6.4 t1` (XMP not well-formed / not readable).
-  That input exercises both CG-02 (`é`, `€`) and CG-03 (`&`, `<`), so this run does not tell them
-  apart. Through the library alone, each defect on its own makes the XMP unparseable: `Société €`
-  gives "Invalid bytes in character encoding", and `Dupont &amp; Fils` gives
-  `xmlParseEntityRef: no name`.
 
 ### CG-04 — Info dictionary and XMP disagree
 

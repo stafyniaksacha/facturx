@@ -746,4 +746,21 @@ describe('generate', () => {
     expect(xmp.description).toEqual([meta.subject])
     expect(xmp.creator).toEqual(['Ctrl char'])
   })
+
+  it('writes the XMP packet as UTF-8 (CG-02)', async () => {
+    const seller = 'Société Énergie Dépôt — 0,25 € / kWh 𝄞'
+    const xml = (await readFile(SOURCE_XML, 'utf8')).replace('<ram:Name>Au bon moulin</ram:Name>', `<ram:Name>${seller}</ram:Name>`)
+
+    const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml }))
+    const stream = output.context.lookup(output.catalog.get(PDFName.of('Metadata')))
+    if (!(stream instanceof PDFRawStream))
+      throw new Error('No XMP metadata stream')
+    const bytes = stream.getContents()
+
+    // Throws on any byte sequence that is not UTF-8 (the Latin-1 `0xE9` written before).
+    const packet = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    expect(packet).toContain(seller)
+    expect(stream.dict.get(PDFName.of('Length'))?.toString()).toBe(String(bytes.length))
+    expect(readXmp(output).creator).toEqual([seller])
+  })
 })

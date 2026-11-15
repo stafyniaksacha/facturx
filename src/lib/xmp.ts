@@ -99,10 +99,13 @@ export function setPDFA3BMetadata(
   <?xpacket end="w"?>
   `.trim()
 
-  const metadataStream = pdf.context.stream(metadataXML, {
+  // `begin=""` declares UTF-8. pdf-lib would keep only the low byte of each UTF-16 code unit
+  // of a string (`é` → 0xE9, `€` → 0xAC), so encode it and give the byte length (CG-02).
+  const metadataBytes = new TextEncoder().encode(metadataXML)
+  const metadataStream = pdf.context.stream(metadataBytes, {
     Type: 'Metadata',
     Subtype: 'XML',
-    Length: metadataXML.length,
+    Length: metadataBytes.length,
   })
   const metadataStreamRef = pdf.context.register(metadataStream)
   pdf.catalog.set(PDFName.of('Metadata'), metadataStreamRef)
