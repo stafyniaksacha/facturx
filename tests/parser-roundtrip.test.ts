@@ -334,11 +334,14 @@ const LINE_NOTE_CONTENT = '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransac
 describe('a note without Content (CG-37)', () => {
   it('stays without Content on a round trip', async () => {
     const model = getExtendedFacturXModel()
-    model.exchangedDocument.includedNote = [new NoteType({ subjectCode: new CodeType({ value: 'AAI' }) })]
+    // BR-FXEXT-01: a subject code (BT-21) needs a content code (BT-X-5) or a content (BT-22).
+    model.exchangedDocument.includedNote = [new NoteType({ contentCode: new CodeType({ value: 'X1' }), subjectCode: new CodeType({ value: 'AAI' }) })]
     // BT-127 (line note) goes through the same NoteType.
     model.supplyChainTradeTransaction.includedSupplyChainTradeLineItem![0].associatedDocumentLineDocument.includedNote = [new NoteType({ contentCode: new CodeType({ value: 'X1' }) })]
     const written = (await invoiceToXml(model)).toString()
-    expect((await check({ xml: written, level: 'extended' })).errors).toEqual([])
+    const checked = await check({ xml: written, level: 'extended', schematron: true })
+    expect(checked.errors).toEqual([])
+    expect(checked.schematronErrors?.filter(e => e.id === 'BR-FXEXT-01')).toEqual([])
     expect(xmlPaths(written)).not.toContain(NOTE_CONTENT)
     expect(xmlPaths(written)).not.toContain(LINE_NOTE_CONTENT)
 
