@@ -19,7 +19,9 @@ async function blankPdf(): Promise<PDFDocument> {
 }
 
 function xmpTexts(pdf: PDFDocument, xpath: string): string[] {
-  const stream = pdf.context.lookup(pdf.catalog.get(PDFName.of('Metadata')), PDFRawStream)
+  const stream = pdf.context.lookup(pdf.catalog.get(PDFName.of('Metadata')))
+  if (!(stream instanceof PDFRawStream))
+    throw new Error('No XMP metadata stream')
   const doc = XmlDocument.fromBuffer(stream.getContents())
   try {
     return doc.find(xpath, XMP_NS).map(node => node.content)
@@ -27,6 +29,10 @@ function xmpTexts(pdf: PDFDocument, xpath: string): string[] {
   finally {
     doc.dispose()
   }
+}
+
+function infoDict(pdf: PDFDocument): PDFDict {
+  return pdf.context.lookup(pdf.context.trailerInfo.Info, PDFDict)
 }
 
 function text(value: unknown): string {
@@ -69,7 +75,7 @@ describe('generate() dates (CG-25)', () => {
     const bytes = await generate({ pdf: await blankPdf(), xml: getEN16931XML() })
     const after = Date.now()
     const pdf = await PDFDocument.load(bytes, { updateMetadata: false })
-    const info = pdf.getInfoDict()
+    const info = infoDict(pdf)
 
     const created = pdfDate(info.get(PDFName.of('CreationDate')))
     expect(created.getTime()).toBeGreaterThanOrEqual(before)
@@ -98,7 +104,7 @@ describe('generate() dates (CG-25)', () => {
       meta: { author: 'a', title: 't', subject: 's', keywords: [], date },
     })
     const pdf = await PDFDocument.load(bytes, { updateMetadata: false })
-    expect(pdfDate(pdf.getInfoDict().get(PDFName.of('CreationDate')))).toEqual(date)
+    expect(pdfDate(infoDict(pdf).get(PDFName.of('CreationDate')))).toEqual(date)
     expect(xmpTexts(pdf, '//xmp:CreateDate')).toEqual(['2026-01-31T12:34:56Z'])
     expect(pdfDate(params(pdf).get(PDFName.of('ModDate')))).toEqual(date)
   })
