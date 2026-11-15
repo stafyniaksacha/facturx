@@ -43,6 +43,7 @@ pnpm test             # vitest; includes the official-example corpus (~16 s of t
 pnpm vitest run tests/spec-examples.test.ts   # just the corpus: 56 official PDFs
 pnpm vitest run tests/annex-b-examples.test.ts  # XP Z12-012 annex B Factur-X examples (24)
 pnpm spec:verify      # vendored XSD/codedb/XSLT/SEF ⇔ spec/ (~1 min, recompiles every SEF)
+pnpm pdfa:verify      # veraPDF PDF/A-3B on generate() output, every profile (needs pnpm build + Docker)
 pnpm lint             # @antfu/eslint-config
 pnpm typecheck        # tsc --noEmit (CI runs it after lint)
 pnpm --filter @stafyniaksacha/facturx-examples run examples   # runs every example script
@@ -108,7 +109,7 @@ pnpm docs             # VitePress dev server; regenerates docs/api/models/ from 
 | anything under `src/` | `pnpm build && pnpm test` |
 | `src/lib/xsd/**`, `scripts/patch-schematron-sum.mjs` | `pnpm spec:verify` |
 | models / converter / parser | field matrix CSV for profile + cardinality; corpus test; a round-trip test with values that stress decimals, escaping and non-ASCII text |
-| `generate.ts` / `xmp.ts` / `metadata.ts` | diff the produced XMP against the reference packet; `BR-HYBRID-*` in `text/fields--Business_Rules_HYBRID.csv` and the hybrid code lists in `text/codelists--Hybrid*.csv` / `--Filename.csv`; PDF/A needs an external validator (veraPDF, not installed here) |
+| `generate.ts` / `xmp.ts` / `metadata.ts` | diff the produced XMP against the reference packet; `BR-HYBRID-*` in `text/fields--Business_Rules_HYBRID.csv` and the hybrid code lists in `text/codelists--Hybrid*.csv` / `--Filename.csv`; `pnpm build && pnpm pdfa:verify` (veraPDF in Docker, also run by CI) |
 | README / `docs/` | every claim matches code behaviour; run the examples |
 
 Searching the spec: `grep -n "<term>" spec/factur-x-1.09/text/spec-main.txt` (pages start with
@@ -141,7 +142,8 @@ The library parses untrusted XML and PDFs and emits documents with legal and tax
 Known so you don't rediscover them; fix them deliberately, not as a side effect of other work.
 
 - `.github/workflows/ci.yml` runs on pull requests and pushes: build, lint, typecheck, tests on every
-  Node LTS line, docs build, package check, and consumer installs (incl. IBM Power/Z). It does **not**
+  Node LTS line, docs build, veraPDF PDF/A-3B on `generate()` output (`pnpm pdfa:verify`), package
+  check, and consumer installs (incl. IBM Power/Z). It does **not**
   run `pnpm spec:verify`: run it yourself when you touch `src/lib/xsd/**`.
   `.github/workflows/docs.yml` deploys the docs on tags.
 - `extract({ check: true })` fails on ZUGFeRD attachments with `Unknown schema flavor` (#38).

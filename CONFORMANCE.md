@@ -54,9 +54,9 @@ open entry is "known", anything else is new.
 | The XP Z12-012 v1.4 French extension fields of the plain-CII `EXTENDED-CTC-FR` profile (Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv`, 240 `EXT-FR-FE-*` rows) survive `xmlToInvoice()` then `invoiceToXml()`, including the 4 rows under `TaxApplicableTradeCurrencyExchange` (EXT-FR-FE-192, -192-00, -192-1 and the misplaced -199-1), read since the parser round-trip fix (was CG-32). All of them are Factur-X EXTENDED elements (the all-groups test document is also valid against the Factur-X EXTENDED XSD once its guideline ID is EXTENDED), mostly `BT-X-*` fields Annex A re-labels, already in the models. The one data loss, for plain Factur-X EXTENDED too, was the second line `TaxTotalAmount`: BT-X-329 (EXT-FR-FE-181) and the 1.09 field BT-X-590 (EXT-FR-FE-182, VAT accounting currency, `currencyID` = BT-6; Annex A calls it `BT-X-ZZZ`) share the element, `0..2` in Annex A and the matrix (EXTENDED XSD `maxOccurs="2"`). The parser kept only the first; the second now goes to the new optional `TradeSettlementLineMonetarySummationType.taxTotalAmountInAccountingCurrency`, written right after `taxTotalAmount`. Both are read by position, not by `@currencyID` (no rule fixes their order; the XML order is kept), so a model with only the new property set reads back with the amount in `taxTotalAmount`. Proof: one synthetic invoice per field group (17 groups; most free-text values carry `&`, `<`, `>` and non-ASCII, incl. characters outside Latin-1) is valid against the uncoupled CII D22B XSD, has its values at the Annex A XPaths, and comes back from a round trip with the same elements and attributes (path, value and count; decimals by value), re-serialized XSD valid. All groups together are stable over a second round trip, and every Annex A `EXT-FR-FE` XPath (the 4 above excepted) occurs in that document. The 6 Annex B `*_EXTENDED-CTC-FR_CII_*.xml` examples, re-serialized, lose no path and still pass the XSD, the EXTENDED-CTC-FR Schematron and BR-FR. Annex A shifts several XPaths by one row (CG-39); the tests follow the Factur-X matrix there. A third line `TaxTotalAmount` (allowed by the uncoupled XSD, not by Annex A or Factur-X EXTENDED) is dropped (was CG-18) | `pnpm build && pnpm vitest run tests/extended-ctc-fr-fields.test.ts` |
 | `xmlToInvoice()` reads back every element and attribute `invoiceToXml()` writes (AGENTS.md lockstep convention; was CG-32): no element or attribute name the converter writes is missing from the parser's queries, and the tests below cover the dropped ones. It used to drop `SpecifiedAdvancePayment` (BG-X-45, with `IncludedTradeTax` BG-X-46, `PaidAmount/@currencyID` and the BG-X-85 preceding invoice reference), `TaxApplicableTradeCurrencyExchange` (BG-X-41, BT-X-258…261), `IndividualTradeProductInstance` (BG-X-84, BT-X-306 `BatchID`, BT-X-307), `IncludedReferencedProduct` (BG-X-1, BT-X-308, BT-X-309, BT-X-15/15-1, BT-X-16…20-1) and `RelatedSupplyChainConsignment` (BG-X-24, BT-X-152), and the `@schemeID` of the IDs it rebuilt from their text (context parameters BT-23 and BT-24, BT-1, BT-126, the procuring project, card, debtor IBAN and accounting account IDs). Optional code elements are read by presence, so a present-but-empty one (an empty BT-23, party `RoleCode`, allowance `ReasonCode`, …) stays present; it used to be dropped. Proof: an EXTENDED XSD-valid model with each subtree and attribute set (`&`, `<`, non-ASCII text, unit and rate decimals) goes `invoiceToXml` → `xmlToInvoice` → `invoiceToXml`; the element and attribute paths of both documents are compared both ways (nothing dropped, nothing fabricated), the two documents are identical, and the test asserts each expected path is present so an unset subtree cannot pass; it fails on the previous parser. The 56 official and 24 Annex B examples are also compared by path, original against re-serialized, which the model comparison (parser on both sides) cannot see; a third test round-trips an empty BT-23, `RoleCode` and `ReasonCode` (EXTENDED XSD valid) unchanged. Number formatting is CG-28 | `pnpm build && pnpm vitest run tests/parser-roundtrip.test.ts tests/spec-examples.test.ts tests/annex-b-examples.test.ts` |
 | The 1.09 EXTENDED cardinality changes are kept (matrix "Change 1.09"; EXTENDED XSD `minOccurs="0"`; was CG-35): a missing BT-131 `LineTotalAmount` and a missing BT-160 `Description` / BT-161 `Value` of an item attribute stay absent in the model and are not written back; they used to come back as `0.00` and as empty elements. A present but empty `Description`/`Value` stays present. The model properties are optional (TypeScript type change for readers, in `docs/guide/upgrading.md`). Proof: a subline with an empty line summation and attributes with only a name, only a value, neither, or empty ones is EXTENDED XSD valid, parses to `undefined` for each missing field, and is written back identical | `pnpm build && pnpm vitest run tests/parser-roundtrip.test.ts -t "stay absent"` |
+| `generate()` keeps a PDF/A-3B base PDF/A-3B for every Factur-X profile (BR-HYBRID-02; CG-05 is that it does not convert one). veraPDF 1.30.4 (`verapdf/cli@sha256:f085855d…`, pinned in the script, `--flavour 3b`, run offline; every job must end normally under the PDF/A-3b profile) first validates the base alone: a pdf-lib PDF with an embedded font, an sRGB OutputIntent, its own XMP PDF/A-3B identification and a trailer `/ID`, compliant. `generate()` on that base with the `Facture_F20260023` example XML shipped with 1.09 for each profile (MINIMUM, BASIC WL, BASIC, EN 16931, EXTENDED): all five compliant, so the base's own XMP being replaced by the Factur-X one keeps it compliant. A PDF/A-ready base (font and OutputIntent, no XMP, no `/ID`) also comes out compliant, as `generate()` writes the XMP identification and an `/ID` itself. A negative control, the EN 16931 XML on `examples/source-invoice.pdf` (not PDF/A), must fail `6.2.11.4.1` (font not embedded) and `6.2.4.3` (device colour without an OutputIntent) and does, so the run cannot pass by not validating; that output still declares PDF/A-3B (CG-41). Runs in CI as the `PDF/A-3B (veraPDF)` job, required by `CI OK`. ISO 19005-3 is not vendored: the verdict is veraPDF's. Not covered: PDF/A-3A/3U and PDF/A-4f, Order-X output, bases from other producers (the manual run in CG-05 used a stripped official example) | `pnpm build && pnpm pdfa:verify` (needs Docker) |
 
-Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no test or CI run; manual veraPDF
-runs are recorded in the XMP UTF-8 and Info/XMP consistency rows above and in CG-05), any Order-X
+Not verified anywhere yet: any Order-X
 asset (no Order-X spec vendored), field-by-field coverage of the EXTENDED profile beyond the 1.09
 additions audited above, including the 1.09 manufacturer block BG-X-93. The parser round trip below
 covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG-18 for EXT-FR-FE).
@@ -65,7 +65,7 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 
 | ID | Area | Rule / citation | Severity | Summary |
 | --- | --- | --- | --- | --- |
-| CG-05 | PDF/A | BR-HYBRID-02 | Fatal | `generate()` does not make the PDF PDF/A-3 (the caller supplies a PDF/A-3 base); preserving a PDF/A-3b base is not tested |
+| CG-05 | PDF/A | BR-HYBRID-02 | Fatal | `generate()` does not make the PDF PDF/A-3 (the caller supplies a PDF/A-3 base); preserving a PDF/A-3B base is verified in CI (see Verified) |
 | CG-08 | Order-X | BR-HYBRID-06/07 | Fatal | Order-X PDFs get Factur-X `INVOICE` XMP and empty conformance level |
 | CG-10 | spec | BR-HYBRID-04 vs §6.3.1 p.28 | — | Spec is internally inconsistent on the XMP namespace URI |
 | CG-12 | profiles | §7.7, §6.2 p.25, `codelists--HybridConformance.csv`, `codelists--Filename.csv`, BR-HYBRID-12/13 | interop | XRECHNUNG level not detected and never generated; no DE profile restrictions |
@@ -85,6 +85,7 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 | CG-31 | embedding, security | AGENTS.md Security | interop | Default `generate()` re-serializes but keeps a DOCTYPE (incl. `SYSTEM`/`PUBLIC` ids) and an XML 1.1 declaration in the embedded invoice |
 | CG-33 | spec, French CTC, upstream | `EXTENDED-CTC-FR-CII.sch` BR-DEC-19/20 | Fatal (rules not run) | The EXTENDED-CTC-FR Schematron never fires BR-DEC-19/20 on VAT breakdowns of categories that have their own rules (first-match shadowing) |
 | CG-40 | spec, French CTC, upstream | `EXTENDED-CTC-FR-CII.sch` BR-EXT-CL-07 | Fatal (rule not run) | The EXTENDED-CTC-FR Schematron never checks a `ReferenceTypeCode` against UNTDID 1153 (always-true guard) |
+| CG-41 | PDF/A, XMP | BR-HYBRID-02 (via CG-05) | interop | `generate()` writes `pdfaid` PDF/A-3B into the XMP whatever the source, so a non-PDF/A base gives output that falsely claims PDF/A-3B |
 | CG-34 | French CTC, lifecycle, upstream | Annex A `annex-a--BR-FR-CDV_pour_factures.csv`, `annex-a--Tableau_des_motifs_de_STATUTS.csv` vs `BR-FR-CDV-Schematron-CDAR` | interop | The published BR-FR-CDV Schematron cannot fail on several Annex A rules, and some of its code lists differ from Annex A |
 | CG-36 | spec | §version history p.7–8 vs the EXTENDED field matrix | — | The 1.09 version history contradicts the field matrix on several new fields (unresolved) |
 | CG-37 | parser, models | EXTENDED XSD `NoteType/Content` `minOccurs="0"` | data-loss | A note without `Content` (BT-22 / BT-127) comes back with an empty `Content` element |
@@ -97,8 +98,9 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 - **Code:** `generate()` only attaches the XML, sets the AF relationship, Info and XMP. Fonts, ICC
   output intent and the rest of PDF/A are the caller's job (see `tests/generate/index.ts`, which
   embeds a font, an sRGB OutputIntent and a TrimBox by hand). This is by design and now documented
-  (`docs/api/generate.md`, "Supplying the PDF base"); the docs overclaim is fixed (see Verified). No
-  test validates the output with veraPDF.
+  (`docs/api/generate.md`, "Supplying the PDF base"); the docs overclaim is fixed (see Verified).
+  That `generate()` keeps a PDF/A-3B base compliant (the base itself validated first) is now checked
+  in CI by veraPDF (see Verified); that it also claims PDF/A-3B on a non-PDF/A base is CG-41.
 - **What does hold (2026-11-15, `2741b28`):** `generate()` *preserves* PDF/A-3b when its input already is
   PDF/A-3b.
   - Base: the official EN 16931 example `Facture_F20260023-…_EN_16931.pdf` with its embedded files,
@@ -111,8 +113,9 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
     by writing an `/ID`.
   - That run predates the Info and XMP changes of CG-04 and CG-25 (generation-time dates, Info
     `Producer`, XMP `pdf:Keywords`); it has not been repeated on that output.
-  - This is a manual run, not a CI test, so the "Not verified anywhere yet" note above still applies
-    until a test pins it.
+  - The CI job (Verified, PDF/A-3B row) covers the same claim on the current output, including the
+    CG-04 / CG-25 changes, with a pdf-lib base that it validates as PDF/A-3B first; it does not repeat
+    this run's stripped-example base.
 
 ### CG-08 — Order-X hybrid metadata
 
@@ -391,13 +394,6 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
   (before, the parser dropped the whole subtree).
 - **Fix direction:** write every decimal through `formatDecimal`.
 
-## Changing this file
-
-- Add an entry when a gap is confirmed **with evidence** (a command and its output, or a failing
-  test). Suspicions go to an issue, not here.
-- Close an entry by moving its proof (test name or command) to **Verified**, in the same PR as the fix.
-- Re-run every proof in **Verified** when the spec version or a vendored asset changes.
-
 ### CG-29 — `extract()` decodes every attachment without a bound
 
 - **Code:** `extractAttachments` (`src/lib/pdf.ts`) decodes each EmbeddedFiles entry with pdf-lib's
@@ -617,3 +613,32 @@ paths and the code supports both, so nothing here is picked.
   `EXT-FR-FE` id, e.g. `grep -n ',EXT-FR-FE-01,\|,EXT-FR-FE-175,' spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_EXTENDED.csv`
   and the same ids in `spec/afnor-xp-z12-012-1.4/text/annex-a--CII_D22B_FX_EXT-CTC-FR.csv`.
 - **Close when:** AFNOR publishes a corrected Annex A (to be reported).
+
+### CG-41 — `generate()` declares PDF/A-3B on output that is not PDF/A
+
+- **Spec:** BR-HYBRID-02 (appendix 3.d, PDF p.158–159): the hybrid SHALL be PDF/A-3 (or PDF/A-4f).
+  Non-PDF/A output violates it whatever its metadata says (that is CG-05, Fatal). Nothing vendored
+  says a false PDF/A claim is itself a violation, so this entry is rated interop. That `pdfaid` is
+  how a PDF claims PDF/A conformance comes from ISO 19005-3 (not vendored) and veraPDF's reading of
+  it; the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` carries
+  `pdfaid:part` 3 / `pdfaid:conformance` B.
+- **Code:** `src/lib/xmp.ts` always writes `pdfaid:part` `3` and `pdfaid:conformance` `B`, whatever
+  the source PDF is. `generate()` does not convert to PDF/A (CG-05), so a non-PDF/A source gives
+  output that claims a conformance it does not have. Receivers that trust the claim are misled; one
+  that validates it rejects the invoice. The same line also turns a source declaring PDF/A-3A or 3U
+  into a 3B claim (a one-off review probe saw a 3U base come out passing 3b and failing 3u on
+  `6.6.4 t3`; not pinned by a test).
+- **Evidence:** the negative control of `pnpm build && pnpm pdfa:verify`. `generate()` on
+  `examples/source-invoice.pdf` (unembedded font, no OutputIntent) produces a PDF whose XMP declares
+  PDF/A-3B, and veraPDF 1.30.4 (`--flavour 3b`) finds it not compliant: `6.2.4.3 t2` (device colour
+  space without an OutputIntent) and `6.2.11.4.1 t1` (font not embedded), glosses as in veraPDF's
+  report.
+- **Fix direction:** write `pdfaid` only when the source already declares PDF/A-3 (or behind an
+  option), or check the base and warn or refuse. Either changes behaviour: `docs/guide/upgrading.md`.
+
+## Changing this file
+
+- Add an entry when a gap is confirmed **with evidence** (a command and its output, or a failing
+  test). Suspicions go to an issue, not here.
+- Close an entry by moving its proof (test name or command) to **Verified**, in the same PR as the fix.
+- Re-run every proof in **Verified** when the spec version or a vendored asset changes.

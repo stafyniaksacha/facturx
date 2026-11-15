@@ -120,10 +120,12 @@ PDF you pass must already be PDF/A-3 (PDF/A-3b at least). Produce it with your P
 export, or see the repo's `tests/generate/index.ts` for a `pdf-lib` base with an embedded font and an
 sRGB output intent.
 
-Given a PDF/A-3b base, the output stayed PDF/A-3b in a manual veraPDF run on every Factur-X profile,
-on the code before this release's XMP and Info dictionary changes. No automated test checks this
-yet. Validate your
-own output with a PDF/A validator such as veraPDF.
+Given a PDF/A-3b base, the output stays PDF/A-3b: CI validates, with veraPDF, a `pdf-lib` PDF/A-3b
+base and `generate()` output on it for every Factur-X profile (`scripts/verify-pdfa.mjs`). The base's
+own XMP is replaced by the Factur-X one, and `generate()` writes the PDF/A-3B identification and a
+trailer `/ID` itself, so a base with an embedded font and an output intent but no XMP also comes out
+PDF/A-3b. On a base that is not PDF/A the output is not PDF/A either, yet its XMP still declares
+PDF/A-3B. Validate your own output with a PDF/A validator such as veraPDF.
 
 ## Example
 

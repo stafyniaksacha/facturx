@@ -126,6 +126,44 @@ jobs:
       - name: Build docs
         run: pnpm docs:build
 
+  # BR-HYBRID-02: the hybrid SHALL be PDF/A-3. generate() does not convert to PDF/A (CG-05), so this
+  # validates a PDF/A-3B base, proves generate() keeps it compliant for every profile, and that veraPDF
+  # rejects output built on a non-PDF/A base (negative control). See scripts/verify-pdfa.mjs.
+  pdfa:
+    name: PDF/A-3B (veraPDF)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # Pinned by digest in the script; pulled here so a registry hiccup is retried, not a failure.
+      - name: Pull veraPDF
+        run: |
+          image=$(node scripts/verify-pdfa.mjs --print-image)
+          for attempt in 1 2 3; do docker pull --quiet "$image" && exit 0; sleep $((attempt * 10)); done
+          exit 1
+
+      - name: Validate generate() output
+        run: pnpm pdfa:verify
+
   package:
     name: Package
     runs-on: ubuntu-latest
@@ -322,7 +360,7 @@ jobs:
   ci-ok:
     name: CI OK
     if: always()
-    needs: [lint, test, docs, package, consumer]
+    needs: [lint, test, docs, pdfa, package, consumer]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
