@@ -642,7 +642,7 @@ function convertLineTradeSettlement(
 }
 
 function convertTradeSettlementLineMonetarySummation(
-  { lineTotalAmount, chargeTotalAmount, allowanceTotalAmount, taxTotalAmount, grandTotalAmount, totalAllowanceChargeAmount }: ram.TradeSettlementLineMonetarySummationType,
+  { lineTotalAmount, chargeTotalAmount, allowanceTotalAmount, taxTotalAmount, taxTotalAmountInAccountingCurrency, grandTotalAmount, totalAllowanceChargeAmount }: ram.TradeSettlementLineMonetarySummationType,
   parent: XmlElement,
 ): void {
   if (lineTotalAmount) {
@@ -656,6 +656,10 @@ function convertTradeSettlementLineMonetarySummation(
   }
   if (taxTotalAmount) {
     convertAmount(taxTotalAmount, parent.addElement('ram:TaxTotalAmount'))
+  }
+  // BT-X-590 (EXT-FR-FE-182): a second TaxTotalAmount (EXTENDED XSD maxOccurs="2"), VAT accounting currency.
+  if (taxTotalAmountInAccountingCurrency) {
+    convertAmount(taxTotalAmountInAccountingCurrency, parent.addElement('ram:TaxTotalAmount'))
   }
   if (grandTotalAmount) {
     convertAmount(grandTotalAmount, parent.addElement('ram:GrandTotalAmount'))

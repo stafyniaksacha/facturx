@@ -237,8 +237,17 @@ D22B "uncoupled" XSD and the FNFE-MPE EXTENDED-CTC-FR Schematron (`schematron: t
 `level: 'extended-ctc-fr'`; `level: 'extended'` keeps working for such a document. `generate()` throws
 for a document declaring this profile, even with an explicit `level: 'extended'` (which used to embed
 it as EXTENDED), and `extract({ check: true })` throws for a `factur-x.xml` declaring it (it used to
-throw `Unknown level`): it is not a Factur-X profile. The
-`EXT-FR-FE-*` extension fields are not modelled yet.
+throw `Unknown level`): it is not a Factur-X profile.
+
+### Second line VAT total: `taxTotalAmountInAccountingCurrency`
+
+EXTENDED (and EXTENDED-CTC-FR) allows two `TaxTotalAmount` on an invoice line: the line VAT amount
+(BT-X-329) and the same amount in the VAT accounting currency (BT-X-590, with BT-6 as `currencyID`).
+`xmlToInvoice()` used to keep only the first element. It now reads the second element into the new
+optional `TradeSettlementLineMonetarySummationType.taxTotalAmountInAccountingCurrency`, and
+`invoiceToXml()` writes that property right after `taxTotalAmount`, which is unchanged. The two are
+read by position, not by `currencyID`: put the invoice-currency amount first. A third element is
+still dropped.
 
 ### Byte-exact XML: `preserveXmlBytes` and `extract().bytes`
 

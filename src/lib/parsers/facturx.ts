@@ -374,7 +374,10 @@ function parseLineTradeSettlement(node: XmlElement | undefined): ram.LineTradeSe
           lineTotalAmount: parseAmount(get(sum, './ram:LineTotalAmount')) ?? new udt.AmountType({ value: 0 }),
           chargeTotalAmount: parseAmount(get(sum, './ram:ChargeTotalAmount')),
           allowanceTotalAmount: parseAmount(get(sum, './ram:AllowanceTotalAmount')),
-          taxTotalAmount: parseAmount(get(sum, './ram:TaxTotalAmount')),
+          // Up to two (BT-X-329, then BT-X-590 in the VAT accounting currency), read by position: no rule
+          // fixes their order, and `invoiceToXml()` writes them back in the same order.
+          taxTotalAmount: parseAmount(get(sum, './ram:TaxTotalAmount[1]')),
+          taxTotalAmountInAccountingCurrency: parseAmount(get(sum, './ram:TaxTotalAmount[2]')),
           grandTotalAmount: parseAmount(get(sum, './ram:GrandTotalAmount')),
           totalAllowanceChargeAmount: parseAmount(get(sum, './ram:TotalAllowanceChargeAmount')),
         })
