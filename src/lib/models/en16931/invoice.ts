@@ -266,7 +266,7 @@ export class Invoice {
     allowances?: DocumentAllowance[]
     charges?: DocumentCharge[]
     totals: DocumentTotals
-    vatBreakdown?: VatBreakdown[]
+    vatBreakdown: VatBreakdown[]
     vatCurrencyExchange?: VatCurrencyExchange
   }) {
     this.number = number
@@ -314,7 +314,7 @@ export class Invoice {
     this.allowances = allowances ?? []
     this.charges = charges ?? []
     this.totals = totals
-    this.vatBreakdown = vatBreakdown ?? []
+    this.vatBreakdown = vatBreakdown
     this.vatCurrencyExchange = vatCurrencyExchange
   }
 

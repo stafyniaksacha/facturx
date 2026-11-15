@@ -122,8 +122,8 @@ interface AllowanceCharge {
 function allowanceChargeFromCii(entry: ram.TradeAllowanceChargeType): AllowanceCharge {
   const tax = entry.categoryTradeTax
   return {
-    // The parser stands in a zero amount for a missing ActualAmount.
-    amount: entry.actualAmount?.value ?? 0,
+    // A missing ActualAmount (BT-92, BT-99) is NaN, which `toCii()` rejects.
+    amount: required(entry.actualAmount),
     baseAmount: entry.basisAmount?.value,
     percentage: entry.calculationPercent?.value,
     // The parser leaves a category code the document lacks absent (optional at EXTENDED).
@@ -189,7 +189,8 @@ export function settlementFromCii(cii: CrossIndustryInvoiceType): SettlementInit
       ? new VatCurrencyExchange({
           sourceCurrencyCode: exchange.sourceCurrencyCode?.value ?? '',
           targetCurrencyCode: exchange.targetCurrencyCode?.value ?? '',
-          exchangeRate: exchange.conversionRate?.value ?? 0,
+          // A missing ConversionRate (BT-167) is NaN, which `toCii()` rejects.
+          exchangeRate: exchange.conversionRate?.value ?? Number.NaN,
           exchangeRateDate: isoFromCii(exchange.conversionRateDateTime),
         })
       : undefined,
@@ -351,8 +352,12 @@ export function assertSettlementComplete(invoice: Invoice): void {
   const { totals, paymentInstructions: payment, vatCurrencyExchange: exchange } = invoice
   if (!totals)
     throw new Error('toCii: BG-22 (document totals) is mandatory')
-  if (!invoice.vatBreakdown || invoice.vatBreakdown.length === 0)
+  if (!Array.isArray(invoice.vatBreakdown) || invoice.vatBreakdown.length === 0)
     throw new Error('toCii: BG-23 (VAT breakdown) is mandatory')
+  if (!Array.isArray(invoice.allowances))
+    throw new Error('toCii: BG-20 (document level allowances) must be an array')
+  if (!Array.isArray(invoice.charges))
+    throw new Error('toCii: BG-21 (document level charges) must be an array')
   const checks: Check[] = [
     ['BT-106', 'sum of invoice line net amount', totals.sumOfInvoiceLineNetAmount, true],
     ['BT-107', 'sum of allowances on document level', totals.sumOfAllowancesOnDocumentLevel, false],

@@ -3,7 +3,7 @@
  * allowances and charges (BG-20, BG-21), the VAT breakdown (BG-23), the document totals (BG-22) and
  * the VAT currency exchange (CG-18).
  *
- * Amounts, rates and percentages are `number`s and are never rounded. A term whose value is fixed by
+ * Amounts, rates and percentages are `number`s and are never rounded by this model. `invoiceToXml()` writes an Amount with 2 decimals (Factur-X §7.1.5 p.35), and `toCii()` does not check the BR-DEC decimal limits. A term whose value is fixed by
  * the Factur-X matrix (the VAT type code `VAT` of BT-95-0, BT-102-0 and BT-118-0, the code list `5153`
  * of BT-177-1, the currencies of BT-110-0 and BT-111-0) carries no property of its own: the property
  * of the term it qualifies names its id too (`@bt BT-118 BT-118-0`).
@@ -202,7 +202,7 @@ export class DocumentAllowance {
   }
 
   /**
-   * Document level allowance amount, without VAT. `fromCii()` yields `0` when the document has none.
+   * Document level allowance amount, without VAT. `fromCii()` yields `NaN` when the document has none; `toCii()` throws on it.
    * @bt BT-92
    */
   amount: number
@@ -292,7 +292,7 @@ export class DocumentCharge {
   }
 
   /**
-   * Document level charge amount, without VAT. `fromCii()` yields `0` when the document has none.
+   * Document level charge amount, without VAT. `fromCii()` yields `NaN` when the document has none; `toCii()` throws on it.
    * @bt BT-99
    */
   amount: number
@@ -389,9 +389,8 @@ export class DocumentTotals {
   }
 
   /**
-   * Sum of invoice line net amount. `fromCii()` yields `NaN` for a missing mandatory amount (`0` for
-   * BT-109, BT-112 and BT-115, which `xmlToInvoice()` already reads as `0`); `toCii()` throws on a
-   * non-finite one.
+   * Sum of invoice line net amount. `fromCii()` yields `NaN` when the document has none; `toCii()`
+   * throws on a non-finite one.
    * @bt BT-106
    */
   sumOfInvoiceLineNetAmount: number
@@ -406,7 +405,7 @@ export class DocumentTotals {
    */
   sumOfChargesOnDocumentLevel?: number
   /**
-   * Invoice total amount without VAT.
+   * Invoice total amount without VAT. `xmlToInvoice()` reads a missing element as `0`, so `fromCii()` cannot tell it from a real zero.
    * @bt BT-109
    */
   invoiceTotalAmountWithoutVat: number
@@ -427,7 +426,7 @@ export class DocumentTotals {
    */
   roundingAmount?: number
   /**
-   * Invoice total amount with VAT.
+   * Invoice total amount with VAT. `xmlToInvoice()` reads a missing element as `0` (as for BT-109).
    * @bt BT-112
    */
   invoiceTotalAmountWithVat: number
@@ -437,7 +436,7 @@ export class DocumentTotals {
    */
   paidAmount?: number
   /**
-   * Amount due for payment.
+   * Amount due for payment. `xmlToInvoice()` reads a missing element as `0` (as for BT-109).
    * @bt BT-115
    */
   amountDueForPayment: number
@@ -528,7 +527,7 @@ export class VatCurrencyExchange {
    */
   targetCurrencyCode: string
   /**
-   * Exchange rate (not rounded). `fromCii()` yields `0` when the document has none.
+   * Exchange rate (not rounded). `fromCii()` yields `NaN` when the document has none; `toCii()` throws on it.
    * @bt BT-167
    */
   exchangeRate: number

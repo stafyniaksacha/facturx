@@ -159,7 +159,9 @@ describe('en 16931 model: settlement round trip', () => {
 
   it('reads several VAT breakdowns of one category (annex B UC10, UC11, multi-vendor)', async () => {
     for (const uc of ['UC10', 'UC11']) {
-      for (const file of annexBCii.filter(f => f.includes(`${uc}_`))) {
+      const files = annexBCii.filter(f => f.includes(`${uc}_`))
+      expect(files.length).toBeGreaterThan(0)
+      for (const file of files) {
         const cii = await xmlToInvoice(await readFile(file))
         const { invoice } = fromCii(cii)
         const categories = invoice.vatBreakdown.map(v => v.categoryCode)
@@ -388,6 +390,30 @@ describe('en 16931 model: settlement terms', () => {
     expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/BT-81/)
   })
 
+  it.each([
+    ['BT-92', 'allowance'],
+    ['BT-99', 'charge'],
+    ['BT-167', 'exchange'],
+  ])('stands in NaN for a missing %s element of a hand-built CII model, which toCii rejects', (id, kind) => {
+    const source = new EN16931.Invoice({
+      ...base,
+      vatAccountingCurrencyCode: 'USD',
+      allowances: kind === 'allowance' ? [new EN16931.DocumentAllowance({ amount: 1, vatCategoryCode: 'S' })] : [],
+      charges: kind === 'charge' ? [new EN16931.DocumentCharge({ amount: 1, vatCategoryCode: 'S' })] : [],
+      vatCurrencyExchange: kind === 'exchange' ? new EN16931.VatCurrencyExchange({ sourceCurrencyCode: 'EUR', targetCurrencyCode: 'USD', exchangeRate: 1.1 }) : undefined,
+    })
+    const cii = toCii(source, { level: 'extended' })
+    const s = cii.supplyChainTradeTransaction.applicableHeaderTradeSettlement
+    if (kind === 'exchange')
+      delete (s.taxApplicableTradeCurrencyExchange as { conversionRate?: unknown }).conversionRate
+    else
+      delete (s.specifiedTradeAllowanceCharge![0] as { actualAmount?: unknown }).actualAmount
+    const { invoice } = fromCii(cii)
+    const value = kind === 'allowance' ? invoice.allowances[0].amount : kind === 'charge' ? invoice.charges[0].amount : invoice.vatCurrencyExchange!.exchangeRate
+    expect(value).toBeNaN()
+    expect(() => toCii(invoice, { level: 'extended' })).toThrow(new RegExp(`${id} `))
+  })
+
   it('stands in empty mandatory amounts for a document without them, which toCii rejects', () => {
     const cii = toCii(new EN16931.Invoice(base), { level: 'en16931' })
     const s = cii.supplyChainTradeTransaction.applicableHeaderTradeSettlement
@@ -410,6 +436,13 @@ describe('en 16931 model: settlement level gates and mandatory terms', () => {
     }
     return ''
   }
+  it('names BG-20, BG-21 and BG-23 for a plain-object invoice lacking them, not a TypeError', () => {
+    const plain = { ...base, allowances: [], charges: [] } as unknown as Invoice
+    expect(message({ ...plain, allowances: undefined } as never, 'en16931')).toMatch(/BG-20/)
+    expect(message({ ...plain, charges: undefined } as never, 'en16931')).toMatch(/BG-21/)
+    expect(message({ ...plain, vatBreakdown: undefined } as never, 'en16931')).toMatch(/BG-23/)
+  })
+
   const instructions = (extra: object) => new EN16931.PaymentInstructions({ paymentMeansTypeCode: '58', ...extra })
 
   it.each([
