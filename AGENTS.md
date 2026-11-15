@@ -77,7 +77,8 @@ pnpm docs             # VitePress dev server; regenerates docs/api/models/ from 
   Check the field's profile and cardinality in
   `spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_<PROFILE>.csv` (e.g. `grep -n ',BT-148,'`).
 - **Decimals:** only *Amount* is limited to 2 decimals. Unit prices, quantities and percentages are
-  not (§7.1.5 p.35). Don't round them (CG-01).
+  not (§7.1.5 p.35). Don't round them: the converter writes *Unit Price Amount*s with
+  `convertUnitPriceAmount` (was CG-01).
 - **libxml2-wasm:** `XmlDocument` / `XsdValidator` hold WASM memory. Dispose what you create
   (`try/finally`), and never dispose a document the caller passed in (see `check.ts`). In
   `addElement(name, prefix?)` the second argument is a **namespace prefix**, not text: write

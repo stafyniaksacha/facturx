@@ -52,12 +52,53 @@ export async function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<X
 // Primitive (Unqualified / Qualified data type) converters
 // ---------------------------------------------------------------------------
 
+/** *Amount* data type: at most 2 decimals (§7.1.5 p.35, BR-DEC-*). */
 function convertAmount({ value, currencyID }: udt.AmountType, parent: XmlElement): XmlElement {
   parent.addText(value.toFixed(2))
   if (currencyID) {
     parent.setAttr('currencyID', currencyID)
   }
   return parent
+}
+
+/**
+ * Unit Price Amount* data type (BT-146, BT-147, BT-148, BT-X-35, BT-X-301, BT-X-302): no limit
+ * on decimals (§7.1.5 p.35, e.g. `1000.3454`), so it is written as is, never rounded (was CG-01).
+ */
+function convertUnitPriceAmount({ value, currencyID }: udt.AmountType, parent: XmlElement): XmlElement {
+  parent.addText(formatDecimal(value))
+  if (currencyID) {
+    parent.setAttr('currencyID', currencyID)
+  }
+  return parent
+}
+
+/**
+ * Writes a number as an `xs:decimal` lexical value: the shortest string that reads back as the same
+ * number, without the exponent notation (`1e-7`) `String()` uses for very small or large values.
+ */
+function formatDecimal(value: number): string {
+  const text = String(value)
+  if (!/e/i.test(text)) {
+    return text
+  }
+  const [mantissa, exponentText] = text.toLowerCase().split('e')
+  const exponent = Number(exponentText)
+  const negative = mantissa.startsWith('-')
+  const [intPart, fracPart = ''] = mantissa.replace('-', '').split('.')
+  const digits = intPart + fracPart
+  const point = intPart.length + exponent
+  let result: string
+  if (point <= 0) {
+    result = `0.${'0'.repeat(-point)}${digits}`
+  }
+  else if (point >= digits.length) {
+    result = digits + '0'.repeat(point - digits.length)
+  }
+  else {
+    result = `${digits.slice(0, point)}.${digits.slice(point)}`
+  }
+  return negative ? `-${result}` : result
 }
 
 function convertID({ value, schemeID }: udt.IDType, parent: XmlElement): XmlElement {
@@ -500,13 +541,15 @@ function convertTradePrice(
   parent: XmlElement,
 ): void {
   if (chargeAmount) {
-    convertAmount(chargeAmount, parent.addElement('ram:ChargeAmount'))
+    // BT-146 / BT-148
+    convertUnitPriceAmount(chargeAmount, parent.addElement('ram:ChargeAmount'))
   }
   if (basisQuantity) {
     convertQuantity(basisQuantity, parent.addElement('ram:BasisQuantity'))
   }
   if (appliedTradeAllowanceCharge && appliedTradeAllowanceCharge.length > 0) {
-    appliedTradeAllowanceCharge.forEach(ac => convertAllowanceCharge(ac, parent.addElement('ram:AppliedTradeAllowanceCharge')))
+    // BT-147 / BT-X-302 and their base amounts BT-X-35 / BT-X-301 are unit prices too.
+    appliedTradeAllowanceCharge.forEach(ac => convertAllowanceCharge(ac, parent.addElement('ram:AppliedTradeAllowanceCharge'), true))
   }
   if (includedTradeTax) {
     convertTradeTax(includedTradeTax, parent.addElement('ram:IncludedTradeTax'))
@@ -1133,7 +1176,11 @@ function convertAllowanceCharge(
     categoryTradeTax,
   }: ram.TradeAllowanceChargeType,
   parent: XmlElement,
+  // Price-level allowances/charges (in a GrossPriceProductTradePrice) carry *Unit Price Amount*s;
+  // line- and document-level ones carry *Amount*s.
+  unitPrice = false,
 ): void {
+  const convertAllowanceAmount = unitPrice ? convertUnitPriceAmount : convertAmount
   convertIndicator(chargeIndicator, parent.addElement('ram:ChargeIndicator'))
   if (sequenceNumeric) {
     parent.addElement('ram:SequenceNumeric').addText(String(sequenceNumeric.value))
@@ -1142,13 +1189,13 @@ function convertAllowanceCharge(
     parent.addElement('ram:CalculationPercent').addText(String(calculationPercent.value))
   }
   if (basisAmount) {
-    convertAmount(basisAmount, parent.addElement('ram:BasisAmount'))
+    convertAllowanceAmount(basisAmount, parent.addElement('ram:BasisAmount'))
   }
   if (basisQuantity) {
     convertQuantity(basisQuantity, parent.addElement('ram:BasisQuantity'))
   }
   if (actualAmount) {
-    convertAmount(actualAmount, parent.addElement('ram:ActualAmount'))
+    convertAllowanceAmount(actualAmount, parent.addElement('ram:ActualAmount'))
   }
   if (reasonCode) {
     parent.addElement('ram:ReasonCode').addText(reasonCode.value)

@@ -135,6 +135,12 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   0.6.1 wrote them without their value.
 - **`check()`, `generate()`, `xmlToInvoice()` and the CLI work on Windows again** ([#26](https://github.com/stafyniaksacha/facturx/pull/26)): XSD imports
   failed to load on drive-letter paths.
+- **`invoiceToXml()` no longer rounds unit prices to cents** (CG-01). Item net and gross prices
+  (BT-146, BT-148), the price discount or charge (BT-147, BT-X-302) and their base amounts
+  (BT-X-35, BT-X-301) are *Unit Price Amount*s, which have no decimal limit (§7.1.5 p.35): `0.3456`
+  is now written as `0.3456`, not `0.35`. They are written in their shortest form, so `4.10` reads
+  back and is written again as `4.1`. All other amounts are still written with 2 decimals. If you
+  relied on the rounding, round the prices yourself before building the model.
 - **The XMP packet id** is the fixed `W5M0MpCehiHzreSzNTczkc9d` from the reference packet.
   `XmpMetadata.documentId` is kept but deprecated.
 
