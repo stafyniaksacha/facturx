@@ -8,7 +8,7 @@ Conforms to **Factur-X 1.09 / ZUGFeRD 2.5** (the EN 16931 European e-invoicing s
 
 ## Features
 
-- 📎 **Generate** a PDF-A/3 invoice by embedding the XML into a PDF — `generate`
+- 📎 **Generate** a hybrid invoice by embedding the XML into a PDF/A-3 you supply — `generate`
 - 📤 **Extract** the XML back out of a Factur-X / Order-X / ZUGFeRD PDF — `extract`
 - 🔁 **Parse** an XML invoice into a fully-typed model — `xmlToInvoice`
 - 🧱 **Build** a Cross Industry Invoice model and serialize it to XML — `invoiceToXml`
