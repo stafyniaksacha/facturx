@@ -884,6 +884,34 @@ describe('generate', () => {
       expect(readXmp(output).conformanceLevel).toEqual([level.toUpperCase()])
     })
 
+    // Every guideline ID (BT-24) the vendored code lists allow (`<cl id="1">` of each profile's codedb)
+    // must be accepted with its matching explicit level, so the check never refuses a valid document.
+    const CODEDB: Record<string, [string, string]> = {
+      minimum: ['minimum/FACTUR-X_MINIMUM_codedb.xml', 'MINIMUM'],
+      basicwl: ['basicwl/FACTUR-X_BASIC-WL_codedb.xml', 'BASIC WL'],
+      basic: ['basic/FACTUR-X_BASIC_codedb.xml', 'BASIC'],
+      en16931: ['en16931/FACTUR-X_EN16931_codedb.xml', 'EN 16931'],
+      extended: ['extended/FACTUR-X_EXTENDED_codedb.xml', 'EXTENDED'],
+    }
+    it.each(Object.entries(CODEDB))('accepts every %s guideline ID of the vendored codedb with its matching level', async (level, [file, expected]) => {
+      const doc = XmlDocument.fromString(await readFile(resolve(import.meta.dirname, '../src/lib/xsd/facturx', file), 'utf8'))
+      let ids: string[]
+      try {
+        ids = doc.find('/codedb/cl[@id="1"]/enumeration/@value').map(node => node.content)
+      }
+      finally {
+        doc.dispose()
+      }
+      expect(ids.length).toBeGreaterThan(0)
+      const source = await readFile(SOURCE_XML, 'utf8')
+      for (const id of ids) {
+        expect(id).toMatch(/^urn:/)
+        const xml = source.replace('urn:cen.eu:en16931:2017', id)
+        const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml, level }))
+        expect(readXmp(output).conformanceLevel, id).toEqual([expected])
+      }
+    })
+
     it('matches the level segment of BT-24 only: check: true (XSD) does not validate BT-24 itself', async () => {
       // BT-24 is an udt:IDType in the XSD; only the Schematron checks it against the profile's code list.
       const xml = (await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_MINIMUM.xml'), 'utf8')).replace('urn:factur-x.eu:1p0:minimum', 'urn:example:minimum')
