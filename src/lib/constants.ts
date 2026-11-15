@@ -32,6 +32,25 @@ export const FACTURX_CONFORMANCE_LEVEL = {
   minimum: 'MINIMUM',
 } as const
 
+// fx:ConformanceLevel of an Order-X hybrid (BR-HYBRID-07, `text/codelists--HybridConformance.csv`:
+// BASIC, COMFORT and EXTENDED apply to Order-X).
+export const ORDERX_CONFORMANCE_LEVEL = {
+  basic: 'BASIC',
+  comfort: 'COMFORT',
+  extended: 'EXTENDED',
+} as const
+
+// fx:DocumentType of an Order-X hybrid by message type code (BR-HYBRID-06). The values are those of
+// `text/codelists--HybridDocument.csv`, which gives no type-code mapping: the mapping and the
+// restriction to these three codes follow the UNTDID 1001 names (the Order-X entries of DOC_TYPE
+// below) and the Order-X specification, which is not vendored. The Order-X XSD itself allows any
+// UNTDID 1001 code.
+export const ORDERX_DOCUMENT_TYPE = {
+  220: 'ORDER',
+  230: 'ORDER_CHANGE',
+  231: 'ORDER_RESPONSE',
+} as const
+
 export type ORDERX_SCHEMA_TYPE = keyof typeof ORDERX_SCHEMA
 export const ORDERX_SCHEMA = {
   basic: './xsd/orderx/basic/SCRDMCCBDACIOMessageStructure_100pD20B.xsd',

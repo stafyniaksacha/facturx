@@ -27,7 +27,7 @@ function generate(options: {
 | `xml` | `string \| Buffer \| XmlDocument` | — | **Required.** Invoice XML to embed (the XML content, not a file path). |
 | `check` | `boolean` | `false` | Set `true` to run XSD validation before embedding; throws on invalid XML. |
 | `flavor` | `string` | autodetect | `facturx` or `orderx`. `zugferd` (extraction only) throws. |
-| `level` | `string` | autodetect | Schema level (e.g. `en16931`). Factur-X: `minimum`, `basicwl`, `basic`, `en16931`, `extended`; case, spaces and underscores are ignored, so `EN 16931` or `BASIC WL` work too, and any other value throws (BR-HYBRID-07). Order-X: `basic`, `comfort`, `extended`, as written. |
+| `level` | `string` | autodetect | Schema level (e.g. `en16931`). Factur-X: `minimum`, `basicwl`, `basic`, `en16931`, `extended`; Order-X: `basic`, `comfort`, `extended`. Case, spaces and underscores are ignored, so `EN 16931` or `BASIC WL` work too, and any other value throws (BR-HYBRID-07). |
 | `language` | `string` | — | PDF language code (RFC 3066), e.g. `en-GB`. |
 | `meta` | `PdfMetadata` | derived from XML | Override the PDF document metadata. |
 | `afRelationship` | `'Data' \| 'Alternative' \| 'Source'` | `'Data'` | Relationship between the embedded XML and the PDF (see below). |
@@ -52,11 +52,15 @@ interface PdfMetadata {
 ## Behaviour
 
 - Chooses the embedded filename from the flavor, `factur-x.xml` or `order-x.xml`, and writes the
-  PDF/A-3 XMP metadata (including the Factur-X `conformanceLevel` for the level).
-  ::: warning Order-X metadata is not conformant yet
-  For `orderx`, the XMP still says `fx:DocumentType` `INVOICE` and leaves `fx:ConformanceLevel`
-  empty, where the hybrid code lists require `ORDER` / `ORDER_CHANGE` / `ORDER_RESPONSE` and
-  `BASIC` / `COMFORT` / `EXTENDED`.
+  PDF/A-3 XMP metadata. `fx:DocumentType` is `INVOICE` for Factur-X; for Order-X it follows the
+  message type code (`220` → `ORDER`, `230` → `ORDER_CHANGE`, `231` → `ORDER_RESPONSE`), and any
+  other code throws `Cannot generate an Order-X PDF for the message type code …` before the PDF is
+  read. `fx:ConformanceLevel` is the level's hybrid code (Factur-X `MINIMUM` … `EXTENDED`, Order-X
+  `BASIC` / `COMFORT` / `EXTENDED`).
+  ::: warning Order-X XMP namespace
+  Order-X PDFs use the same `fx:` namespace URI as Factur-X
+  (`urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#`). The Order-X specification is not
+  vendored here, so that URI is not checked against it (CONFORMANCE.md CG-10).
   :::
 - Writes the embedded XML with the `afRelationship` you pass, `Data` by default. Factur-X allows only `Data` for MINIMUM and BASIC WL, and `Alternative`,
   `Source` or `Data` for BASIC, EN 16931 and EXTENDED. `generate()` throws
@@ -89,8 +93,8 @@ interface PdfMetadata {
   `CrossIndustryInvoice`: generate it as `facturx`.
 - Throws `Unknown level "<level>" for the <flavor> flavor: expected one of …`, before reading the
   PDF, when the level (the `level` option, or the one read from the guideline ID BT-24 when it is
-  omitted or blank) has no Factur-X conformance level, so a Factur-X `fx:ConformanceLevel` is never
-  written empty (BR-HYBRID-07). An explicit `level` is not compared
+  omitted or blank) has no Factur-X / Order-X conformance level for the flavor, so
+  `fx:ConformanceLevel` is never written empty (BR-HYBRID-07). An explicit `level` is not compared
   with BT-24: pass the profile of the XML (BR-HYBRID-15, CONFORMANCE.md CG-42).
 - Throws, before writing the invoice, when the source PDF cannot take the invoice correctly: see the
   table below. Bytes you pass are never modified. A `PDFDocument` you pass is marked as used before
