@@ -183,3 +183,12 @@ describe('uBL profile Schematron (step 2)', () => {
     await expect(validateSchematron({ xml: await readFile(en.file), flavor: 'ubl', level: 'basic' })).rejects.toThrow(/level/)
   })
 })
+
+describe('uBL full sequence (XSD + profile + BR-FR)', () => {
+  it.each(examples)('$name passes the BR-FR rules with no finding', async ({ file }) => {
+    const r = await check({ xml: await readFile(file), schematron: true, frCtc: true })
+    // CG-42: the profile Schematron may warn (BR-FREXT-IC-08rev); that lands in schematronWarnings.
+    expect(r).toMatchObject({ valid: true, errors: [], schematronErrors: [], frCtcValid: true, frCtcErrors: [], frCtcWarnings: [] })
+    // Three SEFs per document: slow under a loaded full run, so more than the default 5 s.
+  }, 60_000)
+})
