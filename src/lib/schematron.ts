@@ -218,13 +218,16 @@ export async function validateSchematron(options: {
     throw new Error(`No Factur-X Schematron available for level: "${options.level}"`)
   }
 
+  // Read once: the precheck awaits, and a caller changing `options.xml` meanwhile must not get the
+  // precheck on one document and the transform on another.
+  const xml = options.xml
   if (options.level === 'extended-ctc-fr') {
-    const finding = await extendedCtcFrPrecheck(options.xml)
+    const finding = await extendedCtcFrPrecheck(xml)
     if (finding)
       return { valid: false, errors: [finding], warnings: [] }
   }
 
-  return runSchematron(config, options.xml, { warningsAsErrors: options.warningsAsErrors })
+  return runSchematron(config, xml, { warningsAsErrors: options.warningsAsErrors })
 }
 
 /**

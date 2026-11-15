@@ -157,4 +157,15 @@ describe('eXTENDED-CTC-FR plain CII profile (CG-18 validation)', () => {
     await expect(generate({ pdf, xml: order, flavor: 'facturx' })).rejects.toThrow('does not match the "facturx" flavor')
     await expect(generate({ pdf, xml: invoice })).resolves.toBeInstanceOf(Uint8Array)
   })
+
+  // CodeRabbit review: the precheck and the transform must see the same document, even if the
+  // caller replaces `options.xml` while the precheck awaits.
+  it('validateSchematron() runs the precheck and the transform on the same document', async () => {
+    const good = await readFile(F1, 'utf8')
+    const broken = good.replace('<ram:GrandTotalAmount>118.70<', '<ram:GrandTotalAmount>1.00<')
+    const options = { xml: good, level: 'extended-ctc-fr' }
+    const pending = validateSchematron(options)
+    options.xml = broken
+    await expect(pending).resolves.toMatchObject({ valid: true })
+  })
 })
