@@ -360,6 +360,23 @@ published Schematron, and UBL is validation only (see above). Details:
   the `[ID]` prefix of the message: they differ on 8 EXTENDED-CTC-FR-UBL asserts. Rule ids of CII findings
   are unchanged. See [Validation](/guide/validation).
 
+### EN 16931 model: `EN16931`, `fromCii()` and `toCii()`
+
+A new syntax-neutral invoice model, keyed by EN 16931 business terms (`BT-*`, `BG-*`) and by the
+`EXT-FR-FE-*` fields of the French extension, with a mapping to the CII model. It is additive: `Models`,
+`invoiceToXml()` and `xmlToInvoice()` are unchanged. Nothing to do unless you want it.
+
+```ts
+import { EN16931, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
+
+const { invoice, dropped } = fromCii(await xmlToInvoice(xml)) // dropped: what the model can't hold
+const out = (await invoiceToXml(toCii(invoice, { level: 'en16931' }))).toString()
+```
+
+`toCii()` throws, naming the business term, when the invoice cannot be written at the level; `fromCii()` throws
+for MINIMUM and BASIC WL. UBL reading and writing are not part of this release. See the
+[EN 16931 model guide](/guide/en16931-model). It is also exported from `@stafyniaksacha/facturx/en16931`.
+
 ### `afRelationship` option for `generate()`
 
 `generate({ pdf, xml, afRelationship: 'Alternative' })` (CLI `--afRelationship Alternative`) sets the

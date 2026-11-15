@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { EN16931, extract, fromCii, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
+import { FIRST_ENTRY_ONLY, spreadVatPoint } from './fixtures/vat-point'
 
 const CORPUS_DIR = resolve(import.meta.dirname, '../spec/factur-x-1.09/distribution/5. FACTUR-X 1.09 - Examples/_Factur-X_1.08-Exemples_CS')
 const ANNEX_B_DIR = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
@@ -42,22 +43,8 @@ function settlementOf(cii: CrossIndustryInvoiceType): unknown {
 
 const OWNED = /\/ram:ApplicableHeaderTradeSettlement\/ram:(?:CreditorReferenceID|PaymentReference|TaxApplicableTradeCurrencyExchange|SpecifiedTradeSettlementPaymentMeans|ApplicableTradeTax|SpecifiedTradeAllowanceCharge|SpecifiedTradePaymentTerms|SpecifiedTradeSettlementHeaderMonetarySummation)\b/
 
-// Corpus F20260023, F20260024 and F20260031 carry BT-7 / BT-8 on the first ApplicableTradeTax entry
-// only; `toCii()` writes them on every entry (controller ruling, matches annex B). Every original
-// value is still present in the regenerated CII (so `dropped` stays empty): only its placement differs.
-// This is the only loosening of the subtree comparison.
-const FIRST_ENTRY_ONLY = /F2026(?:0023|0024|0031)/
-function spreadVatPoint(cii: CrossIndustryInvoiceType): CrossIndustryInvoiceType {
-  const copy = structuredClone(cii)
-  const taxes = copy.supplyChainTradeTransaction.applicableHeaderTradeSettlement.applicableTradeTax
-  const date = taxes.find(t => t.taxPointDate)?.taxPointDate
-  const code = taxes.find(t => t.dueDateTypeCode)?.dueDateTypeCode
-  for (const t of taxes) {
-    t.taxPointDate ??= date
-    t.dueDateTypeCode ??= code
-  }
-  return copy
-}
+// BT-7 / BT-8 placement normaliser (corpus F20260023/24/31): tests/fixtures/vat-point.ts. The only
+// loosening of the subtree comparison.
 
 const PARTIES = {
   seller: new EN16931.Seller({ name: 'S', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),

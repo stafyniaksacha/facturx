@@ -1,0 +1,140 @@
+# EN 16931 model
+
+`EN16931` is a syntax-neutral invoice model. Its classes are keyed by the **business terms** of the
+European standard EN 16931 (`BT-1` invoice number, `BG-4` seller, `BG-25` invoice line, …) instead of the
+elements of one XML syntax, so the same object can be written to, and read from, different syntaxes.
+Today the only syntax is **CII**, through `toCii()` and `fromCii()`. A UBL 2.1 reader and writer are
+planned on top of the same model, without a date.
+
+The CII classes ([`Models`](/api/models)) stay the CII API, and `invoiceToXml()` stays the only code that
+writes CII XML: `toCii()` produces a CII model, and you serialize that as before.
+
+```ts
+import { EN16931, fromCii, invoiceToXml, toCii } from '@stafyniaksacha/facturx'
+// or, without the rest of the package:
+import { EN16931, fromCii, toCii } from '@stafyniaksacha/facturx/en16931'
+```
+
+## Build, write and read
+
+<<< ../../examples/en16931.ts#main{ts}
+
+The classes take an object in their constructor, like the CII models. Properties are named after the
+business term without its group prefix (`BT-27 Seller name` on `Seller` is `name`), and every property
+carries its id in JSDoc (`@bt BT-27`, `@bg BG-4`, `@ext EXT-FR-FE-12`), so your editor shows it on hover.
+The [model reference](/api/models/en16931/invoice) lists every class with the ids and descriptions.
+
+Conventions:
+
+- Amounts, quantities, unit prices and percentages are `number`s; dates are ISO `YYYY-MM-DD` strings;
+  an identifier with a scheme is `Identifier { value, schemeId? }`; codes are strings (the code list is
+  named in the JSDoc, and checked by the Schematron, not by the type system).
+- A repeatable term is an array and a mandatory term a required property. Where EN 16931 and
+  EXTENDED-CTC-FR disagree on the cardinality, the model takes the **wider** (BT-60, for instance, is an array).
+- Optional terms are `undefined` when absent. The model never invents a value; `toCii()` writes the
+  Factur-X default `Project reference` for BT-11-0 when BT-11 is set without a name (CG-49).
+
+## Scope
+
+In the model:
+
+- every EN 16931 business term and group (`BT-*`, `BG-*`);
+- every `EXT-FR-FE-*` field of XP Z12-012 v1.4 annex A (the French extension, profile
+  `EXTENDED-CTC-FR`), in the group it belongs to, at every level that carries it: an invoice that holds
+  `invoice.seller…` reads the same for EN 16931 and EXTENDED-CTC-FR data.
+
+Not in the model, on purpose:
+
+- **True `BT-X-*`**: Factur-X EXTENDED fields that have neither an EN 16931 id nor an `EXT-FR-FE` id
+  (the line status code `BT-X-7`, party identifiers and contacts of the extended groups, the gross price
+  charge, manufacturers, …). They are reported by `fromCii()` in `dropped`. Use the CII model if you need them.
+- **`BT-179`, `BT-180`, `BT-215`, `BT-216` and `BG-34`**: EXTENDED-only rows of Factur-X 1.09 that annex A
+  does not carry. Same treatment as `BT-X-*`.
+- **MINIMUM and BASIC WL**: they are not EN 16931 invoices (no lines, no VAT breakdown). `fromCii()` throws on
+  them; keep using the CII model for those profiles.
+
+Two limits of the single-valued groups are worth knowing: the model holds one delivery (BG-13), one payment
+instructions group (BG-16, the first payment means) and one line VAT block (BG-30), where some syntaxes
+or profiles allow several. What `fromCii()` finds beyond them goes to `dropped`.
+`CONFORMANCE.md` records the details (CG-50, CG-51, CG-52). A preceding invoice reference on a line
+(`EXT-FR-FE-BG-06`) is an array, since the UBL annex allows two, but CII has room for one: `toCii()` throws on a
+second. At the `extended` levels a group or information line (annex B UC10 to UC13) may have no price, quantity or VAT (CG-54).
+
+## Levels: `toCii(invoice, { level })`
+
+`level` is one of `basic`, `en16931`, `extended` and `extended-ctc-fr`. It decides BT-24 (the
+specification identifier) and which terms may be present.
+
+| Level | BT-24 written when the invoice has none |
+| --- | --- |
+| `basic` | `urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic` |
+| `en16931` | `urn:cen.eu:en16931:2017` |
+| `extended` | `urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended` |
+| `extended-ctc-fr` | `urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr` |
+
+`toCii()` is strict. It **throws, naming the business term** (and never quoting the invoice's content) when:
+
+- a mandatory term is empty or missing: BT-1, BT-2, BT-3, BT-5, the seller (BG-4) and buyer (BG-7) with their
+  names, postal addresses and country codes, the totals, the VAT breakdown, the lines and their mandatory
+  terms. Below `extended`, a line needs its price (BG-29), quantity (BT-129) and VAT (BG-30);
+- the invoice holds a term the level cannot carry: a term missing from the Factur-X BASIC matrix needs
+  `en16931`, and an `EXT-FR-FE-*` field needs `extended` or `extended-ctc-fr`. A BASIC invoice with
+  `EXT-FR-FE-12` set is an error, not a silent drop;
+- BT-24 (`specificationIdentifier`) is set to anything but the exact identifier of the level (another level's
+  id, an Order-X id or a CIUS identifier would make the document claim a profile it was not checked against).
+  Leave it unset, or set it to `''`, to get the identifier of the level;
+- a date is not a valid ISO date, or a sub-term is set without its parent (BT-11-0 without BT-11).
+
+This is the same rule for every writer of the model: a value the caller put in the invoice and the target
+cannot carry is an error, because dropping it would be silent data loss.
+
+## Reading: `fromCii(cii)`
+
+`fromCii()` takes the CII model that `xmlToInvoice()` returns and gives `{ invoice, dropped }`. The level
+comes from BT-24 of the document.
+
+```ts
+const { invoice, dropped } = fromCii(await xmlToInvoice(xml))
+```
+
+`dropped` lists the XPath-like path of **every value in the document that the model has no place for**
+(`/rsm:CrossIndustryInvoice/…/ram:LineStatusCode[1]`), positions only, never the values. It is computed by
+mapping the invoice back to CII and comparing with the document, so it cannot miss a value the CII parser
+reads. It is empty for the official examples of Factur-X 1.09 and of XP Z12-012 annex B; it holds only
+`BT-X-*` content (and the excluded rows above) on Factur-X EXTENDED documents.
+
+`fromCii()` throws for MINIMUM and BASIC WL.
+
+`dropped` covers what `xmlToInvoice()` reads. An XML element the CII parser does not read never reaches
+the CII model, so neither `fromCii()` nor `dropped` can see it.
+
+## Where a few terms land in CII
+
+- **BT-7 and BT-8** (VAT point date and date code) are written on **every** `ApplicableTradeTax` of the VAT
+  breakdown, as the matrices and annex B do. A source document that has them on the first entry only reads the
+  same into the model and is written back with them on each entry. BT-8 is UNTDID 2005 in the model and
+  UNTDID 2475 in CII (35 becomes 29), the same map is used for `EXT-FR-FE-180`, the line level BT-8.
+- **BT-24** is kept as read: `fromCii()` sets `specificationIdentifier` to the document's own, and `toCii()`
+  accepts only the exact identifier of the level.
+- **BT-11-0** (project name) is the `Name` of the project and is written only with BT-11.
+- **Amounts** are written with two decimals by the XML writer (spec §7.1.5: only an *Amount* is limited to
+  two decimals). Unit prices (BT-146, BT-148, …), quantities and percentages are not
+  rounded, so a unit price of `489.057` is written as is. The model holds the `number` you gave it.
+- **Sub-lines** (annex B UC12) are flat: a line carries `parentLineIdentifier`, the hierarchy is the parent
+  references, as in CII.
+
+## What is proven
+
+On every official example (the Factur-X 1.09 corpus at BASIC, EN 16931 and EXTENDED, and the annex B
+Factur-X documents, EN 16931, EXTENDED and EXTENDED-CTC-FR) the mapping `fromCii` → `toCii` → `invoiceToXml`
+passes the XSD and the profile Schematron at the document's level; at BASIC, EN 16931 and EXTENDED-CTC-FR
+nothing is dropped and the CII model read back equals the original, and every in-scope id has a property:
+
+```bash
+pnpm build && pnpm vitest run tests/en16931-corpus.test.ts tests/en16931-coverage.test.ts
+```
+
+## Not covered yet
+
+- UBL: there is no `invoiceToUbl()` or `ublToInvoice()` yet; UBL documents are only validated
+  ([UBL 2.1 validation](/guide/validation)).
