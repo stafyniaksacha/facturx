@@ -1,10 +1,11 @@
 import type { Buffer } from 'node:buffer'
 import type { SchematronError, SchematronResult } from './schematron'
 import { XmlDocument, XmlValidateError, XsdValidator } from 'libxml2-wasm'
+import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
 import { assertFrCtcApplicable, validateFrCtc } from './fr-ctc'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
-import { getFlavor, getLevel } from './xml'
+import { declaresExtendedCtcFr, getFlavor, getLevel } from './xml'
 import { getXsd } from './xsd'
 
 // XPath dynamic errors caused by the document's values (XPath and XQuery Functions and Operators 3.1
@@ -53,6 +54,10 @@ export async function check(options: {
   try {
     flavor = options.flavor || getFlavor(xml)
     level = options.level || getLevel(xml)
+    // An explicit `extended-ctc-fr` must match the document: neither the uncoupled XSD (any token)
+    // nor the dedicated Schematron (BT-24 non-empty) checks the guideline ID.
+    if (options.level === 'extended-ctc-fr' && flavor === 'facturx' && !declaresExtendedCtcFr(xml))
+      throw new Error(`level "extended-ctc-fr" does not match the document: its guideline ID (BT-24) must be ${EXTENDED_CTC_FR_GUIDELINE_ID}`)
     // Fail before any validation work when the French rules can't apply.
     if (options.frCtc)
       assertFrCtcApplicable(flavor, level)

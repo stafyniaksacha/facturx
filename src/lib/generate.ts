@@ -26,7 +26,7 @@ import { baseInfo2PdfMetadata } from './metadata'
 import { decodeName, embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
-import { extractBaseInfo, getFlavor, getLevel } from './xml'
+import { declaresExtendedCtcFr, extractBaseInfo, getFlavor, getLevel } from './xml'
 import { setPDFA3BMetadata, stripXmlInvalidChars } from './xmp'
 
 // PDFDocument objects generate() has already attached an invoice to. pdf-lib only writes the
@@ -246,16 +246,6 @@ function passThroughBytes(input: string | Buffer, xml: XmlDocument): Uint8Array 
       throw new Error(`preserveXmlBytes needs UTF-8 XML, but the XML declaration says encoding="${encoding.slice(0, 40)}"`)
   }
   return typeof input === 'string' ? new TextEncoder().encode(input) : new Uint8Array(input)
-}
-
-/** Whether the document's BT-24 is the EXTENDED-CTC-FR guideline ID, whatever `level` says. */
-function declaresExtendedCtcFr(xml: XmlDocument): boolean {
-  try {
-    return getLevel(xml) === 'extended-ctc-fr'
-  }
-  catch {
-    return false
-  }
 }
 
 const AF_RELATIONSHIPS: Record<string, AFRelationship> = {

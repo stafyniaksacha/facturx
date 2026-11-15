@@ -103,4 +103,31 @@ describe('eXTENDED-CTC-FR plain CII profile (CG-18 validation)', () => {
     await expect(extract({ pdf: bytes })).resolves.toMatchObject({ filename: 'factur-x.xml' })
     await expect(extract({ pdf: bytes, check: true })).rejects.toThrow('declares EXTENDED-CTC-FR, a plain CII profile that is not a Factur-X profile')
   })
+
+  // CodeRabbit review: an explicit level must not skip the guideline ID check.
+  it('rejects an explicit level extended-ctc-fr on a document with another guideline ID', async () => {
+    const xml = (await readFile(F1, 'utf8')).replace(/urn:cen\.eu:en16931:2017#conformant#urn\.cpro\.gouv\.fr:1p0:extended-ctc-fr(?=<)/, 'urn:example:not-a-profile')
+    await expect(check({ xml, level: 'extended-ctc-fr', schematron: true })).rejects.toThrow('level "extended-ctc-fr" does not match the document')
+    await expect(check({ xml: await readFile(F1, 'utf8'), level: 'extended-ctc-fr' })).resolves.toMatchObject({ valid: true })
+  })
+
+  it('extract({ check: true, level: \'extended\' }) still refuses a factur-x.xml that declares EXTENDED-CTC-FR', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    await pdf.attach(new TextEncoder().encode(await readFile(F1, 'utf8')), 'factur-x.xml', { mimeType: 'text/xml' })
+    const bytes = Buffer.from(await pdf.save())
+    await expect(extract({ pdf: bytes, check: true, level: 'extended' })).rejects.toThrow('declares EXTENDED-CTC-FR, a plain CII profile that is not a Factur-X profile')
+  })
+
+  // CG-40 (upstream): BR-EXT-CL-07's guard `not(self::ram:ContractReferencedDocument)` is always
+  // true on a ram:ReferenceTypeCode, so the UNTDID 1153 check never runs. Pinned as shipped; the
+  // Factur-X EXTENDED Schematron does reject the code.
+  it('accepts, as a documented gap (CG-40), a ReferenceTypeCode outside UNTDID 1153', async () => {
+    const xml = (await readFile(F1, 'utf8')).replace('<ram:ReferenceTypeCode>IT</ram:ReferenceTypeCode>', '<ram:ReferenceTypeCode>QQQ</ram:ReferenceTypeCode>')
+    expect(xml).toContain('>QQQ<')
+    const result = await validateSchematron({ xml, level: 'extended-ctc-fr' })
+    expect(result.errors.filter(e => e.id === 'BR-EXT-CL-07')).toEqual([])
+    const fx = await validateSchematron({ xml, level: 'extended' })
+    expect(fx.errors.map(e => e.message)).toContain('Value of \'ram:ReferenceTypeCode\' is not allowed.')
+  })
 })
