@@ -233,8 +233,7 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   one, and 0.6.1 threw `Not implemented yet: Document ID already set` on them. The permanent first
   element is now kept. In exchange, `generate()` now **rejects**, before writing the invoice:
   encrypted or signed PDFs, PDFs that already embed an invoice (detected best effort: an attachment
-  whose content can't be read and whose name isn't a known invoice name can be missed), PDFs
-  with a `/Kids` name tree, a
+  whose content can't be read and whose name isn't a known invoice name can be missed), a
   reused `PDFDocument`, and PDFs with too many or too large attachments to inspect. The full list of
   error messages is in [`generate()`](/api/generate#source-pdfs-that-are-rejected). If you pass a
   `pdf-lib` `PDFDocument` rather than bytes, load it again after a rejection: from the
@@ -298,7 +297,8 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   XRECHNUNG guideline ID: use `check: false` / `--no-check`), and
   **reads attachment lists with one or two `/Kids` levels**, which 0.6.1 reported as
   `No attachment found`. Deeper or larger trees throw `Unsupported EmbeddedFiles name tree: …`.
-  `generate()` still rejects sources with `/Kids`.
+  `generate()` accepts such sources too: it inserts the invoice into a leaf in key order and
+  recomputes `/Limits` on every leaf and intermediate node, instead of rejecting them.
 
 - **`extract()` decodes only the invoice, within 128 MiB.** 0.6.1 decoded every attachment before
   looking at the names. It now matches on names first, decodes only the matching attachment, and

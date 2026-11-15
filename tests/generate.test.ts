@@ -215,14 +215,6 @@ describe('generate', () => {
       await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('Signed')
     })
 
-    it('embedded files name tree with /Kids', async () => {
-      const pdf = await blankPdf()
-      const leaf = pdf.context.register(pdf.context.obj({ Limits: [PDFString.of('a'), PDFString.of('a')], Names: [] }))
-      pdf.catalog.set(PDFName.of('Names'), pdf.context.obj({ EmbeddedFiles: { Kids: [leaf] } }))
-
-      await expect(generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })).rejects.toThrow('/Kids')
-    })
-
     // Detected by content, whatever the file is called: other tools use other names.
     it.each(['xrechnung.xml', 'invoice.xml', 'facture'])('already embeds an invoice named %s', async (name) => {
       const xml = await readFile(SOURCE_XML, 'utf8')
@@ -324,6 +316,25 @@ describe('generate', () => {
     const arrays = output.context.enumerateIndirectObjects().filter(([, obj]) => obj instanceof PDFArray && obj.size() === 6)
     expect(arrays).toHaveLength(1)
     expect(tree.get(PDFName.of('Names'))).toBe(arrays[0][0])
+  })
+
+  // Was rejected until CG-13: an empty leaf under a root /Kids (Factur-X §6.2.2 p.27, §6.4 p.31).
+  // tests/name-tree.test.ts covers the other tree shapes.
+  it('embeds into an embedded files name tree with /Kids (CG-13)', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    const leaf = pdf.context.register(pdf.context.obj({ Limits: [PDFString.of('a'), PDFString.of('a')], Names: [] }))
+    pdf.catalog.set(PDFName.of('Names'), pdf.context.obj({ EmbeddedFiles: { Kids: [leaf] } }))
+
+    const bytes = await generate({ pdf, xml: await readFile(SOURCE_XML, 'utf8') })
+    expect((await extract({ pdf: Buffer.from(bytes) })).filename).toBe('factur-x.xml')
+    const output = await PDFDocument.load(bytes)
+    const tree = output.catalog.lookup(PDFName.of('Names'), PDFDict).lookup(PDFName.of('EmbeddedFiles'), PDFDict)
+    expect(tree.has(PDFName.of('Names'))).toBe(false)
+    const outLeaf = tree.lookup(PDFName.of('Kids'), PDFArray).lookup(0, PDFDict)
+    const key = (obj: unknown): string => (obj as PDFHexString | PDFString).decodeText()
+    expect(outLeaf.lookup(PDFName.of('Names'), PDFArray).asArray().filter((_, i) => i % 2 === 0).map(key)).toEqual(['factur-x.xml'])
+    expect(outLeaf.lookup(PDFName.of('Limits'), PDFArray).asArray().map(key)).toEqual(['factur-x.xml', 'factur-x.xml'])
   })
 
   it('writes the invoice key in the encoding of the source keys before sorting', async () => {

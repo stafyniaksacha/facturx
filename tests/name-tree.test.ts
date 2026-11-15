@@ -1,9 +1,9 @@
-import type { PDFObject } from 'pdf-lib'
+import type { PDFObject, PDFRawStream } from 'pdf-lib'
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { extract, generate } from '@stafyniaksacha/facturx'
-import { PDFDict, PDFDocument, PDFName, PDFNull, PDFNumber, PDFString } from 'pdf-lib'
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNull, PDFNumber, PDFString } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 import { getEN16931XML } from './fixtures/xml'
 
@@ -118,8 +118,16 @@ describe('embeddedFiles name tree with /Kids (CG-13)', () => {
       .toThrow('Unsupported EmbeddedFiles name tree: more than 2 /Kids levels')
   })
 
-  it('generate() still rejects a source whose tree has /Kids', async () => {
-    await expect(generate({ pdf: await exampleWithKids(1), xml: getEN16931XML() })).rejects.toThrow('/Kids are not supported')
+  it('generate() refuses a source with three /Kids levels', async () => {
+    const doc = await PDFDocument.create()
+    doc.addPage()
+    let node = doc.context.register(doc.context.obj({ Names: [PDFString.of('a.txt'), fileSpec(doc, 'a.txt')] }))
+    for (let level = 1; level < 3; level++)
+      node = doc.context.register(doc.context.obj({ Kids: [node] }))
+    doc.catalog.set(PDFName.of('Names'), doc.context.obj({ EmbeddedFiles: { Kids: [node] } }))
+    await expect(generate({ pdf: Buffer.from(await doc.save()), xml: getEN16931XML() }))
+      .rejects
+      .toThrow('Unsupported EmbeddedFiles name tree: more than 2 /Kids levels')
   })
 
   it('reads leaves in order across several kids', async () => {
@@ -169,4 +177,197 @@ describe('embeddedFiles name tree with /Kids (CG-13)', () => {
       await expect(generate({ pdf, xml: getEN16931XML() })).rejects.toThrow(message)
     })
   }
+})
+
+// CG-13: generate() inserts the invoice into a leaf of a tree with one or two /Kids levels (Factur-X
+// §6.2.2 p.27, §6.4 p.31) instead of appending a /Names array next to the root /Kids, and keeps the
+// tree valid: sorted keys and /Limits = [least, greatest] on every leaf and intermediate node, none
+// on the root (ISO 32000-1 §7.9.6 Table 36).
+describe('generate() into a name tree with /Kids (CG-13)', () => {
+  type Key = PDFString | PDFHexString
+  interface TreeNode { keys: Key[], limits?: Key[], kids?: TreeNode[], dict: PDFDict }
+
+  function readNode(pdf: PDFDocument, dict: PDFDict): TreeNode {
+    const limits = dict.lookup(PDFName.of('Limits'))
+    const node: TreeNode = { keys: [], dict, limits: limits instanceof PDFArray ? limits.asArray().map(k => pdf.context.lookup(k) as Key) : undefined }
+    const kids = dict.lookup(PDFName.of('Kids'))
+    if (kids instanceof PDFArray) {
+      expect(dict.has(PDFName.of('Names'))).toBe(false)
+      node.kids = kids.asArray().map(kid => readNode(pdf, pdf.context.lookup(kid) as PDFDict))
+      node.keys = node.kids.flatMap(kid => kid.keys)
+      return node
+    }
+    const names = dict.lookup(PDFName.of('Names'))
+    if (names instanceof PDFArray) {
+      for (let i = 0; i < names.size(); i += 2)
+        node.keys.push(pdf.context.lookup(names.get(i)) as Key)
+    }
+    return node
+  }
+
+  const bytes = (key: Key): Buffer => Buffer.from(key.asBytes())
+
+  // Every non-root node with keys has /Limits = [least, greatest] of its keys; the root has none;
+  // keys are sorted (as bytes) in tree order. Returns the decoded keys, in tree order.
+  async function validTree(output: Uint8Array): Promise<{ pdf: PDFDocument, root: TreeNode, keys: string[] }> {
+    const pdf = await PDFDocument.load(output)
+    const rootDict = pdf.catalog.lookup(PDFName.of('Names'), PDFDict).lookup(PDFName.of('EmbeddedFiles'), PDFDict)
+    const root = readNode(pdf, rootDict)
+    expect(root.limits).toBeUndefined()
+    const check = (node: TreeNode): void => {
+      if (node.keys.length > 0) {
+        const sorted = [...node.keys].sort((a, b) => Buffer.compare(bytes(a), bytes(b)))
+        expect(node.limits?.map(bytes)).toEqual([bytes(sorted[0]), bytes(sorted[sorted.length - 1])])
+      }
+      node.kids?.forEach(check)
+    }
+    root.kids?.forEach(check)
+    const all = root.keys.map(bytes)
+    expect(all).toEqual([...all].sort(Buffer.compare))
+    return { pdf, root, keys: root.keys.map(key => key.decodeText()) }
+  }
+
+  // Every key resolves to a file specification whose embedded stream holds `content` (the leaf
+  // contents of the source), so the other attachments stay reachable.
+  function contentOf(pdf: PDFDocument, root: TreeNode, name: string): string {
+    const leaves: TreeNode[] = []
+    const collect = (node: TreeNode): void => {
+      if (node.kids)
+        node.kids.forEach(collect)
+      else leaves.push(node)
+    }
+    collect(root)
+    for (const leaf of leaves) {
+      const names = leaf.dict.lookup(PDFName.of('Names'), PDFArray)
+      for (let i = 0; i < names.size(); i += 2) {
+        if ((pdf.context.lookup(names.get(i)) as Key).decodeText() === name) {
+          const spec = pdf.context.lookup(names.get(i + 1), PDFDict)
+          const stream = spec.lookup(PDFName.of('EF'), PDFDict).lookup(PDFName.of('F')) as PDFRawStream
+          return Buffer.from(stream.getContents()).toString('latin1')
+        }
+      }
+    }
+    throw new Error(`${name} not found`)
+  }
+
+  const plainSpec = (doc: PDFDocument, name: string): PDFObject => doc.context.register(doc.context.obj({
+    Type: 'Filespec',
+    F: PDFString.of(name),
+    UF: PDFString.of(name),
+    EF: { F: doc.context.register(doc.context.stream(name)) },
+  }))
+  const leaf = (doc: PDFDocument, ...names: string[]): PDFObject => doc.context.register(doc.context.obj({
+    // Deliberately wrong /Limits: the source's are untrusted and must be recomputed.
+    Limits: [PDFString.of('a'), PDFString.of('z')],
+    Names: names.flatMap(name => [PDFString.of(name), plainSpec(doc, name)]),
+  }))
+  const intermediate = (doc: PDFDocument, ...kids: PDFObject[]): PDFObject => doc.context.register(doc.context.obj({
+    Limits: [PDFString.of('a'), PDFString.of('z')],
+    Kids: kids,
+  }))
+
+  async function source(build: (doc: PDFDocument) => PDFObject[]): Promise<PDFDocument> {
+    const doc = await PDFDocument.create()
+    doc.addPage()
+    doc.catalog.set(PDFName.of('Names'), doc.context.obj({ EmbeddedFiles: { Kids: build(doc) } }))
+    return doc
+  }
+
+  async function generateInto(doc: PDFDocument): Promise<{ output: Uint8Array, pdf: PDFDocument, root: TreeNode, keys: string[] }> {
+    const output = await generate({ pdf: Buffer.from(await doc.save()), xml: getEN16931XML() })
+    // `check: true` throws unless the embedded invoice is XSD valid.
+    const result = await extract({ pdf: Buffer.from(output), check: true })
+    expect(result.filename).toBe('factur-x.xml')
+    return { output, ...await validTree(output) }
+  }
+
+  it('one /Kids level: the last position of a leaf', async () => {
+    const { pdf, root, keys } = await generateInto(await source(doc => [leaf(doc, 'a.txt', 'b.txt'), leaf(doc, 'y.txt', 'z.txt')]))
+    expect(keys).toEqual(['a.txt', 'b.txt', 'factur-x.xml', 'y.txt', 'z.txt'])
+    expect(root.kids!.map(kid => kid.keys.map(key => key.decodeText()))).toEqual([['a.txt', 'b.txt', 'factur-x.xml'], ['y.txt', 'z.txt']])
+    for (const name of ['a.txt', 'b.txt', 'y.txt', 'z.txt'])
+      expect(contentOf(pdf, root, name)).toBe(name)
+  })
+
+  it('one /Kids level: the first position of a leaf', async () => {
+    const { root, keys } = await generateInto(await source(doc => [leaf(doc, 'g.txt', 'h.txt'), leaf(doc, 'x.txt')]))
+    expect(keys).toEqual(['factur-x.xml', 'g.txt', 'h.txt', 'x.txt'])
+    expect(root.kids![0].keys.map(key => key.decodeText())).toEqual(['factur-x.xml', 'g.txt', 'h.txt'])
+  })
+
+  it('two /Kids levels: the leaf and its intermediate node get correct /Limits', async () => {
+    const { pdf, root, keys } = await generateInto(await source(doc => [
+      intermediate(doc, leaf(doc, 'a.txt'), leaf(doc, 'c.txt')),
+      intermediate(doc, leaf(doc, 'm.txt')),
+    ]))
+    expect(keys).toEqual(['a.txt', 'c.txt', 'factur-x.xml', 'm.txt'])
+    expect(root.kids![0].kids![1].keys.map(key => key.decodeText())).toEqual(['c.txt', 'factur-x.xml'])
+    expect(root.kids![0].limits!.map(key => key.decodeText())).toEqual(['a.txt', 'factur-x.xml'])
+    for (const name of ['a.txt', 'c.txt', 'm.txt'])
+      expect(contentOf(pdf, root, name)).toBe(name)
+  })
+
+  it('mixed depths: a leaf and an intermediate node under the root', async () => {
+    const { keys } = await generateInto(await source(doc => [leaf(doc, 'a.txt'), intermediate(doc, leaf(doc, 'p.txt'))]))
+    expect(keys).toEqual(['a.txt', 'factur-x.xml', 'p.txt'])
+  })
+
+  it('keeps the invoice in the /AF array (PDF/A-3, Factur-X §6.2.1 p.25)', async () => {
+    const { pdf, root } = await generateInto(await source(doc => [leaf(doc, 'a.txt')]))
+    const af = pdf.catalog.lookup(PDFName.of('AF'), PDFArray)
+    const names = root.kids![0].dict.lookup(PDFName.of('Names'), PDFArray)
+    const at = names.asArray().findIndex((key, i) => i % 2 === 0 && (pdf.context.lookup(key) as Key).decodeText() === 'factur-x.xml')
+    const invoice = names.get(at + 1)
+    expect(af.asArray()).toContainEqual(invoice)
+    expect(pdf.context.lookup(invoice, PDFDict).get(PDFName.of('AFRelationship'))).toBe(PDFName.of('Data'))
+  })
+
+  it.each([
+    ['an empty /Kids array', (_doc: PDFDocument) => [] as PDFObject[]],
+    ['a kid with neither /Names nor /Kids', (doc: PDFDocument) => [doc.context.register(doc.context.obj({}))]],
+    ['an empty leaf', (doc: PDFDocument) => [doc.context.register(doc.context.obj({ Limits: [PDFString.of('a'), PDFString.of('a')], Names: [] }))]],
+    ['an intermediate node with an empty /Kids', (doc: PDFDocument) => [doc.context.obj({ Kids: [] })]],
+    ['direct kids', (doc: PDFDocument) => [doc.context.obj({ Names: [PDFString.of('a.txt'), plainSpec(doc, 'a.txt')] })]],
+  ])('%s', async (_, build) => {
+    const { keys } = await generateInto(await source(build))
+    expect(keys).toContain('factur-x.xml')
+  })
+
+  it('writes the invoice key in the encoding of the other keys', async () => {
+    // PDFDocEncoded source keys: the invoice key is written as one too, so keys compare as bytes.
+    const plain = await generateInto(await source(doc => [leaf(doc, 'a.txt')]))
+    expect(plain.root.keys.find(key => key.decodeText() === 'factur-x.xml')).toBeInstanceOf(PDFString)
+    // UTF-16BE source keys: the invoice key stays UTF-16BE, as pdf-lib writes it.
+    const utf16 = await generateInto(await source(doc => [doc.context.obj({
+      Names: [PDFHexString.fromText('a.txt'), plainSpec(doc, 'a.txt'), PDFHexString.fromText('z.txt'), plainSpec(doc, 'z.txt')],
+    })]))
+    expect(utf16.keys).toEqual(['a.txt', 'factur-x.xml', 'z.txt'])
+    const invoiceKey = utf16.root.keys.find(key => key.decodeText() === 'factur-x.xml')!
+    expect([...invoiceKey.asBytes().subarray(0, 2)]).toEqual([0xFE, 0xFF])
+  })
+
+  it('moves attachments the caller queued with attach() into a leaf too', async () => {
+    const doc = await source(d => [leaf(d, 'a.txt')])
+    await doc.attach(new TextEncoder().encode('queued'), 'q.txt', { mimeType: 'text/plain' })
+    const output = await generate({ pdf: doc, xml: getEN16931XML() })
+    const { pdf, root, keys } = await validTree(output)
+    expect(keys).toEqual(['a.txt', 'factur-x.xml', 'q.txt'].sort((a, b) => {
+      // q.txt is UTF-16BE (pdf-lib), so it sorts after the PDFDocEncoded keys.
+      const enc = (name: string): Buffer => name === 'q.txt' ? Buffer.from(PDFHexString.fromText(name).asBytes()) : Buffer.from(name, 'latin1')
+      return Buffer.compare(enc(a), enc(b))
+    }))
+    expect((await extract({ pdf: Buffer.from(output) })).filename).toBe('factur-x.xml')
+    expect(contentOf(pdf, root, 'a.txt')).toBe('a.txt')
+  })
+
+  it('refuses to grow a tree past 4096 nodes, which extract() would refuse', async () => {
+    // Root + 4095 intermediate nodes with an empty /Kids: a new leaf would be node 4097.
+    const doc = await source(d => Array.from({ length: 4095 }, () => d.context.obj({ Kids: [] })))
+    await expect(generate({ pdf: Buffer.from(await doc.save()), xml: getEN16931XML() }))
+      .rejects
+      .toThrow('Unsupported EmbeddedFiles name tree: more than 4096 nodes')
+    // One node fewer: the new leaf is node 4096, which both accept.
+    const { keys } = await generateInto(await source(d => Array.from({ length: 4094 }, () => d.context.obj({ Kids: [] }))))
+    expect(keys).toEqual(['factur-x.xml'])
+  })
 })

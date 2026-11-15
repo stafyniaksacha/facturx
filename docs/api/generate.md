@@ -81,7 +81,9 @@ interface PdfMetadata {
 - Keeps the source PDF's document ID: the first (permanent) element of the trailer `/ID` is
   preserved and a new second (changing) element is written, as the PDF standard requires for a
   modified file. A PDF without an `/ID` gets a new one.
-- Keeps the embedded files name tree sorted.
+- Keeps the embedded files name tree sorted. When the source's tree has one or two `/Kids` levels
+  (Factur-X §6.2.2, §6.4), the invoice goes into a leaf, in key order, and every leaf and
+  intermediate node gets `/Limits` recomputed from the keys it holds.
 - Throws `Invalid XML format (<flavor> - <level>)` when `check` is enabled and validation fails, and
   `Unknown schema flavor` for an unrecognised flavor. An explicit `flavor` that contradicts the XML
   root element (an invoice as `orderx`, an order as `facturx`) throws `The XML root element … does not
@@ -131,9 +133,8 @@ turn into a correct hybrid document instead of producing a broken one:
 | `The PDF has more than 65536 page tree nodes: …` / `… 65536 annotations: …` / `… 1048576 page tree, annotation and /AF entries: …` / `The PDF has a page tree deeper than 256 levels: …` | Too large or too deep a page tree, too many annotations, or too many entries in their arrays to scan for an attached invoice. The PDF is rejected rather than accepted unchecked. |
 | `Malformed page tree: a page tree node is reached twice` | The page tree has a cycle or lists a node twice (each node should have a single parent). `pdf-lib`'s `addPage()` with an existing page produces such a file; add a copy of the page instead (`copyPages`). |
 | `This PDFDocument was already passed to generate(): load a new one for each call` | The same `pdf-lib` `PDFDocument` object was passed again, even if the earlier call failed. Load the PDF again for each call. |
-| `PDFs whose embedded files name tree has /Kids are not supported` | The source's attachments use a multi-level name tree, which `pdf-lib` cannot append to correctly. |
 | `Malformed EmbeddedFiles name tree: …` | The source's attachment list is corrupt (e.g. a name without a value). |
-| `Unsupported EmbeddedFiles name tree: …` | The source's attachment list has more than two `/Kids` levels or more than 4096 nodes. |
+| `Unsupported EmbeddedFiles name tree: …` | The source's attachment list has more than two `/Kids` levels or more than 4096 nodes, or would pass 4096 nodes with the leaf `generate()` adds to a tree that has none. |
 
 ## Supplying the PDF base
 

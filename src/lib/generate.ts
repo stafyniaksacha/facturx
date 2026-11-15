@@ -189,6 +189,7 @@ export async function generate(options: {
     // Write attachments the caller queued with pdf-lib's attach() into the name tree, so the
     // check below sees them too.
     await pdf.flush()
+    moveRootNamesIntoLeaves(pdf, filename)
     assertNoEmbeddedInvoice(pdf, filename, flavor)
     setDocumentId(pdf)
 
@@ -226,6 +227,7 @@ export async function generate(options: {
     }, pdf)
 
     await pdf.flush()
+    moveRootNamesIntoLeaves(pdf, filename)
     sortEmbeddedFiles(pdf, filename)
 
     return await pdf.save()
@@ -376,12 +378,8 @@ function assertEmbeddable(pdf: PDFDocument): void {
   if ((perms !== undefined && perms !== PDFNull) || hasSignedField(pdf))
     throw new Error('Signed PDFs are not supported: sign the document after generate()')
 
-  // pdf-lib appends to the root /Names array of the EmbeddedFiles name tree. A root with /Kids
-  // (ISO 32000-1 §7.9.6) would end up with both /Kids and /Names, which is invalid.
-  const names = pdf.context.lookup(pdf.catalog.get(PDFName.of('Names')))
-  const embeddedFiles = names instanceof PDFDict ? pdf.context.lookup(names.get(PDFName.of('EmbeddedFiles'))) : undefined
-  if (embeddedFiles instanceof PDFDict && embeddedFiles.has(PDFName.of('Kids')))
-    throw new Error('PDFs whose embedded files name tree has /Kids are not supported')
+  // A name tree with /Kids (Factur-X §6.2.2 p.27, §6.4 p.31) is supported: moveRootNamesIntoLeaves()
+  // moves what pdf-lib appends to the root into a leaf (CG-13).
 
   if (generated.has(pdf))
     throw new Error('This PDFDocument was already passed to generate(): load a new one for each call')
@@ -586,7 +584,8 @@ function rootStartTag(text: string): string | 'not-xml' | 'undetermined' {
  * must be sorted in lexical order (ISO 32000-1 §7.9.6) for readers that search the tree by key.
  * Keys are compared as bytes, so they must share one encoding: pdf-lib always writes UTF-16BE, so
  * the invoice key is rewritten as a PDFDocEncoded string when every source key uses that encoding.
- * assertEmbeddable() rejects a root with /Kids, so the tree is a single flat /Names array here.
+ * A root with /Kids has no /Names array of its own once moveRootNamesIntoLeaves() has run, so this
+ * only sorts a flat tree; moveRootNamesIntoLeaves() inserts each key in order instead.
  */
 function sortEmbeddedFiles(pdf: PDFDocument, invoiceFilename: string): void {
   const names = pdf.context.lookup(pdf.catalog.get(PDFName.of('Names')))
@@ -622,6 +621,177 @@ function sortEmbeddedFiles(pdf: PDFDocument, invoiceFilename: string): void {
     entries.set(2 * i, name)
     entries.set(2 * i + 1, value)
   })
+}
+
+/**
+ * pdf-lib's attach() always appends to the root /Names array of the EmbeddedFiles name tree. When
+ * the root has /Kids (one or two levels allowed by Factur-X §6.2.2 p.27 and §6.4 p.31), that leaves
+ * a root with both /Kids and /Names, which ISO 32000-1 §7.9.6 Table 36 forbids. This moves each
+ * pair pdf-lib appended into a leaf, in key order, then recomputes /Limits on every leaf and
+ * intermediate node from the keys it holds (the root has none). Leaves are chosen by the keys they
+ * actually hold, not by their /Limits, which come from the untrusted source.
+ *
+ * The invoice key is written as a PDFDocEncoded string when every other key in the tree uses that
+ * encoding, as sortEmbeddedFiles() does for a flat tree. Keys are not reordered: a source tree whose
+ * keys are already out of order stays out of order, with the new keys inserted by the rule above.
+ *
+ * Runs on a tree readEmbeddedFilesNames() has validated (at most two /Kids levels, 4096 nodes), and
+ * validates the result again, so generate() never writes a tree extract() would refuse.
+ */
+function moveRootNamesIntoLeaves(pdf: PDFDocument, invoiceFilename: string): void {
+  const names = pdf.context.lookup(pdf.catalog.get(PDFName.of('Names')))
+  const root = names instanceof PDFDict ? pdf.context.lookup(names.get(PDFName.of('EmbeddedFiles'))) : undefined
+  if (!(root instanceof PDFDict) || !root.has(PDFName.of('Kids')) || !root.has(PDFName.of('Names')))
+    return
+  const appended = pdf.context.lookup(root.get(PDFName.of('Names')))
+  root.delete(PDFName.of('Names'))
+  if (!(appended instanceof PDFArray))
+    throw new Error('Malformed EmbeddedFiles name tree: /Names is not an array')
+
+  const isUtf16 = (bytes: Uint8Array): boolean => bytes[0] === 0xFE && bytes[1] === 0xFF
+  for (let i = 0; i + 1 < appended.size(); i += 2) {
+    const appendedKey = pdf.context.lookup(appended.get(i))
+    if (!(appendedKey instanceof PDFHexString || appendedKey instanceof PDFString))
+      throw new Error(`Malformed EmbeddedFiles name tree: key at index ${i} is not a string`)
+    let key: PDFHexString | PDFString = appendedKey
+    if (isUtf16(key.asBytes()) && decodeName(key) === invoiceFilename) {
+      // The invoice filenames are ASCII, which PDFDocEncoding encodes as the same bytes.
+      const others = nameTreeKeys(pdf, root)
+      if (others.length > 0 && !others.some(isUtf16))
+        key = PDFString.of(invoiceFilename)
+    }
+    insertIntoNameTree(pdf, root, key, appended.get(i + 1))
+  }
+  setNameTreeLimits(pdf, root, true)
+
+  // Throws on anything extract() would refuse, e.g. a new leaf past the 4096-node bound.
+  readEmbeddedFilesNames(pdf)
+}
+
+function nameTreeKeys(pdf: PDFDocument, node: PDFDict): Uint8Array[] {
+  const keys: Uint8Array[] = []
+  const kids = pdf.context.lookup(node.get(PDFName.of('Kids')))
+  if (kids instanceof PDFArray) {
+    for (const kid of kids.asArray()) {
+      const dict = pdf.context.lookup(kid)
+      if (dict instanceof PDFDict)
+        keys.push(...nameTreeKeys(pdf, dict))
+    }
+    return keys
+  }
+  const names = pdf.context.lookup(node.get(PDFName.of('Names')))
+  if (names instanceof PDFArray) {
+    for (let i = 0; i + 1 < names.size(); i += 2) {
+      const key = pdf.context.lookup(names.get(i))
+      if (key instanceof PDFHexString || key instanceof PDFString)
+        keys.push(key.asBytes())
+    }
+  }
+  return keys
+}
+
+/** The least and greatest key objects under `node`, compared as bytes, or undefined when it has none. */
+function nameTreeRange(pdf: PDFDocument, node: PDFDict): { least: PDFString | PDFHexString, greatest: PDFString | PDFHexString } | undefined {
+  let range: { least: PDFString | PDFHexString, greatest: PDFString | PDFHexString } | undefined
+  const visit = (key: PDFString | PDFHexString): void => {
+    if (!range) {
+      range = { least: key, greatest: key }
+      return
+    }
+    if (compareBytes(key.asBytes(), range.least.asBytes()) < 0)
+      range.least = key
+    if (compareBytes(key.asBytes(), range.greatest.asBytes()) > 0)
+      range.greatest = key
+  }
+  const kids = pdf.context.lookup(node.get(PDFName.of('Kids')))
+  if (kids instanceof PDFArray) {
+    for (const kid of kids.asArray()) {
+      const dict = pdf.context.lookup(kid)
+      const sub = dict instanceof PDFDict ? nameTreeRange(pdf, dict) : undefined
+      if (sub) {
+        visit(sub.least)
+        visit(sub.greatest)
+      }
+    }
+    return range
+  }
+  const names = pdf.context.lookup(node.get(PDFName.of('Names')))
+  if (names instanceof PDFArray) {
+    for (let i = 0; i + 1 < names.size(); i += 2) {
+      const key = pdf.context.lookup(names.get(i))
+      if (key instanceof PDFHexString || key instanceof PDFString)
+        visit(key)
+    }
+  }
+  return range
+}
+
+function insertIntoNameTree(pdf: PDFDocument, root: PDFDict, key: PDFString | PDFHexString, value: PDFObject): void {
+  const bytes = key.asBytes()
+  let node = root
+  for (;;) {
+    const kids = pdf.context.lookup(node.get(PDFName.of('Kids')))
+    if (!(kids instanceof PDFArray))
+      break // A leaf, or a kid with neither /Kids nor /Names, which becomes one.
+    if (kids.size() === 0) {
+      // No leaf below this node: add one. One level below an existing /Kids node stays within the
+      // two levels readEmbeddedFilesNames() accepted.
+      const leaf = pdf.context.obj({ Names: [] })
+      kids.push(pdf.context.register(leaf))
+      node = leaf
+      break
+    }
+    // The last kid whose least key is not greater than the new key, else the first kid that holds
+    // keys, else the first kid.
+    let chosen: PDFDict | undefined
+    let first: PDFDict | undefined
+    for (const kid of kids.asArray()) {
+      const dict = pdf.context.lookup(kid) as PDFDict // Validated by readEmbeddedFilesNames().
+      const range = nameTreeRange(pdf, dict)
+      if (!range)
+        continue
+      first ??= dict
+      if (compareBytes(range.least.asBytes(), bytes) <= 0)
+        chosen = dict
+    }
+    node = chosen ?? first ?? (pdf.context.lookup(kids.get(0)) as PDFDict)
+  }
+
+  let names = pdf.context.lookup(node.get(PDFName.of('Names')))
+  if (!(names instanceof PDFArray)) {
+    names = pdf.context.obj([])
+    node.set(PDFName.of('Names'), names)
+  }
+  const entries = names as PDFArray
+  let at = 0
+  while (at + 1 < entries.size()) {
+    const existing = pdf.context.lookup(entries.get(at)) as PDFString | PDFHexString
+    if (compareBytes(existing.asBytes(), bytes) > 0)
+      break
+    at += 2
+  }
+  entries.insert(at, key)
+  entries.insert(at + 1, value)
+}
+
+/**
+ * ISO 32000-1 §7.9.6 Table 36: /Limits (least and greatest key) on every intermediate and leaf node,
+ * never on the root. Recomputed from the keys on every node, so wrong source /Limits are fixed too;
+ * a node without keys gets none.
+ */
+function setNameTreeLimits(pdf: PDFDocument, node: PDFDict, isRoot: boolean): void {
+  const kids = pdf.context.lookup(node.get(PDFName.of('Kids')))
+  if (kids instanceof PDFArray) {
+    for (const kid of kids.asArray())
+      setNameTreeLimits(pdf, pdf.context.lookup(kid) as PDFDict, false) // Validated by readEmbeddedFilesNames().
+  }
+  if (isRoot)
+    return
+  const range = nameTreeRange(pdf, node)
+  if (range)
+    node.set(PDFName.of('Limits'), pdf.context.obj([range.least.clone(), range.greatest.clone()]))
+  else
+    node.delete(PDFName.of('Limits'))
 }
 
 function compareBytes(a: Uint8Array, b: Uint8Array): number {
