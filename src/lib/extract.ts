@@ -1,3 +1,4 @@
+import type { XmlDocument } from 'libxml2-wasm'
 import type { PDFDocument } from 'pdf-lib'
 
 import { Buffer } from 'node:buffer'
@@ -6,7 +7,23 @@ import { check } from './check'
 import { FACTURX_FILENAME, ORDERX_FILENAME, XRECHNUNG_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { extractAttachments } from './pdf'
 import { resolvePdf, resolveXml } from './resolve'
-import { declaresExtendedCtcFr } from './xml'
+import { declaresExtendedCtcFr, getFlavor } from './xml'
+
+/**
+ * The flavor to validate an attachment with. `zugferd` comes from the legacy ZUGFeRD file names and
+ * has no schema (#38), so read the XML's root instead: a ZUGFeRD 2.x invoice is a Factur-X
+ * `CrossIndustryInvoice`; ZUGFeRD 1.0 (`CrossIndustryDocument`) has no vendored spec.
+ */
+function validationFlavor(flavor: string | undefined, xml: XmlDocument, filename: string): string | undefined {
+  if (flavor !== 'zugferd')
+    return flavor
+  const root = getFlavor(xml)
+  if (root === 'zugferd')
+    throw new Error('ZUGFeRD 1.0 validation is not supported: no ZUGFeRD 1.0 schema is shipped. Use `check: false` (CLI: --no-check) to extract it')
+  if (root === 'orderx')
+    throw new Error(`Invalid XML: ${filename} holds an Order-X order, not an invoice`)
+  return root
+}
 
 interface ExtractResult {
   filename: string
@@ -82,13 +99,14 @@ export async function extract(options: {
 
   try {
     if (options.check === true) {
+      const checkFlavor = validationFlavor(flavor, xml, file.name)
       // A plain-CII EXTENDED-CTC-FR document is no Factur-X profile: a hybrid PDF cannot declare it
       // (BR-HYBRID-07/15). Read from the XML, so an explicit `level` cannot hide it.
-      if (flavor === 'facturx' && declaresExtendedCtcFr(xml))
+      if (checkFlavor === 'facturx' && declaresExtendedCtcFr(xml))
         throw new Error('Invalid XML: the embedded invoice declares EXTENDED-CTC-FR, a plain CII profile that is not a Factur-X profile')
       const result = await check({
         xml,
-        flavor,
+        flavor: checkFlavor,
         level,
       })
       if (!result.valid) {

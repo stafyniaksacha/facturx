@@ -55,3 +55,72 @@ describe('extract() xrechnung.xml (CG-12)', () => {
     await expect(extract({ pdf: await renamedExample('invoice.xml') })).rejects.toThrow('No attachment found')
   })
 })
+
+// A PDF whose only attachment is `name` holding `xml`.
+async function pdfWithAttachment(name: string, xml: string): Promise<Buffer> {
+  const pdf = await PDFDocument.create()
+  pdf.addPage()
+  await pdf.attach(Buffer.from(xml, 'utf8'), name, { mimeType: 'text/xml' })
+  return Buffer.from(await pdf.save())
+}
+
+// #38: the ZUGFeRD file names (legacy ZUGFeRD 1.0 / 2.0 hybrids) give the flavor `zugferd`, for which
+// there is no schema. check() validates what the XML is, read from its root element.
+describe('extract({ check: true }) on a ZUGFeRD file name (#38)', () => {
+  it.each(['zugferd-invoice.xml', 'ZUGFeRD-invoice.xml'])('validates a ZUGFeRD 2.x invoice in %s as facturx', async (name) => {
+    const original = await extract({ pdf: await readFile(EXAMPLE_PDF) })
+    const pdf = await renamedExample(name)
+    const result = await extract({ pdf, check: true })
+    expect(result.filename).toBe(name)
+    // The reported flavor still comes from the file name, as without `check`.
+    expect(result.flavor).toBe('zugferd')
+    expect(result.xml).toBe(original.xml)
+    await expect(extract({ pdf, check: true, flavor: 'zugferd' })).resolves.toMatchObject({ flavor: 'zugferd' })
+  })
+
+  // The legacy ZUGFeRD 2.0 guideline IDs are still in the 1.09 code lists, marked deprecated
+  // (appendix-minimum.txt, `urn:zugferd.de:2p0:minimum`; EXTENDED codedb, `…#conformant#urn:zugferd.de:2p0:extended`).
+  it.each([
+    ['Facture_FR_MINIMUM.xml', 'urn:zugferd.de:2p0:minimum'],
+    ['Facture_FR_EN16931.xml', 'urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended'],
+  ])('validates %s declaring the ZUGFeRD 2.0 ID %s', async (example, id) => {
+    const source = await readFile(resolve(import.meta.dirname, '../examples', example), 'utf8')
+    const xml = source.replace(/(<ram:GuidelineSpecifiedDocumentContextParameter>\s*<ram:ID>)[^<]*/, `$1${id}`)
+    expect(xml).toContain(`<ram:ID>${id}</ram:ID>`)
+    await expect(extract({ pdf: await pdfWithAttachment('zugferd-invoice.xml', xml), check: true }))
+      .resolves
+      .toMatchObject({ flavor: 'zugferd', filename: 'zugferd-invoice.xml' })
+  })
+
+  it('still rejects an invalid ZUGFeRD 2.x invoice', async () => {
+    const original = await extract({ pdf: await readFile(EXAMPLE_PDF) })
+    const broken = original.xml.replace(/<ram:TypeCode>380<\/ram:TypeCode>/, '<ram:Unknown>380</ram:Unknown>')
+    expect(broken).not.toBe(original.xml)
+    await expect(extract({ pdf: await pdfWithAttachment('zugferd-invoice.xml', broken), check: true })).rejects.toThrow('Invalid XML')
+  })
+
+  it('says ZUGFeRD 1.0 validation is not supported', async () => {
+    const pdf = await pdfWithAttachment('ZUGFeRD-invoice.xml', '<rsm:CrossIndustryDocument xmlns:rsm="urn:ferd:CrossIndustryDocument:invoice:1p0"/>')
+    await expect(extract({ pdf })).resolves.toMatchObject({ flavor: 'zugferd' })
+    await expect(extract({ pdf, check: true })).rejects.toThrow('ZUGFeRD 1.0 validation is not supported')
+  })
+
+  it('rejects an Order-X order under a ZUGFeRD file name', async () => {
+    const xml = await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8')
+    await expect(extract({ pdf: await pdfWithAttachment('zugferd-invoice.xml', xml), check: true }))
+      .rejects
+      .toThrow('holds an Order-X order, not an invoice')
+  })
+
+  it('keeps the EXTENDED-CTC-FR rejection for a ZUGFeRD file name', async () => {
+    const original = await extract({ pdf: await readFile(EXAMPLE_PDF) })
+    const ctcFr = original.xml.replace(
+      /(<ram:GuidelineSpecifiedDocumentContextParameter>\s*<ram:ID>)[^<]*/,
+      '$1urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr',
+    )
+    expect(ctcFr).not.toBe(original.xml)
+    await expect(extract({ pdf: await pdfWithAttachment('zugferd-invoice.xml', ctcFr), check: true }))
+      .rejects
+      .toThrow('EXTENDED-CTC-FR')
+  })
+})

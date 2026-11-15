@@ -11,15 +11,19 @@ omit them.
 | --- | --- | --- | --- |
 | `facturx` | `minimum`, `basicwl`, `basic`, `en16931`, `extended`; `extended-ctc-fr` (plain CII, validation only) | XSD **+ Schematron** | `factur-x.xml` (`xrechnung.xml` is extracted as `facturx` too) |
 | `orderx` | `basic`, `comfort`, `extended` | XSD | `order-x.xml` |
-| `zugferd` | — | extraction only | `zugferd-invoice.xml`, `ZUGFeRD-invoice.xml` |
+| `zugferd` | — | extraction only; 2.x content validates as `facturx` | `zugferd-invoice.xml`, `ZUGFeRD-invoice.xml` |
 
 - **`facturx`** — Factur-X / ZUGFeRD 2.x invoices (Cross Industry Invoice). Fully supported:
   generate, extract, parse, build, XSD + Schematron validation.
 - **`orderx`** — Order-X purchase orders (SCRDMCCBDACIO message). Generate, extract and XSD
   validation. There is no Schematron for Order-X.
 - **`zugferd`** — recognised on **extraction** by its embedded filename. ZUGFeRD 2.x is technically
-  identical to Factur-X, so once extracted the XML validates as `facturx`. `generate()` throws for
-  this flavor: generate a ZUGFeRD 2.x invoice as `facturx`.
+  a Factur-X `CrossIndustryInvoice`, so its XML is validated as `facturx`, against the current
+  Factur-X 1.09 / ZUGFeRD 2.5 schemas: `extract({ check: true })` does this on its own, and
+  `check()` detects it from the root. A ZUGFeRD 2.0 document (CII D16B) is checked against these
+  current rules, not its own. ZUGFeRD 1.0 (`CrossIndustryDocument`) can be
+  extracted but not validated. `generate()` throws for this flavor: generate a ZUGFeRD 2.x invoice as
+  `facturx`.
 
 ## Factur-X profiles (levels)
 

@@ -156,6 +156,12 @@ detected as `facturx`) or pass `flavor: 'facturx'`. It is embedded as `factur-x.
 
 These shipped on `main` after 0.6.1 and are included in the next release.
 
+- **`extract({ check: true })` validates ZUGFeRD attachments** ([#38](https://github.com/stafyniaksacha/facturx/issues/38)). 0.6.1 threw
+  `Unknown schema flavor: "zugferd"` for any PDF whose invoice is named `zugferd-invoice.xml` or
+  `ZUGFeRD-invoice.xml`, which also broke `facturx extract` (it checks by default). A ZUGFeRD 2.x
+  invoice is now validated as `facturx`, and `flavor` is still reported as `zugferd`. A ZUGFeRD 1.0
+  `CrossIndustryDocument` throws `ZUGFeRD 1.0 validation is not supported…` instead.
+
 - **`generate()` accepts PDFs that already have a trailer `/ID`** ([#39](https://github.com/stafyniaksacha/facturx/pull/39)). Most real-world PDFs have
   one, and 0.6.1 threw `Not implemented yet: Document ID already set` on them. The permanent first
   element is now kept. In exchange, `generate()` now **rejects**, before writing the invoice:
