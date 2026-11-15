@@ -154,14 +154,14 @@ detected as `facturx`) or pass `flavor: 'facturx'`. It is embedded as `factur-x.
 
 ### `generate()` rejects an unknown `level`
 
-`generate({ level })` now throws `Unknown level "<level>" for the <flavor> flavor: expected one of …`
-before reading the PDF when the level has no conformance value for the flavor (Factur-X: `minimum`,
-`basicwl`, `basic`, `en16931`, `extended`; Order-X: `basic`, `comfort`, `extended`). 0.6.1 wrote an
-empty `fx:ConformanceLevel` instead, which breaks BR-HYBRID-07 (Fatal). The same check applies when
-`level` is omitted and the level comes from the XML's guideline ID (BT-24), e.g. a Factur-X invoice
-that declares the Order-X `comfort` profile. A blank `level` (`'  '`) is treated like no level.
+For Factur-X, `generate({ level })` now throws `Unknown level "<level>" for the facturx flavor:
+expected one of …` before reading the PDF when the level has no conformance value (`minimum`,
+`basicwl`, `basic`, `en16931`, `extended`). 0.6.1 wrote an empty `fx:ConformanceLevel` instead,
+which breaks BR-HYBRID-07 (Fatal). The same check applies when `level` is omitted and the level comes
+from the XML's guideline ID (BT-24), e.g. a Factur-X invoice that declares the Order-X `comfort`
+profile. A blank `level` (`'  '`) is treated like no level, for every flavor.
 
-The level is also read more leniently: case, surrounding spaces, inner spaces and underscores are
+A Factur-X level is also read more leniently: case, surrounding spaces, inner spaces and underscores are
 ignored, so the spellings of the hybrid code list (`BASIC WL`, `EN 16931`, `MINIMUM`) now work.
 They used to give the same empty conformance level.
 

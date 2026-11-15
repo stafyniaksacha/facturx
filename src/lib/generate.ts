@@ -21,7 +21,7 @@ import {
 import pkg from '../../package.json' with { type: 'json' }
 
 import { check } from './check'
-import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ORDERX_SCHEMA, ZUGFERD_FILENAMES } from './constants'
+import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
 import { decodeName, embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
@@ -85,7 +85,12 @@ export async function generate(options: {
     if ((flavor === 'orderx') !== isOrder)
       throw new Error(`The XML root element "${xml.root?.name}" does not match the "${flavor}" flavor`)
     // A blank `level` means "not given", as `''` always did.
-    const level = options.level?.trim() ? normalizeLevel(options.level) : getLevel(xml)
+    // Only the flavors generate() writes a conformance level for get the lenient spelling and the
+    // check below: normalizing an Order-X level would let `BASIC` through to an empty
+    // fx:ConformanceLevel, where it used to fail the XSD lookup (Order-X metadata is CG-08).
+    const level = options.level?.trim()
+      ? (Object.hasOwn(GENERATE_LEVELS, flavor) ? normalizeLevel(options.level) : options.level)
+      : getLevel(xml)
     if (level === 'extended-ctc-fr' || declaresExtendedCtcFr(xml)) {
       // A plain CII profile of XP Z12-012, not a HybridConformance value (BR-HYBRID-07,
       // codelists--HybridConformance.csv): no fx:ConformanceLevel can describe it, and an explicit
@@ -272,15 +277,17 @@ function normalizeLevel(value: string): string {
   return value.trim().toLowerCase().replace(/[\s_]+/g, '')
 }
 
-/** The levels `generate()` can write a HybridConformance value for (BR-HYBRID-07), per flavor. */
+/**
+ * The levels `generate()` writes a HybridConformance value for (BR-HYBRID-07), per flavor. Order-X
+ * is absent until its fx:ConformanceLevel is written (CG-08), so it keeps its previous behaviour.
+ */
 const GENERATE_LEVELS: Record<string, readonly string[]> = {
   facturx: Object.keys(FACTURX_CONFORMANCE_LEVEL),
-  orderx: Object.keys(ORDERX_SCHEMA),
 }
 
 function assertKnownLevel(flavor: string, level: string): void {
   const known = GENERATE_LEVELS[flavor]
-  // An unknown flavor is reported by the switch on the flavor below.
+  // A flavor without an entry (Order-X, or an unknown one reported by the switch below) is not checked.
   if (known && !known.includes(level))
     throw new Error(`Unknown level "${level}" for the ${flavor} flavor: expected one of ${known.join(', ')}`)
 }

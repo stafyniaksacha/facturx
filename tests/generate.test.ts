@@ -832,6 +832,13 @@ describe('generate', () => {
       expect(readXmp(output).conformanceLevel).toEqual(['EN 16931'])
     })
 
+    it('leaves an Order-X level as given, so an upper-case one cannot reach an empty fx:ConformanceLevel', async () => {
+      const order = await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8')
+      const pdf = await PDFDocument.create()
+      pdf.addPage()
+      await expect(generate({ pdf, xml: order, level: 'BASIC', check: true })).rejects.toThrow('Unknown Order-X level: "BASIC"')
+    })
+
     it('still refuses EXTENDED-CTC-FR, whatever its spelling', async () => {
       const xml = await readFile(SOURCE_XML, 'utf8')
       await expect(generate({ pdf: await sourcePdf(), xml, level: 'EXTENDED-CTC-FR' })).rejects.toThrow('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile')
