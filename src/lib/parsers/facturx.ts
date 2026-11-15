@@ -98,6 +98,9 @@ function parseCode(node: XmlElement | undefined): udt.CodeType | undefined {
   return new udt.CodeType({ value: node.content ?? '', listID: attr(node, 'listID'), listVersionID: attr(node, 'listVersionID') })
 }
 
+// `AmountType.value` is a number (public model type), so unit prices keep the precision of an
+// IEEE-754 double: any decimal of up to 15 significant digits is written back by the converter
+// with the same value (trailing zeros dropped), since it does not round unit prices (was CG-01).
 function parseAmount(node: XmlElement | undefined): udt.AmountType | undefined {
   if (!node) {
     return undefined

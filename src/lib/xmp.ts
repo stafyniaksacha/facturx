@@ -23,27 +23,27 @@ export function setPDFA3BMetadata(
         <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/">
           <dc:creator>
             <rdf:Seq>
-              <rdf:li>${author}</rdf:li>
+              <rdf:li>${xmlEscape(author)}</rdf:li>
             </rdf:Seq>
           </dc:creator>
           <dc:title>
              <rdf:Alt>
-                <rdf:li xml:lang="x-default">${title}</rdf:li>
+                <rdf:li xml:lang="x-default">${xmlEscape(title)}</rdf:li>
              </rdf:Alt>
           </dc:title>
           <dc:description>
             <rdf:Alt>
-              <rdf:li xml:lang="x-default">${subject}</rdf:li>
+              <rdf:li xml:lang="x-default">${xmlEscape(subject)}</rdf:li>
             </rdf:Alt>
           </dc:description>
         </rdf:Description>
 
         <rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/">
-          <pdf:Producer>${producer}</pdf:Producer>
+          <pdf:Producer>${xmlEscape(producer)}</pdf:Producer>
         </rdf:Description>
 
         <rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/">
-          <xmp:CreatorTool>${creator}</xmp:CreatorTool>
+          <xmp:CreatorTool>${xmlEscape(creator)}</xmp:CreatorTool>
           <xmp:CreateDate>${formatDateMetadata({ date })}</xmp:CreateDate>
           <xmp:ModifyDate>${formatDateMetadata({ date })}</xmp:ModifyDate>
           <xmp:MetadataDate>${formatDateMetadata({ date })}</xmp:MetadataDate>
@@ -90,22 +90,49 @@ export function setPDFA3BMetadata(
         </rdf:Description>
         <rdf:Description xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" rdf:about="">
           <fx:DocumentType>INVOICE</fx:DocumentType>
-          <fx:DocumentFileName>${filename}</fx:DocumentFileName>
+          <fx:DocumentFileName>${xmlEscape(filename)}</fx:DocumentFileName>
           <fx:Version>1.0</fx:Version>
-          <fx:ConformanceLevel>${conformanceLevel}</fx:ConformanceLevel>
+          <fx:ConformanceLevel>${xmlEscape(conformanceLevel)}</fx:ConformanceLevel>
         </rdf:Description>
       </rdf:RDF>
     </x:xmpmeta>
   <?xpacket end="w"?>
   `.trim()
 
-  const metadataStream = pdf.context.stream(metadataXML, {
+  // `begin=""` declares UTF-8 (XMP spec, ISO 16684-1, not vendored). pdf-lib would keep only the low byte of each UTF-16 code unit
+  // of a string (`é` → 0xE9, `€` → 0xAC), so encode it and give the byte length (CG-02).
+  const metadataBytes = new TextEncoder().encode(metadataXML)
+  const metadataStream = pdf.context.stream(metadataBytes, {
     Type: 'Metadata',
     Subtype: 'XML',
-    Length: metadataXML.length,
+    Length: metadataBytes.length,
   })
   const metadataStreamRef = pdf.context.register(metadataStream)
   pdf.catalog.set(PDFName.of('Metadata'), metadataStreamRef)
+}
+
+// Characters XML 1.0 forbids (§2.2 Char): C0 controls other than tab/LF/CR, lone surrogates,
+// U+FFFE/U+FFFF. They cannot be escaped, only dropped.
+// eslint-disable-next-line no-control-regex
+const XML_INVALID_CHARS = /[\u0000-\u0008\v\f\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+
+/** Drops the characters XML 1.0 cannot carry, escaped or not. */
+export function stripXmlInvalidChars(value: string | undefined | null): string {
+  return String(value ?? '').replace(XML_INVALID_CHARS, '')
+}
+
+/**
+ * Escapes a value for XML text or attribute content (CG-03): invoice fields such as the seller
+ * name reach the XMP packet, so `&` or `<` would make it malformed (BR-HYBRID-03) and markup in
+ * them could inject XMP properties such as a second `fx:ConformanceLevel`.
+ */
+export function xmlEscape(value: string | undefined | null): string {
+  return stripXmlInvalidChars(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
 }
 
 // remove millisecond from date

@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { extract, generate, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { XmlDocument } from 'libxml2-wasm'
 import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNull, PDFRawStream, PDFString } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
@@ -37,6 +38,32 @@ function xmpPacket(pdf: PDFDocument): string {
   if (!(stream instanceof PDFRawStream))
     throw new Error('No XMP metadata stream')
   return new TextDecoder().decode(stream.getContents())
+}
+
+const XMP_NS = {
+  rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+  dc: 'http://purl.org/dc/elements/1.1/',
+  pdf: 'http://ns.adobe.com/pdf/1.3/',
+  fx: 'urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#',
+}
+
+// Parses the /Metadata stream of a generated PDF and returns the texts of the properties the
+// tests look at. Parsing fails on malformed XMP, which is what CG-03 produced.
+function readXmp(pdf: PDFDocument): { title: string[], creator: string[], description: string[], producer: string[], conformanceLevel: string[] } {
+  const doc = XmlDocument.fromString(xmpPacket(pdf))
+  try {
+    const texts = (xpath: string): string[] => doc.find(xpath, XMP_NS).map(node => node.content)
+    return {
+      title: texts('//dc:title/rdf:Alt/rdf:li'),
+      creator: texts('//dc:creator/rdf:Seq/rdf:li'),
+      description: texts('//dc:description/rdf:Alt/rdf:li'),
+      producer: texts('//pdf:Producer'),
+      conformanceLevel: texts('//fx:ConformanceLevel'),
+    }
+  }
+  finally {
+    doc.dispose()
+  }
 }
 
 describe('generate', () => {
@@ -681,5 +708,79 @@ describe('generate', () => {
     const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml }))
 
     expect(xmpPacket(output)).toMatch(new RegExp(`^<\\?xpacket begin="[^"]*" id="${XMP_PACKET_ID}"\\?>`))
+  })
+
+  it('escapes the values it writes into the XMP packet (CG-03)', async () => {
+    // A seller name with markup, as it reads once the invoice XML is parsed: it must stay text
+    // and must not add a second fx:ConformanceLevel.
+    const seller = 'Dupont & Fils <x/> "A" \'B\' </rdf:li></rdf:Seq></dc:creator></rdf:Description><rdf:Description xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" rdf:about=""><fx:ConformanceLevel>EXTENDED</fx:ConformanceLevel></rdf:Description><rdf:Description><dc:creator><rdf:Seq><rdf:li>'
+    const escaped = seller.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const xml = (await readFile(SOURCE_XML, 'utf8')).replace('<ram:Name>Au bon moulin</ram:Name>', `<ram:Name>${escaped}</ram:Name>`)
+    expect(xml).toContain(escaped)
+
+    const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml }))
+    const xmp = readXmp(output)
+
+    expect(xmp.conformanceLevel).toEqual(['EN 16931'])
+    expect(xmp.creator).toEqual([seller])
+    expect(xmp.title).toHaveLength(1)
+    expect(xmp.title[0]).toMatch(new RegExp(`^${seller.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: .* FA-2017-0010$`))
+    expect(xmp.description[0]).toContain(seller)
+  })
+
+  it('escapes caller-supplied metadata and drops characters XML 1.0 cannot carry (CG-03)', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const meta = {
+      title: 'A & B <c> "d" \'e\'',
+      subject: '</rdf:li><fx:ConformanceLevel>EXTENDED</fx:ConformanceLevel><rdf:li>',
+      author: 'Ctrl\u0000\u0001\u001F char',
+      keywords: [],
+      date: new Date('2026-01-02T03:04:05Z'),
+    }
+
+    const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml, meta }))
+    const xmp = readXmp(output)
+
+    expect(xmp.conformanceLevel).toEqual(['EN 16931'])
+    expect(xmp.title).toEqual([meta.title])
+    expect(xmp.description).toEqual([meta.subject])
+    expect(xmp.creator).toEqual(['Ctrl char'])
+    // The Info dictionary carries the same value as the XMP.
+    expect(output.getAuthor()).toBe('Ctrl char')
+    expect(output.getTitle()).toBe(meta.title)
+  })
+
+  it('writes the XMP packet as UTF-8 (CG-02)', async () => {
+    const seller = 'Société Énergie Dépôt — 0,25 € / kWh 𝄞'
+    const xml = (await readFile(SOURCE_XML, 'utf8')).replace('<ram:Name>Au bon moulin</ram:Name>', `<ram:Name>${seller}</ram:Name>`)
+
+    const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml }))
+    const stream = output.context.lookup(output.catalog.get(PDFName.of('Metadata')))
+    if (!(stream instanceof PDFRawStream))
+      throw new Error('No XMP metadata stream')
+    const bytes = stream.getContents()
+
+    // Throws on any byte sequence that is not UTF-8 (the Latin-1 `0xE9` written before).
+    const packet = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    expect(packet).toContain(seller)
+    expect(stream.dict.get(PDFName.of('Length'))?.toString()).toBe(String(bytes.length))
+    expect(readXmp(output).creator).toEqual([seller])
+  })
+
+  it('rejects the zugferd flavor before touching the PDF (CG-09)', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.load(await sourcePdf())
+
+    await expect(generate({ pdf, xml, flavor: 'zugferd' })).rejects.toThrow('Cannot generate the "zugferd" flavor')
+    // Not marked as used: the same document still takes the invoice as Factur-X.
+    await expect(generate({ pdf, xml })).resolves.toBeInstanceOf(Uint8Array)
+  })
+
+  it('rejects a ZUGFeRD 1.0 document, auto-detected or under an explicit facturx flavor (CG-09)', async () => {
+    const xml = '<rsm:CrossIndustryDocument xmlns:rsm="urn:ferd:CrossIndustryDocument:invoice:1p0"/>'
+    const meta = { title: 't', subject: 's', author: 'a', keywords: [], date: new Date('2026-01-02T03:04:05Z') }
+
+    await expect(generate({ pdf: await sourcePdf(), xml })).rejects.toThrow('Cannot generate the "zugferd" flavor')
+    await expect(generate({ pdf: await sourcePdf(), xml, flavor: 'facturx', level: 'en16931', meta })).rejects.toThrow('Cannot generate the "zugferd" flavor')
   })
 })

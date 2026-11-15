@@ -111,6 +111,18 @@ if (code === undefined) {
 }
 ```
 
+### `generate()` rejects the `zugferd` flavor
+
+`generate({ flavor: 'zugferd' })`, and `generate()` on a ZUGFeRD 1.0 `CrossIndustryDocument` XML,
+now throw `Cannot generate the "zugferd" flavor: …` before reading the PDF. 0.6.1 embedded the XML
+as `zugferd-invoice.xml` with Factur-X `fx:` XMP and an empty conformance level: that filename is
+not in the hybrid filename code list (BR-HYBRID-08/13, Fatal), and the legacy ZUGFeRD 2.0 hybrid
+that used it has its own `zf:` XMP schema (§6.3.2 p.29), so the output matched neither (CG-09). `zugferd` stays supported by
+`extract()`.
+
+A ZUGFeRD 2.x invoice is a Factur-X `CrossIndustryInvoice`: drop `flavor: 'zugferd'` (it is then
+detected as `facturx`) or pass `flavor: 'facturx'`. It is embedded as `factur-x.xml`.
+
 ## Other behaviour changes
 
 These shipped on `main` after 0.6.1 and are included in the next release.
@@ -135,6 +147,17 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   0.6.1 wrote them without their value.
 - **`check()`, `generate()`, `xmlToInvoice()` and the CLI work on Windows again** ([#26](https://github.com/stafyniaksacha/facturx/pull/26)): XSD imports
   failed to load on drive-letter paths.
+- **The XMP metadata `generate()` writes is well-formed UTF-8** (CG-02, CG-03). Values taken from
+  the invoice or `meta` (seller name, title, subject…) are XML-escaped, so a name with `&` or `<` no
+  longer breaks the XMP and cannot inject XMP properties; characters XML 1.0 cannot carry (control
+  characters) are dropped, from the Info dictionary too, so both carry the same value. Non-ASCII text such as `Société` or `€` is encoded as UTF-8 instead of
+  being truncated to one byte per character.
+- **`invoiceToXml()` no longer rounds unit prices to cents** (CG-01). Item net and gross prices
+  (BT-146, BT-148), the price discount or charge (BT-147, BT-X-302) and their base amounts
+  (BT-X-35, BT-X-301) are *Unit Price Amount*s, which have no decimal limit (§7.1.5 p.35): `0.3456`
+  is now written as `0.3456`, not `0.35`. They are written in their shortest form, so `4.10` reads
+  back and is written again as `4.1`. All other amounts are still written with 2 decimals. If you
+  relied on the rounding, round the prices yourself before building the model.
 - **The XMP packet id** is the fixed `W5M0MpCehiHzreSzNTczkc9d` from the reference packet.
   `XmpMetadata.documentId` is kept but deprecated.
 
@@ -189,4 +212,5 @@ left undefined.
       come from the `report` findings that are no longer dropped.
 - [ ] If `generate()` used to throw `Document ID already set` and you worked around it, drop the
       workaround. Then check the new rejection list against your source PDFs.
+- [ ] If you call `generate()` with `flavor: 'zugferd'`, use `facturx` instead.
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).

@@ -23,7 +23,7 @@ function generate(options: {
 | `pdf` | `string \| Buffer \| PDFDocument` | — | **Required.** Source PDF as bytes (`Buffer`), a base64 string, or a `pdf-lib` document. **Not a file path**: read the file first. |
 | `xml` | `string \| Buffer \| XmlDocument` | — | **Required.** Invoice XML to embed (the XML content, not a file path). |
 | `check` | `boolean` | `false` | Set `true` to run XSD validation before embedding; throws on invalid XML. |
-| `flavor` | `string` | autodetect | `facturx`, `orderx` or `zugferd`. |
+| `flavor` | `string` | autodetect | `facturx` or `orderx`. `zugferd` (extraction only) throws. |
 | `level` | `string` | autodetect | Schema level (e.g. `en16931`). |
 | `language` | `string` | — | PDF language code (RFC 3066), e.g. `en-GB`. |
 | `meta` | `PdfMetadata` | derived from XML | Override the PDF document metadata. |
@@ -46,9 +46,14 @@ interface PdfMetadata {
 
 ## Behaviour
 
-- Chooses the embedded filename from the flavor: `factur-x.xml`, `order-x.xml` or
-  `zugferd-invoice.xml`, and writes the matching PDF/A-3 XMP metadata (including the Factur-X
-  `conformanceLevel` for the level).
+- Chooses the embedded filename from the flavor, `factur-x.xml` or `order-x.xml`, and writes the
+  PDF/A-3 XMP metadata (including the Factur-X `conformanceLevel` for the level).
+  ::: warning Order-X metadata is not conformant yet
+  For `orderx`, the XMP still says `fx:DocumentType` `INVOICE` and leaves `fx:ConformanceLevel`
+  empty, where the hybrid code lists require `ORDER` / `ORDER_CHANGE` / `ORDER_RESPONSE` and
+  `BASIC` / `COMFORT` / `EXTENDED` (BR-HYBRID-06/07, Fatal). See CG-08 in
+  [`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md).
+  :::
 - When `meta` is omitted, the title/author/subject/date are derived from the invoice XML.
 - Keeps the source PDF's document ID: the first (permanent) element of the trailer `/ID` is
   preserved and a new second (changing) element is written, as ISO 32000-1 §14.4 requires for a
@@ -56,6 +61,11 @@ interface PdfMetadata {
 - Keeps the embedded files name tree sorted.
 - Throws `Invalid XML format (<flavor> - <level>)` when `check` is enabled and validation fails, and
   `Unknown schema flavor` for an unrecognised flavor.
+- Throws `Cannot generate the "zugferd" flavor: …` for `flavor: 'zugferd'` or a ZUGFeRD 1.0
+  (`CrossIndustryDocument`) XML, whatever the flavor option, before reading the PDF. The `zugferd-invoice.xml` filename and the
+  `zf:` XMP schema are the deprecated ZUGFeRD 2.0 legacy settings (§6.3.2 p.29), and the filename is
+  not in the hybrid filename code list (BR-HYBRID-08/13). A ZUGFeRD 2.x invoice is a Factur-X
+  `CrossIndustryInvoice`: generate it as `facturx`.
 - Throws, before writing the invoice, when the source PDF cannot take the invoice correctly: see the
   table below. Bytes you pass are never modified. A `PDFDocument` you pass is marked as used before
   the existing-invoice check, and attachments you queued with `attach()` may already be written into

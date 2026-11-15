@@ -11,19 +11,6 @@ import { describe, expect, it } from 'vitest'
 // The French BR-FR rules are not run here.
 const EXAMPLES_DIR = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
 
-// CG-01: these examples carry unit prices with more than 2 decimals (e.g. BT-148 489.057,
-// BT-146 0.6925), which the converter rounds to 2. The round-trip is expected to lose them until
-// CG-01 is fixed; this list then has to be emptied.
-const CG01_ROUND_TRIP_LOSS = ['UC11_F202600022', 'UC13_AUTOF202600035']
-
-function diffLeaves(a: unknown, b: unknown, path = ''): { path: string, before: unknown, after: unknown }[] {
-  if (a && b && typeof a === 'object' && typeof b === 'object') {
-    const keys = new Set([...Object.keys(a), ...Object.keys(b)])
-    return [...keys].flatMap(k => diffLeaves((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], `${path}.${k}`))
-  }
-  return Object.is(a, b) ? [] : [{ path, before: a, after: b }]
-}
-
 function levelFromName(name: string): string {
   if (/EXTENDED/.test(name))
     return 'extended'
@@ -51,7 +38,7 @@ describe('official XP Z12-012 v1.4 annex B Factur-X examples', () => {
     expect(examples.filter(e => e.level === 'unknown')).toEqual([])
   })
 
-  it.each(examples)('$name', async ({ file, name, level, kind }) => {
+  it.each(examples)('$name', async ({ file, level, kind }) => {
     let xml: string
     if (kind === 'pdf') {
       const extracted = await extract({ pdf: await readFile(file) })
@@ -73,18 +60,9 @@ describe('official XP Z12-012 v1.4 annex B Factur-X examples', () => {
     const serialized = (await invoiceToXml(model)).toString()
     const reparsed = await check({ xml: serialized, level })
     expect(reparsed.errors).toEqual([])
+    // UC11 and UC13 carry unit prices with more than 2 decimals (BT-146 0.6925, BT-148 489.057):
+    // they used to be rounded to cents (was CG-01).
     const after = await xmlToInvoice(serialized)
-    if (CG01_ROUND_TRIP_LOSS.some(id => name.includes(id))) {
-      // Only item net/gross prices (BT-146 / BT-148) may differ, and only by rounding to cents.
-      const lost = diffLeaves(model, after)
-      expect(lost.length).toBeGreaterThan(0)
-      for (const { path, before, after } of lost) {
-        expect(path).toMatch(/\.(?:net|gross)PriceProductTradePrice\.chargeAmount\.value$/)
-        expect(after).toBe(Number((before as number).toFixed(2)))
-      }
-    }
-    else {
-      expect(after).toEqual(model)
-    }
+    expect(after).toEqual(model)
   })
 })

@@ -28,15 +28,20 @@ open entry is "known", anything else is new.
 | --- | --- |
 | All vendored XSD and `_codedb.xml` are byte-identical to their source (per profile, see Spec of record); all XSLT identical after the documented `sum()` patch, which is idempotent; all `.sef.json.gz` reproducible from them; no vendored folder without a declared source | `pnpm spec:verify` |
 | All 56 official example PDFs (11–12 per profile) extract, pass XSD + Schematron at their profile (no error and no warning), and round-trip through `xmlToInvoice` → `invoiceToXml` with an identical model (this is what caught the 0.6.x `RoleCode` regression fixed in #25) | `pnpm build && pnpm vitest run tests/spec-examples.test.ts` |
-| All 24 Factur-X documents of XP Z12-012 v1.4 annex B (12 PDFs + their 12 commented CII XML, EN 16931 and EXTENDED) pass XSD + profile Schematron at the level in their name with no error and no warning, and re-serialize XSD-valid; the model round-trip is identical except for the two examples hit by CG-01, where only BT-146/BT-148 differ and only by rounding to cents | `pnpm build && pnpm vitest run tests/annex-b-examples.test.ts` |
+| All 24 Factur-X documents of XP Z12-012 v1.4 annex B (12 PDFs + their 12 commented CII XML, EN 16931 and EXTENDED) pass XSD + profile Schematron at the level in their name with no error and no warning, and re-serialize XSD-valid; the model round-trip is identical, including the sub-cent unit prices of UC11 and UC13 | `pnpm build && pnpm vitest run tests/annex-b-examples.test.ts` |
 | 1.09.2.fixFR04 behaviour: EXTENDED accepts a line VAT block without `TypeCode`/`CategoryCode` (XSD `minOccurs="0"`, release notes p.5) and the model round-trips it, EN 16931 still rejects it; detail lines, BG-23 and document allowances/charges still need both codes (`BR-FXEXT-CO-04`, `BR-47`, structural `count(ram:TypeCode)=1`); `BR-FXEXT-S-01` still accepts several S breakdowns and now catches S lines without one (1.09 FINAL's `BR-S-01` did not); two Z breakdowns no longer fire `BR-Z-01` but still fail `BR-FXEXT-Z-08b`; `BR-FXEXT-06` no longer fires on an untyped parent line; `BR-FXEXT-BR-54-1/-2` replace `BR-54`; `BR-CO-27` is `CII-SR-470` in BASIC WL / EN 16931 and gone from EXTENDED | `pnpm build && pnpm vitest run tests/fixfr04.test.ts` |
 | External XML entities are not expanded with the default libxml2-wasm parse options used by `resolveXml` / `xmlToInvoice` (no XXE) | probe in the audit (entity resolves to empty / `check()` rejects the document); keep `XML_PARSE_NOENT` / `XML_PARSE_DTDLOAD` / `XML_PARSE_XINCLUDE` off |
 | The XMP packet header uses the fixed packet id `W5M0MpCehiHzreSzNTczkc9d` of the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` (was CG-06), and `generate()` keeps a source PDF's permanent trailer `/ID` (ISO 32000-1 §14.4) instead of throwing (#37), while rejecting encrypted (§6.1 p.25) and signed sources and sources that already embed a document of the kind being written (§6 p.24 for invoices; one order per PDF for Order-X is by analogy, no Order-X spec is vendored). That document is detected by content, whatever its file name: any stream of a file (`/EF` `/F`, `/UF` or a deprecated key) in the EmbeddedFiles name tree or catalog `/AF` whose root element (namespace and name) is a CII invoice, or an Order-X order when an order is written, including UTF-8 and UTF-16 with a BOM and invoices hidden behind tricky prolog comments. A file whose name tree key, `/F` or `/UF` is a recognized invoice name (`factur-x.xml`, `xrechnung.xml`, ZUGFeRD names; `order-x.xml` for orders) is rejected too, whatever its content can be read as, and so is one already using the filename being written. Other XML is accepted as a supporting file (§6.4 p.30–32), including an Order-X order attached to an invoice. Reading untrusted input is bounded: each distinct stream is read once, inflated with node:zlib in growing slices (at most 64 KiB of compressed input and 2 MiB of output per attempt), 64 KiB of text is examined, and per PDF at most 256 distinct streams and 128 MiB of inflation are allowed (a failed attempt is charged as much as it could have produced); past either limit the PDF is rejected. Known misses are listed in CG-14 | `pnpm build && pnpm vitest run tests/generate.test.ts` |
 | Schematron findings are classified by the rule's own SVRL `flag`: `warning`/`information` are reported in `warnings` and don't affect validity unless `warningsAsErrors` is set; unflagged and `fatal` ones are errors. Fired `<report>`s count like failed `<assert>`s (the Factur-X Schematrons express profile restrictions such as "@schemeID not used in the given context" as reports; before this they were silently dropped). In the vendored Factur-X XSLTs the warning-flagged rules are: MINIMUM `BR-FXEXT-{G,IC,O,Z}-08ini/-08rev`; BASIC `PEPPOL-EN16931-R008`, `BR-FX-EN-04`, `BR-FXEXT-Z-08rev`; BASIC WL none; EN 16931 `PEPPOL-EN16931-R008`, `CII-SR-474/475/476`; EXTENDED `PEPPOL-EN16931-R008`, `BR-FXEXT-04`, `CII-SR-475/476` and the `-08ini/-08rev` pairs, each backed by a blocking `-08b` rule (spelled `BR-FXEXT-S08b` for S upstream) | `pnpm build && pnpm vitest run tests/schematron.test.ts tests/fixfr04.test.ts` (severity inventory) |
 | README and docs no longer claim `extract()` detects the level: it returns the flavor (from the attachment filename) and echoes `options.level`; the quick start reads the level from `check()` on the extracted XML (was CG-11) | `pnpm build && pnpm --filter @stafyniaksacha/facturx-examples run examples` (quickstart prints `facturx en16931`, not `facturx undefined`) |
 | French CTC rules `BR-FR-Flux2` (FNFE-MPE Schematrons FR CTC v1.4.0.04, step 3 of the release notes p.9): the vendored `src/lib/xsd/fr-ctc/BR-FR-Flux2-Schematron-CII.xslt` is byte-identical to all five copies in the release, standard (all 171 asserts `fatal`) variant only, and its shipped SEF is reproducible and embeds no local path. `validateFrCtc` / `check({ frCtc: true })` check the document itself (the rules read neither root nor profile) and accept only a CII invoice declaring BASIC WL, EN16931 or EXTENDED (p.9, p.11; plain-CII `EXTENDED-CTC-FR` as `extended`); they throw for MINIMUM, BASIC, Order-X, UBL and a `level` that contradicts the document. All 24 Factur-X examples of XP Z12-012 v1.4 Annex B (EN16931 and EXTENDED, incl. multi-vendor, bidirectional, sub-line) pass XSD + the Factur-X profile Schematron (1.09.2.fixFR04, CG-16) + BR-FR with no finding, and the 6 plain-CII `EXTENDED-CTC-FR` examples pass BR-FR at level `extended`. Over the 34 in-scope official Factur-X 1.09 examples, 28 pass and 6 (`_Factur-X_1.08-Exemples_CS/*/Facture_F2026003{0,1}-*`) fail `BR-FR-32` (SIREN `303 656 847` written with spaces) and `BR-FR-CO-10` (seller GlobalID scheme `0088` twice), both genuine in the example data. `id` is the rule (`BR-FR-05`), taken from the SVRL `@id`, never from the message | `pnpm spec:verify`; `pnpm build && pnpm vitest run tests/fr-ctc.test.ts` |
+| Every value `generate()` writes into the XMP packet (title, subject, author from the invoice or `meta`, producer, creator, filename, conformance level) is XML-escaped and stripped of characters XML 1.0 cannot carry, so a seller name with `&`, `<` or markup parses back as the same text and cannot inject properties such as a second `fx:ConformanceLevel` (BR-HYBRID-02, BR-HYBRID-03; was CG-03). The veraPDF run in the UTF-8 row below covers `&` and `<` too | `pnpm build && pnpm vitest run tests/generate.test.ts -t CG-03` |
+| The XMP packet is written as UTF-8 bytes (`begin=""`), with `/Length` its byte length: a seller name with `é`, `€` and a non-BMP character decodes strictly as UTF-8 and parses back unchanged (BR-HYBRID-02 via PDF/A metadata clauses 6.6.2.1 / 6.6.4, BR-HYBRID-03; was CG-02). `begin` is kept empty, the UTF-8 form of the XMP spec (ISO 16684-1, not vendored), where the reference packet writes a U+FEFF BOM; veraPDF accepts it. **External validator:** veraPDF 1.30.4 (`verapdf/cli@sha256:f085855d442ad415e79fabbabcdd1803c2db4ee097cd5b94506c95ecdcfa1728`, `--flavour 3b`), on the input that failed before the fix (at `2741b28`: `6.6.2.1 t4` ×5, `6.6.2.1 t5` ×5, `6.6.4 t1`, XMP not well-formed): the official EN 16931 example `Facture_F20260023-…_EN_16931.pdf` stripped of its embedded files, `/AF` and `/PageMode` and of unreferenced objects as base, its XML with seller name `Société Dupont & Fils <SARL> €`. After CG-02 and CG-03 (2026-11-15, `89ee517`), base and output both PASS 3b, and the XMP reads `Société Dupont &amp; Fils &lt;SARL&gt; €`. Manual run, not a CI test | `pnpm build && pnpm vitest run tests/generate.test.ts -t CG-02`; veraPDF run as described |
+| `invoiceToXml()` writes *Unit Price Amount*s (item net/gross price BT-146/BT-148, price discount/charge BT-147/BT-X-302, their base amounts BT-X-35/BT-X-301) unrounded, in the shortest `xs:decimal` form with no exponent (`0.3456`, `1000.3454`, `0.0000001`), and every other *Amount* with 2 decimals (§7.1.5 p.35; was CG-01). The 2 annex B examples with sub-cent unit prices (UC11, UC13) now round-trip with an identical model. Unit prices are stored as `number` (public model type), so precision beyond an IEEE-754 double (about 15 significant digits) is not kept | `pnpm build && pnpm vitest run tests/unit-price.test.ts tests/annex-b-examples.test.ts` |
+| `generate()` refuses the `zugferd` flavor, given or auto-detected, and any ZUGFeRD 1.0 `CrossIndustryDocument` root even under an explicit `flavor: 'facturx'`, before reading or marking the PDF: it wrote `zugferd-invoice.xml` with the Factur-X `fx:` XMP and an empty conformance level, which matches neither §6.3.1 nor the deprecated ZUGFeRD 2.0 settings of §6.3.2 p.29 (`zugferd-invoice.xml` + `zf:` schema), and the filename is not a HybridDocumentFilename (BR-HYBRID-08/13, Fatal; see CG-27). ZUGFeRD 2.x invoices are generated as `facturx` (was CG-09) | `pnpm build && pnpm vitest run tests/generate.test.ts -t CG-09` |
 
-Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no veraPDF run), any Order-X
+Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no test or CI run; manual veraPDF
+runs are recorded in the XMP UTF-8 row above, CG-04 and CG-05), any Order-X
 asset (no Order-X spec vendored), field-by-field coverage of the 1.09 EXTENDED additions (BT-173…177,
 BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 
@@ -44,16 +49,12 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 
 | ID | Area | Rule / citation | Severity | Summary |
 | --- | --- | --- | --- | --- |
-| CG-01 | converter | §7.1.5 p.35 | data-loss | Unit prices truncated to 2 decimals |
-| CG-02 | XMP | BR-HYBRID-02/03 | Fatal | XMP packet not UTF-8 |
-| CG-03 | XMP, security | BR-HYBRID-03 | Fatal | XMP values not XML-escaped (malformed XMP, metadata injection) |
 | CG-04 | PDF/A | BR-HYBRID-02 | Fatal | Info dictionary and XMP disagree (Producer, Keywords) |
 | CG-05 | PDF/A | BR-HYBRID-02 | Fatal | `generate()` does not make the PDF PDF/A-3; docs claim it does |
 | CG-07 | embedding | §6.2.2 p.26–27, BR-HYBRID-11 | Warning | `AFRelationship` hard-coded to `Data` |
 | CG-08 | Order-X | BR-HYBRID-06/07 | Fatal | Order-X PDFs get Factur-X `INVOICE` XMP and empty conformance level |
-| CG-09 | ZUGFeRD | BR-HYBRID-08/13, §6.3.2 p.29 | Fatal | `generate({ flavor: 'zugferd' })` writes a non-conformant hybrid |
 | CG-10 | spec | BR-HYBRID-04 vs §6.3.1 p.28 | — | Spec is internally inconsistent on the XMP namespace URI |
-| CG-12 | profiles | §7.7, `codelists--HybridConformance.csv` | interop | XRECHNUNG reference profile unsupported; no DE profile restrictions |
+| CG-12 | profiles | §7.7, §6.2 p.25, `codelists--HybridConformance.csv`, `codelists--Filename.csv`, BR-HYBRID-12/13 | interop | XRECHNUNG reference profile unsupported (`extract()` ignores `xrechnung.xml`); no DE profile restrictions |
 | CG-13 | embedding | §6.2.2 p.27, §6.4 p.31 | interop | `/Kids` levels in the EmbeddedFiles name tree: `extract()` finds no invoice, `generate()` rejects the source |
 | CG-14 | embedding | §6 p.24 | interop | `generate()` can miss an existing invoice whose content it cannot read and whose name it does not recognize |
 | CG-15 | spec, licence | FNFE CTC FR 1.4.0 release notes p.6, p.8 | — | The FNFE CTC FR 1.4.0.04 release contradicts itself on its licence and its applicability dates |
@@ -66,46 +67,31 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | CG-22 | French CTC, coverage | release notes p.8-10; Annex A `annex-a--BR-France_CTC.csv`, `annex-a--BR-France-CTC-CPRO.csv` | interop | Annex A BR-FR rules the published Schematron does not implement (incl. `BR-FR-CPRO-*`); release notes contradict each other and the XSLT on coverage |
 | CG-24 | spec, French CTC | FNFE CTC FR 1.4.0 release notes p.9 vs EXTENDED `FX-SCH-A-000636` | — | Release says Factur-X EXTENDED validates `EXTENDED-CTC-FR`; the shipped EXTENDED Schematron rejects its guideline ID (unresolved) |
 | CG-23 | French CTC, upstream | `BR-FR-Flux2-Schematron-CII.xslt` | — | SVRL `test` of 4 BR-FR asserts loses its regex quantifier (`^\d{9}$` reported as `^\d9$`) |
-
-### CG-01 — Unit prices truncated to 2 decimals
-
-- **Spec:** §7.1.5 p.35 — *Amount* has at most 2 decimals, but *Unit Price Amount* has no limit
-  (example `1000.3454`); quantities and percentages are unbounded too.
-- **Code:** `convertAmount` (`src/lib/converters/facturx.ts:55`) applies `value.toFixed(2)` to every
-  `udt.AmountType`, including item net/gross price `ram:ChargeAmount` and price-level
-  `ram:AppliedTradeAllowanceCharge/ram:ActualAmount` (BT-146 / BT-148 / BT-147). Separately,
-  `parseAmount` (`src/lib/parsers/facturx.ts:101`) stores amounts as binary floats (`parseFloat`).
-- **Evidence:** set an EN16931 example's `NetPriceProductTradePrice/ChargeAmount` to `0.3456`, run
-  `xmlToInvoice` → `invoiceToXml`: output is `0.35`. The Factur-X 1.09 examples do not catch it (all
-  their prices are whole cents), but two XP Z12-012 annex B examples do: UC11 (BT-146 `0.6925` →
-  `0.69`, 4 lines) and UC13 (BT-146/BT-148 on 5 lines, e.g. `489.057` → `489.06`, `-3.049` → `-3.05`), pinned as expected round-trip losses in
-  `tests/annex-b-examples.test.ts` (`CG01_ROUND_TRIP_LOSS`, to empty when this is fixed). Directly
-  affects per-kWh energy pricing.
-
-### CG-02 — XMP packet not UTF-8
-
-- **Code:** `src/lib/xmp.ts:102` passes a JS string to `pdf.context.stream()`; pdf-lib keeps the low
-  byte of each UTF-16 code unit. `é` is written as `0xE9` (Latin-1), `€` as `0xAC`.
-- **Spec:** the XMP packet (`begin=""` ⇒ UTF-8) must be valid UTF-8 for BR-HYBRID-03 and PDF/A
-  metadata validation.
-- **Evidence:** `generate()` with seller name `Société … €`, read the `/Metadata` stream bytes.
-
-### CG-03 — XMP values not XML-escaped (also a security issue)
-
-- **Code:** `src/lib/xmp.ts:14-100` interpolates `title`, `subject`, `author`, `producer`, `creator`,
-  `filename`, `conformanceLevel` raw into XML. Title/subject/author come from the invoice (seller,
-  buyer, number) via `baseInfo2PdfMetadata`.
-- **Effect:** a seller name containing `&` or `<` yields malformed XMP (fails BR-HYBRID-03). A crafted
-  seller name can inject XMP elements, e.g. a second `fx:ConformanceLevel`.
-- **Evidence:** seller name `Dupont &amp; Fils` → XMP fails to parse (`xmlParseEntityRef: no name`).
+| CG-25 | metadata | §6.2 p.25 (`Params`/`ModDate`) | interop | PDF, XMP and embedded-file dates are the invoice issue date at host-local midnight, so they depend on the server's time zone |
+| CG-26 | embedding, extraction | §6.2 p.25 | interop | `generate()` and `extract()` re-serialize the XML instead of passing its bytes through (BOM, XML declaration, line endings change) |
+| CG-27 | spec, ZUGFeRD | §6.3.2 p.29 vs BR-HYBRID-08/13, `codelists--Filename.csv` | — | Spec says ZUGFeRD 2.0 legacy XMP settings are still supported, but its filename `zugferd-invoice.xml` is not an allowed hybrid filename |
+| CG-28 | converter | XSD `xs:decimal`; §7.1.5 p.35 | Fatal (XSD) | Quantities, percentages and rates below 1e-6 are written in exponent notation |
 
 ### CG-04 — Info dictionary and XMP disagree
 
 - **Code:** `generate()` sets Info `Creator` but not `Producer`, so pdf-lib's default
   `pdf-lib (https://github.com/Hopding/pdf-lib)` stays in Info while XMP `pdf:Producer` says
   `@stafyniaksacha/facturx …`. Info `Keywords` is set with no XMP `pdf:Keywords`.
-- **Spec:** PDF/A requires Info-dictionary entries to be equivalent to their XMP counterparts
-  (BR-HYBRID-02 → PDF/A-3). veraPDF reports this.
+- **Spec:** this entry assumes that PDF/A requires Info-dictionary entries to be equivalent to their
+  XMP counterparts (BR-HYBRID-02 → PDF/A-3). That premise is **unresolved**. The Factur-X spec itself
+  says nothing about Info/XMP consistency (§6.3 p.28–29), so it rests on ISO 19005-3, which is not
+  vendored. BR-HYBRID-02 also allows PDF/A-4f, which has its own Info-dictionary rules.
+- **External validator (2026-11-15, `2741b28`):**
+  - **No such check in PDF/A-3B:** veraPDF 1.30.4's `PDFA-3B.xml` validation profile (inside
+    `cli-1.30.4.jar`, pinned as in the XMP UTF-8 row of Verified) has no Info↔XMP equivalence check. Its `PDFA-1B.xml` has one:
+    6.7.3 t1–t8.
+  - **The mismatch passed:** `generate()` output with the Producer/Keywords mismatch was PDF/A-3b
+    compliant for all five profiles. That holds on the PDF/A-3b base described in CG-05, with the
+    trailer `/ID` kept and with it stripped.
+  - So veraPDF does **not** report this gap for PDF/A-3. The earlier wording ("veraPDF reports this")
+    was wrong.
+- **Severity:** unchanged until ISO 19005-3 (or 19005-4 for PDF/A-4f) is cited. Re-rate this entry
+  then.
 - **Evidence:** load the `generate()` output with `updateMetadata: false`, compare
   `getProducer()` / `getKeywords()` with the XMP.
 
@@ -118,6 +104,18 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   veraPDF.
 - **Docs overclaim:** README ("compliant PDF/A-3 bytes"), `docs/api/generate.md:3,45`,
   `docs/guide/getting-started.md:46`.
+- **What does hold (2026-11-15, `2741b28`):** `generate()` *preserves* PDF/A-3b when its input already is
+  PDF/A-3b.
+  - Base: the official EN 16931 example `Facture_F20260023-…_EN_16931.pdf` with its embedded files,
+    `/AF` and `/PageMode` removed and unreferenced objects dropped, so that it is compliant.
+  - The output passes for all five profiles (MINIMUM, BASIC WL, BASIC, EN 16931, EXTENDED), both with
+    the base's trailer `/ID` kept (the default path, see the Verified row above) and with it stripped:
+    10/10 runs compliant.
+  - Validator: veraPDF 1.30.4, pinned as in the XMP UTF-8 row of Verified.
+  - The base itself passes. With its `/ID` stripped it fails only `6.1.3 t1`, which `generate()` fixes
+    by writing an `/ID`.
+  - This is a manual run, not a CI test, so the "Not verified anywhere yet" note above still applies
+    until a test pins it.
 
 ### CG-07 — `AFRelationship` hard-coded to `Data`
 
@@ -135,16 +133,6 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 - **Code:** `src/lib/xmp.ts:92` always writes `INVOICE`; `src/lib/generate.ts:80-83` leaves
   `conformanceLevel` empty for `orderx`. The namespace question is CG-10.
 
-### CG-09 — `generate()` with `flavor: 'zugferd'`
-
-- **Code:** `src/lib/generate.ts:84-87` embeds `zugferd-invoice.xml` with the Factur-X `fx:` XMP and
-  an empty conformance level. `getFlavor()` maps only the ZUGFeRD 1.0 root (`CrossIndustryDocument`)
-  to `zugferd`, and `check()` has no XSD for it (throws).
-- **Spec:** `zugferd-invoice.xml` is not in the HybridDocumentFilename code list (BR-HYBRID-08/13,
-  Fatal). ZUGFeRD 2.0 legacy XMP uses a different schema (`zf:`, §6.3.2 p.29).
-- **Docs** say `zugferd` is extraction-only (`docs/guide/profiles-and-flavors.md`). Either reject it in
-  `generate()` or implement the legacy schema deliberately.
-
 ### CG-10 — Spec inconsistency on the XMP namespace (unresolved)
 
 - §6.3.1 p.28 and the reference packet: `urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#`.
@@ -157,6 +145,10 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 
 - XRECHNUNG (§7.7, `xrechnung.xml`, conformance `XRECHNUNG`) is not supported: `getLevel()` cannot
   parse its guideline ID and `generate()` never writes it. It is not applicable in France.
+- `extract()` does not look for `xrechnung.xml` (§6.2 p.25, `text/codelists--Filename.csv`): it only
+  matches `factur-x.xml`, `order-x.xml` and the two ZUGFeRD names (`src/lib/extract.ts:33-63`).
+  **Evidence:** load an official example with pdf-lib, rename its `factur-x.xml` name-tree key, `/F` and
+  `/UF` to `xrechnung.xml`, save, and call `extract()` on it: `No attachment found`.
 - MINIMUM and BASIC WL are "not allowed in Germany from 2025-01-01" as invoices
   (`codelists--HybridConformance.csv`). BR-HYBRID-DE-01 (Fatal, DE): MINIMUM is forbidden when buyer
   and seller are both in Germany. The library gives no warning for either.
@@ -405,6 +397,93 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 - **Evidence:** `find spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures -name '*_EXTENDED-CTC-FR_CII_*.xml' -exec node bin/facturx.mjs check --level extended --schematron {} \;`
   → each of the 6 examples fails only `Value of 'ram:ID' is not allowed.` (XSD passes).
 - **Close when:** FNFE clarifies, or the dedicated `CII/EXTENDED-CTC-FR` Schematron is supported (CG-18).
+
+### CG-25 — Dates are the issue date at host-local midnight
+
+- **Spec:** §6.2 p.25: "Params refers to a dictionary containing at least a ModDate indicating the last
+  modification date of the embedded file" (a "should"). For the PDF `CreationDate`/`ModDate` and their
+  XMP counterparts (`xmp:CreateDate`/`ModifyDate`), nothing vendored defines their content. Their
+  meaning, the dates of the PDF document itself, comes from ISO 32000-1 §14.3.3 and the XMP
+  specification, neither vendored. The reference packet
+  `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` uses a real generation timestamp
+  (`2022-02-01T16:42:43+00:00`), not an issue date. That BT-2 is the wrong value here is an inference
+  from these, not a quoted rule.
+- **Code:**
+  - `extractBaseInfo` parses BT-2 with date-fns `parse(…, new Date())` (`src/lib/xml.ts:87`), which
+    gives an instant at local midnight.
+  - `baseInfo2PdfMetadata` returns it as `date` (`src/lib/metadata.ts:42`), so `meta.date ||= new Date()`
+    (`src/lib/generate.ts:68`) never applies when metadata is derived from the XML.
+  - That instant becomes the Info `CreationDate`/`ModDate` (`generate.ts:122-123`), the embedded file's
+    `CreationDate`/`ModDate` (`generate.ts:112-113`), and the XMP `CreateDate`/`ModifyDate`/`MetadataDate`
+    (`src/lib/xmp.ts:47-49`).
+- **Effect:**
+  - The output depends on the server's time zone.
+  - The PDF claims to have been created on the issue date, often on the previous day in UTC.
+  - The Title/Subject date (`metadata.ts:13`) stays the calendar date, so the two can disagree.
+- **Evidence:** with the official example
+  `5. FACTUR-X 1.09 - Examples/_Factur-X_1.08-Exemples_CS/3.EN16931/Facture_F20260023-…_EN_16931.pdf`
+  (BT-2 = 2026-01-31):
+  1. `extract()` its XML.
+  2. `generate()` it into a blank pdf-lib page.
+  3. Reload the output with `updateMetadata: false` and print `getCreationDate()`.
+
+  The results: `TZ=UTC` → `2026-01-31T00:00:00Z`; `TZ=Europe/Paris` → `2026-01-30T23:00:00Z`;
+  `TZ=Pacific/Kiritimati` → `2026-01-30T10:00:00Z`. The Subject says `dated 20260131` in all three.
+  The XMP and `Params` dates move the same way.
+- **Fix direction:** use the generation time (UTC) for PDF, XMP and `Params` dates. Keep BT-2 for
+  Title/Subject only, as a calendar date.
+
+### CG-26 — XML is re-serialized on `generate()` and `extract()`
+
+- **Spec:** §6.2 p.25 embeds "the invoice data in the XML format", and no rule requires byte identity.
+  The closest text is §4 p.21: "any transformation of the hybrid invoice for archiving purposes has to
+  respect the integrity of content", with the warning about invoices "secured by an electronic signature
+  or an electronic seal". Reading that as requiring pass-through of the XML bytes is an interpretation.
+  The entry records a fidelity limitation (interop), not a quoted violation.
+- **Code:** `generate()` embeds `xml.toString()` of the libxml2 document (`src/lib/generate.ts:107`), and
+  `extract()` returns `xml.toString()` (`src/lib/extract.ts:87`). Both re-serialize. The XML infoset
+  is preserved, but not the caller's bytes.
+- **Effect:**
+  - A hash or signature taken over the issued XML no longer matches the embedded or extracted copy.
+  - Callers can't check byte for byte that what they passed in is what was embedded.
+- **Evidence:** for the official example above, compare the raw `factur-x.xml` stream, read with
+  pdf-lib from the EmbeddedFiles name tree, with what the library produces:
+  - **Raw stream:** 65131 bytes, UTF-8 BOM, CRLF line endings, `<?xml version='1.0' encoding='UTF-8'?>`.
+  - **`extract()`:** 64426 bytes, no BOM, LF only, `<?xml version="1.0" encoding="utf-8"?>`.
+  - **`generate()` on those raw bytes:** embeds the same 64426-byte re-serialization.
+
+  Over all 56 official examples, every extraction is byte-different but C14N-equal to its attachment.
+- **Fix direction:** keep the caller's bytes when they are given as a `string`/`Buffer` and are
+  well-formed, and return the raw attachment bytes, at least as an option. This is an API addition:
+  keep the current fields (backward-compatibility rule in `AGENTS.md`).
+- **Security:** bytes passed through unparsed would carry any DOCTYPE or internal subset into the emitted
+  invoice. Pass-through must still parse with the safe options (see `AGENTS.md` Security) and reject a
+  DTD.
+
+### CG-27 — ZUGFeRD 2.0 legacy settings vs the hybrid filename code list (unresolved)
+
+- §6.3.2 p.29 ("Legacy: PDF/A Extension schema for ZUGFeRD 2.0"): although deprecated, ZUGFeRD still
+  supports the ZUGFeRD 2.0 XMP settings: `zf:` schema `urn:zugferd:pdfa:CrossIndustryDocument:invoice:1p0#`,
+  `zf:DocumentFileName` `zugferd-invoice.xml`, `zf:Version` `2p0`.
+- BR-HYBRID-08/13 (Fatal, `text/fields--Business_Rules_HYBRID.csv`): the embedded file name SHALL be
+  in the HybridDocumentFilename list (`text/codelists--Filename.csv`): `factur-x.xml`, `xrechnung.xml`,
+  `order-x.xml`. `zugferd-invoice.xml` is not in it.
+- The library does not pick a side: `generate()` writes neither (it refuses `zugferd`, see the CG-09
+  Verified row), and `extract()` still finds `zugferd-invoice.xml`. Settle it with an external
+  validator result (e.g. Mustang) before writing the legacy settings.
+- **Evidence:** `grep -n "6.3.2\|zugferd-invoice" spec/factur-x-1.09/text/spec-main.txt`;
+  `cat spec/factur-x-1.09/text/codelists--Filename.csv`.
+
+### CG-28 — Exponent notation for small quantities, percentages and rates
+
+- **Code:** `convertQuantity`, `convertMeasure`, the currency `ConversionRate` and the percentage
+  writers in `src/lib/converters/facturx.ts` use `String(value)`, which writes values below 1e-6 as
+  `1e-7`. `xs:decimal` has no exponent, so the output fails the XSD. Unit prices use
+  `formatDecimal` since CG-01 and are not affected.
+- **Evidence:** read `examples/Facture_FR_EN16931.xml` with `xmlToInvoice`, set line 1
+  `billedQuantity.value = 1e-7`, `invoiceToXml` → `<ram:BilledQuantity unitCode="C62">1e-7`;
+  `check({ level: 'en16931' })` → `'1e-7' is not a valid value of the atomic type 'xs:decimal'`.
+- **Fix direction:** write every decimal through `formatDecimal`.
 
 ## Changing this file
 

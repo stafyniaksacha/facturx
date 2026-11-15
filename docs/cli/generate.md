@@ -16,14 +16,14 @@ facturx generate --pdf <input.pdf> --xml <input.xml> --output <output.pdf> [opti
 | `--xml` | | string | — | **Required.** Input XML invoice file. |
 | `--output` | `-o` | string | — | **Required.** Output PDF/A-3 file path. |
 | `--check` | | boolean | `true` | Validate the XML (XSD) before embedding. Use `--no-check` to skip. |
-| `--flavor` | `-f` | string | autodetect | `facturx`, `orderx` or `zugferd`. |
+| `--flavor` | `-f` | string | autodetect | `facturx` or `orderx`. `zugferd` (extraction only) fails. |
 | `--level` | `-l` | string | autodetect | Schema level (e.g. `en16931`). |
 | `--language` | | string | — | Language code for the PDF (RFC 3066), e.g. `en-GB`. |
 
 ## Behaviour
 
 - Reads `--pdf` and `--xml` from disk, embeds the XML as the appropriate attachment
-  (`factur-x.xml` / `order-x.xml` / `zugferd-invoice.xml`) and writes a PDF/A-3 to `--output`.
+  (`factur-x.xml` / `order-x.xml`) and writes a PDF/A-3 to `--output`.
 - With `--check` (the default), an XSD validation runs first; the command fails if the XML is
   invalid. Pass `--no-check` to bypass.
 - PDF metadata (title, author, subject, dates…) is derived from the XML when not otherwise present.

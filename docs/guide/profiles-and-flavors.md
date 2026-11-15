@@ -18,7 +18,8 @@ omit them.
 - **`orderx`** — Order-X purchase orders (SCRDMCCBDACIO message). Generate, extract and XSD
   validation. There is no Schematron for Order-X.
 - **`zugferd`** — recognised on **extraction** by its embedded filename. ZUGFeRD 2.x is technically
-  identical to Factur-X, so once extracted the XML validates as `facturx`.
+  identical to Factur-X, so once extracted the XML validates as `facturx`. `generate()` throws for
+  this flavor: generate a ZUGFeRD 2.x invoice as `facturx`.
 
 ## Factur-X profiles (levels)
 

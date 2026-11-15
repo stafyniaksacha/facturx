@@ -77,7 +77,8 @@ pnpm docs             # VitePress dev server; regenerates docs/api/models/ from 
   Check the field's profile and cardinality in
   `spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_<PROFILE>.csv` (e.g. `grep -n ',BT-148,'`).
 - **Decimals:** only *Amount* is limited to 2 decimals. Unit prices, quantities and percentages are
-  not (§7.1.5 p.35). Don't round them (CG-01).
+  not (§7.1.5 p.35). Don't round them: the converter writes *Unit Price Amount*s with
+  `convertUnitPriceAmount` (was CG-01).
 - **libxml2-wasm:** `XmlDocument` / `XsdValidator` hold WASM memory. Dispose what you create
   (`try/finally`), and never dispose a document the caller passed in (see `check.ts`). In
   `addElement(name, prefix?)` the second argument is a **namespace prefix**, not text: write
@@ -127,7 +128,7 @@ The library parses untrusted XML and PDFs and emits documents with legal and tax
   a crafted invoice into a local file read or a resource exhaustion.
 - **SEF files are executable code** run by SaxonJS. Regenerate them only from the vendored XSLT via
   `SCHEMATRON.md`, then `pnpm spec:verify`. Review their diffs like code.
-- **Metadata injection:** invoice fields flow into XMP and the Info dict (CG-03). Escape them.
+- **Metadata injection:** invoice fields flow into XMP and the Info dict. Escape them (`xmlEscape` in `xmp.ts`, was CG-03).
 - **Personal data:** invoices carry names, addresses, VAT IDs, IBANs. Never commit real invoices as
   fixtures, and never log or paste document contents into errors, issues or PRs.
 - **Supply chain:** keep GitHub Actions pinned by SHA, installs `--frozen-lockfile`, new runtime
