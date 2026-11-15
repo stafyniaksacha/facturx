@@ -131,21 +131,21 @@ describe('uBL detection and XSD validation', () => {
 describe('uBL profile Schematron (step 2)', () => {
   const en = examples.find(e => e.level === 'en16931')!
 
-  // CG-42: the EXTENDED-CTC-FR UBL example F202500001 raises the warning BR-FREXT-IC-08rev; the other 11 are clean.
+  // CG-45: the EXTENDED-CTC-FR UBL example F202500001 raises the warning BR-FREXT-IC-08rev; the other 11 are clean.
   // `it.fails` turns green again (and so fails the run) as soon as the example starts passing.
-  const cg42 = (name: string): boolean => name.includes('F202500001_INV_20250201_EXTENDED-CTC-FR_UBL')
+  const cg45 = (name: string): boolean => name.includes('F202500001_INV_20250201_EXTENDED-CTC-FR_UBL')
   for (const { file, level, name } of examples) {
-    const run = cg42(name) ? it.fails : it
-    run(`${name} passes XSD + profile Schematron with no error and no warning${cg42(name) ? ' (CG-42)' : ''}`, async () => {
+    const run = cg45(name) ? it.fails : it
+    run(`${name} passes XSD + profile Schematron with no error and no warning${cg45(name) ? ' (CG-45)' : ''}`, async () => {
       const r = await check({ xml: await readFile(file), schematron: true })
       expect(r).toMatchObject({ flavor: 'ubl', level, valid: true, schematronErrors: [], schematronWarnings: [] })
     })
   }
 
-  // Pins today's outcome of CG-42 (not `it.fails`): goes red when upstream fixes the rule or the
-  // example, which is the cue to close CG-42 and drop the `it.fails` row above.
+  // Pins today's outcome of CG-45 (not `it.fails`): goes red when upstream fixes the rule or the
+  // example, which is the cue to close CG-45 and drop the `it.fails` row above.
   it('cG-42: F202500001 is valid with no error and exactly the warning BR-FREXT-IC-08rev', async () => {
-    const example = examples.find(e => cg42(e.name))!
+    const example = examples.find(e => cg45(e.name))!
     const r = await check({ xml: await readFile(example.file), schematron: true })
     expect(r).toMatchObject({ flavor: 'ubl', level: 'extended-ctc-fr', valid: true, errors: [], schematronErrors: [] })
     expect(r.schematronWarnings!.map(w => w.id ?? w.assertId)).toEqual(['BR-FREXT-IC-08rev'])
@@ -199,7 +199,7 @@ describe('uBL profile Schematron (step 2)', () => {
 describe('uBL full sequence (XSD + profile + BR-FR)', () => {
   it.each(examples)('$name passes the BR-FR rules with no finding', async ({ file }) => {
     const r = await check({ xml: await readFile(file), schematron: true, frCtc: true })
-    // CG-42: the profile Schematron may warn (BR-FREXT-IC-08rev); that lands in schematronWarnings.
+    // CG-45: the profile Schematron may warn (BR-FREXT-IC-08rev); that lands in schematronWarnings.
     expect(r).toMatchObject({ valid: true, errors: [], schematronErrors: [], frCtcValid: true, frCtcErrors: [], frCtcWarnings: [] })
     // Three SEFs per document: <0.4 s alone, so 20 s is a loaded-machine margin, not the default 5 s.
   }, 20_000)
@@ -251,7 +251,7 @@ describe('uBL routing, rule ids and level override', () => {
     await expect(validateSchematron({ xml: await readFile(CII), level: 'en16931' })).resolves.toMatchObject({ valid: true })
   })
 
-  it('reports the assert @id as the rule id on the UBL transforms (CG-43)', async () => {
+  it('reports the assert @id as the rule id on the UBL transforms (CG-46)', async () => {
     // BR-FREXT-26 (fatal) carries the message prefix [BR-26].
     const xml = (await readFile(ext.file, 'utf8')).replace(/<cac:Price>[\s\S]*?<\/cac:Price>/, '')
     const r = await check({ xml, schematron: true })

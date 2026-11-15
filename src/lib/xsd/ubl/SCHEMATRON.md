@@ -44,10 +44,10 @@ below.
   `validateFrCtc()`).
 - **Rule ids are the assert `@id`** (`idSource: 'assert'` in `UBL_SCHEMATRON`): in
   `EXTENDED-CTC-FR-UBL.xslt` 8 asserts have a message `[ID]` prefix that is not their `@id`
-  (`CONFORMANCE.md` CG-43).
+  (`CONFORMANCE.md` CG-46).
 - **XSD provenance.** The release notes (p.9, p.11) and `UBL2.1_README.md` say the UBL 2.1 XSD is not
   provided (get it from OASIS), yet `1xsd_UBL2.1/` is in the distribution. `pnpm spec:verify` proves the
-  vendored copy identical to it, not to OASIS os-UBL-2.1, which is unverified (`CONFORMANCE.md` CG-45).
+  vendored copy identical to it, not to OASIS os-UBL-2.1, which is unverified (`CONFORMANCE.md` CG-48).
 
 ## Source SHA-256
 

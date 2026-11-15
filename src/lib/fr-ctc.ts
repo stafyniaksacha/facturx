@@ -25,7 +25,7 @@ export const FR_CTC_SCHEMATRON: SchematronConfig = {
 /**
  * UBL variant of the same rules (`BR-FR-Flux2-Schematron-UBL`, standard "fatal" variant). `@id` carries the
  * `BR-FR-*` rule as in CII, except one assert whose `@id` is `BR-FR-MV-BD_BT-3` while its text says
- * `[BR-FR-BD-13/BT-3]` (CG-43): it does not match the rule pattern, so its `id` stays that raw assert id.
+ * `[BR-FR-BD-13/BT-3]` (CG-46): it does not match the rule pattern, so its `id` stays that raw assert id.
  */
 export const FR_CTC_UBL_SCHEMATRON: SchematronConfig = {
   sef: './xsd/ubl/fr-ctc/BR-FR-Flux2-Schematron-UBL.sef.json.gz',

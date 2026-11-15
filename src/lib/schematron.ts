@@ -29,7 +29,7 @@ export interface SchematronError {
    * Rule id parsed from a `[ID]` prefix in the message (e.g. "BR-16"). For
    * Schematrons whose config sets `idFromAssert`, falls back to the SVRL `id`
    * attribute; for those that set `idSource: 'assert'` (the UBL profile Schematrons), the SVRL
-   * `id` attribute comes first, since their message prefix is not always the assert's own id (CG-43). Not every failure is a numbered business rule: structural checks
+   * `id` attribute comes first, since their message prefix is not always the assert's own id (CG-46). Not every failure is a numbered business rule: structural checks
    * (e.g. "Element 'ram:SellerTradeParty' must occur exactly 1 times") have no id.
    */
   id?: string
@@ -85,7 +85,7 @@ export interface SchematronConfig {
    * Which of the message `[ID]` prefix and the SVRL `id` attribute names the rule when both exist.
    * Defaults to `'message'`. `'assert'` prefers `id`, falling back to the prefix when the assert has
    * none; the message text is left intact. The UBL profile Schematrons use it: in
-   * EXTENDED-CTC-FR-UBL 8 asserts carry a prefix that differs from their `@id` (CG-43).
+   * EXTENDED-CTC-FR-UBL 8 asserts carry a prefix that differs from their `@id` (CG-46).
    */
   idSource?: 'message' | 'assert'
 }
@@ -111,7 +111,7 @@ const ublDir = (level: string): string => `./xsd/ubl/${level}`
  * Profile Schematrons for UBL 2.1 (FNFE-MPE release notes p.9, step 2): `en16931` runs the
  * EN16931-UBL-validation transform, `extended-ctc-fr` the EXTENDED-CTC-FR-UBL one. Neither loads a
  * code list database. The rule id is the assert `@id` (`idSource: 'assert'`): the `[ID]` message
- * prefix differs from it on 8 EXTENDED-CTC-FR-UBL asserts (CG-43), e.g. `@id` BR-FREXT-26 with a
+ * prefix differs from it on 8 EXTENDED-CTC-FR-UBL asserts (CG-46), e.g. `@id` BR-FREXT-26 with a
  * `[BR-26]` prefix.
  */
 export const UBL_SCHEMATRON: Map<string, SchematronConfig> = new Map([
