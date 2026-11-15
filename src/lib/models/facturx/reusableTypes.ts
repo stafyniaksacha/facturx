@@ -262,6 +262,10 @@ export class DocumentContextParameterType {
 
 /**
  * A free-text note, optionally qualified by subject and content codes.
+ *
+ * `content` (BT-22, BT-127) is required by the BASIC WL, BASIC and EN 16931 XSDs; the EXTENDED XSD
+ * makes `Content` optional (`minOccurs="0"`), so it is typed optional and stays absent when the XML
+ * has no such element.
  * @profile BASIC WL
  */
 export class NoteType {
@@ -271,7 +275,7 @@ export class NoteType {
     subjectCode,
   }: {
     contentCode?: udt.CodeType
-    content: udt.TextType
+    content?: udt.TextType
     subjectCode?: udt.CodeType
   }) {
     this.contentCode = contentCode
@@ -280,7 +284,7 @@ export class NoteType {
   }
 
   contentCode?: udt.CodeType
-  content: udt.TextType
+  content?: udt.TextType
   subjectCode?: udt.CodeType
 }
 
