@@ -48,7 +48,8 @@ open entry is "known", anything else is new.
 | `generate()` refuses an explicit `level` that does not name the profile the guideline ID (BT-24) declares, for Factur-X and Order-X, before the PDF is read (library policy; was CG-42). BR-HYBRID-15 asks that `fx:ConformanceLevel` match the embedded XML's profile; its EN/FR/DE texts disagree on how strongly (CG-44), and matching output satisfies every reading. The level is taken from the last `:` segment of BT-24, or from the one before it when the last is not a level (a date revision: `urn:cen.eu:en16931:2017` → `en16931`, Order-X IDs with a revision) (`levelFromGuidelineId`), so the match is with that segment. BT-24 itself is checked against the profile's code list only by the Schematron (`check({ schematron: true })` → "Value of 'ram:ID' is not allowed."): `generate({ check: true })` runs the XSD only, which types it as `udt:IDType`, so it accepts e.g. `urn:example:minimum` with `level: 'minimum'`. Every guideline ID enumerated in the vendored Factur-X codedb files (`<cl id="1">` of each profile: `factur-x.eu:1p0` and `zugferd.de:2p0` forms, plain `urn:cen.eu:en16931:2017`) is accepted with its matching level; the test reads those files, so it follows the vendored lists. An explicit level on a document whose BT-24 names no known level (e.g. XRechnung) throws `Unknown level`, and on one without BT-24 `No ID found in the document` | `pnpm build && pnpm vitest run tests/generate.test.ts -t "CG-42"` |
 | `extract()` finds an invoice embedded as `xrechnung.xml` (§6.2 p.25, `text/codelists--Filename.csv`) and returns it with flavor `facturx`, which `getFlavor()` gives its `CrossIndustryInvoice` root. The fixture is a Factur-X EN 16931 invoice renamed to `xrechnung.xml` (the evidence recipe of CG-12), not a real XRECHNUNG hybrid (none is vendored): `extract({ check: true })` validates it only because its guideline ID is a Factur-X one, and fails on a real XRECHNUNG ID (CG-12) | `pnpm build && pnpm vitest run tests/extract.test.ts` |
 | `extract({ check: true })` validates an attachment under a ZUGFeRD file name (`zugferd-invoice.xml`, the ZUGFeRD 2.0 name of §6.3.2 p.29; `ZUGFeRD-invoice.xml`) by its root element (#38): a `CrossIndustryInvoice` against the Factur-X 1.09 XSD for its level, with the EXTENDED-CTC-FR rejection kept (BR-HYBRID-07/15); a ZUGFeRD 1.0 `CrossIndustryDocument` throws "not supported" (no ZUGFeRD 1.0 schema is vendored); an Order-X order throws. The result's `flavor` stays `zugferd`. Fixtures: the Factur-X EN 16931 example renamed, plus the MINIMUM and EN 16931 examples declaring the deprecated ZUGFeRD 2.0 IDs that the 1.09 code lists still carry (`urn:zugferd.de:2p0:minimum`, `…#conformant#urn:zugferd.de:2p0:extended`). Not covered: the `2p0:basicwl` / `2p0:basic` IDs, real ZUGFeRD 2.0 (CII D16B) documents (none vendored: they are checked against the 1.09 D22B rules, not their own), XRECHNUNG under these names (CG-12) | `pnpm build && pnpm vitest run tests/extract.test.ts` |
-| `extract()` reads an EmbeddedFiles name tree with one or two `/Kids` levels (§6.2.2 p.27, §6.4 p.31), in tree order, ignoring `/Limits`. The tree is untrusted: past two `/Kids` levels or 4096 nodes it throws `Unsupported EmbeddedFiles name tree`, and a cycle, a shared kid, a node with both `/Kids` and `/Names` or a non-dictionary kid throw `Malformed EmbeddedFiles name tree` (ISO 32000-1 §7.9.6 Table 36). Decoding the entries is not bounded (CG-29) (reader side of CG-13) | `pnpm build && pnpm vitest run tests/name-tree.test.ts` |
+| `extract()` reads an EmbeddedFiles name tree with one or two `/Kids` levels (§6.2.2 p.27, §6.4 p.31), in tree order, ignoring `/Limits`. The tree is untrusted: past two `/Kids` levels or 4096 nodes it throws `Unsupported EmbeddedFiles name tree`, and a cycle, a shared kid, a node with both `/Kids` and `/Names` or a non-dictionary kid throw `Malformed EmbeddedFiles name tree` (ISO 32000-1 §7.9.6 Table 36). (reader side of CG-13) | `pnpm build && pnpm vitest run tests/name-tree.test.ts` |
+| `extract()` matches the invoice on names before decoding anything: name tree keys in tree order, then, when no key matches, each file specification's `/F` and `/UF`. It decodes only the match, once, each `/Filter` stage in turn (Flate by node:zlib with a capped output; ASCIIHex, ASCII85 and RunLength by pdf-lib in slices, tested; LZW by the same path, untested), and throws past 128 MiB decoded (each stage, and all stages of a chain together), for a matching file specification without `/EF`, for a `/Predictor` other than 1, an unknown filter, invalid or truncated Flate data. `bytes` is an owned copy of exactly the decoded length (not a view into the PDF or a zlib buffer). Other entries, even 500 sharing one undecodable stream or 100 sharing a 129 MiB Flate bomb over two `/Kids` leaves, are never decoded (was CG-29: ~7 s and ~2 GB for that bomb). No vendored rule; AGENTS.md "Security" | `pnpm build && pnpm vitest run tests/extract-budget.test.ts` |
 | Without `meta`, the Info `CreationDate`/`ModDate`, the embedded file's `Params` `CreationDate`/`ModDate` (§6.2 p.25) and the XMP `CreateDate`/`ModifyDate`/`MetadataDate` are the generation time, written in UTC, and identical under `TZ=UTC`, `Europe/Paris` and `Pacific/Kiritimati`; the title and subject keep BT-2 as a calendar date. A `meta.date` the caller passes is used unchanged. No vendored rule defines these dates; the choice follows the reference packet's generation timestamp and is an inference (was CG-25) | `pnpm build && pnpm vitest run tests/pdf-metadata.test.ts -t CG-25` |
 | Info `Producer` equals XMP `pdf:Producer` (the library name and version, instead of pdf-lib's default) and XMP `pdf:Keywords` equals Info `Keywords`, escaped and UTF-8. Characters XML 1.0 cannot carry are dropped from `meta` once, before both are written, so control characters cannot make them differ. This is consistency between the two metadata stores (`AGENTS.md`), not a proven PDF/A requirement: the Factur-X spec says nothing (§6.3 p.28–29), ISO 19005-3 is not vendored, and veraPDF 1.30.4's PDF/A-3B profile has no Info↔XMP equivalence check (the mismatch passed it on 2026-11-15, `2741b28`) (was CG-04) | `pnpm build && pnpm vitest run tests/pdf-metadata.test.ts -t CG-04` |
 | `generate({ preserveXmlBytes: true })` embeds the caller's XML bytes unchanged (a `Buffer` as is, a `string` as UTF-8) and `extract()` returns the attachment's decoded stream in `bytes` (CLI `generate --preserveXmlBytes`, `extract --raw`). Over all 56 official examples, `bytes` equals the `factur-x.xml` stream read from the PDF and inflated with node:zlib (not pdf-lib's decoder), and pass-through `generate()` of those bytes onto the example stripped of its attachments embeds them byte for byte (BOM, `'` declaration, CRLF), where the default still re-serializes. The bytes are still parsed with the default libxml2 options (no `XML_PARSE_NOENT`/`DTDLOAD`/`XINCLUDE`/`HUGE`) and checked from those same bytes with `check: true`; pass-through refuses an `XmlDocument`, any DOCTYPE (internal subset, `SYSTEM`, `PUBLIC` or none, string or `Buffer`), and an XML declaration naming a version other than 1.0 or an encoding other than UTF-8, wherever the attribute sits in the declaration (consistency rules: the bytes are parsed as UTF-8 XML 1.0; the vendored Factur-X text names neither), before the PDF is read or marked as used. No vendored rule requires byte identity: §4 p.21 asks archiving transformations to "respect the integrity of content" (was CG-26, interop). The default `xml` field and default embedding are unchanged (backward compatibility); the default path still embeds a DOCTYPE or an XML 1.1 declaration (CG-31) | `pnpm build && pnpm vitest run tests/xml-bytes.test.ts` |
@@ -83,7 +84,6 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 | CG-22 | French CTC, coverage | release notes p.8-10; Annex A `annex-a--BR-France_CTC.csv`, `annex-a--BR-France-CTC-CPRO.csv` | interop | Annex A BR-FR rules the published Schematron does not implement (incl. `BR-FR-CPRO-*`); release notes contradict each other and the XSLT on coverage |
 | CG-23 | French CTC, upstream | `BR-FR-Flux2-Schematron-CII.xslt` | — | SVRL `test` of 4 BR-FR asserts loses its regex quantifier (`^\d{9}$` reported as `^\d9$`) |
 | CG-27 | spec, ZUGFeRD | §6.3.2 p.29 vs BR-HYBRID-08/13, `codelists--Filename.csv` | — | Spec says ZUGFeRD 2.0 legacy XMP settings are still supported, but its filename `zugferd-invoice.xml` is not an allowed hybrid filename |
-| CG-29 | extraction, security | — | interop | `extract()` decodes every embedded file, with no budget, before matching the file name |
 | CG-31 | embedding, security | AGENTS.md Security | interop | Default `generate()` re-serializes but keeps a DOCTYPE (incl. `SYSTEM`/`PUBLIC` ids) and an XML 1.1 declaration in the embedded invoice |
 | CG-33 | spec, French CTC, upstream | `EXTENDED-CTC-FR-CII.sch` BR-DEC-19/20 | Fatal (rules not run) | The EXTENDED-CTC-FR Schematron never fires BR-DEC-19/20 on VAT breakdowns of categories that have their own rules (first-match shadowing) |
 | CG-40 | spec, French CTC, upstream | `EXTENDED-CTC-FR-CII.sch` BR-EXT-CL-07 | Fatal (rule not run) | The EXTENDED-CTC-FR Schematron never checks a `ReferenceTypeCode` against UNTDID 1153 (always-true guard) |
@@ -94,6 +94,7 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 | CG-37 | parser, models | EXTENDED XSD `NoteType/Content` `minOccurs="0"` | data-loss | A note without `Content` (BT-22 / BT-127) comes back with an empty `Content` element |
 | CG-38 | spec | EXTENDED field matrix, its two XPath columns | — | The two XPath columns of the field matrix disagree on 9 rows (BT-X-261/261-0, BT-X-550…554, BT-X-562, BT-X-565) |
 | CG-39 | spec, French CTC | Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv` vs `fields--Factur-X_CII_D22B_EXTENDED.csv` | — | Annex A gives several `EXT-FR-FE` rows the XPath of a neighbouring row (unresolved) |
+| CG-43 | spec, extraction | §6.3.1 p.28, appendix p.71 vs §6.2 p.25 | — | The spec ties the invoice's name to the file specification's `/F`, not to the EmbeddedFiles name tree key; `extract()` prefers the key when they disagree |
 
 ### CG-05 — `generate()` does not produce PDF/A-3
 
@@ -385,20 +386,6 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 - **Evidence:** `grep -n "6.3.2\|zugferd-invoice" spec/factur-x-1.09/text/spec-main.txt`;
   `cat spec/factur-x-1.09/text/codelists--Filename.csv`.
 
-### CG-29 — `extract()` decodes every attachment without a bound
-
-- **Code:** `extractAttachments` (`src/lib/pdf.ts`) decodes each EmbeddedFiles entry with pdf-lib's
-  `decodePDFRawStream(…).decode()` before `extract()` matches the file name. Nothing is deduplicated,
-  capped or charged to a budget, unlike `generate()` (`InflateBudget`, see Verified). A file
-  specification without `/EF` throws a raw pdf-lib error.
-- **Effect:** a small untrusted PDF can make `extract()` spend seconds of CPU and gigabytes of memory.
-  It predates the `/Kids` reader; a flat `/Names` array allows the same.
-- **Evidence:** spec review probe (2026-11-15): a 53 KB PDF whose name tree has N file specifications
-  sharing one Flate stream of 50 MB of zeros, split over two `/Kids` leaves. `extract()` answers
-  `No attachment found` after ~6.9 s and ~2 GB RSS for N = 100 (90 ms for N = 1), linear in N.
-- **Fix direction:** match on the tree key, `/F` and `/UF` first, decode only the match, once, through
-  the capped inflate path and budget `generate()` uses.
-
 ### CG-31 — Default `generate()` keeps a DOCTYPE and an XML 1.1 declaration
 
 - **Rule:** no vendored rule; AGENTS.md "Security" (untrusted XML, metadata injection). CII documents
@@ -614,6 +601,18 @@ paths and the code supports both, so nothing here is picked.
   report.
 - **Fix direction:** write `pdfaid` only when the source already declares PDF/A-3 (or behind an
   option), or check the base and warn or refuse. Either changes behaviour: `docs/guide/upgrading.md`.
+
+### CG-43 — Tree key or `/F`: which names the invoice
+
+- **Spec:** §6.3.1 p.28: `fx:DocumentFileName` "must be identical to the value of the F-tag in the
+  file specification dictionary"; appendix p.71 says the same of entry `/F`. §6.2 p.25 names the file
+  `factur-x.xml` and requires it in the EmbeddedFiles name tree, but says nothing of the tree key.
+- **Code:** `findInvoiceFile` (`src/lib/extract.ts`) tries every tree key first, in tree order, then
+  `/F`, then `/UF` (since CG-29; before, only the key was read). A file keyed `factur-x.xml` wins over
+  an earlier one whose `/F` is `factur-x.xml`.
+- **Evidence:** `pnpm build && pnpm vitest run tests/extract-budget.test.ts -t "prefers a tree key"`.
+- **Unresolved:** no vendored rule decides between them; the key-first order keeps every PDF that
+  extracted before returning the same file.
 
 ## Changing this file
 

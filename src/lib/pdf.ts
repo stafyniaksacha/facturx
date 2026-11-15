@@ -1,13 +1,15 @@
+import type { Buffer } from 'node:buffer'
 import type {
   PDFDocument,
 } from 'pdf-lib'
-import { inflateSync, constants as zlibConstants } from 'node:zlib'
+import { inflateRawSync, inflateSync, constants as zlibConstants } from 'node:zlib'
 import {
   decodePDFRawStream,
   PDFArray,
   PDFDict,
   PDFHexString,
   PDFName,
+  PDFNumber,
   PDFRawStream,
   PDFStream,
   PDFString,
@@ -44,22 +46,117 @@ export function decodeName(value: PDFString | PDFHexString): string {
   return text
 }
 
-export function extractAttachments(pdfDoc: PDFDocument): {
-  name: string
-  data: Uint8Array<ArrayBufferLike>
-}[] {
-  const rawAttachments = readEmbeddedFilesNames(pdfDoc)
+/**
+ * The embedded file stream extract() reads from a file specification: `/EF /F`, else `/EF /UF`
+ * (ISO 32000-1 §7.11.4, not vendored). Undefined when there is none, or it is not a stream.
+ */
+export function embeddedFileStream(fileSpec: PDFDict): PDFStream | undefined {
+  const ef = fileSpec.lookup(PDFName.of('EF'))
+  if (!(ef instanceof PDFDict))
+    return undefined
+  for (const key of ['F', 'UF']) {
+    const stream = ef.lookup(PDFName.of(key))
+    if (stream instanceof PDFStream)
+      return stream
+  }
+  return undefined
+}
 
-  return rawAttachments.map(({ fileName, fileSpec }) => {
-    const stream = fileSpec
-      .lookup(PDFName.of('EF'), PDFDict)
-      .lookup(PDFName.of('F'), PDFStream) as PDFRawStream
+export class EmbeddedFileTooLargeError extends Error {}
+export class EmbeddedFileDecodeError extends Error {}
 
-    return {
-      name: decodeName(fileName),
-      data: decodePDFRawStream(stream).decode(),
+// pdf-lib's decoders for the filters other than Flate. Their output per block is small and
+// bounded (LZW at most 512 codes of 4096 bytes), so they are read in slices against the cap.
+const PDF_LIB_FILTERS = ['LZWDecode', 'ASCII85Decode', 'ASCIIHexDecode', 'RunLengthDecode']
+const PDF_LIB_SLICE = 64 * 1024
+
+/**
+ * The whole decoded content of an embedded file stream, read once (was CG-29). Each filter of the
+ * `/Filter` chain is applied in turn to the previous output, never lazily through a chain: Flate by
+ * node:zlib with a capped output (raw inflate after the 2-byte zlib header, so the Adler-32 trailer
+ * is not checked, like pdf-lib's own decoder), LZW, ASCII85, ASCIIHex and RunLength by pdf-lib in
+ * slices. Each stage is capped at `maxBytes`, and every stage's output is charged to `budget`, so a
+ * filter chain counts its intermediate outputs too. The result may be a view into a larger buffer.
+ *
+ * Throws EmbeddedFileTooLargeError when a stage would produce more than `maxBytes`,
+ * InflateBudgetExceededError when the budget runs out, and EmbeddedFileDecodeError for invalid
+ * compressed data (truncated deflate data included), an unknown filter, or a `/Predictor` other than 1 (pdf-lib
+ * ignores predictors, so it would have returned wrong bytes).
+ */
+export function readEmbeddedFile(stream: PDFStream, maxBytes: number, budget: InflateBudget): Uint8Array {
+  const { dict } = stream
+  const context = dict.context
+  const filter = dict.lookup(PDFName.of('Filter'))
+  const filters = filter instanceof PDFArray ? filter.asArray() : filter === undefined ? [] : [filter]
+  const parms = dict.lookup(PDFName.of('DecodeParms'))
+  // A pdf-lib PDFFlateStream (a document built in memory) holds its encoded bytes behind
+  // getContents(); a loaded document holds PDFRawStreams.
+  let data = stream instanceof PDFRawStream ? stream.contents : stream.getContents()
+  if (data.byteLength > maxBytes && filters.length === 0)
+    throw new EmbeddedFileTooLargeError()
+
+  for (let idx = 0; idx < filters.length; idx++) {
+    const name = context.lookup(filters[idx])
+    const parm = context.lookup(parms instanceof PDFArray ? parms.get(idx) : idx === 0 ? parms : undefined)
+    if (parm instanceof PDFDict) {
+      const predictor = parm.lookup(PDFName.of('Predictor'))
+      if (predictor !== undefined && !(predictor instanceof PDFNumber && predictor.asNumber() === 1))
+        throw new EmbeddedFileDecodeError('a /Predictor is not supported')
     }
-  })
+    if (name === PDFName.of('FlateDecode'))
+      data = inflateCapped(data, maxBytes, budget)
+    else if (PDF_LIB_FILTERS.some(known => name === PDFName.of(known)))
+      data = decodeCapped(PDFRawStream.of(context.obj(parm instanceof PDFDict ? { Filter: name as PDFName, DecodeParms: parm } : { Filter: name as PDFName }), data), maxBytes, budget)
+    else
+      throw new EmbeddedFileDecodeError('unsupported stream filter')
+  }
+  return data
+}
+
+function inflateCapped(data: Uint8Array, maxBytes: number, budget: InflateBudget): Uint8Array {
+  // zlib header (RFC 1950): deflate method, a valid check value, no preset dictionary.
+  if (data.byteLength < 2 || (data[0] & 0x0F) !== 8 || ((data[0] << 8) | data[1]) % 31 !== 0 || (data[1] & 0x20) !== 0)
+    throw new EmbeddedFileDecodeError('invalid zlib header')
+  const limit = Math.min(maxBytes, Math.max(budget.remaining, 0))
+  let inflated: Buffer
+  try {
+    // Z_FINISH (the default): a deflate stream that does not reach its end is refused, as pdf-lib
+    // refused it, instead of returning a silently truncated file. Bytes after the end are ignored.
+    inflated = inflateRawSync(data.subarray(2), { maxOutputLength: Math.max(limit, 1) })
+  }
+  catch (error) {
+    if ((error as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE') {
+      budget.charge(limit + 1) // the cap was reached: past it, or past the budget
+      throw new EmbeddedFileTooLargeError()
+    }
+    throw new EmbeddedFileDecodeError('invalid compressed data')
+  }
+  budget.charge(inflated.byteLength)
+  return new Uint8Array(inflated.buffer, inflated.byteOffset, inflated.byteLength)
+}
+
+function decodeCapped(stream: PDFRawStream, maxBytes: number, budget: InflateBudget): Uint8Array {
+  const decoder = decodePDFRawStream(stream)
+  let total = 0
+  try {
+    // Read in slices only to enforce the cap and the budget while decoding: the decoder keeps all
+    // its output in one buffer, which decode() returns once the stream has ended.
+    for (;;) {
+      const chunk = decoder.getBytes(PDF_LIB_SLICE)
+      if (chunk.byteLength === 0)
+        break
+      total += chunk.byteLength
+      budget.charge(chunk.byteLength)
+      if (total > maxBytes)
+        throw new EmbeddedFileTooLargeError()
+    }
+    return decoder.decode()
+  }
+  catch (error) {
+    if (error instanceof EmbeddedFileTooLargeError || error instanceof InflateBudgetExceededError)
+      throw error
+    throw new EmbeddedFileDecodeError('invalid encoded data')
+  }
 }
 
 // Bounds on the page tree and annotation walk, which reads untrusted input. Every distinct page
