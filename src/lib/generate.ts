@@ -46,6 +46,12 @@ export async function generate(options: {
 
   try {
     const flavor = options.flavor || getFlavor(xml)
+    if (flavor === 'zugferd') {
+      // `zugferd-invoice.xml` is not a HybridDocumentFilename (BR-HYBRID-08/13, Fatal) and ZUGFeRD
+      // legacy XMP uses its own `zf:` schema (§6.3.2 p.29), so the hybrid would not conform
+      // (was CG-09). Thrown before the PDF is read or marked as used.
+      throw new Error('Cannot generate the "zugferd" flavor: ZUGFeRD 1.0 (zugferd-invoice.xml) is extraction only. A ZUGFeRD 2.x invoice is a Factur-X CrossIndustryInvoice: generate it with flavor "facturx"')
+    }
     const level = options.level || getLevel(xml)
 
     if (options.check === true) {
@@ -80,10 +86,6 @@ export async function generate(options: {
       case 'orderx':
         filename = ORDERX_FILENAME
         description = 'Order-X XML file'
-        break
-      case 'zugferd':
-        filename = ZUGFERD_FILENAMES[0]
-        description = 'ZUGFeRD XML file'
         break
       default:
         throw new Error(`Unknown schema flavor: "${options.flavor}"`)

@@ -33,7 +33,7 @@ export default defineCommand({
     },
     flavor: {
       type: 'string',
-      description: 'Schema flavor, autodetect by default (facturx, orderx, zugferd)',
+      description: 'Schema flavor, autodetect by default (facturx, orderx; zugferd is extraction only)',
       alias: 'f',
     },
     level: {

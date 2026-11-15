@@ -38,6 +38,7 @@ open entry is "known", anything else is new.
 | Every value `generate()` writes into the XMP packet (title, subject, author from the invoice or `meta`, producer, creator, filename, conformance level) is XML-escaped and stripped of characters XML 1.0 cannot carry, so a seller name with `&`, `<` or markup parses back as the same text and cannot inject properties such as a second `fx:ConformanceLevel` (BR-HYBRID-03; was CG-03) | `pnpm build && pnpm vitest run tests/generate.test.ts -t CG-03` |
 | The XMP packet is written as UTF-8 bytes (`begin=""`), with `/Length` its byte length: a seller name with `é`, `€` and a non-BMP character decodes strictly as UTF-8 and parses back unchanged (BR-HYBRID-03; was CG-02) | `pnpm build && pnpm vitest run tests/generate.test.ts -t CG-02` |
 | `invoiceToXml()` writes *Unit Price Amount*s (item net/gross price BT-146/BT-148, price discount/charge BT-147/BT-X-302, their base amounts BT-X-35/BT-X-301) unrounded, in the shortest `xs:decimal` form with no exponent (`0.3456`, `1000.3454`, `0.0000001`), and every other *Amount* with 2 decimals (§7.1.5 p.35; was CG-01). The 2 annex B examples with sub-cent unit prices (UC11, UC13) now round-trip with an identical model. Unit prices are stored as `number` (public model type), so precision beyond an IEEE-754 double (about 15 significant digits) is not kept | `pnpm build && pnpm vitest run tests/unit-price.test.ts tests/annex-b-examples.test.ts` |
+| `generate()` refuses the `zugferd` flavor, given or auto-detected from a ZUGFeRD 1.0 `CrossIndustryDocument`, before reading or marking the PDF: it can only write a non-conformant hybrid (`zugferd-invoice.xml` is not a HybridDocumentFilename, BR-HYBRID-08/13; ZUGFeRD legacy XMP uses the `zf:` schema, §6.3.2 p.29). ZUGFeRD 2.x invoices are generated as `facturx` (was CG-09) | `pnpm build && pnpm vitest run tests/generate.test.ts -t CG-09` |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no test or CI run; manual veraPDF
 runs are recorded in CG-04 and CG-05), any Order-X
@@ -52,7 +53,6 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | CG-05 | PDF/A | BR-HYBRID-02 | Fatal | `generate()` does not make the PDF PDF/A-3; docs claim it does |
 | CG-07 | embedding | §6.2.2 p.26–27, BR-HYBRID-11 | Warning | `AFRelationship` hard-coded to `Data` |
 | CG-08 | Order-X | BR-HYBRID-06/07 | Fatal | Order-X PDFs get Factur-X `INVOICE` XMP and empty conformance level |
-| CG-09 | ZUGFeRD | BR-HYBRID-08/13, §6.3.2 p.29 | Fatal | `generate({ flavor: 'zugferd' })` writes a non-conformant hybrid |
 | CG-10 | spec | BR-HYBRID-04 vs §6.3.1 p.28 | — | Spec is internally inconsistent on the XMP namespace URI |
 | CG-12 | profiles | §7.7, §6.2 p.25, `codelists--HybridConformance.csv`, `codelists--Filename.csv`, BR-HYBRID-12/13 | interop | XRECHNUNG reference profile unsupported (`extract()` ignores `xrechnung.xml`); no DE profile restrictions |
 | CG-13 | embedding | §6.2.2 p.27, §6.4 p.31 | interop | `/Kids` levels in the EmbeddedFiles name tree: `extract()` finds no invoice, `generate()` rejects the source |
@@ -130,16 +130,6 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   {`BASIC`, `COMFORT`, `EXTENDED`}. BR-HYBRID-06/07 are Fatal.
 - **Code:** `src/lib/xmp.ts:92` always writes `INVOICE`; `src/lib/generate.ts:80-83` leaves
   `conformanceLevel` empty for `orderx`. The namespace question is CG-10.
-
-### CG-09 — `generate()` with `flavor: 'zugferd'`
-
-- **Code:** `src/lib/generate.ts:84-87` embeds `zugferd-invoice.xml` with the Factur-X `fx:` XMP and
-  an empty conformance level. `getFlavor()` maps only the ZUGFeRD 1.0 root (`CrossIndustryDocument`)
-  to `zugferd`, and `check()` has no XSD for it (throws).
-- **Spec:** `zugferd-invoice.xml` is not in the HybridDocumentFilename code list (BR-HYBRID-08/13,
-  Fatal). ZUGFeRD 2.0 legacy XMP uses a different schema (`zf:`, §6.3.2 p.29).
-- **Docs** say `zugferd` is extraction-only (`docs/guide/profiles-and-flavors.md`). Either reject it in
-  `generate()` or implement the legacy schema deliberately.
 
 ### CG-10 — Spec inconsistency on the XMP namespace (unresolved)
 

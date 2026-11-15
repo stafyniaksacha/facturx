@@ -763,4 +763,19 @@ describe('generate', () => {
     expect(stream.dict.get(PDFName.of('Length'))?.toString()).toBe(String(bytes.length))
     expect(readXmp(output).creator).toEqual([seller])
   })
+
+  it('rejects the zugferd flavor before touching the PDF (CG-09)', async () => {
+    const xml = await readFile(SOURCE_XML, 'utf8')
+    const pdf = await PDFDocument.load(await sourcePdf())
+
+    await expect(generate({ pdf, xml, flavor: 'zugferd' })).rejects.toThrow('Cannot generate the "zugferd" flavor')
+    // Not marked as used: the same document still takes the invoice as Factur-X.
+    await expect(generate({ pdf, xml })).resolves.toBeInstanceOf(Uint8Array)
+  })
+
+  it('rejects an auto-detected ZUGFeRD 1.0 document (CG-09)', async () => {
+    const xml = '<rsm:CrossIndustryDocument xmlns:rsm="urn:ferd:CrossIndustryDocument:invoice:1p0"/>'
+
+    await expect(generate({ pdf: await sourcePdf(), xml })).rejects.toThrow('Cannot generate the "zugferd" flavor')
+  })
 })

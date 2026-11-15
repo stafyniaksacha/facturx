@@ -111,6 +111,18 @@ if (code === undefined) {
 }
 ```
 
+### `generate()` rejects the `zugferd` flavor
+
+`generate({ flavor: 'zugferd' })`, and `generate()` on a ZUGFeRD 1.0 `CrossIndustryDocument` XML,
+now throw `Cannot generate the "zugferd" flavor: …` before reading the PDF. 0.6.1 embedded the XML
+as `zugferd-invoice.xml` with Factur-X XMP and an empty conformance level, which no validator
+accepts: that filename is not a valid hybrid filename (BR-HYBRID-08/13), and the legacy ZUGFeRD 2.0
+hybrid that used it has its own `zf:` XMP schema (§6.3.2 p.29; CG-09). `zugferd` stays supported by
+`extract()`.
+
+A ZUGFeRD 2.x invoice is a Factur-X `CrossIndustryInvoice`: drop `flavor: 'zugferd'` (it is then
+detected as `facturx`) or pass `flavor: 'facturx'`. It is embedded as `factur-x.xml`.
+
 ## Other behaviour changes
 
 These shipped on `main` after 0.6.1 and are included in the next release.
@@ -195,4 +207,5 @@ left undefined.
       come from the `report` findings that are no longer dropped.
 - [ ] If `generate()` used to throw `Document ID already set` and you worked around it, drop the
       workaround. Then check the new rejection list against your source PDFs.
+- [ ] If you call `generate()` with `flavor: 'zugferd'`, use `facturx` instead.
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).
