@@ -54,8 +54,7 @@ interface PdfMetadata {
   ::: warning Order-X metadata is not conformant yet
   For `orderx`, the XMP still says `fx:DocumentType` `INVOICE` and leaves `fx:ConformanceLevel`
   empty, where the hybrid code lists require `ORDER` / `ORDER_CHANGE` / `ORDER_RESPONSE` and
-  `BASIC` / `COMFORT` / `EXTENDED`. See CG-08 in
-  [`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md).
+  `BASIC` / `COMFORT` / `EXTENDED`.
   :::
 - Writes the embedded XML with the `afRelationship` you pass, `Data` by default. Factur-X allows only `Data` for MINIMUM and BASIC WL, and `Alternative`,
   `Source` or `Data` for BASIC, EN 16931 and EXTENDED. `generate()` throws
