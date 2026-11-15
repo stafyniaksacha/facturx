@@ -168,4 +168,24 @@ describe('eXTENDED-CTC-FR plain CII profile (CG-18 validation)', () => {
     options.xml = broken
     await expect(pending).resolves.toMatchObject({ valid: true })
   })
+
+  // CodeRabbit review: two IDs in one BT-24 container also made the transform abort.
+  it('reports two guideline IDs in one container as CII-SR-010', async () => {
+    const xml = (await readFile(F1, 'utf8')).replace(/(<ram:GuidelineSpecifiedDocumentContextParameter>\s*<ram:ID>[^<]*<\/ram:ID>)/, '$1<ram:ID>urn:junk</ram:ID>')
+    expect(xml).toContain('urn:junk')
+    const result = await validateSchematron({ xml, level: 'extended-ctc-fr' })
+    expect(result.errors.map(e => e.id)).toEqual(['CII-SR-010'])
+    expect(JSON.stringify(result.errors)).not.toContain('urn:junk')
+  })
+
+  // CodeRabbit review: a Buffer changed in place while the precheck awaits must not reach the
+  // transform either.
+  it('validateSchematron() copies a Buffer before the precheck', async () => {
+    const good = Buffer.from(await readFile(F1, 'utf8'))
+    const broken = Buffer.from((await readFile(F1, 'utf8')).replace('<ram:GrandTotalAmount>118.70<', '<ram:GrandTotalAmount>001.00<'))
+    expect(broken.length).toBe(good.length)
+    const pending = validateSchematron({ xml: good, level: 'extended-ctc-fr' })
+    broken.copy(good)
+    await expect(pending).resolves.toMatchObject({ valid: true })
+  })
 })

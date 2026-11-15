@@ -1,4 +1,4 @@
-import type { Buffer } from 'node:buffer'
+import { Buffer } from 'node:buffer'
 import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -218,9 +218,10 @@ export async function validateSchematron(options: {
     throw new Error(`No Factur-X Schematron available for level: "${options.level}"`)
   }
 
-  // Read once: the precheck awaits, and a caller changing `options.xml` meanwhile must not get the
-  // precheck on one document and the transform on another.
-  const xml = options.xml
+  // Read once, and copy a Buffer: the precheck awaits, and a caller replacing `options.xml` or
+  // changing the Buffer in place meanwhile must not get the precheck on one document and the
+  // transform on another. Strings are immutable.
+  const xml = typeof options.xml === 'string' ? options.xml : Buffer.from(options.xml)
   if (options.level === 'extended-ctc-fr') {
     const finding = await extendedCtcFrPrecheck(xml)
     if (finding)
@@ -234,7 +235,8 @@ export async function validateSchematron(options: {
  * The dedicated EXTENDED-CTC-FR Schematron neither checks the BT-24 value (only BR-01, non-empty)
  * nor survives a repeated BT-24 (`normalize-space()` on a sequence aborts with XPTY0004 and quotes
  * the values). So, before running it: throw unless BT-24 is the exact Annex A ID, and report a
- * repeated BT-24 as the CII-SR-009 finding the Schematron would give (count must be 1).
+ * repeated container or a repeated ID as the CII-SR-009 / CII-SR-010 finding the Schematron would
+ * give (each count must be 1).
  */
 async function extendedCtcFrPrecheck(xml: string | Buffer): Promise<SchematronError | undefined> {
   const doc = await resolveXml(xml)
@@ -244,6 +246,14 @@ async function extendedCtcFrPrecheck(xml: string | Buffer): Promise<SchematronEr
       return {
         message: `[CII-SR-009] - GuidelineSpecifiedDocumentContextParameter must exist exactly once (found ${count})`,
         id: 'CII-SR-009',
+        severity: 'error',
+      }
+    }
+    const ids = doc.find(`/*[local-name()='CrossIndustryInvoice']/*[local-name()='ExchangedDocumentContext']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']/*[local-name()='ID']`).length
+    if (ids > 1) {
+      return {
+        message: `[CII-SR-010] - ID must exist exactly once (found ${ids})`,
+        id: 'CII-SR-010',
         severity: 'error',
       }
     }
