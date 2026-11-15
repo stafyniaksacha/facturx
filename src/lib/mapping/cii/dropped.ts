@@ -1,7 +1,9 @@
 /**
  * The `dropped` contract of `fromCii()`, computed by difference: map CII to the model, map the model
  * back, and report every CII value that did not survive. Complete by construction, whatever the
- * mapping misses.
+ * mapping misses, relative to what `xmlToInvoice()` reads: an XML element the CII parser does not
+ * read never reaches the CII model, so it cannot be compared here (the parser round-trip tests cover
+ * that side).
  */
 
 import type { CrossIndustryInvoiceType } from '../../models/facturx/crossIndustryInvoice'

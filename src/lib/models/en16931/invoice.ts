@@ -162,6 +162,7 @@ export class Invoice {
     paymentDueDate,
     buyerReference,
     projectReference,
+    projectName,
     contractReference,
     contractCodeType,
     contractDate,
@@ -191,6 +192,7 @@ export class Invoice {
     paymentDueDate?: string
     buyerReference?: string
     projectReference?: string
+    projectName?: string
     contractReference?: string
     contractCodeType?: string
     contractDate?: string
@@ -220,6 +222,7 @@ export class Invoice {
     this.paymentDueDate = paymentDueDate
     this.buyerReference = buyerReference
     this.projectReference = projectReference
+    this.projectName = projectName
     this.contractReference = contractReference
     this.contractCodeType = contractCodeType
     this.contractDate = contractDate
@@ -241,22 +244,25 @@ export class Invoice {
   }
 
   /**
-   * Invoice number.
+   * Invoice number. `fromCii()` yields `''` when the document has none; `toCii()` throws on `''`.
    * @bt BT-1
    */
   number: string
   /**
-   * Invoice issue date (ISO `YYYY-MM-DD`).
+   * Invoice issue date (ISO `YYYY-MM-DD`). `fromCii()` yields `''` when the document has none or it
+   * is not a format-102 date (the CII value is then in `dropped`); `toCii()` throws on `''`.
    * @bt BT-2
    */
   issueDate: string
   /**
-   * Invoice type code (UNTDID 1001), e.g. `380` commercial invoice, `381` credit note.
+   * Invoice type code (UNTDID 1001), e.g. `380` commercial invoice, `381` credit note. `fromCii()`
+   * yields `''` when the document has none; `toCii()` throws on `''`.
    * @bt BT-3
    */
   typeCode: string
   /**
-   * Invoice currency code (ISO 4217).
+   * Invoice currency code (ISO 4217). `fromCii()` yields `''` when the document has none;
+   * `toCii()` throws on `''`.
    * @bt BT-5
    */
   currencyCode: string
@@ -293,6 +299,13 @@ export class Invoice {
    * @bt BT-11
    */
   projectReference?: string
+  /**
+   * Project name: the name of the project of BT-11, written only with BT-11. A Factur-X sub-term
+   * (matrix "Project name", mandatory in CII when BT-11 is present); `toCii()` writes the Factur-X
+   * default `Project reference` when unset (appendix EN 16931 p.38).
+   * @bt BT-11-0
+   */
+  projectName?: string
   /**
    * Contract reference.
    * @bt BT-12
@@ -365,8 +378,9 @@ export class Invoice {
    */
   businessProcessType?: string
   /**
-   * Specification identifier. `toCii()` writes the identifier of its `level` when this is unset,
-   * and throws when this names another level.
+   * Specification identifier, read verbatim by `fromCii()`. `toCii()` writes the identifier of its
+   * `level` when this is unset or empty, accepts only that exact Factur-X / EXTENDED-CTC-FR identifier
+   * otherwise, and throws on any other (another level, Order-X, a CIUS such as Peppol or XRechnung).
    * @bt BT-24
    */
   specificationIdentifier?: string

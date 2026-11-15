@@ -52,11 +52,11 @@ const TENDER_OR_LOT = '50'
 const INVOICED_OBJECT = '130'
 
 /**
- * `ram:SpecifiedProcuringProject/ram:Name` is mandatory in CII and has no EN 16931 term (BT-11-0).
- * Its default: Factur-X 1.09 appendix EN 16931 p.38 and spec p.125 ("Use "Project reference" as
- * default value for Name"; the same row also prints "Project Reference").
+ * Default of `ram:SpecifiedProcuringProject/ram:Name` (BT-11-0, mandatory in CII with BT-11) when the
+ * invoice has no project name: Factur-X 1.09 appendix EN 16931 p.38 and spec p.125 ("Use "Project
+ * reference" as default value for Name"; the same row also prints "Project Reference").
  */
-const PROJECT_NAME = 'Project reference'
+const DEFAULT_PROJECT_NAME = 'Project reference'
 
 /**
  * BT-8 code lists: the model holds UNTDID 2005 as EN 16931 defines it (also what UBL writes), CII
@@ -73,6 +73,7 @@ const BT8_FROM_CII = new Map([...BT8_TO_CII].map(([en, cii]) => [cii, en]))
 export const HEADER_GATES: readonly TermGate[] = [
   { id: 'BT-7', term: 'value added tax point date', from: 'en16931', present: i => isSet(i.valueAddedTaxPointDate) },
   { id: 'BT-11', term: 'project reference', from: 'en16931', present: i => isSet(i.projectReference) },
+  { id: 'BT-11-0', term: 'project name', from: 'en16931', present: i => isSet(i.projectName) },
   { id: 'BT-14', term: 'sales order reference', from: 'en16931', present: i => isSet(i.salesOrderReference) },
   { id: 'BT-15', term: 'receiving advice reference', from: 'en16931', present: i => isSet(i.receivingAdviceReference) },
   { id: 'BT-17', term: 'tender or lot reference', from: 'en16931', present: i => isSet(i.tenderOrLotReference) },
@@ -114,6 +115,7 @@ export function headerFromCii(cii: CrossIndustryInvoiceType): HeaderInit {
     paymentDueDate: isoFromCii(settlement?.specifiedTradePaymentTerms?.[0]?.dueDateDateTime),
     buyerReference: agreement?.buyerReference?.value,
     projectReference: agreement?.specifiedProcuringProject?.id?.value,
+    projectName: agreement?.specifiedProcuringProject?.name?.value,
     contractReference: agreement?.contractReferencedDocument?.issuerAssignedID?.value,
     contractCodeType: agreement?.contractReferencedDocument?.referenceTypeCode?.value,
     contractDate: isoFromCii(agreement?.contractReferencedDocument?.formattedIssueDateTime),
@@ -249,7 +251,7 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
         additionalReferencedDocument,
         specifiedProcuringProject: invoice.projectReference === undefined
           ? undefined
-          : new ram.ProcuringProjectType({ id: new udt.IDType({ value: invoice.projectReference }), name: new udt.TextType({ value: PROJECT_NAME }) }),
+          : new ram.ProcuringProjectType({ id: new udt.IDType({ value: invoice.projectReference }), name: new udt.TextType({ value: invoice.projectName ?? DEFAULT_PROJECT_NAME }) }),
         ultimateCustomerOrderReferencedDocument: [],
       }),
       applicableHeaderTradeDelivery: new HeaderTradeDeliveryType({

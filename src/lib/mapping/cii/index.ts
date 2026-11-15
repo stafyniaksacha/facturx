@@ -9,7 +9,7 @@ import { Invoice } from '../../models/en16931/invoice'
 import { levelFromGuidelineId } from '../../xml'
 import { diffPaths } from './dropped'
 import { HEADER_GATES, headerFromCii, headerToCii } from './header'
-import { assertLevelCarries, EN16931_LEVELS, isEn16931Level } from './levels'
+import { assertLevelCarries, EN16931_LEVELS, GUIDELINE_IDS, isEn16931Level } from './levels'
 
 /** What `fromCii()` returns. */
 export interface FromCiiResult {
@@ -63,27 +63,40 @@ export function fromCii(cii: CrossIndustryInvoiceType): FromCiiResult {
   return { invoice, dropped: diffPaths(cii, buildCii(invoice, level)) }
 }
 
+// Mandatory header terms `fromCii()` stands in `''` for when the document lacks them.
+const MANDATORY: readonly [string, string, (invoice: Invoice) => string][] = [
+  ['BT-1', 'invoice number', i => i.number],
+  ['BT-2', 'invoice issue date', i => i.issueDate],
+  ['BT-3', 'invoice type code', i => i.typeCode],
+  ['BT-5', 'invoice currency code', i => i.currencyCode],
+]
+
 /**
  * Write an EN 16931 invoice as a CII model at `level`, for `invoiceToXml()`. Throws, naming the
- * business term, when the invoice holds a value `level` cannot carry (an `EXT-FR-FE-*` field below
- * `extended`, a term Factur-X BASIC lacks at `basic`), when BT-24 is set to another level's
- * identifier, or when a date is not ISO `YYYY-MM-DD`. Never quotes invoice content.
+ * business term, when a mandatory term (BT-1, BT-2, BT-3, BT-5) is empty, when the invoice holds a
+ * value `level` cannot carry (an `EXT-FR-FE-*` field below `extended`, a term Factur-X BASIC lacks
+ * at `basic`), when BT-24 is set to anything but the exact identifier of `level`, or when a date is
+ * not a valid ISO `YYYY-MM-DD` date, or when BT-11-0 is set without BT-11. Never quotes invoice content.
  */
 export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInvoiceType {
   const level = options?.level
   if (!isEn16931Level(level))
     throw new Error(`toCii: options.level must be one of ${LEVEL_LIST}`)
-  assertLevelCarries(invoice, level, HEADER_GATES)
-  if (invoice.specificationIdentifier !== undefined) {
-    let named: string | undefined
-    try {
-      named = levelFromGuidelineId(invoice.specificationIdentifier)
-    }
-    catch {
-      named = undefined
-    }
-    if (named !== level)
-      throw new Error(`toCii: BT-24 (specification identifier) does not name level "${level}"; unset it to write the level's identifier`)
+  for (const [id, term, get] of MANDATORY) {
+    const value = get(invoice)
+    if (value === undefined || value === '')
+      throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
   }
+  assertLevelCarries(invoice, level, HEADER_GATES)
+  // CII has the project name only inside the project reference: writing it alone would lose it.
+  if (invoice.projectName !== undefined && invoice.projectReference === undefined)
+    throw new Error('toCii: BT-11-0 (project name) needs BT-11 (project reference)')
+  // Exact allow-list (Factur-X matrices, BT-24 usage note): another level's id, Order-X or a CIUS
+  // identifier would make the written document claim a profile it was not checked against.
+  const specification = invoice.specificationIdentifier
+  if (specification === '')
+    return buildCii(new Invoice({ ...invoice, specificationIdentifier: undefined }), level)
+  if (specification !== undefined && specification !== GUIDELINE_IDS[level])
+    throw new Error(`toCii: BT-24 (specification identifier) is not the identifier of level "${level}"; clear it to write that identifier, or set ${GUIDELINE_IDS[level]}`)
   return buildCii(invoice, level)
 }

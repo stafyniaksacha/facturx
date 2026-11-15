@@ -118,6 +118,7 @@ describe('en 16931 model: header terms', () => {
       paymentDueDate: '2025-08-31',
       buyerReference: 'Réf. acheteur €',
       projectReference: 'PRJ-1',
+      projectName: 'Rénovation <lot 2> & co',
       contractReference: 'CT-9',
       contractCodeType: 'CT',
       contractDate: '2024-12-31',
@@ -207,6 +208,13 @@ describe('en 16931 model: levels', () => {
   })
 
   const base = { number: 'SECRET-NUMBER', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR' }
+  // Factur-X 1.09 matrices, BT-24 usage note; XP Z12-012 annex A for EXTENDED-CTC-FR.
+  const guidelineIds = {
+    'basic': 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic',
+    'en16931': 'urn:cen.eu:en16931:2017',
+    'extended': 'urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended',
+    'extended-ctc-fr': 'urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr',
+  } as const
 
   it('throws when toCii gets an EXT-FR-FE value at en16931', () => {
     const invoice = new EN16931.Invoice({ ...base, contractReference: 'SECRET-CONTRACT', contractCodeType: 'SECRET-TYPE' })
@@ -247,20 +255,62 @@ describe('en 16931 model: levels', () => {
   })
 
   it('writes BT-24 for the level when the invoice has none', () => {
-    const ids = {
-      'basic': 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic',
-      'en16931': 'urn:cen.eu:en16931:2017',
-      'extended': 'urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended',
-      'extended-ctc-fr': 'urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr',
-    } as const
-    for (const [level, id] of Object.entries(ids)) {
-      const cii = toCii(new EN16931.Invoice(base), { level: level as keyof typeof ids })
+    for (const [level, id] of Object.entries(guidelineIds)) {
+      const cii = toCii(new EN16931.Invoice(base), { level: level as keyof typeof guidelineIds })
       expect(cii.exchangedDocumentContext.guidelineSpecifiedDocumentContextParameter.id.value).toBe(id)
     }
   })
 
-  it('rejects a date that is not ISO YYYY-MM-DD, naming the term', () => {
+  it('rejects a date that is not ISO YYYY-MM-DD or not a calendar date, naming the term', () => {
     expect(() => toCii(new EN16931.Invoice({ ...base, paymentDueDate: '20250701' }), { level: 'en16931' })).toThrow(/BT-9/)
+    expect(() => toCii(new EN16931.Invoice({ ...base, paymentDueDate: '2025-02-30' }), { level: 'en16931' })).toThrow(/BT-9/)
+    expect(() => toCii(new EN16931.Invoice({ ...base, issueDate: '2025-13-01' }), { level: 'en16931' })).toThrow(/BT-2/)
+    expect(() => toCii(new EN16931.Invoice({ ...base, paymentDueDate: '2024-02-29' }), { level: 'en16931' })).not.toThrow()
+  })
+
+  it.each([['BT-1', 'number'], ['BT-2', 'issueDate'], ['BT-3', 'typeCode'], ['BT-5', 'currencyCode']])(
+    'throws on an empty mandatory %s',
+    (id, property) => {
+      expect(() => toCii(new EN16931.Invoice({ ...base, [property]: '' }), { level: 'en16931' })).toThrow(new RegExp(`${id} `))
+    },
+  )
+
+  it('lets fromCii stand in an empty string for an absent mandatory term, which toCii then rejects', () => {
+    const cii = toCii(new EN16931.Invoice(base), { level: 'en16931' })
+    cii.exchangedDocument.issueDateTime = { dateTimeString: '20250230', format: '102' }
+    const { invoice, dropped } = fromCii(cii)
+    expect(invoice.issueDate).toBe('')
+    expect(dropped).toEqual([
+      `${ROOT}/rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString`,
+      `${ROOT}/rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString/@format`,
+    ])
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/BT-2/)
+  })
+
+  it('accepts only the exact BT-24 of the level', () => {
+    for (const [level, id] of Object.entries(guidelineIds))
+      expect(toCii(new EN16931.Invoice({ ...base, specificationIdentifier: id }), { level: level as keyof typeof guidelineIds }).exchangedDocumentContext.guidelineSpecifiedDocumentContextParameter.id.value).toBe(id)
+    expect(toCii(new EN16931.Invoice({ ...base, specificationIdentifier: '' }), { level: 'en16931' }).exchangedDocumentContext.guidelineSpecifiedDocumentContextParameter.id.value).toBe(guidelineIds.en16931)
+    for (const id of [
+      'urn:order-x.eu:1p0:extended',
+      'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0',
+      'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0',
+      guidelineIds.basic,
+    ]) {
+      expect(() => toCii(new EN16931.Invoice({ ...base, specificationIdentifier: id }), { level: id === guidelineIds.basic ? 'en16931' : 'extended' })).toThrow(/BT-24.*clear it/)
+    }
+  })
+
+  it('round-trips BT-11-0 and writes its default only with BT-11', () => {
+    const named = toCii(new EN16931.Invoice({ ...base, projectReference: 'P', projectName: 'Chantier Nord' }), { level: 'en16931' })
+    expect(named.supplyChainTradeTransaction.applicableHeaderTradeAgreement.specifiedProcuringProject?.name.value).toBe('Chantier Nord')
+    const back = fromCii(named)
+    expect(back.invoice.projectName).toBe('Chantier Nord')
+    expect(back.dropped).toEqual([])
+    const unnamed = toCii(new EN16931.Invoice({ ...base, projectReference: 'P' }), { level: 'en16931' })
+    expect(unnamed.supplyChainTradeTransaction.applicableHeaderTradeAgreement.specifiedProcuringProject?.name.value).toBe('Project reference')
+    expect(() => toCii(new EN16931.Invoice({ ...base, projectName: 'N' }), { level: 'en16931' })).toThrow(/BT-11-0.*BT-11/)
+    expect(() => toCii(new EN16931.Invoice({ ...base, projectReference: 'P', projectName: 'N' }), { level: 'basic' })).toThrow(/BT-11/)
   })
 })
 

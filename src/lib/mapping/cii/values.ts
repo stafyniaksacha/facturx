@@ -9,8 +9,18 @@
 import * as qdt from '../../models/facturx/qualifiedTypes'
 import * as udt from '../../models/facturx/unqualifiedTypes'
 
-const ISO_DATE = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 const CII_102 = /^(\d{4})(\d{2})(\d{2})$/
+
+// A real calendar date: 2025-02-30 and 2025-13-01 are not.
+function isCalendarDate(iso: string): boolean {
+  const match = ISO_DATE.exec(iso)
+  if (!match)
+    return false
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])]
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+}
 
 /** ISO date from a CII format-102 date string; `undefined` for any other format or shape. */
 export function isoFromCii(value: { format?: string } & ({ dateTimeString: string } | { dateString: string }) | undefined): string | undefined {
@@ -21,11 +31,11 @@ export function isoFromCii(value: { format?: string } & ({ dateTimeString: strin
   if (!match)
     return undefined
   const iso = `${match[1]}-${match[2]}-${match[3]}`
-  return ISO_DATE.test(iso) ? iso : undefined
+  return isCalendarDate(iso) ? iso : undefined
 }
 
 function to102(iso: string, term: string): string {
-  if (!ISO_DATE.test(iso))
+  if (!isCalendarDate(iso))
     throw new Error(`toCii: ${term} must be an ISO date (YYYY-MM-DD)`)
   return iso.replaceAll('-', '')
 }
