@@ -106,8 +106,12 @@ function modelTags(): Set<string> {
   return tags
 }
 
-/** Ids a wrapper row carries: pure XML wrappers (`-00`, `-000`, `-01`, `-NN-00`), no business data. */
-const isWrapper = (id: string): boolean => /-0{2,3}$/.test(id) || /^EXT-FR-FE-\d+-01$/.test(id) || /^BT-70-01$/.test(id)
+/** Pure XML wrapper rows, no business data: `-00` / `-000` suffixes and the exact ids of WRAPPER_IDS. */
+const WRAPPER_IDS: Record<string, string> = {
+  'EXT-FR-FE-149-01': 'UBL annex A wrapper `cac:PartyName` of the line delivery party name (EXT-FR-FE-149), cardinality-only row',
+  'BT-70-01': 'UBL annex A wrapper of the delivery party name (BT-70), cardinality-only row',
+}
+const isWrapper = (id: string): boolean => /-0{2,3}$/.test(id) || id in WRAPPER_IDS
 
 /**
  * Out of scope, each with its reason. A rule below keeps the lists honest: the matrix rows behind them are
@@ -157,12 +161,28 @@ const ALLOWED_EXTRA_TAGS: Record<string, string> = {
 
 /**
  * Required (in scope) ids:
- *  a. every BT / BG id of a `YES` row of the EN 16931 matrix, except date-format qualifiers (`@format`,
- *     fixed "102"), which carry no data, plus the data-carrying `-0` / `-1` sub-ids of EXTRA_REQUIRED;
+ *  a. every BT / BG id of a `YES` row of the EN 16931 matrix (columns 5 and 6), except date-format
+ *     qualifiers (`@format`, fixed "102"), which carry no data, wrappers and true BT-X;
  *  b. every EXT-FR-FE id of annex A (CII column 3, UBL columns 1 and 2) except wrappers and `@format`
- *     qualifiers, plus the EN 16931-standard ids Task 4 took from the EXTENDED matrix that annex A lists.
+ *     qualifiers;
+ *  c. EXTRA_REQUIRED: data-carrying ids the matrix flags NO, and the EN 16931-standard ids that annex A
+ *     lists (and the model tags) but the EN 16931 matrix does not flag YES. A general "every BT/BG of annex
+ *     A" rule would over-collect (groups, fixed values, `-NN` children the model does not hold), so they
+ *     are listed one by one, each checked to exist in annex A or a matrix.
  */
 const EXTRA_REQUIRED: Record<string, string> = {
+  'BT-11-0': 'project reference: a text row, the matrix flags it NO (Factur-X EXTENDED lists it as data)',
+  'BT-193': 'line non-VAT tax reason code (annex A YES row, EXTENDED matrix; EN 16931 matrix has no row)',
+  'BT-193-1': 'code list id of the line non-VAT tax code, sub-id of BT-193 in annex A',
+  'BT-167': 'VAT accounting currency exchange rate (annex A YES row)',
+  'BT-167-1': 'exchange rate target currency (annex A YES row)',
+  'BT-167-2': 'exchange rate source currency (annex A YES row)',
+  'BT-173': 'VAT exemption reason of the document allowance (annex A, also EXT-FR-FE-187)',
+  'BT-174': 'VAT exemption reason code of the document allowance (annex A, also EXT-FR-FE-188)',
+  'BT-175': 'VAT exemption reason of the document charge (annex A, also EXT-FR-FE-189)',
+  'BT-176': 'VAT exemption reason code of the document charge (annex A, also EXT-FR-FE-190)',
+  'BT-177': 'document non-VAT tax code (annex A YES row)',
+  'BT-177-1': 'code list id of the document non-VAT tax code (annex A YES row)',
   'BT-29-0': 'seller identifier (GlobalID/ID holder): Identifier type, the matrix flags the parent NO',
   'BT-60-0': 'payee identifier: Identifier type, the matrix flags the parent NO',
   'BT-84-0': 'payment account identifier: Identifier type, the matrix flags the parent NO',
@@ -174,9 +194,13 @@ function requiredIds(): { required: Set<string>, excluded: Map<string, string> }
   const skip = (id: string, why: string): void => {
     excluded.set(id, why)
   }
-  for (const r of matrix) {
-    const id = (r[MATRIX_ID] ?? '').trim()
-    if (r[0] !== 'YES' || !EN_ID.test(id))
+  // Column 5 is the id; column 6 (`ID CTC-FR Reform`) holds the id of the data-carrying "-1" sub-row where
+  // the row's own id is a "-0" holder (BT-63-0 -> BT-63-1, BT-110-0 -> BT-110-1, BT-111-0 -> BT-111-1).
+  const yesIds = matrix
+    .filter(r => r[0] === 'YES')
+    .flatMap(r => [r[MATRIX_ID], r[MATRIX_ID + 1]].map(c => ({ id: (c ?? '').trim(), row: r })))
+  for (const { id, row: r } of yesIds) {
+    if (!EN_ID.test(id))
       continue
     if (isFormatQualifier(r[MATRIX_XPATH], r[MATRIX_TYPE]))
       skip(id, 'date format qualifier (@format, fixed "102")')
@@ -234,6 +258,12 @@ describe('eN 16931 model completeness', () => {
     const known = knownIds()
     const stray = [...tags].filter(id => !known.has(id) && !(id in ALLOWED_EXTRA_TAGS)).sort()
     expect(stray, `tags naming no id of the matrices or annex A: ${stray.join(', ')}`).toEqual([])
+  })
+
+  it('every EXTRA_REQUIRED id exists in the matrices or annex A', () => {
+    const known = knownIds()
+    for (const id of Object.keys(EXTRA_REQUIRED))
+      expect(known.has(id), id).toBe(true)
   })
 
   it('the exclusions are real spec rows or explicit rulings, never in-scope ids', () => {
