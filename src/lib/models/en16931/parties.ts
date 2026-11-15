@@ -77,7 +77,8 @@ export class Seller {
    */
   additionalLegalInformation?: string
   /**
-   * Seller electronic address and its scheme (Connecting Europe Facility list).
+   * Seller electronic address and its scheme (Connecting Europe Facility list); `toCii()` throws
+   * without the scheme (BT-34-1 is `1..1`).
    * @bt BT-34 BT-34-1
    */
   electronicAddress?: Identifier
@@ -161,7 +162,8 @@ export class Buyer {
    */
   legalRegistrationIdentifier?: Identifier
   /**
-   * Buyer electronic address and its scheme (Connecting Europe Facility list).
+   * Buyer electronic address and its scheme (Connecting Europe Facility list); `toCii()` throws
+   * without the scheme (BT-49-1 is `1..1`).
    * @bt BT-49 BT-49-1
    */
   electronicAddress?: Identifier
@@ -184,16 +186,93 @@ export class Buyer {
 }
 
 /**
- * A party that is not the seller or the buyer, and has the same data in every role: the payee
- * (BG-10, with its EXTENDED-CTC-FR additions) and the EXTENDED-CTC-FR agents, invoicee, payer and
- * billing party. It is the base of `Payee`, `SellerAgent`, `BuyerAgent`, `Invoicee`, `Payer` and
- * `BillingParty`; each property lists the term it holds in every role.
- *
- * Mapping: the payee (BG-10) holds private (`ID`) and global (`GlobalID`) identifiers like the
- * seller; the other roles hold every identifier as a `GlobalID` (Factur-X EXTENDED matrix), with an
- * optional scheme. The group ids are on the subclasses.
+ * The payee, when different from the seller. Its name, identifiers and legal registration identifier are EN 16931 (BT-59, BT-60, BT-61); the rest is EXTENDED-CTC-FR.
+ * @bg BG-10
  */
-export class AdditionalParty {
+export class Payee {
+  constructor({
+    identifiers,
+    name,
+    roleCode,
+    legalRegistrationIdentifier,
+    electronicAddress,
+    vatIdentifier,
+    address,
+    contact,
+  }: {
+    identifiers?: Identifier[]
+    name: string
+    roleCode?: string
+    legalRegistrationIdentifier?: Identifier
+    electronicAddress?: Identifier
+    vatIdentifier?: string
+    address?: PostalAddress
+    contact?: Contact
+  }) {
+    this.identifiers = identifiers ?? []
+    this.name = name
+    this.roleCode = roleCode
+    this.legalRegistrationIdentifier = legalRegistrationIdentifier
+    this.electronicAddress = electronicAddress
+    this.vatIdentifier = vatIdentifier
+    this.address = address
+    this.contact = contact
+  }
+
+  /**
+   * Payee identifiers: a private one without scheme (BT-60, CII `ID`), a global one with its scheme (BT-60-0 / BT-60-1, CII `GlobalID`).
+   * @bt BT-60 BT-60-0 BT-60-1
+   */
+  identifiers: Identifier[]
+
+  /**
+   * Payee name. `fromCii()` yields `''` when the document has none; `toCii()` throws on `''`.
+   * @bt BT-59
+   */
+  name: string
+
+  /**
+   * Payee role code (CII `RoleCode`). EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-26
+   */
+  roleCode?: string
+
+  /**
+   * Payee legal registration identifier and its scheme (ISO 6523).
+   * @bt BT-61 BT-61-1
+   */
+  legalRegistrationIdentifier?: Identifier
+
+  /**
+   * Payee electronic address and its scheme (`toCii()` throws without the scheme: EXT-FR-FE-30 is `1..1`). EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-29 EXT-FR-FE-30
+   */
+  electronicAddress?: Identifier
+
+  /**
+   * Payee VAT identifier (CII `SpecifiedTaxRegistration` with scheme `VA`). EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-27 EXT-FR-FE-28
+   */
+  vatIdentifier?: string
+
+  /**
+   * Payee postal address. EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-31
+   */
+  address?: PostalAddress
+
+  /**
+   * Payee contact. EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-39
+   */
+  contact?: Contact
+}
+
+/**
+ * The buyer's agent (CII `BuyerAgentTradeParty`), e.g. a media agency. EXTENDED-CTC-FR.
+ * @ext EXT-FR-FE-BG-01
+ */
+export class BuyerAgent {
   constructor({
     identifiers,
     name,
@@ -227,103 +306,427 @@ export class AdditionalParty {
   }
 
   /**
-   * Identifiers with their scheme: payee BT-60 / BT-60-0 / BT-60-1; buyer agent EXT-FR-FE-06 / -07;
-   * payer -46 / -47; seller agent -69 / -70; invoicee -92 / -92-1; billing party -115 / -116.
-   * @bt BT-60 BT-60-0 BT-60-1
-   * @ext EXT-FR-FE-06 EXT-FR-FE-07 EXT-FR-FE-46 EXT-FR-FE-47 EXT-FR-FE-69 EXT-FR-FE-70 EXT-FR-FE-92 EXT-FR-FE-92-1 EXT-FR-FE-115 EXT-FR-FE-116
+   * Identifiers, each a CII `GlobalID`; `toCii()` throws on one without its scheme (`1..1`).
+   * @ext EXT-FR-FE-06 EXT-FR-FE-07
    */
   identifiers: Identifier[]
+
   /**
-   * Name: payee BT-59; buyer agent EXT-FR-FE-03; payer -43; seller agent -66; invoicee -89; billing
-   * party -112. `fromCii()` yields `''` when the document has none; `toCii()` throws on `''`.
-   * @bt BT-59
-   * @ext EXT-FR-FE-03 EXT-FR-FE-43 EXT-FR-FE-66 EXT-FR-FE-89 EXT-FR-FE-112
+   * Name. `fromCii()` yields `''` when the document has none; `toCii()` throws on `''`.
+   * @ext EXT-FR-FE-03
    */
   name: string
+
   /**
-   * Role code (CII `RoleCode`): payee EXT-FR-FE-26; buyer agent -04; payer -44; seller agent -67;
-   * invoicee -90; billing party -113.
-   * @ext EXT-FR-FE-04 EXT-FR-FE-26 EXT-FR-FE-44 EXT-FR-FE-67 EXT-FR-FE-90 EXT-FR-FE-113
+   * Role code (CII `RoleCode`).
+   * @ext EXT-FR-FE-04
    */
   roleCode?: string
+
   /**
-   * Trading name: buyer agent EXT-FR-FE-05; payer -45; seller agent -68; invoicee -91; billing party
-   * -114. The payee has none (the matrix has no element for it): `fromCii()` reports it in `dropped`
-   * and `toCii()` throws when it is set.
-   * @ext EXT-FR-FE-05 EXT-FR-FE-45 EXT-FR-FE-68 EXT-FR-FE-91 EXT-FR-FE-114
+   * Trading name.
+   * @ext EXT-FR-FE-05
    */
   tradingName?: string
+
   /**
-   * Legal registration identifier and its scheme: payee BT-61 / BT-61-1; buyer agent EXT-FR-FE-08 /
-   * -09; payer -48 / -49; seller agent -71 / -72; invoicee -94 / -95; billing party -117 / -118.
-   * @bt BT-61 BT-61-1
-   * @ext EXT-FR-FE-08 EXT-FR-FE-09 EXT-FR-FE-48 EXT-FR-FE-49 EXT-FR-FE-71 EXT-FR-FE-72 EXT-FR-FE-94 EXT-FR-FE-95 EXT-FR-FE-117 EXT-FR-FE-118
+   * Legal registration identifier and its scheme (ISO 6523).
+   * @ext EXT-FR-FE-08 EXT-FR-FE-09
    */
   legalRegistrationIdentifier?: Identifier
+
   /**
-   * Electronic address and its scheme: payee EXT-FR-FE-29 / -30; buyer agent -12 / -13; payer -52 /
-   * -53; seller agent -75 / -76; invoicee -98 / -99; billing party -121 / -122.
-   * @ext EXT-FR-FE-12 EXT-FR-FE-13 EXT-FR-FE-29 EXT-FR-FE-30 EXT-FR-FE-52 EXT-FR-FE-53 EXT-FR-FE-75 EXT-FR-FE-76 EXT-FR-FE-98 EXT-FR-FE-99 EXT-FR-FE-121 EXT-FR-FE-122
+   * Electronic address and its scheme (`toCii()` throws without the scheme: `1..1`).
+   * @ext EXT-FR-FE-12 EXT-FR-FE-13
    */
   electronicAddress?: Identifier
+
   /**
-   * VAT identifier (CII `SpecifiedTaxRegistration` with scheme `VA`): payee EXT-FR-FE-27 / -28;
-   * buyer agent -10 / -11; payer -50 / -51; seller agent -73 / -74; invoicee -96 / -97; billing
-   * party -119 / -120.
-   * @ext EXT-FR-FE-10 EXT-FR-FE-11 EXT-FR-FE-27 EXT-FR-FE-28 EXT-FR-FE-50 EXT-FR-FE-51 EXT-FR-FE-73 EXT-FR-FE-74 EXT-FR-FE-96 EXT-FR-FE-97 EXT-FR-FE-119 EXT-FR-FE-120
+   * VAT identifier (CII `SpecifiedTaxRegistration` with scheme `VA`).
+   * @ext EXT-FR-FE-10 EXT-FR-FE-11
    */
   vatIdentifier?: string
+
   /**
-   * Postal address: payee EXT-FR-FE-31; buyer agent -14; payer -54; seller agent -77; invoicee -100;
-   * billing party -123.
-   * @ext EXT-FR-FE-14 EXT-FR-FE-31 EXT-FR-FE-54 EXT-FR-FE-77 EXT-FR-FE-100 EXT-FR-FE-123
+   * Postal address.
+   * @ext EXT-FR-FE-14
    */
   address?: PostalAddress
+
   /**
-   * Contact: payee EXT-FR-FE-39; buyer agent -22; payer -62; seller agent -85; invoicee -108;
-   * billing party -131.
-   * @ext EXT-FR-FE-22 EXT-FR-FE-39 EXT-FR-FE-62 EXT-FR-FE-85 EXT-FR-FE-108 EXT-FR-FE-131
+   * Contact.
+   * @ext EXT-FR-FE-22
    */
   contact?: Contact
 }
 
 /**
- * The payee, when different from the seller. Its name, identifiers and legal registration
- * identifier are EN 16931 (BT-59, BT-60, BT-61); the rest is EXTENDED-CTC-FR.
- * @bg BG-10
+ * The payer of the invoice, when different from the buyer (CII `PayerTradeParty`). EXTENDED-CTC-FR.
+ * @ext EXT-FR-FE-BG-02
  */
-export class Payee extends AdditionalParty {}
+export class Payer {
+  constructor({
+    identifiers,
+    name,
+    roleCode,
+    tradingName,
+    legalRegistrationIdentifier,
+    electronicAddress,
+    vatIdentifier,
+    address,
+    contact,
+  }: {
+    identifiers?: Identifier[]
+    name: string
+    roleCode?: string
+    tradingName?: string
+    legalRegistrationIdentifier?: Identifier
+    electronicAddress?: Identifier
+    vatIdentifier?: string
+    address?: PostalAddress
+    contact?: Contact
+  }) {
+    this.identifiers = identifiers ?? []
+    this.name = name
+    this.roleCode = roleCode
+    this.tradingName = tradingName
+    this.legalRegistrationIdentifier = legalRegistrationIdentifier
+    this.electronicAddress = electronicAddress
+    this.vatIdentifier = vatIdentifier
+    this.address = address
+    this.contact = contact
+  }
+
+  /**
+   * Identifiers, each a CII `GlobalID`; `toCii()` throws on one without its scheme (`1..1`).
+   * @ext EXT-FR-FE-46 EXT-FR-FE-47
+   */
+  identifiers: Identifier[]
+
+  /**
+   * Name. `fromCii()` yields `''` when the document has none; `toCii()` throws on `''`.
+   * @ext EXT-FR-FE-43
+   */
+  name: string
+
+  /**
+   * Role code (CII `RoleCode`).
+   * @ext EXT-FR-FE-44
+   */
+  roleCode?: string
+
+  /**
+   * Trading name.
+   * @ext EXT-FR-FE-45
+   */
+  tradingName?: string
+
+  /**
+   * Legal registration identifier and its scheme (ISO 6523).
+   * @ext EXT-FR-FE-48 EXT-FR-FE-49
+   */
+  legalRegistrationIdentifier?: Identifier
+
+  /**
+   * Electronic address and its scheme (`toCii()` throws without the scheme: `1..1`).
+   * @ext EXT-FR-FE-52 EXT-FR-FE-53
+   */
+  electronicAddress?: Identifier
+
+  /**
+   * VAT identifier (CII `SpecifiedTaxRegistration` with scheme `VA`).
+   * @ext EXT-FR-FE-50 EXT-FR-FE-51
+   */
+  vatIdentifier?: string
+
+  /**
+   * Postal address.
+   * @ext EXT-FR-FE-54
+   */
+  address?: PostalAddress
+
+  /**
+   * Contact.
+   * @ext EXT-FR-FE-62
+   */
+  contact?: Contact
+}
 
 /**
  * The seller's agent (CII `SalesAgentTradeParty`), e.g. a validating third party. EXTENDED-CTC-FR.
  * @ext EXT-FR-FE-BG-03
  */
-export class SellerAgent extends AdditionalParty {}
+export class SellerAgent {
+  constructor({
+    identifiers,
+    name,
+    roleCode,
+    tradingName,
+    legalRegistrationIdentifier,
+    electronicAddress,
+    vatIdentifier,
+    address,
+    contact,
+  }: {
+    identifiers?: Identifier[]
+    name: string
+    roleCode?: string
+    tradingName?: string
+    legalRegistrationIdentifier?: Identifier
+    electronicAddress?: Identifier
+    vatIdentifier?: string
+    address?: PostalAddress
+    contact?: Contact
+  }) {
+    this.identifiers = identifiers ?? []
+    this.name = name
+    this.roleCode = roleCode
+    this.tradingName = tradingName
+    this.legalRegistrationIdentifier = legalRegistrationIdentifier
+    this.electronicAddress = electronicAddress
+    this.vatIdentifier = vatIdentifier
+    this.address = address
+    this.contact = contact
+  }
 
-/**
- * The buyer's agent (CII `BuyerAgentTradeParty`), e.g. a media agency. EXTENDED-CTC-FR.
- * @ext EXT-FR-FE-BG-01
- */
-export class BuyerAgent extends AdditionalParty {}
+  /**
+   * Identifiers, each a CII `GlobalID`; `toCii()` throws on one without its scheme (`1..1`).
+   * @ext EXT-FR-FE-69 EXT-FR-FE-70
+   */
+  identifiers: Identifier[]
+
+  /**
+   * Name. `fromCii()` yields `''` when the document has none; `toCii()` throws on `''`.
+   * @ext EXT-FR-FE-66
+   */
+  name: string
+
+  /**
+   * Role code (CII `RoleCode`).
+   * @ext EXT-FR-FE-67
+   */
+  roleCode?: string
+
+  /**
+   * Trading name.
+   * @ext EXT-FR-FE-68
+   */
+  tradingName?: string
+
+  /**
+   * Legal registration identifier and its scheme (ISO 6523).
+   * @ext EXT-FR-FE-71 EXT-FR-FE-72
+   */
+  legalRegistrationIdentifier?: Identifier
+
+  /**
+   * Electronic address and its scheme (`toCii()` throws without the scheme: `1..1`).
+   * @ext EXT-FR-FE-75 EXT-FR-FE-76
+   */
+  electronicAddress?: Identifier
+
+  /**
+   * VAT identifier (CII `SpecifiedTaxRegistration` with scheme `VA`).
+   * @ext EXT-FR-FE-73 EXT-FR-FE-74
+   */
+  vatIdentifier?: string
+
+  /**
+   * Postal address.
+   * @ext EXT-FR-FE-77
+   */
+  address?: PostalAddress
+
+  /**
+   * Contact.
+   * @ext EXT-FR-FE-85
+   */
+  contact?: Contact
+}
 
 /**
  * The party the invoice is addressed to (CII `InvoiceeTradeParty`, "adressée à"). EXTENDED-CTC-FR.
  * @ext EXT-FR-FE-BG-04
  */
-export class Invoicee extends AdditionalParty {}
+export class Invoicee {
+  constructor({
+    identifiers,
+    name,
+    roleCode,
+    tradingName,
+    legalRegistrationIdentifier,
+    electronicAddress,
+    vatIdentifier,
+    address,
+    contact,
+  }: {
+    identifiers?: Identifier[]
+    name: string
+    roleCode?: string
+    tradingName?: string
+    legalRegistrationIdentifier?: Identifier
+    electronicAddress?: Identifier
+    vatIdentifier?: string
+    address?: PostalAddress
+    contact?: Contact
+  }) {
+    this.identifiers = identifiers ?? []
+    this.name = name
+    this.roleCode = roleCode
+    this.tradingName = tradingName
+    this.legalRegistrationIdentifier = legalRegistrationIdentifier
+    this.electronicAddress = electronicAddress
+    this.vatIdentifier = vatIdentifier
+    this.address = address
+    this.contact = contact
+  }
+
+  /**
+   * Identifiers, each a CII `GlobalID`; `toCii()` throws on one without its scheme (`1..1`).
+   * @ext EXT-FR-FE-92 EXT-FR-FE-92-1
+   */
+  identifiers: Identifier[]
+
+  /**
+   * Name. `fromCii()` yields `''` when the document has none; `toCii()` throws on `''`.
+   * @ext EXT-FR-FE-89
+   */
+  name: string
+
+  /**
+   * Role code (CII `RoleCode`).
+   * @ext EXT-FR-FE-90
+   */
+  roleCode?: string
+
+  /**
+   * Trading name.
+   * @ext EXT-FR-FE-91
+   */
+  tradingName?: string
+
+  /**
+   * Legal registration identifier and its scheme (ISO 6523).
+   * @ext EXT-FR-FE-94 EXT-FR-FE-95
+   */
+  legalRegistrationIdentifier?: Identifier
+
+  /**
+   * Electronic address and its scheme (`toCii()` throws without the scheme: `1..1`).
+   * @ext EXT-FR-FE-98 EXT-FR-FE-99
+   */
+  electronicAddress?: Identifier
+
+  /**
+   * VAT identifier (CII `SpecifiedTaxRegistration` with scheme `VA`).
+   * @ext EXT-FR-FE-96 EXT-FR-FE-97
+   */
+  vatIdentifier?: string
+
+  /**
+   * Postal address.
+   * @ext EXT-FR-FE-100
+   */
+  address?: PostalAddress
+
+  /**
+   * Contact.
+   * @ext EXT-FR-FE-108
+   */
+  contact?: Contact
+}
 
 /**
- * The payer of the invoice, when different from the buyer (CII `PayerTradeParty`). EXTENDED-CTC-FR.
- * @ext EXT-FR-FE-BG-02
- */
-export class Payer extends AdditionalParty {}
-
-/**
- * The billing party (CII `InvoicerTradeParty`, "tiers facturant" / service facturier).
- * EXTENDED-CTC-FR.
+ * The billing party (CII `InvoicerTradeParty`, "tiers facturant" / service facturier). EXTENDED-CTC-FR.
  * @ext EXT-FR-FE-BG-05
  */
-export class BillingParty extends AdditionalParty {}
+export class BillingParty {
+  constructor({
+    identifiers,
+    name,
+    roleCode,
+    tradingName,
+    legalRegistrationIdentifier,
+    electronicAddress,
+    vatIdentifier,
+    address,
+    contact,
+  }: {
+    identifiers?: Identifier[]
+    name: string
+    roleCode?: string
+    tradingName?: string
+    legalRegistrationIdentifier?: Identifier
+    electronicAddress?: Identifier
+    vatIdentifier?: string
+    address?: PostalAddress
+    contact?: Contact
+  }) {
+    this.identifiers = identifiers ?? []
+    this.name = name
+    this.roleCode = roleCode
+    this.tradingName = tradingName
+    this.legalRegistrationIdentifier = legalRegistrationIdentifier
+    this.electronicAddress = electronicAddress
+    this.vatIdentifier = vatIdentifier
+    this.address = address
+    this.contact = contact
+  }
+
+  /**
+   * Identifiers, each a CII `GlobalID`; `toCii()` throws on one without its scheme (`1..1`).
+   * @ext EXT-FR-FE-115 EXT-FR-FE-116
+   */
+  identifiers: Identifier[]
+
+  /**
+   * Name. `fromCii()` yields `''` when the document has none; `toCii()` throws on `''`.
+   * @ext EXT-FR-FE-112
+   */
+  name: string
+
+  /**
+   * Role code (CII `RoleCode`).
+   * @ext EXT-FR-FE-113
+   */
+  roleCode?: string
+
+  /**
+   * Trading name.
+   * @ext EXT-FR-FE-114
+   */
+  tradingName?: string
+
+  /**
+   * Legal registration identifier and its scheme (ISO 6523).
+   * @ext EXT-FR-FE-117 EXT-FR-FE-118
+   */
+  legalRegistrationIdentifier?: Identifier
+
+  /**
+   * Electronic address and its scheme (`toCii()` throws without the scheme: `1..1`).
+   * @ext EXT-FR-FE-121 EXT-FR-FE-122
+   */
+  electronicAddress?: Identifier
+
+  /**
+   * VAT identifier (CII `SpecifiedTaxRegistration` with scheme `VA`).
+   * @ext EXT-FR-FE-119 EXT-FR-FE-120
+   */
+  vatIdentifier?: string
+
+  /**
+   * Postal address.
+   * @ext EXT-FR-FE-123
+   */
+  address?: PostalAddress
+
+  /**
+   * Contact.
+   * @ext EXT-FR-FE-131
+   */
+  contact?: Contact
+}
 
 /**
  * The seller tax representative.
@@ -351,7 +754,7 @@ export class SellerTaxRepresentative {
   /**
    * Seller tax representative VAT identifier (CII `SpecifiedTaxRegistration` with scheme `VA`).
    * `fromCii()` yields `''` when the document has none; `toCii()` throws on `''`.
-   * @bt BT-63 BT-63-0
+   * @bt BT-63 BT-63-0 BT-63-1
    */
   vatIdentifier: string
 }

@@ -1,4 +1,4 @@
-import type { AdditionalParty, Invoice } from '@stafyniaksacha/facturx/en16931'
+import type { Invoice } from '@stafyniaksacha/facturx/en16931'
 import type { CrossIndustryInvoiceType } from '@stafyniaksacha/facturx/models'
 import { readdirSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
@@ -54,8 +54,19 @@ function partiesOf(cii: CrossIndustryInvoiceType): unknown {
   }
 }
 
+type Party = NonNullable<CrossIndustryInvoiceType['supplyChainTradeTransaction']['applicableHeaderTradeAgreement']['sellerTradeParty']>
+interface Aggregates {
+  agreement: { salesAgentTradeParty?: Party, buyerAgentTradeParty?: Party }
+  settlement: { invoiceeTradeParty?: Party, payerTradeParty?: Party, invoicerTradeParty?: Party, payeeTradeParty?: Party }
+}
+
 // Every `dropped` path is under a party subtree or the header ones this task does not own.
 const OWNED = /\/ram:(?:SellerTradeParty|BuyerTradeParty|SalesAgentTradeParty|SellerTaxRepresentativeTradeParty|BuyerAgentTradeParty|ApplicableTradeDeliveryTerms|ShipToTradeParty|ActualDeliverySupplyChainEvent|InvoicerTradeParty|InvoiceeTradeParty|PayeeTradeParty|PayerTradeParty)\b/
+
+const PARTIES = {
+  seller: new EN16931.Seller({ name: 'S', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
+  buyer: new EN16931.Buyer({ name: 'B', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
+}
 
 function address(prefix: string) {
   return new EN16931.PostalAddress({
@@ -74,13 +85,15 @@ function contact(prefix: string, departmentName?: string) {
   return new EN16931.Contact({ point: `${prefix} Zoë <Ng>`, departmentName, telephoneNumber: '+33 1 02 03 04 05', emailAddress: `${prefix}@example.invalid` })
 }
 
-// The payee has no trading name in the matrix.
-function extraParty<T extends AdditionalParty>(Role: new (init: ConstructorParameters<typeof EN16931.AdditionalParty>[0]) => T, prefix: string): T {
+type ExtraInit = ConstructorParameters<typeof EN16931.BuyerAgent>[0]
+
+// The payee has no trading name in the model: its constructor takes none.
+function extraParty<T extends object>(Role: new (init: ExtraInit) => T, prefix: string): T {
   return new Role({
     identifiers: [new EN16931.Identifier({ value: `${prefix}-1`, schemeId: '0088' }), new EN16931.Identifier({ value: `${prefix}-2`, schemeId: '0060' })],
     name: `${prefix} & Fils <SA>`,
     roleCode: 'BY',
-    tradingName: Role === EN16931.Payee ? undefined : `${prefix} Trading`,
+    tradingName: Role === (EN16931.Payee as unknown) ? undefined : `${prefix} Trading`,
     legalRegistrationIdentifier: new EN16931.Identifier({ value: '123456789', schemeId: '0002' }),
     electronicAddress: new EN16931.Identifier({ value: `${prefix}@example.invalid`, schemeId: 'EM' }),
     vatIdentifier: 'FR12345678901',
@@ -187,7 +200,7 @@ describe('en 16931 model: parties and delivery round trip', () => {
       currencyCode: 'EUR',
       seller: new EN16931.Seller({ identifiers: [new EN16931.Identifier({ value: 'P' }), new EN16931.Identifier({ value: 'G', schemeId: '0088' })], name: 'S', vatIdentifier: 'FR1', taxRegistrationIdentifier: 'T1', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
       buyer: new EN16931.Buyer({ name: 'B', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
-      sellerAgent: new EN16931.SellerAgent({ name: 'SA', identifiers: [new EN16931.Identifier({ value: 'X' })] }),
+      sellerAgent: new EN16931.SellerAgent({ name: 'SA', identifiers: [new EN16931.Identifier({ value: 'X', schemeId: '0088' })] }),
       billingParty: new EN16931.BillingParty({ name: 'BP' }),
       invoicee: new EN16931.Invoicee({ name: 'IV' }),
       deliveryTerms: new EN16931.DeliveryTerms({ deliveryTypeCode: 'EXW' }),
@@ -198,7 +211,7 @@ describe('en 16931 model: parties and delivery round trip', () => {
     expect(seller.id!.map(i => i.value)).toEqual(['P'])
     expect(seller.globalID!.map(i => [i.value, i.schemeID])).toEqual([['G', '0088']])
     expect(seller.specifiedTaxRegistration!.map(r => [r.id.value, r.id.schemeID])).toEqual([['FR1', 'VA'], ['T1', 'FC']])
-    // The EXTENDED-CTC-FR parties keep every identifier as a `GlobalID`, with or without scheme.
+    // The EXTENDED-CTC-FR parties keep every identifier as a `GlobalID`.
     expect(t.applicableHeaderTradeAgreement.salesAgentTradeParty!.globalID!.map(i => i.value)).toEqual(['X'])
     expect(t.applicableHeaderTradeAgreement.salesAgentTradeParty!.id).toEqual([])
     expect(t.applicableHeaderTradeSettlement.invoicerTradeParty!.name!.value).toBe('BP')
@@ -273,7 +286,7 @@ describe('en 16931 model: the dropped contract of the parties', () => {
     cii.supplyChainTradeTransaction.applicableHeaderTradeSettlement.payerTradeParty!.definedTradeContact![0].departmentName = { value: 'Dept' }
     const { invoice: read, dropped } = fromCii(cii)
     expect(read.payee).toBeInstanceOf(EN16931.Payee)
-    expect(read.payee?.tradingName).toBeUndefined()
+    expect((read.payee as { tradingName?: string }).tradingName).toBeUndefined()
     expect(read.payer?.contact?.departmentName).toBeUndefined()
     const settlement = `${TRADE}/ram:ApplicableHeaderTradeSettlement`
     expect(dropped).toEqual([
@@ -370,16 +383,45 @@ describe('en 16931 model: levels and mandatory terms of the parties', () => {
     expect(message(new EN16931.Invoice({ ...base, ...extra } as never), 'extended-ctc-fr')).toMatch(new RegExp(`${id} `))
   })
 
-  it('throws on a term the matrix defines for other roles only, without quoting it', () => {
-    const payee = message(new EN16931.Invoice({ ...base, payee: new EN16931.Payee({ name: 'Payee', tradingName: 'SECRET-TRADING' }) }), 'extended-ctc-fr')
-    expect(payee).toMatch(/BG-10.*trading name/)
-    expect(payee).not.toMatch(/SECRET/)
-    for (const Role of [EN16931.Payee, EN16931.SellerAgent, EN16931.Invoicee]) {
-      const text = message(new EN16931.Invoice({ ...base, [Role === EN16931.Payee ? 'payee' : Role === EN16931.SellerAgent ? 'sellerAgent' : 'invoicee']: new Role({ name: 'N', contact: new EN16931.Contact({ departmentName: 'SECRET-DEPT' }) }) }), 'extended-ctc-fr')
+  it('throws on a contact department name outside the seller and buyer, without quoting it', () => {
+    const roles = { payee: EN16931.Payee, sellerAgent: EN16931.SellerAgent, buyerAgent: EN16931.BuyerAgent, invoicee: EN16931.Invoicee, payer: EN16931.Payer, billingParty: EN16931.BillingParty }
+    for (const [property, Role] of Object.entries(roles)) {
+      const text = message(new EN16931.Invoice({ ...base, [property]: new Role({ name: 'N', contact: new EN16931.Contact({ departmentName: 'SECRET-DEPT' }) }) }), 'extended-ctc-fr')
       expect(text).toMatch(/BT-41-0.*BT-56-0/)
       expect(text).not.toMatch(/SECRET/)
     }
     expect(message(new EN16931.Invoice({ ...base, seller: new EN16931.Seller({ ...base.seller, contact: new EN16931.Contact({ departmentName: 'D' }) }), buyer: new EN16931.Buyer({ ...base.buyer, contact: new EN16931.Contact({ departmentName: 'D' }) }) }), 'en16931')).toBe('')
+  })
+
+  const noScheme = new EN16931.Identifier({ value: 'SECRET-VALUE' })
+  it.each([
+    ['BT-34-1', { seller: new EN16931.Seller({ ...base.seller, electronicAddress: noScheme }) }],
+    ['BT-49-1', { buyer: new EN16931.Buyer({ ...base.buyer, electronicAddress: noScheme }) }],
+    ['EXT-FR-FE-30', { payee: new EN16931.Payee({ name: 'N', electronicAddress: noScheme }) }],
+    ['EXT-FR-FE-07', { buyerAgent: new EN16931.BuyerAgent({ name: 'N', identifiers: [noScheme] }) }],
+    ['EXT-FR-FE-13', { buyerAgent: new EN16931.BuyerAgent({ name: 'N', electronicAddress: noScheme }) }],
+    ['EXT-FR-FE-47', { payer: new EN16931.Payer({ name: 'N', identifiers: [noScheme] }) }],
+    ['EXT-FR-FE-53', { payer: new EN16931.Payer({ name: 'N', electronicAddress: noScheme }) }],
+    ['EXT-FR-FE-70', { sellerAgent: new EN16931.SellerAgent({ name: 'N', identifiers: [noScheme] }) }],
+    ['EXT-FR-FE-76', { sellerAgent: new EN16931.SellerAgent({ name: 'N', electronicAddress: noScheme }) }],
+    ['EXT-FR-FE-92-1', { invoicee: new EN16931.Invoicee({ name: 'N', identifiers: [noScheme] }) }],
+    ['EXT-FR-FE-99', { invoicee: new EN16931.Invoicee({ name: 'N', electronicAddress: noScheme }) }],
+    ['EXT-FR-FE-116', { billingParty: new EN16931.BillingParty({ name: 'N', identifiers: [noScheme] }) }],
+    ['EXT-FR-FE-122', { billingParty: new EN16931.BillingParty({ name: 'N', electronicAddress: noScheme }) }],
+  ] as const)('throws on a missing scheme the matrix makes mandatory (%s)', (id, extra) => {
+    const text = message(new EN16931.Invoice({ ...base, ...extra }), 'extended-ctc-fr')
+    expect(text).toContain(id)
+    expect(text).not.toMatch(/SECRET/)
+  })
+
+  it('still reads a document whose electronic address has no scheme', () => {
+    const cii = toCii(new EN16931.Invoice({ ...base }), { level: 'en16931' })
+    cii.supplyChainTradeTransaction.applicableHeaderTradeAgreement.sellerTradeParty.uriUniversalCommunication = { uriID: { value: 'a@example.invalid' } }
+    const read = fromCii(cii)
+    expect(read.dropped).toEqual([])
+    expect(read.invoice.seller.electronicAddress?.value).toBe('a@example.invalid')
+    expect(read.invoice.seller.electronicAddress?.schemeId).toBeUndefined()
+    expect(() => toCii(read.invoice, { level: 'en16931' })).toThrow(/BT-34-1/)
   })
 
   it('rejects a delivery date that is not an ISO date, naming BT-72', () => {
@@ -387,8 +429,77 @@ describe('en 16931 model: levels and mandatory terms of the parties', () => {
     expect(() => toCii(new EN16931.Invoice({ ...base, delivery: new EN16931.Delivery({ actualDeliveryDate: '2025-02-30' }) }), { level: 'en16931' })).toThrow(/BT-72/)
   })
 
-  it('exports the party classes, constructible empty, from the model namespace', () => {
-    for (const name of ['Seller', 'Buyer', 'Payee', 'SellerTaxRepresentative', 'Delivery', 'SellerAgent', 'BuyerAgent', 'Invoicee', 'Payer', 'BillingParty', 'DeliveryTerms'])
-      expect(typeof (EN16931 as Record<string, unknown>)[name]).toBe('function')
+  it('exports the party classes, each constructible empty and holding only its own properties', () => {
+    const own = ['identifiers', 'name', 'roleCode', 'legalRegistrationIdentifier', 'electronicAddress', 'vatIdentifier', 'address', 'contact']
+    const shapes: Record<string, string[]> = {
+      Seller: ['identifiers', 'name', 'tradingName', 'legalRegistrationIdentifier', 'additionalLegalInformation', 'electronicAddress', 'vatIdentifier', 'taxRegistrationIdentifier', 'address', 'contact'],
+      Buyer: ['identifiers', 'name', 'tradingName', 'legalRegistrationIdentifier', 'electronicAddress', 'vatIdentifier', 'address', 'contact'],
+      Payee: own,
+      SellerAgent: [...own, 'tradingName'],
+      BuyerAgent: [...own, 'tradingName'],
+      Invoicee: [...own, 'tradingName'],
+      Payer: [...own, 'tradingName'],
+      BillingParty: [...own, 'tradingName'],
+      SellerTaxRepresentative: ['name', 'address', 'vatIdentifier'],
+      Delivery: ['name', 'locationIdentifier', 'address', 'actualDeliveryDate'],
+      DeliveryTerms: ['deliveryTypeCode', 'locationName'],
+    }
+    for (const [name, keys] of Object.entries(shapes)) {
+      const Class = (EN16931 as unknown as Record<string, new (init: object) => object>)[name]
+      expect(typeof Class).toBe('function')
+      expect(Object.keys(new Class({})).sort()).toEqual([...keys].sort())
+    }
+    expect((EN16931 as unknown as Record<string, unknown>).AdditionalParty).toBeUndefined()
+  })
+
+  it('places every EXT-FR-FE party term at the CII path of the EXTENDED matrix', () => {
+    const roles = [
+      ['sellerAgent', EN16931.SellerAgent, (a: Aggregates) => a.agreement.salesAgentTradeParty],
+      ['buyerAgent', EN16931.BuyerAgent, (a: Aggregates) => a.agreement.buyerAgentTradeParty],
+      ['invoicee', EN16931.Invoicee, (a: Aggregates) => a.settlement.invoiceeTradeParty],
+      ['payer', EN16931.Payer, (a: Aggregates) => a.settlement.payerTradeParty],
+      ['billingParty', EN16931.BillingParty, (a: Aggregates) => a.settlement.invoicerTradeParty],
+      ['payee', EN16931.Payee, (a: Aggregates) => a.settlement.payeeTradeParty],
+    ] as const
+    for (const [property, Role, pick] of roles) {
+      const party = new Role({
+        identifiers: [new EN16931.Identifier({ value: 'ID1', schemeId: 'S1' })],
+        name: 'NAME',
+        roleCode: 'ROLE',
+        legalRegistrationIdentifier: new EN16931.Identifier({ value: 'LEGAL', schemeId: 'LS' }),
+        electronicAddress: new EN16931.Identifier({ value: 'EA', schemeId: 'ES' }),
+        vatIdentifier: 'VAT',
+        address: new EN16931.PostalAddress({ addressLine1: 'L1', addressLine2: 'L2', addressLine3: 'L3', city: 'CITY', postCode: 'POST', countrySubdivision: 'SUB', countryCode: 'CC' }),
+        contact: new EN16931.Contact({ point: 'PERSON', telephoneNumber: 'TEL', emailAddress: 'MAIL' }),
+      })
+      const cii = toCii(new EN16931.Invoice({ number: 'N', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR', ...PARTIES, [property]: party }), { level: 'extended-ctc-fr' })
+      const t = cii.supplyChainTradeTransaction
+      // Which aggregate holds the role: ApplicableHeaderTradeAgreement/{SalesAgent,BuyerAgent}TradeParty,
+      // ApplicableHeaderTradeSettlement/{Invoicee,Payer,Invoicer,Payee}TradeParty (EXTENDED matrix XPath).
+      const x = pick({ agreement: t.applicableHeaderTradeAgreement, settlement: t.applicableHeaderTradeSettlement })!
+      expect(x.name?.value, `${property} Name`).toBe('NAME')
+      expect(x.roleCode?.value, `${property} RoleCode`).toBe('ROLE')
+      // The payee keeps a scheme-bearing identifier as GlobalID too (BT-60-0), like the others.
+      expect(x.globalID?.[0]?.value, `${property} GlobalID`).toBe('ID1')
+      expect(x.globalID?.[0]?.schemeID, `${property} GlobalID/@schemeID`).toBe('S1')
+      expect(x.specifiedLegalOrganization?.id?.value, `${property} SpecifiedLegalOrganization/ID`).toBe('LEGAL')
+      expect(x.specifiedLegalOrganization?.id?.schemeID, `${property} SpecifiedLegalOrganization/ID/@schemeID`).toBe('LS')
+      expect(x.uriUniversalCommunication?.uriID?.value, `${property} URIUniversalCommunication/URIID`).toBe('EA')
+      expect(x.uriUniversalCommunication?.uriID?.schemeID, `${property} URIID/@schemeID`).toBe('ES')
+      expect(x.specifiedTaxRegistration?.[0]?.id.value, `${property} SpecifiedTaxRegistration/ID`).toBe('VAT')
+      expect(x.specifiedTaxRegistration?.[0]?.id.schemeID, `${property} SpecifiedTaxRegistration/ID/@schemeID`).toBe('VA')
+      const a = x.postalTradeAddress!
+      expect([a.lineOne?.value, a.lineTwo?.value, a.lineThree?.value, a.cityName?.value, a.postcodeCode?.value, a.countrySubDivisionName?.[0]?.value, a.countryID.value], `${property} PostalTradeAddress`)
+        .toEqual(['L1', 'L2', 'L3', 'CITY', 'POST', 'SUB', 'CC'])
+      const c = x.definedTradeContact![0]
+      expect([c.personName?.value, c.telephoneUniversalCommunication?.completeNumber?.value, c.emailURIUniversalCommunication?.uriID?.value], `${property} DefinedTradeContact`)
+        .toEqual(['PERSON', 'TEL', 'MAIL'])
+    }
+    // Delivery terms: ApplicableHeaderTradeAgreement/ApplicableTradeDeliveryTerms (DeliveryTypeCode, RelevantTradeLocation/Name).
+    const terms = toCii(new EN16931.Invoice({ number: 'N', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR', ...PARTIES, deliveryTerms: new EN16931.DeliveryTerms({ deliveryTypeCode: 'DAP', locationName: 'LOC' }) }), { level: 'extended' })
+      .supplyChainTradeTransaction
+      .applicableHeaderTradeAgreement
+      .applicableTradeDeliveryTerms!
+    expect([terms.deliveryTypeCode.value, terms.relevantTradeLocation?.name?.value]).toEqual(['DAP', 'LOC'])
   })
 })

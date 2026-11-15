@@ -10,9 +10,6 @@
  */
 
 import type { Invoice } from '../../models/en16931/invoice'
-import type {
-  AdditionalParty,
-} from '../../models/en16931/parties'
 import type { CrossIndustryInvoiceType } from '../../models/facturx/crossIndustryInvoice'
 import type { TermGate } from './levels'
 import { Contact, Identifier, PostalAddress } from '../../models/en16931/common'
@@ -34,6 +31,20 @@ import * as ram from '../../models/facturx/reusableTypes'
 import * as udt from '../../models/facturx/unqualifiedTypes'
 import { isSet } from './levels'
 import { ciiDateTime, ciiId, ciiText, isoFromCii, unmapped } from './values'
+
+/** What the six roles that are neither seller nor buyer have in common (internal: each exported class declares its own properties). */
+type ExtraParty = Payee | BuyerAgent | Payer | SellerAgent | Invoicee | BillingParty
+interface ExtraPartyInit {
+  identifiers?: Identifier[]
+  name: string
+  roleCode?: string
+  tradingName?: string
+  legalRegistrationIdentifier?: Identifier
+  electronicAddress?: Identifier
+  vatIdentifier?: string
+  address?: PostalAddress
+  contact?: Contact
+}
 
 /** The party properties of `Invoice`, as its constructor takes them. */
 type PartyKeys = 'seller' | 'buyer' | 'payee' | 'sellerTaxRepresentative' | 'delivery' | 'sellerAgent' | 'buyerAgent' | 'invoicee' | 'payer' | 'billingParty' | 'deliveryTerms'
@@ -143,12 +154,14 @@ function commonFromCii(party: ram.TradePartyType | undefined, split: boolean, de
   }
 }
 
-// The payee has no trading name in the matrix (no `TradingBusinessName` under `PayeeTradeParty`): `dropped` carries it.
-function additionalPartyFromCii<T extends AdditionalParty>(Role: new (init: ConstructorParameters<typeof AdditionalParty>[0]) => T, party: ram.TradePartyType | undefined, split: boolean): T | undefined {
+// The payee has no trading name in the model (Factur-X EXTENDED BT-X-243 has no EN 16931 / EXT-FR-FE id):
+// `withTradingName` is false for it, and `dropped` carries the element. Contact department names are only
+// read for the seller and buyer (BT-41-0, BT-56-0): the BT-X ones of the other roles are dropped too.
+function extraPartyFromCii<T extends ExtraParty>(Role: new (init: ExtraPartyInit) => T, party: ram.TradePartyType | undefined, split: boolean, withTradingName: boolean): T | undefined {
   if (!party)
     return undefined
   const common = commonFromCii(party, split, false)
-  return new Role({ ...common, tradingName: split ? undefined : common.tradingName, roleCode: party.roleCode?.value, address: addressFromCii(party.postalTradeAddress) })
+  return new Role({ ...common, tradingName: withTradingName ? common.tradingName : undefined, roleCode: party.roleCode?.value, address: addressFromCii(party.postalTradeAddress) })
 }
 
 /** The party groups and delivery terms of a CII invoice. */
@@ -165,25 +178,17 @@ export function partiesFromCii(cii: CrossIndustryInvoiceType): PartiesInit {
   const deliveryAddress = addressFromCii(shipTo?.postalTradeAddress)
   const deliveryName = shipTo?.name?.value
   const deliveryLocation = identifiersFromCii(shipTo, true)[0]
+  const sellerCommon = commonFromCii(seller, true, true)
 
   return {
-    seller: (() => {
-      const { identifiers, name, tradingName, legalRegistrationIdentifier, electronicAddress, vatIdentifier, contact } = commonFromCii(seller, true, true)
-      return new Seller({
-        identifiers,
-        name,
-        tradingName,
-        legalRegistrationIdentifier,
-        additionalLegalInformation: seller?.description?.value,
-        electronicAddress,
-        vatIdentifier,
-        taxRegistrationIdentifier: registrationFromCii(seller, TAX),
-        address: requiredAddress(seller?.postalTradeAddress),
-        contact,
-      })
-    })(),
+    seller: new Seller({
+      ...sellerCommon,
+      additionalLegalInformation: seller?.description?.value,
+      taxRegistrationIdentifier: registrationFromCii(seller, TAX),
+      address: requiredAddress(seller?.postalTradeAddress),
+    }),
     buyer: new Buyer({ ...commonFromCii(buyer, true, true), address: requiredAddress(buyer?.postalTradeAddress) }),
-    payee: additionalPartyFromCii(Payee, settlement?.payeeTradeParty, true),
+    payee: extraPartyFromCii(Payee, settlement?.payeeTradeParty, true, false),
     sellerTaxRepresentative: taxRepresentative
       ? new SellerTaxRepresentative({
           name: taxRepresentative.name?.value ?? '',
@@ -194,11 +199,11 @@ export function partiesFromCii(cii: CrossIndustryInvoiceType): PartiesInit {
     delivery: deliveryName === undefined && deliveryLocation === undefined && deliveryAddress === undefined && actualDeliveryDate === undefined
       ? undefined
       : new Delivery({ name: deliveryName, locationIdentifier: deliveryLocation, address: deliveryAddress, actualDeliveryDate }),
-    sellerAgent: additionalPartyFromCii(SellerAgent, agreement?.salesAgentTradeParty, false),
-    buyerAgent: additionalPartyFromCii(BuyerAgent, agreement?.buyerAgentTradeParty, false),
-    invoicee: additionalPartyFromCii(Invoicee, settlement?.invoiceeTradeParty, false),
-    payer: additionalPartyFromCii(Payer, settlement?.payerTradeParty, false),
-    billingParty: additionalPartyFromCii(BillingParty, settlement?.invoicerTradeParty, false),
+    sellerAgent: extraPartyFromCii(SellerAgent, agreement?.salesAgentTradeParty, false, true),
+    buyerAgent: extraPartyFromCii(BuyerAgent, agreement?.buyerAgentTradeParty, false, true),
+    invoicee: extraPartyFromCii(Invoicee, settlement?.invoiceeTradeParty, false, true),
+    payer: extraPartyFromCii(Payer, settlement?.payerTradeParty, false, true),
+    billingParty: extraPartyFromCii(BillingParty, settlement?.invoicerTradeParty, false, true),
     deliveryTerms: terms
       ? new DeliveryTerms({
           deliveryTypeCode: terms.deliveryTypeCode?.value ?? '',
@@ -317,7 +322,7 @@ export function partiesToCii(invoice: Invoice): PartiesCii {
   const deliveryParty = delivery && (delivery.name !== undefined || delivery.locationIdentifier !== undefined || delivery.address !== undefined)
     ? partyToCii({ name: delivery.name, identifiers: delivery.locationIdentifier ? [delivery.locationIdentifier] : [], address: delivery.address }, true)
     : undefined
-  const additional = (party: AdditionalParty | undefined, split: boolean): ram.TradePartyType | undefined => orUndefined(party, p => partyToCii(p, split))
+  const additional = (party: ExtraParty | undefined, split: boolean): ram.TradePartyType | undefined => orUndefined(party, p => partyToCii(p, split))
 
   return {
     agreement: {
@@ -352,7 +357,11 @@ export function partiesToCii(invoice: Invoice): PartiesCii {
 
 type Check = [id: string, term: string, value: string | undefined]
 
-function partyChecks(party: AdditionalParty | undefined, name: [string, string], country: [string, string]): Check[] {
+function schemeChecks(id: string, term: string, identifiers: Identifier[]): Check[] {
+  return identifiers.map(i => [id, term, i.schemeId] as Check)
+}
+
+function partyChecks(party: ExtraParty | undefined, name: [string, string], country: [string, string]): Check[] {
   if (!party)
     return []
   return [
@@ -399,11 +408,30 @@ export function assertPartiesComplete(invoice: Invoice): void {
     if (value === undefined || value === '')
       throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
   }
-  // Terms the matrix has for some roles only: writing them elsewhere would put an element no profile defines.
-  if (invoice.payee?.tradingName !== undefined)
-    throw new Error('toCii: the payee (BG-10) has no trading name: the Factur-X matrix defines no element for it')
+  // The department name of a contact is a term of the seller and buyer only (BT-41-0, BT-56-0): the other
+  // roles have no EN 16931 / EXT-FR-FE term for it (Factur-X EXTENDED BT-X-245 ... are outside the model).
   for (const party of [invoice.payee, invoice.sellerAgent, invoice.buyerAgent, invoice.invoicee, invoice.payer, invoice.billingParty]) {
     if (party?.contact?.departmentName !== undefined)
       throw new Error('toCii: a contact department name is only a term of the seller (BT-41-0) and buyer (BT-56-0) contacts')
+  }
+  // Schemes the CII matrix makes 1..1 (the model leaves them optional so a document can be read as it is).
+  const schemes: Check[] = [
+    ...schemeChecks('BT-34-1', 'seller electronic address scheme', seller.electronicAddress ? [seller.electronicAddress] : []),
+    ...schemeChecks('BT-49-1', 'buyer electronic address scheme', buyer.electronicAddress ? [buyer.electronicAddress] : []),
+    ...schemeChecks('EXT-FR-FE-30', 'payee electronic address scheme', invoice.payee?.electronicAddress ? [invoice.payee.electronicAddress] : []),
+    ...schemeChecks('EXT-FR-FE-07', 'buyer agent identifier scheme', invoice.buyerAgent?.identifiers ?? []),
+    ...schemeChecks('EXT-FR-FE-13', 'buyer agent electronic address scheme', invoice.buyerAgent?.electronicAddress ? [invoice.buyerAgent.electronicAddress] : []),
+    ...schemeChecks('EXT-FR-FE-47', 'payer identifier scheme', invoice.payer?.identifiers ?? []),
+    ...schemeChecks('EXT-FR-FE-53', 'payer electronic address scheme', invoice.payer?.electronicAddress ? [invoice.payer.electronicAddress] : []),
+    ...schemeChecks('EXT-FR-FE-70', 'seller agent identifier scheme', invoice.sellerAgent?.identifiers ?? []),
+    ...schemeChecks('EXT-FR-FE-76', 'seller agent electronic address scheme', invoice.sellerAgent?.electronicAddress ? [invoice.sellerAgent.electronicAddress] : []),
+    ...schemeChecks('EXT-FR-FE-92-1', 'invoicee identifier scheme', invoice.invoicee?.identifiers ?? []),
+    ...schemeChecks('EXT-FR-FE-99', 'invoicee electronic address scheme', invoice.invoicee?.electronicAddress ? [invoice.invoicee.electronicAddress] : []),
+    ...schemeChecks('EXT-FR-FE-116', 'billing party identifier scheme', invoice.billingParty?.identifiers ?? []),
+    ...schemeChecks('EXT-FR-FE-122', 'billing party electronic address scheme', invoice.billingParty?.electronicAddress ? [invoice.billingParty.electronicAddress] : []),
+  ]
+  for (const [id, term, value] of schemes) {
+    if (value === undefined || value === '')
+      throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
   }
 }
