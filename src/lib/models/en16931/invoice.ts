@@ -9,6 +9,19 @@
  */
 
 import type { Identifier } from './common'
+import type {
+  BillingParty,
+  Buyer,
+  BuyerAgent,
+  Delivery,
+  DeliveryTerms,
+  Invoicee,
+  Payee,
+  Payer,
+  Seller,
+  SellerAgent,
+  SellerTaxRepresentative,
+} from './parties'
 
 /**
  * A textual note on the invoice, with the subject it is about.
@@ -181,6 +194,17 @@ export class Invoice {
     precedingInvoiceReferences,
     invoicingPeriod,
     additionalDocuments,
+    seller,
+    buyer,
+    payee,
+    sellerTaxRepresentative,
+    delivery,
+    sellerAgent,
+    buyerAgent,
+    invoicee,
+    payer,
+    billingParty,
+    deliveryTerms,
   }: {
     number: string
     issueDate: string
@@ -211,6 +235,17 @@ export class Invoice {
     precedingInvoiceReferences?: PrecedingInvoiceReference[]
     invoicingPeriod?: InvoicingPeriod
     additionalDocuments?: AdditionalSupportingDocument[]
+    seller: Seller
+    buyer: Buyer
+    payee?: Payee
+    sellerTaxRepresentative?: SellerTaxRepresentative
+    delivery?: Delivery
+    sellerAgent?: SellerAgent
+    buyerAgent?: BuyerAgent
+    invoicee?: Invoicee
+    payer?: Payer
+    billingParty?: BillingParty
+    deliveryTerms?: DeliveryTerms
   }) {
     this.number = number
     this.issueDate = issueDate
@@ -241,6 +276,17 @@ export class Invoice {
     this.precedingInvoiceReferences = precedingInvoiceReferences ?? []
     this.invoicingPeriod = invoicingPeriod
     this.additionalDocuments = additionalDocuments ?? []
+    this.seller = seller
+    this.buyer = buyer
+    this.payee = payee
+    this.sellerTaxRepresentative = sellerTaxRepresentative
+    this.delivery = delivery
+    this.sellerAgent = sellerAgent
+    this.buyerAgent = buyerAgent
+    this.invoicee = invoicee
+    this.payer = payer
+    this.billingParty = billingParty
+    this.deliveryTerms = deliveryTerms
   }
 
   /**
@@ -404,4 +450,61 @@ export class Invoice {
    * @bg BG-24
    */
   additionalDocuments: AdditionalSupportingDocument[]
+  /**
+   * Seller. `fromCii()` stands in an empty seller (empty name and country) when the document has
+   * none; `toCii()` throws on it.
+   * @bg BG-4
+   */
+  seller: Seller
+  /**
+   * Buyer. `fromCii()` stands in an empty buyer (empty name and country) when the document has
+   * none; `toCii()` throws on it.
+   * @bg BG-7
+   */
+  buyer: Buyer
+  /**
+   * Payee, when different from the seller.
+   * @bg BG-10
+   */
+  payee?: Payee
+  /**
+   * Seller tax representative.
+   * @bg BG-11
+   */
+  sellerTaxRepresentative?: SellerTaxRepresentative
+  /**
+   * Delivery information.
+   * @bg BG-13
+   */
+  delivery?: Delivery
+  /**
+   * Seller agent. EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-BG-03
+   */
+  sellerAgent?: SellerAgent
+  /**
+   * Buyer agent. EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-BG-01
+   */
+  buyerAgent?: BuyerAgent
+  /**
+   * Invoicee ("adressée à"). EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-BG-04
+   */
+  invoicee?: Invoicee
+  /**
+   * Payer of the invoice. EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-BG-02
+   */
+  payer?: Payer
+  /**
+   * Billing party ("tiers facturant"). EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-BG-05
+   */
+  billingParty?: BillingParty
+  /**
+   * Delivery terms (Incoterms). EXTENDED-CTC-FR.
+   * @ext EXT-FR-FE-BG-14
+   */
+  deliveryTerms?: DeliveryTerms
 }

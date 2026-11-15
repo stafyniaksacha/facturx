@@ -10,6 +10,7 @@
 import type { Invoice } from '../../models/en16931/invoice'
 import type { En16931Level } from '../../models/en16931/level'
 import type { TermGate } from './levels'
+import type { PartiesInit } from './parties'
 import { Identifier } from '../../models/en16931/common'
 import {
   AdditionalSupportingDocument,
@@ -31,6 +32,7 @@ import * as qdt from '../../models/facturx/qualifiedTypes'
 import * as ram from '../../models/facturx/reusableTypes'
 import * as udt from '../../models/facturx/unqualifiedTypes'
 import { GUIDELINE_IDS, isSet } from './levels'
+import { partiesToCii } from './parties'
 import {
   agreed,
   ciiCode,
@@ -86,7 +88,7 @@ export const HEADER_GATES: readonly TermGate[] = [
   { id: 'EXT-FR-FE-199', term: 'contract date', from: 'extended', present: i => isSet(i.contractDate) },
 ]
 
-type HeaderInit = ConstructorParameters<typeof Invoice>[0]
+type HeaderInit = Omit<ConstructorParameters<typeof Invoice>[0], keyof PartiesInit>
 
 /** The header terms of a CII invoice. */
 export function headerFromCii(cii: CrossIndustryInvoiceType): HeaderInit {
@@ -181,13 +183,14 @@ function referencedDocument(fields: Partial<ram.ReferencedDocumentType>): ram.Re
 }
 
 /**
- * The CII skeleton with the header terms in place. Aggregates the header does not own and CII
- * requires (parties, totals) are left unset for the other group mappings.
+ * The CII skeleton with the header terms and the party groups in place. Aggregates CII requires
+ * that no mapping fills yet (totals) are left unset for the other group mappings.
  */
 export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustryInvoiceType {
   // Validated here even though the VAT breakdown entries that carry them come from the settlement
   // mapping, so a bad value fails at the first toCii() call.
   valueAddedTaxPointToCii(invoice)
+  const parties = partiesToCii(invoice)
 
   const additionalReferencedDocument: ram.ReferencedDocumentType[] = [
     ...invoice.additionalDocuments.map(d => new ram.ReferencedDocumentType({
@@ -236,8 +239,7 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
     supplyChainTradeTransaction: new SupplyChainTradeTransactionType({
       applicableHeaderTradeAgreement: new HeaderTradeAgreementType({
         buyerReference: ciiText(invoice.buyerReference),
-        sellerTradeParty: unmapped(),
-        buyerTradeParty: unmapped(),
+        ...parties.agreement,
         sellerOrderReferencedDocument: referencedDocument({ issuerAssignedID: ciiId(invoice.salesOrderReference) }),
         buyerOrderReferencedDocument: referencedDocument({
           issuerAssignedID: ciiId(invoice.purchaseOrderReference),
@@ -255,6 +257,7 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
         ultimateCustomerOrderReferencedDocument: [],
       }),
       applicableHeaderTradeDelivery: new HeaderTradeDeliveryType({
+        ...parties.delivery,
         despatchAdviceReferencedDocument: referencedDocument({
           issuerAssignedID: ciiId(invoice.despatchAdviceReference),
           formattedIssueDateTime: ciiFormattedDateTime(invoice.despatchAdviceDate, 'EXT-FR-FE-198'),
@@ -262,6 +265,7 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
         receivingAdviceReferencedDocument: referencedDocument({ issuerAssignedID: ciiId(invoice.receivingAdviceReference) }),
       }),
       applicableHeaderTradeSettlement: new HeaderTradeSettlementType({
+        ...parties.settlement,
         taxCurrencyCode: invoice.vatAccountingCurrencyCode === undefined ? undefined : new qdt.CurrencyCodeType({ value: invoice.vatAccountingCurrencyCode }),
         invoiceCurrencyCode: new qdt.CurrencyCodeType({ value: invoice.currencyCode }),
         billingSpecifiedPeriod: invoice.invoicingPeriod

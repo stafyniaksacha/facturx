@@ -12,6 +12,11 @@ import { diffPaths } from '../src/lib/mapping/cii/dropped'
 const CORPUS_DIR = resolve(import.meta.dirname, '../spec/factur-x-1.09/distribution/5. FACTUR-X 1.09 - Examples/_Factur-X_1.08-Exemples_CS')
 const ANNEX_B_DIR = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
 const ROOT = '/rsm:CrossIndustryInvoice'
+// The two mandatory parties: the header tests do not look at them (tests/en16931-parties.test.ts does).
+const PARTIES = {
+  seller: new EN16931.Seller({ name: 'Seller SARL', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
+  buyer: new EN16931.Buyer({ name: 'Buyer SA', address: new EN16931.PostalAddress({ countryCode: 'FR' }) }),
+}
 
 function pdfs(folder: string): string[] {
   const dir = join(CORPUS_DIR, folder)
@@ -114,6 +119,7 @@ describe('en 16931 model: header terms', () => {
       issueDate: '2025-07-01',
       typeCode: '384',
       currencyCode: 'EUR',
+      ...PARTIES,
       vatAccountingCurrencyCode: 'USD',
       paymentDueDate: '2025-08-31',
       buyerReference: 'Réf. acheteur €',
@@ -157,7 +163,7 @@ describe('en 16931 model: header terms', () => {
 })
 
 describe('en 16931 model: VAT point date (BT-7, BT-8)', () => {
-  const header = { number: 'A', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR' }
+  const header = { number: 'A', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR', ...PARTIES }
   function withTaxes(...taxes: object[]): CrossIndustryInvoiceType {
     const cii = toCii(new EN16931.Invoice(header), { level: 'en16931' })
     cii.supplyChainTradeTransaction.applicableHeaderTradeSettlement.applicableTradeTax = taxes as TradeTaxType[]
@@ -207,7 +213,7 @@ describe('en 16931 model: levels', () => {
     }
   })
 
-  const base = { number: 'SECRET-NUMBER', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR' }
+  const base = { number: 'SECRET-NUMBER', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR', ...PARTIES }
   // Factur-X 1.09 matrices, BT-24 usage note; XP Z12-012 annex A for EXTENDED-CTC-FR.
   const guidelineIds = {
     'basic': 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic',
@@ -336,7 +342,7 @@ describe('en 16931 model: the dropped contract', () => {
   })
 
   it('names attributes, dates and changed values by their XML path', () => {
-    const a = toCii(new EN16931.Invoice({ number: 'A', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR', precedingInvoiceReferences: [new EN16931.PrecedingInvoiceReference({ reference: 'P', issueDate: '2025-01-02' })], invoicedObjectIdentifiers: [new EN16931.Identifier({ value: 'O', schemeId: 'S' })] }), { level: 'en16931' })
+    const a = toCii(new EN16931.Invoice({ number: 'A', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR', ...PARTIES, precedingInvoiceReferences: [new EN16931.PrecedingInvoiceReference({ reference: 'P', issueDate: '2025-01-02' })], invoicedObjectIdentifiers: [new EN16931.Identifier({ value: 'O', schemeId: 'S' })] }), { level: 'en16931' })
     const b = structuredClone(a)
     b.exchangedDocument.id.value = 'B'
     b.exchangedDocument.issueDateTime.format = '203'
@@ -352,7 +358,7 @@ describe('en 16931 model: the dropped contract', () => {
   })
 
   it('lists in dropped the CII content the model has no term for', () => {
-    const cii = toCii(new EN16931.Invoice({ number: 'A', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR' }), { level: 'en16931' })
+    const cii = toCii(new EN16931.Invoice({ number: 'A', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR', ...PARTIES }), { level: 'en16931' })
     // BT-X-2 (document name) is a Factur-X field with no EN 16931 or EXT-FR-FE id.
     cii.exchangedDocument.name = { value: 'Name' }
     const { invoice, dropped } = fromCii(cii)
@@ -361,7 +367,7 @@ describe('en 16931 model: the dropped contract', () => {
   })
 
   it('drops a date that is not in format 102 instead of reformatting it', () => {
-    const cii = toCii(new EN16931.Invoice({ number: 'A', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR', paymentDueDate: '2025-08-01' }), { level: 'en16931' })
+    const cii = toCii(new EN16931.Invoice({ number: 'A', issueDate: '2025-07-01', typeCode: '380', currencyCode: 'EUR', ...PARTIES, paymentDueDate: '2025-08-01' }), { level: 'en16931' })
     cii.supplyChainTradeTransaction.applicableHeaderTradeSettlement.specifiedTradePaymentTerms![0].dueDateDateTime = { dateTimeString: '202508', format: '610' }
     const { invoice, dropped } = fromCii(cii)
     expect(invoice.paymentDueDate).toBeUndefined()
