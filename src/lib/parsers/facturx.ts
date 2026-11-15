@@ -225,7 +225,8 @@ function parseExchangedDocument(root: XmlElement): ExchangedDocumentType {
 function parseNote(node: XmlElement): ram.NoteType {
   return new ram.NoteType({
     contentCode: parseCode(get(node, './ram:ContentCode')),
-    content: parseText(get(node, './ram:Content')) ?? new udt.TextType({ value: '' }),
+    // Optional in EXTENDED (CG-37): a missing Content stays absent, a present empty one stays empty.
+    content: parseText(get(node, './ram:Content')),
     subjectCode: parseCode(get(node, './ram:SubjectCode')),
   })
 }

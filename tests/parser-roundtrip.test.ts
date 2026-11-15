@@ -37,6 +37,9 @@ import {
   TransportModeCodeType,
 } from '@stafyniaksacha/facturx/models'
 import { describe, expect, it } from 'vitest'
+import { getBasicFacturXModel } from './fixtures/model-basic'
+import { getBasicWLFacturXModel } from './fixtures/model-basicwl'
+import { getEN16931FacturXModel } from './fixtures/model-en16931'
 import { getExtendedFacturXModel } from './fixtures/model-extended'
 import { xmlPaths } from './fixtures/xml-paths'
 
@@ -322,28 +325,59 @@ describe('present-but-empty optional elements stay present', () => {
   })
 })
 
-// CG-37 (open): NoteType.content is typed required although the EXTENDED XSD makes Content optional,
-// so the parser fills a missing one with an empty text and the converter writes it back. This pins
-// today's loss; when CG-37 is fixed, CG37_ROUND_TRIP_LOSS becomes false and the paths must be equal.
-const CG37_ROUND_TRIP_LOSS = true
+// CG-37 (fixed): the EXTENDED XSD makes NoteType/Content optional (`minOccurs="0"`), so a note without
+// Content stays without one. CG37_ROUND_TRIP_LOSS pinned the old loss (an empty Content written back).
+const CG37_ROUND_TRIP_LOSS = false
 const NOTE_CONTENT = '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:IncludedNote/ram:Content'
+const LINE_NOTE_CONTENT = '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument/ram:IncludedNote/ram:Content'
 
 describe('a note without Content (CG-37)', () => {
-  it('comes back with an empty Content (expected CG-37 loss)', async () => {
+  it('stays without Content on a round trip', async () => {
     const model = getExtendedFacturXModel()
-    // `content` is required in the type, but the converter skips it when unset: the XSD allows that.
-    model.exchangedDocument.includedNote = [new NoteType({ subjectCode: new CodeType({ value: 'AAI' }) } as unknown as ConstructorParameters<typeof NoteType>[0])]
+    model.exchangedDocument.includedNote = [new NoteType({ subjectCode: new CodeType({ value: 'AAI' }) })]
+    // BT-127 (line note) goes through the same NoteType.
+    model.supplyChainTradeTransaction.includedSupplyChainTradeLineItem![0].associatedDocumentLineDocument.includedNote = [new NoteType({ contentCode: new CodeType({ value: 'X1' }) })]
     const written = (await invoiceToXml(model)).toString()
     expect((await check({ xml: written, level: 'extended' })).errors).toEqual([])
     expect(xmlPaths(written)).not.toContain(NOTE_CONTENT)
+    expect(xmlPaths(written)).not.toContain(LINE_NOTE_CONTENT)
 
-    const rewritten = (await invoiceToXml(await xmlToInvoice(written))).toString()
+    const parsed = await xmlToInvoice(written)
+    expect(parsed.exchangedDocument.includedNote?.[0].content).toBeUndefined()
+    expect(parsed.supplyChainTradeTransaction.includedSupplyChainTradeLineItem![0].associatedDocumentLineDocument.includedNote?.[0].content).toBeUndefined()
+    const rewritten = (await invoiceToXml(parsed)).toString()
     if (CG37_ROUND_TRIP_LOSS) {
       expect(rewritten).toContain('<ram:IncludedNote><ram:Content></ram:Content><ram:SubjectCode>AAI</ram:SubjectCode></ram:IncludedNote>')
       expect(xmlPaths(rewritten).filter(p => !xmlPaths(written).includes(p))).toEqual([NOTE_CONTENT])
     }
     else {
       expect(xmlPaths(rewritten)).toEqual(xmlPaths(written))
+      expect(rewritten).toBe(written)
     }
+  })
+
+  it('keeps a present but empty Content', async () => {
+    const model = getExtendedFacturXModel()
+    model.exchangedDocument.includedNote = [new NoteType({ content: new TextType({ value: '' }), subjectCode: new CodeType({ value: 'AAI' }) })]
+    const written = (await invoiceToXml(model)).toString()
+    expect(written).toContain('<ram:IncludedNote><ram:Content></ram:Content><ram:SubjectCode>AAI</ram:SubjectCode></ram:IncludedNote>')
+    const parsed = await xmlToInvoice(written)
+    expect(parsed.exchangedDocument.includedNote?.[0].content?.value).toBe('')
+    expect((await invoiceToXml(parsed)).toString()).toBe(written)
+  })
+
+  // Only the EXTENDED XSD makes Content optional: BASIC WL, BASIC and EN 16931 still require it, and
+  // check() still reports a note without Content there (the type change loosens no check).
+  it.each([
+    ['basicwl', getBasicWLFacturXModel],
+    ['basic', getBasicFacturXModel],
+    ['en16931', getEN16931FacturXModel],
+  ] as const)('is still rejected by the %s XSD', async (level, getModel) => {
+    const model = getModel()
+    model.exchangedDocument.includedNote = [new NoteType({ subjectCode: new CodeType({ value: 'AAI' }) })]
+    const written = (await invoiceToXml(model)).toString()
+    const result = await check({ xml: written, level })
+    expect(result.valid).toBe(false)
+    expect(JSON.stringify(result.errors)).toMatch(/SubjectCode.*Expected is \( \{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100\}Content \)/s)
   })
 })

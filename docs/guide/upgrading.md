@@ -9,8 +9,8 @@ adopt at your own pace.
    your pipeline. If they should, pass `warningsAsErrors: true` (CLI: `-W`).
 2. If you match Schematron rule ids (`BR-CO-27`, `BR-S-01`, `BR-54`, …), update them for the
    BASIC WL, EN 16931 and EXTENDED profiles, which now run the Factur-X **1.09.2.fixFR04** rules.
-3. If you read `TradeTaxType.categoryCode`, a line's `lineTotalAmount` or a product characteristic's
-   `description` / `value` in TypeScript, handle `undefined`.
+3. If you read `TradeTaxType.categoryCode`, a line's `lineTotalAmount`, a product characteristic's
+   `description` / `value` or a note's `content` in TypeScript, handle `undefined`.
 4. If you target the French e-invoicing reform, turn on the new `BR-FR` rules with `frCtc: true`
    (CLI: `--fr-ctc`).
 :::
@@ -139,6 +139,24 @@ const name = characteristic.description?.value // string | undefined
 ```
 
 Don't substitute `0`: a missing amount on an EXTENDED subline means "not stated", not "free".
+
+### A note's `content` is optional (TypeScript)
+
+The EXTENDED XSD makes a note's `Content` optional (`NoteType/Content` `minOccurs="0"`), for both the
+invoice note (BT-22) and the line note (BT-127), so `NoteType.content` is now typed as optional.
+`xmlToInvoice()` leaves it `undefined` when the XML has no `Content`. It used to fill it with an empty
+text, so `invoiceToXml()` wrote back a `<ram:Content></ram:Content>` the source did not have. An
+element that is present but empty is still read as an empty text and written back.
+
+Constructors accept the same arguments as before. Code that reads `content` must handle the missing
+case:
+
+```ts
+const text = note.content?.value // string | undefined: absent on an EXTENDED note with only codes
+```
+
+BASIC WL, BASIC and EN 16931 still require `Content`: `check()` rejects a note without it at those
+levels.
 
 ### `generate()` rejects the `zugferd` flavor
 
@@ -381,8 +399,8 @@ left undefined.
 - [ ] Search your code for `schematronValid`, `schematronErrors` and `validateSchematron`, and decide
       on `warningsAsErrors`.
 - [ ] Update any rule-id mapping for BASIC WL, EN 16931 and EXTENDED (table above).
-- [ ] Run `tsc`: fix reads of `TradeTaxType.categoryCode`, of a line's `lineTotalAmount` and of a
-      product characteristic's `description` / `value`.
+- [ ] Run `tsc`: fix reads of `TradeTaxType.categoryCode`, of a line's `lineTotalAmount`, of a
+      product characteristic's `description` / `value` and of a note's `content`.
 - [ ] Re-run your invoice corpus with `check({ schematron: true })`: new `@schemeID`-style failures
       come from the `report` findings that are no longer dropped.
 - [ ] If `generate()` used to throw `Document ID already set` and you worked around it, drop the
