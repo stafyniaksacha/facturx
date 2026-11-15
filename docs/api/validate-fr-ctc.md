@@ -24,7 +24,7 @@ function validateFrCtc(options: {
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `xml` | `string \| Buffer` | — | **Required.** The invoice XML (CII D22B or UBL 2.1). |
-| `level` | `string` | declared | `basicwl`, `en16931`, `extended` or `extended-ctc-fr`. Defaults to the profile the document declares (BT-24); when given, it must match it. |
+| `level` | `string` | declared | `basicwl`, `en16931`, `extended` or `extended-ctc-fr`. Defaults to the profile the document declares (BT-24); when given, it must match it. A UBL document with no `cbc:CustomizationID` (or an unsupported one) runs at the `level` you give; one that declares a level never accepts a different one. |
 | `flavor` | `string` | from the root | `facturx` or `ubl`; if given, it must match the document root (CII `CrossIndustryInvoice` or UBL `Invoice` / `CreditNote`); any other value throws. |
 | `warningsAsErrors` | `boolean` | `false` | Also count rules flagged `warning`/`information` as errors. Every vendored BR-FR rule is `fatal`, so this has no effect today. |
 

@@ -91,8 +91,11 @@ describe('validateFrCtc', () => {
   it('checks the document itself instead of trusting the caller', async () => {
     // The BR-FR transform finds nothing to check on a non-CII document and would pass it.
     await expect(validateFrCtc({ xml: getOrderXBasicXML(), level: 'en16931' })).rejects.toThrow(/got root element "SCRDMCCBDACIOMessageStructure"/)
-    // A UBL root now takes the UBL path (BR-FR-Flux2-Schematron-UBL); it needs a BT-24 to name its level.
-    await expect(validateFrCtc({ xml: '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>', level: 'en16931' })).rejects.toThrow(/CustomizationID/)
+    // A UBL root takes the UBL path (BR-FR-Flux2-Schematron-UBL); it needs a BT-24 to name its level, or an
+    // explicit `level` (which then runs the rules instead of throwing).
+    const bareUbl = '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>'
+    await expect(validateFrCtc({ xml: bareUbl })).rejects.toThrow(/CustomizationID/)
+    await expect(validateFrCtc({ xml: bareUbl, level: 'en16931' })).resolves.toMatchObject({ valid: false })
     await expect(validateFrCtc({ xml: '<Invoice xmlns="urn:example"/>', level: 'en16931' })).rejects.toThrow(/got root element "Invoice"/)
     // A MINIMUM invoice can't be passed off as EN16931, nor run without a level.
     await expect(validateFrCtc({ xml: getMinimumXML(), level: 'en16931' })).rejects.toThrow(/does not match the profile declared by the document \("minimum"\)/)

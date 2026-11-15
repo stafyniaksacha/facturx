@@ -68,7 +68,7 @@ non-decimal amount), `check()` keeps the XSD errors and reports that layer as in
 :::
 
 ::: info UBL
-A UBL 2.1 `Invoice` or `CreditNote` is detected as flavor `ubl`. The level comes from `cbc:CustomizationID`: `urn:cen.eu:en16931:2017` (or a `#compliant#` CIUS id, validated as EN 16931 only) gives `en16931`, the exact EXTENDED-CTC-FR id gives `extended-ctc-fr`, anything else throws. CIUS rule sets such as Peppol BIS are **not** run. UBL is XML only: it cannot be embedded in a PDF by [`generate()`](/api/generate).
+A UBL 2.1 `Invoice` or `CreditNote` is detected as flavor `ubl`. The level comes from `cbc:CustomizationID`: `urn:cen.eu:en16931:2017` (or a `#compliant#` CIUS id, validated as EN 16931 only) gives `en16931`, the exact EXTENDED-CTC-FR id gives `extended-ctc-fr`, anything else throws unless you pass `level`: an explicit `level` is honoured for a document that declares none or an unsupported id (a CIUS followed by a `#conformant#` extension counts as unsupported), and throws when it contradicts a declared one. CIUS rule sets such as Peppol BIS are **not** run. UBL is XML only: it cannot be embedded in a PDF by [`generate()`](/api/generate).
 :::
 
 ## See also

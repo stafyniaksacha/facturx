@@ -83,29 +83,69 @@ export function declaresExtendedCtcFr(xml: XmlDocument): boolean {
   }
 }
 
-/**
- * Level of a UBL 2.1 Invoice/CreditNote from its `cbc:CustomizationID` (BT-24): `en16931` for the
- * core ID or a CIUS (`urn:cen.eu:en16931:2017#compliant#…`), `extended-ctc-fr` for exactly its
- * XP Z12-012 Annex A ID. The error never quotes anything but the ID, which is not personal data.
- */
-export function getUblLevel(xmlDoc: XmlDocument): 'en16931' | 'extended-ctc-fr' {
+/** `cbc:CustomizationID` (BT-24) of a UBL document, trimmed, or `undefined` when absent. */
+function ublCustomizationId(xmlDoc: XmlDocument): string | undefined {
   // Direct child of the root only: a nested cbc:CustomizationID is not BT-24.
-  let el: XmlElement | undefined
   for (let node = xmlDoc.root?.firstChild ?? null; node; node = node.next) {
     if (node instanceof XmlElement && node.name === 'CustomizationID' && node.namespaceUri === UBL_CBC_NS) {
-      el = node
-      break
+      // BT-24 is an xs:normalizedString: surrounding whitespace is not significant here.
+      return node.content.trim()
     }
   }
-  if (!el)
-    throw new Error('No cbc:CustomizationID found in the UBL document: cannot determine its level, pass the `level` option')
-  // BT-24 is an xs:normalizedString: surrounding whitespace is not significant here.
-  const id = el.content.trim()
+  return undefined
+}
+
+function ublLevelOfId(id: string): 'en16931' | 'extended-ctc-fr' | undefined {
   if (id === UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID)
     return 'extended-ctc-fr'
-  if (id === UBL_EN16931_CUSTOMIZATION_ID || id.startsWith(`${UBL_EN16931_CUSTOMIZATION_ID}#compliant#`))
+  if (id === UBL_EN16931_CUSTOMIZATION_ID)
     return 'en16931'
-  throw new Error(`Unknown UBL CustomizationID: "${boundForMessage(id)}". Expected "${UBL_EN16931_CUSTOMIZATION_ID}", a CIUS "${UBL_EN16931_CUSTOMIZATION_ID}#compliant#…" or "${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}"; pass the \`level\` option to override`)
+  // A CIUS (`…#compliant#X`) is validated as EN 16931. One followed by an extension
+  // (`…#compliant#X#conformant#Y`, e.g. the XRechnung extension) is a different specification,
+  // for which no rules are shipped: it is not mapped.
+  const cius = `${UBL_EN16931_CUSTOMIZATION_ID}#compliant#`
+  if (id.startsWith(cius) && !id.slice(cius.length).includes('#conformant#'))
+    return 'en16931'
+  return undefined
+}
+
+/**
+ * Level a UBL document declares in `cbc:CustomizationID`, or `undefined` when it has none or an id
+ * this package has no rules for. Never throws.
+ */
+export function getUblDeclaredLevel(xmlDoc: XmlDocument): 'en16931' | 'extended-ctc-fr' | undefined {
+  const id = ublCustomizationId(xmlDoc)
+  return id === undefined ? undefined : ublLevelOfId(id)
+}
+
+/**
+ * Level of a UBL 2.1 Invoice/CreditNote from its `cbc:CustomizationID` (BT-24): `en16931` for the
+ * core ID or a CIUS (`urn:cen.eu:en16931:2017#compliant#…`, with no `#conformant#` extension after
+ * it), `extended-ctc-fr` for exactly its XP Z12-012 Annex A ID. The error never quotes anything but
+ * the ID, which is not personal data.
+ */
+export function getUblLevel(xmlDoc: XmlDocument): 'en16931' | 'extended-ctc-fr' {
+  const id = ublCustomizationId(xmlDoc)
+  if (id === undefined)
+    throw new Error('No cbc:CustomizationID found in the UBL document: cannot determine its level, pass the `level` option')
+  const level = ublLevelOfId(id)
+  if (level)
+    return level
+  throw new Error(`Unknown UBL CustomizationID: "${boundForMessage(id)}". Expected "${UBL_EN16931_CUSTOMIZATION_ID}", a CIUS "${UBL_EN16931_CUSTOMIZATION_ID}#compliant#…" (without a "#conformant#" extension) or "${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}"; pass the \`level\` option to override`)
+}
+
+/**
+ * An explicit `level` overrides detection when the document declares none, or an id this package has
+ * no rules for (BR-01 then reports a missing BT-24). It never overrides a level the document does
+ * declare: throws when they differ.
+ */
+export function assertUblLevelMatches(xmlDoc: XmlDocument, level: string): void {
+  const declared = getUblDeclaredLevel(xmlDoc)
+  if (declared === undefined || declared === level)
+    return
+  throw new Error(level === 'extended-ctc-fr'
+    ? `level "extended-ctc-fr" does not match the document: its CustomizationID (BT-24) must be ${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}`
+    : `level "${level}" does not match the document: its CustomizationID (BT-24) declares ${declared === 'extended-ctc-fr' ? 'the EXTENDED-CTC-FR extension' : 'EN 16931'}`)
 }
 
 /** Whether the root is a UBL 2.1 Invoice or CreditNote (name and namespace). Never throws. */

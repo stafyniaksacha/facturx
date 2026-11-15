@@ -3,7 +3,7 @@ import type { SchematronConfig, SchematronError, SchematronResult } from './sche
 import { UBL_LEVELS } from './constants'
 import { resolveXml } from './resolve'
 import { runSchematron } from './schematron'
-import { getUblLevel, isUblDocument, levelFromGuidelineId } from './xml'
+import { getUblDeclaredLevel, getUblLevel, isUblDocument, levelFromGuidelineId } from './xml'
 
 /**
  * French CTC business rules (`BR-FR-Flux2`) for invoices in UN/CEFACT CII D22B (hence Factur-X) and UBL 2.1.
@@ -22,7 +22,11 @@ export const FR_CTC_SCHEMATRON: SchematronConfig = {
   idFromAssert: true,
 }
 
-/** UBL variant of the same rules (`BR-FR-Flux2-Schematron-UBL`, standard "fatal" variant); `@id` carries the `BR-FR-*` rule as in CII. */
+/**
+ * UBL variant of the same rules (`BR-FR-Flux2-Schematron-UBL`, standard "fatal" variant). `@id` carries the
+ * `BR-FR-*` rule as in CII, except one assert whose `@id` is `BR-FR-MV-BD_BT-3` while its text says
+ * `[BR-FR-BD-13/BT-3]` (CG-43): it does not match the rule pattern, so its `id` stays that raw assert id.
+ */
 export const FR_CTC_UBL_SCHEMATRON: SchematronConfig = {
   sef: './xsd/ubl/fr-ctc/BR-FR-Flux2-Schematron-UBL.sef.json.gz',
   idFromAssert: true,
@@ -81,7 +85,7 @@ export async function validateFrCtc(options: {
 }): Promise<SchematronResult> {
   if (options.flavor !== undefined && options.flavor !== 'facturx' && options.flavor !== 'ubl')
     assertFrCtcApplicable(options.flavor, options.level ?? 'en16931')
-  const { flavor, declared } = await declaredProfile(options.xml, options.flavor)
+  const { flavor, declared } = await declaredProfile(options.xml, options.flavor, options.level)
 
   if (flavor === 'ubl') {
     // BT-24 of a UBL invoice names its level: there is no `extended` alias to keep.
@@ -121,7 +125,7 @@ const RAM_NS = 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInf
  * The plain-CII `EXTENDED-CTC-FR` profile (`…urn.cpro.gouv.fr:1p0:extended-ctc-fr`) is
  * `extended-ctc-fr`, like its UBL counterpart. BR-FR itself doesn't read the profile.
  */
-async function declaredProfile(xml: string | Buffer, requested?: string): Promise<{ flavor: 'facturx' | 'ubl', declared: string }> {
+async function declaredProfile(xml: string | Buffer, requested?: string, explicitLevel?: string): Promise<{ flavor: 'facturx' | 'ubl', declared: string }> {
   const doc = await resolveXml(xml)
   try {
     const root = doc.root
@@ -132,8 +136,13 @@ async function declaredProfile(xml: string | Buffer, requested?: string): Promis
       throw new Error(`French CTC rules (BR-FR) apply to Factur-X / CII D22B and UBL 2.1 invoices only, got root element "${root.name}"`)
     if (requested !== undefined && requested !== flavor)
       throw new Error(`French CTC rules (BR-FR): flavor "${requested}" does not match the document root element "${root.name}"`)
-    if (flavor === 'ubl')
+    if (flavor === 'ubl') {
+      // An explicit level stands in for a missing or unsupported CustomizationID (BR-01 reports a missing
+      // one); a declared level is never overridden: the caller's `level` is compared with it afterwards.
+      if (explicitLevel !== undefined && getUblDeclaredLevel(doc) === undefined)
+        return { flavor, declared: explicitLevel }
       return { flavor, declared: getUblLevel(doc) }
+    }
     const id = doc.get('/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:GuidelineSpecifiedDocumentContextParameter/ram:ID', { rsm: CII_NS, ram: RAM_NS })?.content.trim()
     // Parse the ID read above with explicit namespaces: getLevel() resolves `rsm:`/`ram:` through
     // the document's own prefixes and fails on an invoice that binds the CII namespace to another one.

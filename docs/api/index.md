@@ -35,8 +35,8 @@ import { AmountType, CrossIndustryInvoiceType, IDType /* … */ } from '@stafyni
 | [`generate(options)`](/api/generate) | `() => Promise<Uint8Array>` | Embed XML into a PDF/A-3 base → hybrid PDF bytes. |
 | [`extract(options)`](/api/extract) | `() => Promise<ExtractResult>` | Pull the embedded XML out of a PDF. |
 | [`check(options)`](/api/check) | `() => Promise<CheckResult>` | XSD (+ optional Schematron) validation. |
-| [`validateSchematron(options)`](/api/validate-schematron) | `() => Promise<{ valid, errors }>` | EN 16931 business-rule validation (Factur-X only). |
-| [`validateFrCtc(options)`](/api/validate-fr-ctc) | `() => Promise<{ valid, errors }>` | French e-invoicing rules `BR-FR-Flux2` (Factur-X BASIC WL, EN16931, EXTENDED). |
+| [`validateSchematron(options)`](/api/validate-schematron) | `() => Promise<{ valid, errors }>` | EN 16931 business-rule validation (Factur-X and UBL). |
+| [`validateFrCtc(options)`](/api/validate-fr-ctc) | `() => Promise<{ valid, errors }>` | French e-invoicing rules `BR-FR-Flux2` (Factur-X BASIC WL, EN16931, EXTENDED; UBL EN16931, EXTENDED-CTC-FR). |
 | [`validateCdar(options)`](/api/validate-cdar) | `() => Promise<{ valid, errors, schematronErrors, schematronWarnings }>` | French lifecycle status messages (CDAR D22B): XSD + `BR-FR-CDV`. |
 | [`xmlToInvoice(xml)`](/api/parsing) | `() => Promise<CrossIndustryInvoiceType>` | Parse XML into a typed model. |
 | [`invoiceToXml(invoice)`](/api/parsing) | `() => Promise<XmlDocument>` | Serialize a model back to XML. |

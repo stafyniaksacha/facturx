@@ -51,8 +51,20 @@ result.level // 'en16931' or 'extended-ctc-fr', read from cbc:CustomizationID
 ```
 
 The level comes from `cbc:CustomizationID` (BT-24): `urn:cen.eu:en16931:2017`, or an id starting with
-`urn:cen.eu:en16931:2017#compliant#`, gives `en16931`; the exact EXTENDED-CTC-FR id gives
-`extended-ctc-fr`; anything else throws, naming the `level` option.
+`urn:cen.eu:en16931:2017#compliant#` (a CIUS) with no `#conformant#` extension after it, gives `en16931`; the
+exact EXTENDED-CTC-FR id gives `extended-ctc-fr`; anything else (including a CIUS followed by an extension,
+such as the XRechnung extension) throws, naming the `level` option.
+
+An explicit `level` (`en16931` or `extended-ctc-fr`) is honoured when the document declares **no**
+`cbc:CustomizationID` or one this package has no rules for: the three steps run and the rule `BR-01` reports
+the missing identifier. It never overrides a level the document declares: a mismatch throws.
+
+The rule `id` of a UBL finding is the assert's `@id` in the Schematron (for example `BR-FREXT-26`, whose
+message starts with `[BR-26]`); `message` is unchanged. The Factur-X (CII) transforms keep taking the id from
+the message prefix.
+
+`validateSchematron()` without `flavor` reads it from the root element, and refuses a `flavor` that
+contradicts the root: the Factur-X rules are never run on a UBL document, nor the UBL ones on CII.
 
 What this does **not** do:
 

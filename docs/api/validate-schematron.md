@@ -24,8 +24,8 @@ function validateSchematron(options: {
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `xml` | `string \| Buffer` | — | **Required.** The invoice XML. |
-| `flavor` | `string` | `facturx` | `facturx` or `ubl` — any other value throws. For `ubl` the document root must be a UBL `Invoice` / `CreditNote`. |
-| `level` | `string` | — | **Required.** Profile to validate against: `minimum`, `basicwl`, `basic`, `en16931`, `extended`, or `extended-ctc-fr` (the FNFE-MPE EXTENDED-CTC-FR Schematron for plain CII; the document's guideline ID must then be the EXTENDED-CTC-FR one, or the call throws). With `flavor: 'ubl'` only `en16931` and `extended-ctc-fr` exist, and the level must agree with the document's `cbc:CustomizationID`. |
+| `flavor` | `string` | from the root | `facturx` or `ubl` — any other value throws. Read from the document root when omitted (a UBL `Invoice` / `CreditNote` gets the UBL rules, anything else the Factur-X ones). A `flavor` that contradicts the root throws: one syntax's rules are never run on the other. |
+| `level` | `string` | — | **Required.** Profile to validate against: `minimum`, `basicwl`, `basic`, `en16931`, `extended`, or `extended-ctc-fr` (the FNFE-MPE EXTENDED-CTC-FR Schematron for plain CII; the document's guideline ID must then be the EXTENDED-CTC-FR one, or the call throws). With `flavor: 'ubl'` only `en16931` and `extended-ctc-fr` exist, and the level must agree with the document's `cbc:CustomizationID` when it declares a supported one; a document with no `cbc:CustomizationID` (or an unsupported one) runs at the `level` you pass, and the rule `BR-01` then reports a missing one. |
 | `warningsAsErrors` | `boolean` | `false` | Also count rules flagged `warning`/`information` as errors (like a compiler's `-Werror`). |
 
 ::: warning Factur-X and UBL only
@@ -54,7 +54,7 @@ and don't affect `valid` unless you pass `warningsAsErrors: true`.
 interface SchematronError {
   /** Human-readable assertion message, e.g. "[BR-16]-An Invoice shall have ...". */
   message: string
-  /** Rule id from the "[BR-16]" message prefix; for BR-FR, the rule from the assert id (e.g. "BR-FR-05"). */
+  /** Rule id from the "[BR-16]" message prefix; for BR-FR and the UBL profile Schematrons, the rule from the assert `@id` (e.g. "BR-FR-05", "BR-FREXT-26"). */
   id?: string
   /**
    * Raw SVRL assert id, when the rule sets one: an internal number for Factur-X structural

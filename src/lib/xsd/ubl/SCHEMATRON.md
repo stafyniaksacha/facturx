@@ -39,8 +39,15 @@ below.
   shipped.
 - **Licence.** Same release, same terms as BR-FR-Flux2 CII: release notes p.8 say Apache 2.0; the `.sch`
   header says "EUPL version 1.4.0" (`CONFORMANCE.md` CG-15). Shipped on the same basis as BR-FR.
-- **Only fatal findings are errors** when the validator is wired (a later change): the vendored
-  Schematrons mark asserts `fatal` or `warning`; `warning` is reported as a warning, never as an error.
+- **Only fatal findings are errors**: the vendored Schematrons mark asserts `fatal` or `warning`;
+  `warning` is reported as a warning, never as an error (`check()`, `validateSchematron()`,
+  `validateFrCtc()`).
+- **Rule ids are the assert `@id`** (`idSource: 'assert'` in `UBL_SCHEMATRON`): in
+  `EXTENDED-CTC-FR-UBL.xslt` 8 asserts have a message `[ID]` prefix that is not their `@id`
+  (`CONFORMANCE.md` CG-43).
+- **XSD provenance.** The release notes (p.9, p.11) and `UBL2.1_README.md` say the UBL 2.1 XSD is not
+  provided (get it from OASIS), yet `1xsd_UBL2.1/` is in the distribution. `pnpm spec:verify` proves the
+  vendored copy identical to it, not to OASIS os-UBL-2.1, which is unverified (`CONFORMANCE.md` CG-45).
 
 ## Regenerating
 

@@ -231,3 +231,55 @@ describe('facturx check on a UBL file', () => {
     }
   })
 })
+
+describe('uBL routing, rule ids and level override', () => {
+  const en = examples.find(e => e.level === 'en16931')!
+  const ext = examples.find(e => e.level === 'extended-ctc-fr')!
+  const CII = resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.xml')
+
+  it('validateSchematron without flavor reads it from the root (a UBL root gets the UBL rules)', async () => {
+    const bad = (await readFile(en.file, 'utf8')).replace(/(<cbc:TaxInclusiveAmount[^>]*>)[^<]*/, '$1999999.00')
+    const r = await validateSchematron({ xml: bad, level: 'en16931' })
+    expect(r.valid).toBe(false)
+    expect(r.errors.map(e => e.id)).toContain('BR-CO-15')
+    await expect(validateSchematron({ xml: await readFile(en.file), level: 'en16931' })).resolves.toMatchObject({ valid: true, errors: [] })
+  })
+
+  it('validateSchematron never runs one syntax\'s rules on the other', async () => {
+    await expect(validateSchematron({ xml: await readFile(en.file), flavor: 'facturx', level: 'en16931' })).rejects.toThrow(/does not match the "facturx" flavor/)
+    await expect(validateSchematron({ xml: await readFile(CII), flavor: 'ubl', level: 'en16931' })).rejects.toThrow(/does not match the "ubl" flavor/)
+    await expect(validateSchematron({ xml: await readFile(CII), level: 'en16931' })).resolves.toMatchObject({ valid: true })
+  })
+
+  it('reports the assert @id as the rule id on the UBL transforms (CG-43)', async () => {
+    // BR-FREXT-26 (fatal) carries the message prefix [BR-26].
+    const xml = (await readFile(ext.file, 'utf8')).replace(/<cac:Price>[\s\S]*?<\/cac:Price>/, '')
+    const r = await check({ xml, schematron: true })
+    const hit = r.schematronErrors!.find(e => e.id === 'BR-FREXT-26')
+    expect(hit, JSON.stringify(r.schematronErrors!.map(e => e.id))).toBeDefined()
+    expect(hit).toMatchObject({ assertId: 'BR-FREXT-26', flag: 'fatal', severity: 'error' })
+    expect(hit!.message).toContain('[BR-26]')
+  })
+
+  it('does not map a CIUS followed by an extension to en16931', async () => {
+    const xml = await withId('urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0')
+    await expect(check({ xml })).rejects.toThrow(/Unknown UBL CustomizationID/)
+    await expect(check({ xml, level: 'en16931' })).resolves.toMatchObject({ flavor: 'ubl', level: 'en16931' })
+  })
+
+  it('an explicit level stands in for a missing CustomizationID: BR-01 is reported', async () => {
+    const xml = await withId(null)
+    const r = await check({ xml, level: 'en16931', schematron: true, frCtc: true })
+    expect(r).toMatchObject({ flavor: 'ubl', level: 'en16931', valid: false, schematronValid: false })
+    expect(r.schematronErrors!.map(e => e.id)).toContain('BR-01')
+    await expect(validateSchematron({ xml, level: 'en16931' })).resolves.toMatchObject({ valid: false })
+  })
+
+  it('an explicit level stands in for an unsupported CustomizationID, and a declared level is never overridden', async () => {
+    const xml = await withId('urn:cen.eu:en16931:2017#conformant#urn:example:1p0:other')
+    await expect(check({ xml, level: 'en16931', schematron: true, frCtc: true })).resolves.toMatchObject({ flavor: 'ubl', level: 'en16931' })
+    await expect(check({ xml })).rejects.toThrow(/level/)
+    await expect(check({ xml: await readFile(ext.file), level: 'en16931', schematron: true, frCtc: true })).rejects.toThrow(/does not match the document/)
+    await expect(check({ xml: await readFile(en.file), level: 'extended-ctc-fr', frCtc: true })).rejects.toThrow(/does not match the document/)
+  })
+})

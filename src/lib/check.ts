@@ -2,11 +2,11 @@ import type { Buffer } from 'node:buffer'
 import type { UBL_ROOT } from './constants'
 import type { SchematronError, SchematronResult } from './schematron'
 import { XmlDocument, XmlValidateError, XsdValidator } from 'libxml2-wasm'
-import { EXTENDED_CTC_FR_GUIDELINE_ID, UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID } from './constants'
+import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
 import { assertFrCtcApplicable, validateFrCtc } from './fr-ctc'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
-import { declaresExtendedCtcFr, getFlavor, getLevel, getUblLevel } from './xml'
+import { assertUblLevelMatches, declaresExtendedCtcFr, getFlavor, getLevel } from './xml'
 import { getXsd } from './xsd'
 
 // XPath dynamic errors caused by the document's values (XPath and XQuery Functions and Operators 3.1
@@ -26,8 +26,8 @@ export async function check(options: {
    * Also run the French CTC business rules (`BR-FR-Flux2`, XP Z12-012 v1.4.0): step 3 of the
    * validation sequence of the FNFE-MPE release notes (p.9), after XSD (step 1) and the profile
    * Schematron (step 2). Independent of `schematron`: pass both for the full sequence.
-   * Factur-X BASIC WL, EN16931 and EXTENDED, and plain-CII EXTENDED-CTC-FR, only; throws for other
-   * flavors and levels.
+   * Factur-X BASIC WL, EN16931 and EXTENDED, plain-CII EXTENDED-CTC-FR, and UBL 2.1 (EN16931,
+   * EXTENDED-CTC-FR), only; throws for other flavors and levels.
    * Defaults to `false`.
    */
   frCtc?: boolean
@@ -63,11 +63,10 @@ export async function check(options: {
       // The root picks the XSD, so an explicit flavor cannot be applied to a non-UBL document.
       if (getFlavor(xml) !== 'ubl')
         throw new Error(`The XML root element "${xml.root?.name}" does not match the "ubl" flavor`)
-      // Same for an explicit UBL level: both share one XSD, which ignores the CustomizationID.
-      if (options.level === 'extended-ctc-fr' && getUblLevel(xml) !== 'extended-ctc-fr')
-        throw new Error(`level "extended-ctc-fr" does not match the document: its CustomizationID (BT-24) must be ${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}`)
-      if (options.level === 'en16931' && getUblLevel(xml) !== 'en16931')
-        throw new Error(`level "en16931" does not match the document: its CustomizationID (BT-24) declares the EXTENDED-CTC-FR extension`)
+      // Same for an explicit UBL level: both share one XSD, which ignores the CustomizationID. An
+      // explicit level overrides a missing or unsupported id, never a declared level.
+      if (options.level === 'extended-ctc-fr' || options.level === 'en16931')
+        assertUblLevelMatches(xml, options.level)
     }
     // Fail before any validation work when the French rules can't apply.
     if (options.frCtc)

@@ -346,7 +346,18 @@ result.level // 'en16931' | 'extended-ctc-fr', from cbc:CustomizationID
 ```
 
 CIUS rule sets such as Peppol BIS are **not** run, step 4 (Chorus Pro `BR-France-CTC-CPRO`) has no
-published Schematron, and UBL is validation only (see above). See [Validation](/guide/validation).
+published Schematron, and UBL is validation only (see above). Details:
+
+- The level comes from `cbc:CustomizationID`: `urn:cen.eu:en16931:2017` and a `#compliant#` CIUS id (with no
+  `#conformant#` extension after it) give `en16931`; the exact EXTENDED-CTC-FR id gives `extended-ctc-fr`;
+  anything else throws. An explicit `level` is honoured for a document that declares none or an unsupported
+  id (`BR-01` then reports the missing one), never against a declared level.
+- `validateSchematron()` without `flavor` now reads it from the root. In 0.6.1 it assumed `facturx`; a UBL
+  document without `flavor` used to be run through the CII rules and pass, and now gets the UBL ones. A
+  `flavor` that contradicts the root throws.
+- For the UBL profile Schematrons, `SchematronError.id` is the assert `@id` (for example `BR-FREXT-26`), not
+  the `[ID]` prefix of the message: they differ on 8 EXTENDED-CTC-FR-UBL asserts. Rule ids of CII findings
+  are unchanged. See [Validation](/guide/validation).
 
 ### `afRelationship` option for `generate()`
 
