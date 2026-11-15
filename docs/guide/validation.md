@@ -13,9 +13,12 @@ A document can be perfectly valid XSD-wise and still break business rules (e.g. 
 add up, or a missing VAT breakdown). For full EN 16931 compliance you need **both** layers.
 :::
 
+For invoices under the French e-invoicing reform, a third layer checks the French `BR-FR` rules:
+see [French e-invoicing rules](/guide/french-ctc).
+
 ## XSD validation
 
-This is the default. [`check()`](/api/check) validates the XML structure against the official
+This is the default. [`check()`](/api/check) validates the XML structure against the
 **Factur-X / ZUGFeRD** XSD for the detected (or supplied) flavor and level: Factur-X 1.09 / ZUGFeRD 2.5
 for MINIMUM and BASIC, and Factur-X **1.09.2** (the `fixFR04` assets supplied by FNFE-MPE, not an official Factur-X distribution, for the
 French e-invoicing reform) for BASIC WL, EN 16931 and EXTENDED. The Schematron below follows the same
@@ -38,7 +41,7 @@ if (!valid) {
 ## Schematron (business-rule) validation
 
 Since the 1.09 XSDs no longer enumerate code lists, the **Schematron** rules are what enforce valid
-codes *and* the EN 16931 `BR-*` business rules. The library ships the official ISO-Schematron
+codes *and* the EN 16931 `BR-*` business rules. The library ships the ISO-Schematron of each profile (from the same sources as the XSD)
 compiled to a relocatable Saxon transform (one per profile) and runs it with SaxonJS.
 
 Turn it on by adding `schematron: true` to `check()`:
@@ -85,6 +88,7 @@ interface SchematronError {
   /**
    * Rule id from a "[BR-16]" tag in the message (validateSchematron). Undefined when the message
    * has none, e.g. for structural checks; the raw SVRL id, if the rule sets one, is in `assertId`.
+   * BR-FR findings (validateFrCtc) take it from the assert id instead, e.g. "BR-FR-05".
    */
   id?: string
   /** Raw SVRL assert id, when the rule sets one (e.g. "FX-SCH-A-000372"). */

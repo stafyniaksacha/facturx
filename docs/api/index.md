@@ -14,6 +14,7 @@ import {
   generate,
   invoiceToXml,
   Models,
+  validateFrCtc,
   validateSchematron,
   xmlToInvoice,
 } from '@stafyniaksacha/facturx'
@@ -34,6 +35,7 @@ import { AmountType, CrossIndustryInvoiceType, IDType /* … */ } from '@stafyni
 | [`extract(options)`](/api/extract) | `() => Promise<ExtractResult>` | Pull the embedded XML out of a PDF. |
 | [`check(options)`](/api/check) | `() => Promise<CheckResult>` | XSD (+ optional Schematron) validation. |
 | [`validateSchematron(options)`](/api/validate-schematron) | `() => Promise<{ valid, errors }>` | EN 16931 business-rule validation (Factur-X only). |
+| [`validateFrCtc(options)`](/api/validate-fr-ctc) | `() => Promise<{ valid, errors }>` | French e-invoicing rules `BR-FR-Flux2` (Factur-X BASIC WL, EN16931, EXTENDED). |
 | [`xmlToInvoice(xml)`](/api/parsing) | `() => Promise<CrossIndustryInvoiceType>` | Parse XML into a typed model. |
 | [`invoiceToXml(invoice)`](/api/parsing) | `() => Promise<XmlDocument>` | Serialize a model back to XML. |
 | [`Models`](/api/models) | namespace | All Cross Industry Invoice model classes & types. |

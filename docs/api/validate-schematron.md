@@ -52,12 +52,13 @@ and don't affect `valid` unless you pass `warningsAsErrors: true`.
 interface SchematronError {
   /** Human-readable assertion message, e.g. "[BR-16]-An Invoice shall have ...". */
   message: string
-  /**
-   * Rule id from a "[BR-16]" tag in the message (validateSchematron). Undefined when the message
-   * has none, e.g. for structural checks; the raw SVRL id, if the rule sets one, is in `assertId`.
-   */
+  /** Rule id from the "[BR-16]" message prefix; for BR-FR, the rule from the assert id (e.g. "BR-FR-05"). */
   id?: string
-  /** Raw SVRL assert id, when the rule sets one (e.g. "FX-SCH-A-000372"). */
+  /**
+   * Raw SVRL assert id, when the rule sets one: an internal number for Factur-X structural
+   * checks (e.g. "FX-SCH-A-000372"), sometimes the rule itself in 1.09.2 (e.g. "BR-CO-18"),
+   * the exact assertion for BR-FR (e.g. "BR-FR-05_BT-22_PMT").
+   */
   assertId?: string
   /** The failing XPath test expression. */
   test?: string
@@ -76,7 +77,7 @@ interface SchematronError {
 
 ## How it works
 
-The library vendors the official ISO-Schematron for each profile, precompiled to a relocatable
+The library vendors the ISO-Schematron of each profile (official Factur-X 1.09 for MINIMUM/BASIC, FNFE-MPE 1.09.2.fixFR04 for BASIC WL/EN 16931/EXTENDED, see the conformance register CG-16), precompiled to a relocatable
 Saxon transform (a gzipped SEF) plus the matching code-list database, and runs it with SaxonJS. The
 resulting SVRL report is parsed into the `SchematronError[]` above. The `id` (e.g. `BR-16`,
 `BR-CO-10`) maps to the rule numbers in the EN 16931 specification.
