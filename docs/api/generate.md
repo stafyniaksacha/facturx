@@ -15,6 +15,7 @@ function generate(options: {
   language?: string
   meta?: PdfMetadata
   afRelationship?: 'Data' | 'Alternative' | 'Source'
+  preserveXmlBytes?: boolean
 }): Promise<Uint8Array>
 ```
 
@@ -30,6 +31,7 @@ function generate(options: {
 | `language` | `string` | — | PDF language code (RFC 3066), e.g. `en-GB`. |
 | `meta` | `PdfMetadata` | derived from XML | Override the PDF document metadata. |
 | `afRelationship` | `'Data' \| 'Alternative' \| 'Source'` | `'Data'` | Relationship between the embedded XML and the PDF (see below). |
+| `preserveXmlBytes` | `boolean` | `false` | Embed the `xml` bytes exactly as given instead of re-serializing them (see below). |
 
 `PdfMetadata`:
 
@@ -61,6 +63,14 @@ interface PdfMetadata {
   `afRelationship "<value>" is not allowed for the <level> profile` for the former, and
   `Invalid afRelationship` for any other value. `Data` is valid for every profile in France; for
   Germany, pass `Alternative` for BASIC and above (not enforced). Order-X is not restricted.
+- By default the XML is parsed and re-serialized by libxml2 before it is embedded: the content is
+  the same, but a BOM, the XML declaration's quotes and case, and CRLF line endings are not kept.
+  With `preserveXmlBytes: true` the bytes you pass are embedded unchanged (a `string` as UTF-8, a
+  `Buffer` as is), so a hash or signature taken over the issued XML still matches the embedded
+  copy. The XML is still parsed, and validated with `check: true`, from those same bytes. It throws
+  for an `XmlDocument` (it has no original bytes), for XML with a DOCTYPE (`preserveXmlBytes refuses
+  XML with a DOCTYPE`), and for an XML declaration naming a version other than 1.0 or an encoding
+  other than UTF-8. CLI: `--preserveXmlBytes`.
 - When `meta` is omitted, the title/author/subject are derived from the invoice XML (the subject
   carries the issue date, BT-2) and the Info, XMP and embedded-file dates are the generation time,
   in UTC. A `meta.date` you pass is used for all of them instead.

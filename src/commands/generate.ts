@@ -49,10 +49,18 @@ export default defineCommand({
       type: 'string',
       description: 'AFRelationship of the embedded XML: Data (default), Alternative or Source (minimum and basicwl: Data only)',
     },
+    preserveXmlBytes: {
+      type: 'boolean',
+      description: 'Embed the XML file byte for byte instead of re-serializing it (XML 1.0, UTF-8, no DOCTYPE)',
+      default: false,
+    },
   },
   run: async (args) => {
     const pdf = await readFile(resolve(args.args.pdf))
-    const xml = await readFile(resolve(args.args.xml), 'utf-8')
+    // Read as bytes when they are embedded as is, so a BOM or invalid UTF-8 is not altered by decoding.
+    const xml = args.args.preserveXmlBytes
+      ? await readFile(resolve(args.args.xml))
+      : await readFile(resolve(args.args.xml), 'utf-8')
 
     const content = await generate({
       pdf,
@@ -62,6 +70,7 @@ export default defineCommand({
       level: args.args.level,
       check: args.args.check,
       afRelationship: args.args.afRelationship as 'Data' | 'Alternative' | 'Source' | undefined,
+      preserveXmlBytes: args.args.preserveXmlBytes,
     })
 
     const out = resolve(args.args.output)

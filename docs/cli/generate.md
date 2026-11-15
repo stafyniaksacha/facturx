@@ -22,6 +22,7 @@ facturx generate --pdf <input.pdf> --xml <input.xml> --output <output.pdf> [opti
 | `--level` | `-l` | string | autodetect | Schema level (e.g. `en16931`). |
 | `--language` | | string | — | Language code for the PDF (RFC 3066), e.g. `en-GB`. |
 | `--afRelationship` | | string | `Data` | `Data`, `Alternative` or `Source` (MINIMUM and BASIC WL: `Data` only). See [`generate()`](/api/generate#behaviour). |
+| `--preserveXmlBytes` | | boolean | `false` | Embed the XML file byte for byte instead of re-serializing it. The file must be XML 1.0, UTF-8, without a DOCTYPE. See [`generate()`](/api/generate#behaviour). |
 
 ## Behaviour
 

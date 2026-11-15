@@ -22,6 +22,7 @@ facturx extract <pdf> [options]
 | `--flavor` | `-f` | string | autodetect | Expected `facturx`, `orderx` or `zugferd`. Throws if the PDF's attachment doesn't match. |
 | `--level` | `-l` | string | autodetect | Schema level (e.g. `en16931`). |
 | `--output` | `-o` | string | stdout | Output XML file. When omitted, the XML is written to **stdout**. |
+| `--raw` | | boolean | `false` | Write the attachment bytes exactly as embedded in the PDF instead of the re-serialized XML. |
 
 ## Behaviour
 
