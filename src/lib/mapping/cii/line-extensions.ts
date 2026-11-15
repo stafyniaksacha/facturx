@@ -157,7 +157,9 @@ export function deliverToToCii(deliverTo: LineDeliverTo | undefined): ram.TradeP
 }
 
 export function actualDeliveryToCii(delivery: LineActualDelivery | undefined): ram.SupplyChainEventType | undefined {
-  return delivery && new ram.SupplyChainEventType({ occurrenceDateTime: ciiDateTime(delivery.actualDeliveryDate, 'EXT-FR-FE-158')! })
+  // An empty date (`fromCii()` stands it in for a non-102 CII date) writes no event, so the original is in
+  // `dropped`; public `toCii()` rejects it before (EXT-FR-FE-158 mandatory).
+  return delivery && delivery.actualDeliveryDate !== '' ? new ram.SupplyChainEventType({ occurrenceDateTime: ciiDateTime(delivery.actualDeliveryDate, 'EXT-FR-FE-158')! }) : undefined
 }
 
 export function lineSellerToCii(seller: LineSeller | undefined): ram.TradePartyType | undefined {

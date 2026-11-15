@@ -510,8 +510,11 @@ export function assertLinesComplete(invoice: Invoice, level: En16931Level): void
     // The XSD of BASIC and EN 16931 has one `IncludedNote` and one line `AdditionalReferencedDocument` (EXTENDED: many).
     if (!extended && line.notes.length > 1)
       throw new Error(`toCii: BT-127 (invoice line note) is carried once at level "${level}"; several need level "extended" or "extended-ctc-fr"`)
-    if (!extended && line.objectIdentifiers.length > 1)
+    // BASIC has no BT-128 at all: the level gate names it.
+    if (level !== 'basic' && !extended && line.objectIdentifiers.length > 1)
       throw new Error(`toCii: BT-128 (invoice line object identifier) is carried once at level "${level}"; several need level "extended" or "extended-ctc-fr"`)
+    if (line.period && line.period.startDate === undefined && line.period.endDate === undefined)
+      throw new Error('toCii: BG-26 (invoice line period) needs BT-134 (start date) or BT-135 (end date) (BR-CO-20)')
     if (line.precedingInvoiceReferences.length > 1)
       throw new Error('toCii: EXT-FR-FE-BG-06 (preceding invoice reference of the line) holds one reference in CII; the model has more')
     for (const identifier of line.deliverTo?.identifiers ?? [])

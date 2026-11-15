@@ -471,6 +471,46 @@ describe('en 16931 model: line terms', () => {
     expect(await xsdErrors(line, 'extended-ctc-fr')).toEqual([])
   })
 
+  it('does not throw in fromCii on a line delivery date that is not format 102: the date is dropped', async () => {
+    const file = annexBCii.find(f => f.includes('UC12_') && f.includes('EXTENDED-CTC-FR'))!
+    const source = (await readFile(file)).toString()
+    const xml = source.replace('<ram:SpecifiedLineTradeDelivery>', '<ram:SpecifiedLineTradeDelivery><ram:ActualDeliverySupplyChainEvent><ram:OccurrenceDateTime><udt:DateTimeString format="203">202501011200</udt:DateTimeString></ram:OccurrenceDateTime></ram:ActualDeliverySupplyChainEvent>')
+    expect(xml).not.toBe(source)
+    const { invoice, dropped } = fromCii(await xmlToInvoice(xml))
+    expect(dropped.some(p => p.includes('IncludedSupplyChainTradeLineItem[1]') && p.includes('ActualDeliverySupplyChainEvent'))).toBe(true)
+    expect(invoice.lines[0].actualDelivery?.actualDeliveryDate).toBe('')
+    expect(() => toCii(invoice, { level: 'extended-ctc-fr' })).toThrow(/EXT-FR-FE-158/)
+  })
+
+  it.each(['basic', 'en16931'] as const)('has the %s XSD reject a second note written into the CII, which justifies the toCii throw', async (level) => {
+    const cii = ciiOf(MINIMAL_LINE({ notes: [new EN16931.LineNote({ note: 'a' })] }), level)
+    const doc = linesOf(cii)[0].associatedDocumentLineDocument
+    doc.includedNote = [...doc.includedNote!, ...doc.includedNote!]
+    const xml = (await invoiceToXml(cii)).toString()
+    expect((await check({ xml, level })).errors.length).toBeGreaterThan(0)
+  })
+
+  it('has the en16931 XSD reject a second line object identifier written into the CII', async () => {
+    const cii = ciiOf(MINIMAL_LINE({ objectIdentifiers: [new EN16931.Identifier({ value: 'a' })] }), 'en16931')
+    const settlement = linesOf(cii)[0].specifiedLineTradeSettlement
+    settlement.additionalReferencedDocument = [...settlement.additionalReferencedDocument!, ...settlement.additionalReferencedDocument!]
+    const xml = (await invoiceToXml(cii)).toString()
+    expect((await check({ xml, level: 'en16931' })).errors.length).toBeGreaterThan(0)
+  })
+
+  it('throws on a line period without a date (BR-CO-20) in toCii, and writes it from buildCii input without failing', () => {
+    const text = (() => {
+      try {
+        toCii(new EN16931.Invoice(base([MINIMAL_LINE({ period: new EN16931.LinePeriod({}) })])), { level: 'en16931' })
+      }
+      catch (error) {
+        return (error as Error).message
+      }
+      return ''
+    })()
+    expect(text).toMatch(/BG-26.*BR-CO-20/)
+  })
+
   it('writes a line without VAT block, with an empty block, and with a block without codes, apart', () => {
     const none = linesOf(ciiOf(MINIMAL_LINE({ vat: undefined })))[0]
     expect(none.specifiedLineTradeSettlement.applicableTradeTax).toEqual([])
@@ -694,6 +734,7 @@ describe('en 16931 model: line level gates and mandatory terms', () => {
       expect(message(notes, level)).toMatch(/BT-127.*once/)
       expect(message(notes, level)).not.toMatch(/SECRET/)
     }
+    expect(message(objects, 'basic')).toMatch(/BT-128.*not carried at level "basic"/)
     expect(message(objects, 'en16931')).toMatch(/BT-128.*once/)
     expect(message(objects, 'en16931')).not.toMatch(/SECRET/)
     for (const level of ['extended', 'extended-ctc-fr'] as const) {
