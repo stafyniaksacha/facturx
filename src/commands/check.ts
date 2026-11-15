@@ -11,25 +11,31 @@ export default defineCommand({
     description: 'Checks if a XML file is a valid Factur-X/Order-X file',
   },
   args: {
-    xml: {
+    'xml': {
       type: 'positional',
       description: 'Input XML file',
       required: true,
     },
-    flavor: {
+    'flavor': {
       type: 'string',
       description: 'Schema flavor, autodetect by default (facturx, orderx, zugferd)',
       alias: 'f',
     },
-    level: {
+    'level': {
       type: 'string',
       description: 'Schema level, autodetect by default (orderx: basic, extended, comfort) (facturx: basic, basicwl, en16931, extended, minimum)',
       alias: 'l',
     },
-    schematron: {
+    'schematron': {
       type: 'boolean',
       description: 'Also run Schematron business-rule validation (EN 16931 BR-*, Factur-X only)',
       alias: 's',
+      default: false,
+    },
+    'warnings-as-errors': {
+      type: 'boolean',
+      description: 'With --schematron, fail on rules flagged warning/information too (warnings are always printed)',
+      alias: 'W',
       default: false,
     },
   },
@@ -43,6 +49,7 @@ export default defineCommand({
         flavor: args.args.flavor,
         level: args.args.level,
         schematron: args.args.schematron,
+        warningsAsErrors: args.args['warnings-as-errors'],
       })
     }
     catch (error) {
@@ -51,6 +58,13 @@ export default defineCommand({
     }
 
     const mode = args.args.schematron ? 'XSD + Schematron' : 'XSD'
+
+    // Warnings are reported whatever the outcome; with -W they are also counted as errors.
+    if (!args.args['warnings-as-errors']) {
+      for (const warning of result.schematronWarnings ?? []) {
+        console.warn(`  [Schematron warning] ${warning.message}`)
+      }
+    }
 
     if (!result.valid) {
       console.error(`Invalid XML format (${result.flavor} - ${result.level}, ${mode}):`)

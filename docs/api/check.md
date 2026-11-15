@@ -11,6 +11,7 @@ function check(options: {
   flavor?: string
   level?: string
   schematron?: boolean
+  warningsAsErrors?: boolean
 }): Promise<{
   valid: boolean
   errors: any[]
@@ -18,6 +19,7 @@ function check(options: {
   level: string
   schematronValid?: boolean
   schematronErrors?: SchematronError[]
+  schematronWarnings?: SchematronError[]
 }>
 ```
 
@@ -29,6 +31,7 @@ function check(options: {
 | `flavor` | `string` | autodetect | `facturx`, `orderx` or `zugferd`. |
 | `level` | `string` | autodetect | Schema level (e.g. `en16931`). |
 | `schematron` | `boolean` | `false` | Also run Schematron business-rule validation. **Factur-X only** — throws otherwise. |
+| `warningsAsErrors` | `boolean` | `false` | With `schematron`, also count rules flagged `warning`/`information` as errors. |
 
 ## Returns
 
@@ -40,6 +43,7 @@ function check(options: {
 | `level` | `string` | Detected (or supplied) level. |
 | `schematronValid` | `boolean?` | Schematron result on its own (only when `schematron: true`). |
 | `schematronErrors` | `SchematronError[]?` | Business-rule failures (only when `schematron: true`). See [`SchematronError`](/api/validate-schematron#schematronerror). |
+| `schematronWarnings` | `SchematronError[]?` | Rules flagged `warning`/`information` that failed, always reported (only when `schematron: true`). |
 
 When `schematron: true`, `valid` is `true` only if **both** the XSD and the Schematron pass.
 

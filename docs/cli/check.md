@@ -22,6 +22,7 @@ facturx check <xml> [options]
 | `--flavor` | `-f` | string | autodetect | `facturx`, `orderx` or `zugferd`. |
 | `--level` | `-l` | string | autodetect | Schema level (e.g. `en16931`). |
 | `--schematron` | `-s` | boolean | `false` | Also run Schematron (EN 16931 `BR-*`) validation. **Factur-X only.** |
+| `--warnings-as-errors` | `-W` | boolean | `false` | With `--schematron`, also fail on rules flagged `warning`/`information`. Without it, those are printed as `[Schematron warning]` and don't change the exit code. |
 
 ## Behaviour
 
@@ -33,6 +34,9 @@ facturx check <xml> [options]
     `XSD + Schematron`.
   - Invalid → prints each error to stderr, prefixed with `[XSD]` or `[Schematron]`, and exits with
     code **`1`**.
+  - Schematron rules flagged `warning`/`information` are printed to stderr as
+    `[Schematron warning]` without changing the exit code, even when the document is valid. With
+    `--warnings-as-errors` / `-W` they are listed as `[Schematron]` errors and make the command fail.
 
 This non-zero exit code makes `check` easy to use in CI pipelines and shell scripts.
 

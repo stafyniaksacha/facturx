@@ -45,6 +45,7 @@ describe('official Factur-X 1.09 examples', () => {
     expect(result.level).toBe(level)
     expect(result.errors).toEqual([])
     expect(result.schematronErrors).toEqual([])
+    expect(result.schematronWarnings).toEqual([])
 
     // Round-trip: parse → serialize must stay XSD-valid and must not lose data
     // (model equality makes a second, slow Schematron pass redundant).
