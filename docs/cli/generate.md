@@ -21,6 +21,7 @@ facturx generate --pdf <input.pdf> --xml <input.xml> --output <output.pdf> [opti
 | `--flavor` | `-f` | string | autodetect | `facturx` or `orderx`. `zugferd` (extraction only) fails. |
 | `--level` | `-l` | string | autodetect | Schema level (e.g. `en16931`). |
 | `--language` | | string | — | Language code for the PDF (RFC 3066), e.g. `en-GB`. |
+| `--afRelationship` | | string | `Data` | `Data`, `Alternative` or `Source` (MINIMUM and BASIC WL: `Data` only). See [`generate()`](/api/generate#behaviour). |
 
 ## Behaviour
 

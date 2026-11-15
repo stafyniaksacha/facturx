@@ -45,6 +45,10 @@ export default defineCommand({
       type: 'string',
       description: 'Language code for the PDF (RFC 3066)',
     },
+    afRelationship: {
+      type: 'string',
+      description: 'AFRelationship of the embedded XML: Data (default), Alternative or Source (minimum and basicwl: Data only)',
+    },
   },
   run: async (args) => {
     const pdf = await readFile(resolve(args.args.pdf))
@@ -57,6 +61,7 @@ export default defineCommand({
       language: args.args.language,
       level: args.args.level,
       check: args.args.check,
+      afRelationship: args.args.afRelationship as 'Data' | 'Alternative' | 'Source' | undefined,
     })
 
     const out = resolve(args.args.output)

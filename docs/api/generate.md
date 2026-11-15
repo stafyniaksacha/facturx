@@ -14,6 +14,7 @@ function generate(options: {
   level?: string
   language?: string
   meta?: PdfMetadata
+  afRelationship?: 'Data' | 'Alternative' | 'Source'
 }): Promise<Uint8Array>
 ```
 
@@ -28,6 +29,7 @@ function generate(options: {
 | `level` | `string` | autodetect | Schema level (e.g. `en16931`). |
 | `language` | `string` | — | PDF language code (RFC 3066), e.g. `en-GB`. |
 | `meta` | `PdfMetadata` | derived from XML | Override the PDF document metadata. |
+| `afRelationship` | `'Data' \| 'Alternative' \| 'Source'` | `'Data'` | Relationship between the embedded XML and the PDF (see below). |
 
 `PdfMetadata`:
 
@@ -55,6 +57,12 @@ interface PdfMetadata {
   `BASIC` / `COMFORT` / `EXTENDED` (BR-HYBRID-06/07, Fatal). See CG-08 in
   [`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md).
   :::
+- Writes the embedded XML with the `afRelationship` you pass, `Data` by default. Factur-X §6.2.2
+  (table p.27, BR-HYBRID-11) allows only `Data` for MINIMUM and BASIC WL, and `Alternative`,
+  `Source` or `Data` for BASIC, EN 16931 and EXTENDED. `generate()` throws
+  `afRelationship "<value>" is not allowed for the <level> profile` for the former, and
+  `Invalid afRelationship` for any other value. `Data` is valid for every profile in France; for
+  Germany, pass `Alternative` for BASIC and above (not enforced). Order-X is not restricted.
 - When `meta` is omitted, the title/author/subject/date are derived from the invoice XML.
 - Keeps the source PDF's document ID: the first (permanent) element of the trailer `/ID` is
   preserved and a new second (changing) element is written, as ISO 32000-1 §14.4 requires for a
