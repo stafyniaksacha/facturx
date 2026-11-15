@@ -144,7 +144,6 @@ Known so you don't rediscover them; fix them deliberately, not as a side effect 
   Node LTS line, docs build, package check, and consumer installs (incl. IBM Power/Z). It does **not**
   run `pnpm spec:verify`: run it yourself when you touch `src/lib/xsd/**`.
   `.github/workflows/docs.yml` deploys the docs on tags.
-- `extract({ check: true })` fails on ZUGFeRD attachments with `Unknown schema flavor` (#38).
 - `engines.node` is `>=20.11.0`, and Node 20 is end-of-life.
 - `tests/parser.test.ts:29` is skipped.
 - The shipped `.sef.json.gz` files embed the absolute path they were compiled from: a neutral

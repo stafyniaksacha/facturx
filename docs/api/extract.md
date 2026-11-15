@@ -57,6 +57,11 @@ function extract(options: {
   example a name without a value), instead of an internal `pdf-lib` error.
 - Validation is **off by default**; pass `check: true` to XSD-validate the extracted XML (`Invalid
   XML` is thrown on failure).
+- With `check: true`, an attachment under a ZUGFeRD filename (`zugferd-invoice.xml`,
+  `ZUGFeRD-invoice.xml`) is validated by what its root element is, while `flavor` in the result stays
+  `zugferd`. A ZUGFeRD 2.x `CrossIndustryInvoice` is validated as `facturx`. A ZUGFeRD 1.0
+  `CrossIndustryDocument` throws `ZUGFeRD 1.0 validation is not supported…`, since no ZUGFeRD 1.0
+  schema is shipped; extract it with `check: false`. An Order-X order under that name throws.
 
 ## Example
 
