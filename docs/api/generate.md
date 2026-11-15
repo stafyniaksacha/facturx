@@ -54,11 +54,10 @@ interface PdfMetadata {
   ::: warning Order-X metadata is not conformant yet
   For `orderx`, the XMP still says `fx:DocumentType` `INVOICE` and leaves `fx:ConformanceLevel`
   empty, where the hybrid code lists require `ORDER` / `ORDER_CHANGE` / `ORDER_RESPONSE` and
-  `BASIC` / `COMFORT` / `EXTENDED` (BR-HYBRID-06/07, Fatal). See CG-08 in
+  `BASIC` / `COMFORT` / `EXTENDED`. See CG-08 in
   [`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md).
   :::
-- Writes the embedded XML with the `afRelationship` you pass, `Data` by default. Factur-X §6.2.2
-  (table p.27, BR-HYBRID-11) allows only `Data` for MINIMUM and BASIC WL, and `Alternative`,
+- Writes the embedded XML with the `afRelationship` you pass, `Data` by default. Factur-X allows only `Data` for MINIMUM and BASIC WL, and `Alternative`,
   `Source` or `Data` for BASIC, EN 16931 and EXTENDED. `generate()` throws
   `afRelationship "<value>" is not allowed for the <level> profile` for the former, and
   `Invalid afRelationship` for any other value. `Data` is valid for every profile in France; for
@@ -67,15 +66,15 @@ interface PdfMetadata {
   carries the issue date, BT-2) and the Info, XMP and embedded-file dates are the generation time,
   in UTC. A `meta.date` you pass is used for all of them instead.
 - Keeps the source PDF's document ID: the first (permanent) element of the trailer `/ID` is
-  preserved and a new second (changing) element is written, as ISO 32000-1 §14.4 requires for a
+  preserved and a new second (changing) element is written, as the PDF standard requires for a
   modified file. A PDF without an `/ID` gets a new one.
 - Keeps the embedded files name tree sorted.
 - Throws `Invalid XML format (<flavor> - <level>)` when `check` is enabled and validation fails, and
   `Unknown schema flavor` for an unrecognised flavor.
 - Throws `Cannot generate the "zugferd" flavor: …` for `flavor: 'zugferd'` or a ZUGFeRD 1.0
   (`CrossIndustryDocument`) XML, whatever the flavor option, before reading the PDF. The `zugferd-invoice.xml` filename and the
-  `zf:` XMP schema are the deprecated ZUGFeRD 2.0 legacy settings (§6.3.2 p.29), and the filename is
-  not in the hybrid filename code list (BR-HYBRID-08/13). A ZUGFeRD 2.x invoice is a Factur-X
+  `zf:` XMP schema are the deprecated ZUGFeRD 2.0 legacy settings, and the filename is
+  not in the hybrid filename code list. A ZUGFeRD 2.x invoice is a Factur-X
   `CrossIndustryInvoice`: generate it as `facturx`.
 - Throws, before writing the invoice, when the source PDF cannot take the invoice correctly: see the
   table below. Bytes you pass are never modified. A `PDFDocument` you pass is marked as used before
@@ -101,7 +100,7 @@ turn into a correct hybrid document instead of producing a broken one:
 
 ## Supplying the PDF base
 
-Factur-X requires the hybrid document to be PDF/A-3 (or PDF/A-4f), BR-HYBRID-02. `generate()` only
+Factur-X requires the hybrid document to be PDF/A-3 (or PDF/A-4f). `generate()` only
 attaches the XML as an associated file, sets the Info dictionary and writes the PDF/A-3 + Factur-X XMP
 metadata. It does **not** embed fonts, add an output intent or fix anything else PDF/A needs, so the
 PDF you pass must already be PDF/A-3 (PDF/A-3b at least). Produce it with your PDF tool's PDF/A

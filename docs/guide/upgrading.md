@@ -116,8 +116,8 @@ if (code === undefined) {
 `generate({ flavor: 'zugferd' })`, and `generate()` on a ZUGFeRD 1.0 `CrossIndustryDocument` XML,
 now throw `Cannot generate the "zugferd" flavor: …` before reading the PDF. 0.6.1 embedded the XML
 as `zugferd-invoice.xml` with Factur-X `fx:` XMP and an empty conformance level: that filename is
-not in the hybrid filename code list (BR-HYBRID-08/13, Fatal), and the legacy ZUGFeRD 2.0 hybrid
-that used it has its own `zf:` XMP schema (§6.3.2 p.29), so the output matched neither (CG-09). `zugferd` stays supported by
+not in the hybrid filename code list, and the legacy ZUGFeRD 2.0 hybrid
+that used it has its own `zf:` XMP schema, so the output matched neither (CG-09). `zugferd` stays supported by
 `extract()`.
 
 A ZUGFeRD 2.x invoice is a Factur-X `CrossIndustryInvoice`: drop `flavor: 'zugferd'` (it is then
@@ -154,7 +154,7 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   being truncated to one byte per character.
 - **`invoiceToXml()` no longer rounds unit prices to cents** (CG-01). Item net and gross prices
   (BT-146, BT-148), the price discount or charge (BT-147, BT-X-302) and their base amounts
-  (BT-X-35, BT-X-301) are *Unit Price Amount*s, which have no decimal limit (§7.1.5 p.35): `0.3456`
+  (BT-X-35, BT-X-301) are *Unit Price Amount*s, which have no decimal limit: `0.3456`
   is now written as `0.3456`, not `0.35`. They are written in their shortest form, so `4.10` reads
   back and is written again as `4.1`. All other amounts are still written with 2 decimals. If you
   relied on the rounding, round the prices yourself before building the model.
@@ -169,9 +169,9 @@ These shipped on `main` after 0.6.1 and are included in the next release.
 - **The Info `Producer` is the library's name and version**, the same value as the XMP
   `pdf:Producer`, instead of `pdf-lib (https://github.com/Hopding/pdf-lib)`. The XMP also gets a
   `pdf:Keywords` equal to the Info `Keywords` (CG-04).
-- **`extract()` finds `xrechnung.xml`** (Factur-X §7.7) and reports it as flavor `facturx` (checking it still fails on a real
+- **`extract()` finds `xrechnung.xml`** (reference profile XRECHNUNG) and reports it as flavor `facturx` (checking it still fails on a real
   XRECHNUNG guideline ID: use `check: false` / `--no-check`), and
-  **reads attachment lists with one or two `/Kids` levels** (§6.2.2 p.27), which 0.6.1 reported as
+  **reads attachment lists with one or two `/Kids` levels**, which 0.6.1 reported as
   `No attachment found`. Deeper or larger trees throw `Unsupported EmbeddedFiles name tree: …`.
   `generate()` still rejects sources with `/Kids`.
 
@@ -206,8 +206,8 @@ legal advice.
 ### `afRelationship` option for `generate()`
 
 `generate({ pdf, xml, afRelationship: 'Alternative' })` (CLI `--afRelationship Alternative`) sets the
-`AFRelationship` of the embedded XML. The default stays `Data`. MINIMUM and BASIC WL accept only `Data`
-(Factur-X §6.2.2); Germany expects `Alternative` for BASIC and above. See
+`AFRelationship` of the embedded XML. The default stays `Data`. MINIMUM and BASIC WL accept only `Data`;
+Germany expects `Alternative` for BASIC and above. See
 [`generate()`](/api/generate#behaviour).
 
 ### New fields on `SchematronError`

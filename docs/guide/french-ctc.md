@@ -13,12 +13,12 @@ with the official reform sources.
 
 ## Where it fits
 
-The FNFE-MPE release notes (p.9) define three validation steps for an invoice:
+The FNFE-MPE release notes define three validation steps for an invoice:
 
 | Step | What | In this library |
 | --- | --- | --- |
 | 1 | XSD of the profile | `check()` (always) |
-| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`: Factur-X **1.09.2.fixFR04** Schematrons from this release for BASIC WL, EN16931 and EXTENDED (p.6, CG-16) |
+| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`: Factur-X **1.09.2.fixFR04** Schematrons from this release for BASIC WL, EN16931 and EXTENDED (CG-16) |
 | 3 | French rules `BR-FR-Flux2` | `frCtc: true` |
 
 `frCtc` runs step 3 only: it neither requires nor implies `schematron`. Pass both to run the whole
@@ -45,12 +45,12 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
 
 ## Scope
 
-- **Factur-X BASIC WL, EN16931 and EXTENDED** only: the three profiles the release selects (release
-  notes p.9, p.11, which adds "BASIC WL for the first year only"; XP Z12-012 Annex A lists guideline
+- **Factur-X BASIC WL, EN16931 and EXTENDED** only: the three profiles the release selects (the
+  release notes add "BASIC WL for the first year only"; XP Z12-012 Annex A lists guideline
   IDs for these three). The rules themselves read neither the root element nor the profile, so the
   library checks the document: a non-CII document, a MINIMUM or BASIC invoice, or a `level` that
   differs from the one the document declares **throws** instead of passing silently. A plain-CII
-  `EXTENDED-CTC-FR` invoice is checked as `extended`: the release notes (p.9) say the Factur-X
+  `EXTENDED-CTC-FR` invoice is checked as `extended`: the release notes say the Factur-X
   EXTENDED components can validate it, but the Factur-X EXTENDED Schematron rejects its guideline ID,
   so only XSD + BR-FR pass on it (CG-24). `validateFrCtc()` detects this profile by itself, but
   `check()` doesn't recognise its guideline ID (CG-18): pass `level: 'extended'`, e.g.
@@ -60,7 +60,7 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
   rule holds: some depend on external data or aren't published yet, e.g. `BR-FR-CO-01` (no
   post-dating) or the Chorus Pro rules `BR-FR-CPRO-*` (step 4). See `CONFORMANCE.md`, CG-22.
 - The **standard ("fatal") variant**: every rule is an error. The `_WARNING` variant was meant for a
-  transition window that has closed (release notes p.6) and is not shipped.
+  transition window that has closed and is not shipped.
 - Not covered: UBL invoices, the `EXTENDED-CTC-FR` profile's own XSD and Schematron, lifecycle
   statuses (CDAR, `BR-FR-CDV`) and e-reporting (flux 10). See `CONFORMANCE.md`, CG-18 to CG-21.
 
