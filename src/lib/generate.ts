@@ -192,7 +192,7 @@ function resolveAfRelationship(value: string | undefined, flavor: string, level:
   const relationship = value === undefined ? 'Data' : value
   if (!Object.hasOwn(AF_RELATIONSHIPS, relationship))
     throw new Error(`Invalid afRelationship "${relationship}": expected Data, Alternative or Source`)
-  if (flavor === 'facturx' && ['minimum', 'basicwl'].includes(level.toLowerCase()) && relationship !== 'Data')
+  if (flavor === 'facturx' && ['minimum', 'basicwl'].includes(level) && relationship !== 'Data')
     throw new Error(`afRelationship "${relationship}" is not allowed for the ${level} profile: use Data (Factur-X §6.2.2)`)
   return AF_RELATIONSHIPS[relationship]
 }

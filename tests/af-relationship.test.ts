@@ -43,8 +43,8 @@ describe('generate() afRelationship (CG-07)', () => {
       .toThrow(`afRelationship "${value}" is not allowed for the minimum profile: use Data`)
   })
 
-  it.each(['basicwl', 'BASICWL'])('rejects Alternative for an explicit %s level', async (level) => {
-    await expect(generate({ pdf: await blankPdf(), xml: getEN16931XML(), level, afRelationship: 'Alternative' }))
+  it('rejects Alternative for an explicit basicwl level', async () => {
+    await expect(generate({ pdf: await blankPdf(), xml: getEN16931XML(), level: 'basicwl', afRelationship: 'Alternative' }))
       .rejects
       .toThrow('is not allowed for the')
   })

@@ -63,7 +63,9 @@ interface PdfMetadata {
   `afRelationship "<value>" is not allowed for the <level> profile` for the former, and
   `Invalid afRelationship` for any other value. `Data` is valid for every profile in France; for
   Germany, pass `Alternative` for BASIC and above (not enforced). Order-X is not restricted.
-- When `meta` is omitted, the title/author/subject/date are derived from the invoice XML.
+- When `meta` is omitted, the title/author/subject are derived from the invoice XML (the subject
+  carries the issue date, BT-2) and the Info, XMP and embedded-file dates are the generation time,
+  in UTC. A `meta.date` you pass is used for all of them instead.
 - Keeps the source PDF's document ID: the first (permanent) element of the trailer `/ID` is
   preserved and a new second (changing) element is written, as ISO 32000-1 §14.4 requires for a
   modified file. A PDF without an `/ID` gets a new one.
@@ -106,8 +108,9 @@ PDF you pass must already be PDF/A-3 (PDF/A-3b at least). Produce it with your P
 export, or see the repo's `tests/generate/index.ts` for a `pdf-lib` base with an embedded font and an
 sRGB output intent.
 
-Given a PDF/A-3b base, the output stayed PDF/A-3b in a manual veraPDF run on every Factur-X profile.
-No automated test checks this yet; see CG-05 in
+Given a PDF/A-3b base, the output stayed PDF/A-3b in a manual veraPDF run on every Factur-X profile
+(2026-11-15, on the code before this release's XMP and Info dictionary changes). No automated test
+checks this yet; see CG-05 in
 [`CONFORMANCE.md`](https://github.com/stafyniaksacha/facturx/blob/main/CONFORMANCE.md). Validate your
 own output with a PDF/A validator such as veraPDF.
 

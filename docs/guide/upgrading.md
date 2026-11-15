@@ -169,7 +169,8 @@ These shipped on `main` after 0.6.1 and are included in the next release.
 - **The Info `Producer` is the library's name and version**, the same value as the XMP
   `pdf:Producer`, instead of `pdf-lib (https://github.com/Hopding/pdf-lib)`. The XMP also gets a
   `pdf:Keywords` equal to the Info `Keywords` (CG-04).
-- **`extract()` finds `xrechnung.xml`** (Factur-X §7.7) and reports it as flavor `facturx`, and
+- **`extract()` finds `xrechnung.xml`** (Factur-X §7.7) and reports it as flavor `facturx` (checking it still fails on a real
+  XRECHNUNG guideline ID: use `check: false` / `--no-check`), and
   **reads attachment lists with one or two `/Kids` levels** (§6.2.2 p.27), which 0.6.1 reported as
   `No attachment found`. Deeper or larger trees throw `Unsupported EmbeddedFiles name tree: …`.
   `generate()` still rejects sources with `/Kids`.

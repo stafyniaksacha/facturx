@@ -26,10 +26,11 @@ facturx generate --pdf <input.pdf> --xml <input.xml> --output <output.pdf> [opti
 ## Behaviour
 
 - Reads `--pdf` and `--xml` from disk, embeds the XML as the appropriate attachment
-  (`factur-x.xml` / `order-x.xml` / `zugferd-invoice.xml`) writes the PDF/A-3 XMP metadata and saves the result to `--output`.
+  (`factur-x.xml` / `order-x.xml`), writes the PDF/A-3 XMP metadata and saves the result to `--output`.
 - With `--check` (the default), an XSD validation runs first; the command fails if the XML is
   invalid. Pass `--no-check` to bypass.
-- PDF metadata (title, author, subject, dates…) is derived from the XML when not otherwise present.
+- PDF title, author and subject are derived from the XML; the PDF, XMP and attachment dates are
+  the generation time (UTC).
 - On success it prints `Saved to <path>`.
 - Fails on source PDFs it cannot embed into correctly: encrypted or signed PDFs, PDFs that already
   contain an invoice XML, and PDFs with an unsupported or corrupt attachment list. See
