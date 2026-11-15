@@ -2,7 +2,7 @@ import type { PDFRef } from 'pdf-lib'
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { generate } from '@stafyniaksacha/facturx'
+import { extract, generate } from '@stafyniaksacha/facturx'
 import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFString } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
@@ -154,6 +154,45 @@ describe('existing invoice outside the name tree and catalog /AF (CG-14)', () =>
     pageDict.set(PDFName.of('Annots'), pdf.context.obj(annots))
     await expect(generate({ pdf, xml })).rejects.toThrow('The PDF has more than 1048576 page tree, annotation and /AF entries: could not check it for an existing invoice')
   }, 30000)
+
+  // Second spec review probe: 4000 file specifications sharing one 50000-character /F and /UF took
+  // ~8 s when the string was decoded once per specification.
+  it('decodes a shared long file name once', async () => {
+    const { pdf, xml, pageDict } = await setup()
+    const name = pdf.context.register(PDFString.of('n'.repeat(50000)))
+    const specs = Array.from({ length: 4000 }, () => pdf.context.register(pdf.context.obj({ Type: 'Filespec', F: name, UF: name })))
+    pageDict.set(PDFName.of('AF'), pdf.context.obj(specs))
+    const started = performance.now()
+    await expect(generate({ pdf: await save(pdf), xml })).resolves.toBeInstanceOf(Uint8Array)
+    expect(performance.now() - started).toBeLessThan(3000)
+  }, 10000)
+
+  it('handles a file name of 300000 characters without a stack overflow', async () => {
+    const { pdf, xml } = await setup()
+    await pdf.attach(new TextEncoder().encode('hello'), 'x'.repeat(300000), { mimeType: 'text/plain' })
+    const bytes = await save(pdf)
+    await expect(generate({ pdf: bytes, xml })).resolves.toBeInstanceOf(Uint8Array)
+    await expect(extract({ pdf: bytes })).rejects.toThrow('No attachment found')
+  }, 10000)
+
+  it.each([
+    [256, true],
+    [257, false],
+  ])('a page tree %i levels deep: accepted %s', async (levels, accepted) => {
+    const { pdf, xml } = await setup()
+    const root = pdf.catalog.lookup(PDFName.of('Pages'), PDFDict)
+    let parent = root
+    for (let level = 0; level < levels; level++) {
+      const node = pdf.context.obj({ Type: 'Pages', Kids: [], Count: 0 })
+      parent.set(PDFName.of('Kids'), pdf.context.obj([...parent.lookup(PDFName.of('Kids'), PDFArray).asArray(), pdf.context.register(node)]))
+      parent = node
+    }
+    const result = generate({ pdf, xml })
+    if (accepted)
+      await expect(result).resolves.toBeInstanceOf(Uint8Array)
+    else
+      await expect(result).rejects.toThrow('The PDF has a page tree deeper than 256 levels: could not check it for an existing invoice')
+  })
 
   // A consequence of the wider scan: the existing limit of 256 distinct embedded file streams now
   // counts the files of annotations and page /AF too.

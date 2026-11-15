@@ -23,7 +23,7 @@ import pkg from '../../package.json' with { type: 'json' }
 import { check } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
-import { embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
+import { decodeName, embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
 import { extractBaseInfo, getFlavor, getLevel } from './xml'
@@ -339,7 +339,8 @@ function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: str
   catch (error) {
     if (error instanceof PageScanLimitError)
       throw new Error(`The PDF has ${error.message}: could not check it for an existing ${kind}`)
-    // pdf-lib's own page traversal (save() counts the pages) would overflow the stack on a cycle.
+    // A cycle would overflow pdf-lib's recursive page count in save(), a shared node makes it
+    // exponential: reject both with a library error first.
     if (error instanceof MalformedPageTreeError)
       throw new Error(`Malformed page tree: ${error.message}`)
     throw error
@@ -510,7 +511,7 @@ function sortEmbeddedFiles(pdf: PDFDocument, invoiceFilename: string): void {
   }
 
   const isUtf16 = (bytes: Uint8Array): boolean => bytes[0] === 0xFE && bytes[1] === 0xFF
-  const invoice = pairs.find(({ key, name }) => isUtf16(key) && (pdf.context.lookup(name) as PDFString).decodeText() === invoiceFilename)
+  const invoice = pairs.find(({ key, name }) => isUtf16(key) && decodeName(pdf.context.lookup(name) as PDFString) === invoiceFilename)
   const others = pairs.filter(pair => pair !== invoice)
   // The invoice filenames are ASCII, which PDFDocEncoding encodes as the same bytes.
   if (invoice && others.length > 0 && !others.some(({ key }) => isUtf16(key))) {

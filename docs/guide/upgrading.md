@@ -140,8 +140,9 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   EmbeddedFiles name tree is also kept sorted, so existing attachments can come back in a different
   order. The existing-invoice check also reads page-level associated files and file attachment
   annotations, so their files count toward the 256-stream limit, and a page tree with more than
-  65536 nodes, a page tree node reached twice, more than 65536 annotations or more than 1048576
-  `/Kids`, `/Annots` and `/AF` entries is rejected.
+  65536 nodes or deeper than 256 levels, a page tree node reached twice (including a page added twice
+  with `pdf-lib`'s `addPage()`), more than 65536 annotations or more than 1048576 `/Kids`, `/Annots`
+  and `/AF` entries is rejected.
 - **A malformed EmbeddedFiles name tree** now throws `Malformed EmbeddedFiles name tree: <reason>`
   from `extract()` and `generate()`, instead of a raw `pdf-lib` error ([#41](https://github.com/stafyniaksacha/facturx/pull/41)). A `/Name` key, which
   0.6.1 decoded, is now rejected.
