@@ -27,7 +27,7 @@ function generate(options: {
 | `xml` | `string \| Buffer \| XmlDocument` | — | **Required.** Invoice XML to embed (the XML content, not a file path). |
 | `check` | `boolean` | `false` | Set `true` to run XSD validation before embedding; throws on invalid XML. |
 | `flavor` | `string` | autodetect | `facturx` or `orderx`. `zugferd` (extraction only) throws. |
-| `level` | `string` | autodetect | Schema level (e.g. `en16931`). Factur-X: `minimum`, `basicwl`, `basic`, `en16931`, `extended`; Order-X: `basic`, `comfort`, `extended`. Case, spaces and underscores are ignored, so `EN 16931` or `BASIC WL` work too, and any other value throws (BR-HYBRID-07). |
+| `level` | `string` | autodetect | Schema level (e.g. `en16931`). When given, it must name the profile the XML's guideline ID (BT-24) declares, so it is a check, not an override. Factur-X: `minimum`, `basicwl`, `basic`, `en16931`, `extended`; Order-X: `basic`, `comfort`, `extended`. Case, spaces and underscores are ignored, so `EN 16931` or `BASIC WL` work too, and any other value throws (BR-HYBRID-07). |
 | `language` | `string` | — | PDF language code (RFC 3066), e.g. `en-GB`. |
 | `meta` | `PdfMetadata` | derived from XML | Override the PDF document metadata. |
 | `afRelationship` | `'Data' \| 'Alternative' \| 'Source'` | `'Data'` | Relationship between the embedded XML and the PDF (see below). |
@@ -94,8 +94,16 @@ interface PdfMetadata {
 - Throws `Unknown level "<level>" for the <flavor> flavor: expected one of …`, before reading the
   PDF, when the level (the `level` option, or the one read from the guideline ID BT-24 when it is
   omitted or blank) has no Factur-X / Order-X conformance level for the flavor, so
-  `fx:ConformanceLevel` is never written empty (BR-HYBRID-07). An explicit `level` is not compared
-  with BT-24: pass the profile of the XML (BR-HYBRID-15, CONFORMANCE.md CG-42).
+  `fx:ConformanceLevel` is never written empty (BR-HYBRID-07).
+- Throws `level "<level>" does not match the profile declared by the document ("<declared>")`, before
+  reading the PDF, when an explicit `level` differs from the profile of the guideline ID (BT-24), so
+  `fx:ConformanceLevel` always describes the embedded XML (BR-HYBRID-15). An explicit `level` on a
+  document whose BT-24 names no known level throws `Unknown level`, and on one without BT-24
+  `No ID found in the document`. The level is taken from the last `:` segment of BT-24, or from the
+  one before it when the last is not a level (a date revision, as in `urn:cen.eu:en16931:2017` →
+  `en16931`). BT-24 is not itself checked against the profile's code list here: `check: true` runs
+  the XSD only, which types BT-24 as a plain identifier. Run
+  [`check({ xml, schematron: true })`](/api/check) first to have the Schematron check it.
 - Throws, before writing the invoice, when the source PDF cannot take the invoice correctly: see the
   table below. Bytes you pass are never modified. A `PDFDocument` you pass is marked as used before
   the existing-invoice check, and attachments you queued with `attach()` may already be written into

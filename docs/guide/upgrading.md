@@ -165,6 +165,18 @@ A Factur-X level is also read more leniently: case, surrounding spaces, inner sp
 ignored, so the spellings of the hybrid code list (`BASIC WL`, `EN 16931`, `MINIMUM`) now work.
 They used to give the same empty conformance level.
 
+### `generate()` checks an explicit `level` against the document
+
+`generate({ level })` now throws `level "<level>" does not match the profile declared by the document
+("<declared>")` before reading the PDF when `level` differs from the profile of the XML's guideline
+ID (BT-24). For Factur-X, 0.6.1 wrote the `level` you passed as `fx:ConformanceLevel` whatever the XML
+declared, so the PDF metadata could contradict the embedded invoice (BR-HYBRID-15); for Order-X it
+wrote an empty level either way (see the Order-X entry). An explicit `level` on a document whose BT-24
+names no known level now throws `Unknown level`, and on one without BT-24 `No ID found in the
+document`, as auto-detection already did.
+
+Drop `level` to let it be read from the XML, or fix the XML's BT-24 if it names the wrong profile.
+
 ### `generate()` writes Order-X hybrid metadata
 
 For Order-X, `generate()` now writes `fx:DocumentType` from the message type code (`ORDER`,
@@ -352,7 +364,7 @@ left undefined.
 - [ ] If `generate()` used to throw `Document ID already set` and you worked around it, drop the
       workaround. Then check the new rejection list against your source PDFs.
 - [ ] If you call `generate()` with `flavor: 'zugferd'`, use `facturx` instead.
-- [ ] If you pass `level` to `generate()`, make sure it is a level of the flavor (an unknown one now throws).
+- [ ] If you pass `level` to `generate()`, make sure it is the profile the XML declares in BT-24 (a level of another profile, or an unknown one, now throws), or drop it.
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).
 - [ ] If you compare PDF dates with the invoice date, or snapshot `generate()` output, pass `meta.date`
       or expect the generation time.

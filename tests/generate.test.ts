@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { extract, generate, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, extract, generate, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNull, PDFRawStream, PDFString } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
@@ -787,8 +787,8 @@ describe('generate', () => {
 
   describe('fx:ConformanceLevel is never empty (BR-HYBRID-07, CG-30)', () => {
     const MINIMUM_XML = resolve(import.meta.dirname, '../examples/Facture_FR_MINIMUM.xml')
-    // Each spelling is paired with an invoice whose BT-24 names that profile, so the XMP matches the
-    // embedded XML (BR-HYBRID-15). An explicit level that contradicts BT-24 is CG-42.
+    // Each spelling is paired with an invoice whose BT-24 names that profile: an explicit level must
+    // match it (BR-HYBRID-15, see the CG-42 tests below).
     async function invoiceFor(profile: string): Promise<string> {
       if (profile === 'minimum')
         return readFile(MINIMUM_XML, 'utf8')
@@ -844,6 +844,89 @@ describe('generate', () => {
     })
   })
 
+  describe('an explicit level must match the guideline ID BT-24 (BR-HYBRID-15, CG-42)', () => {
+    it('rejects a Factur-X level that contradicts BT-24, before touching the PDF', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      const pdf = await PDFDocument.load(await sourcePdf())
+
+      await expect(generate({ pdf, xml, level: 'minimum' }))
+        .rejects
+        .toThrow('level "minimum" does not match the profile declared by the document ("en16931"): generate() writes fx:ConformanceLevel for the embedded XML\'s own profile (BR-HYBRID-15)')
+      await expect(generate({ pdf, xml, level: 'BASIC WL' })).rejects.toThrow('level "basicwl" does not match the profile declared by the document ("en16931")')
+      // Not marked as used: the matching level still works on the same document.
+      const output = await PDFDocument.load(await generate({ pdf, xml, level: 'EN 16931' }))
+      expect(readXmp(output).conformanceLevel).toEqual(['EN 16931'])
+    })
+
+    it('rejects an Order-X level that contradicts BT-24', async () => {
+      const order = await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8')
+      const pdf = await PDFDocument.create()
+      pdf.addPage()
+      await expect(generate({ pdf, xml: order, level: 'comfort' })).rejects.toThrow('level "comfort" does not match the profile declared by the document ("basic")')
+    })
+
+    it('rejects an explicit level when BT-24 names no level it can be compared with', async () => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0')
+      await expect(generate({ pdf: await sourcePdf(), xml, level: 'en16931' })).rejects.toThrow('Unknown level: "kosit"')
+    })
+
+    it('rejects an explicit level when the document has no BT-24 at all', async () => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace(/<ram:GuidelineSpecifiedDocumentContextParameter>[\s\S]*?<\/ram:GuidelineSpecifiedDocumentContextParameter>/, '')
+      await expect(generate({ pdf: await sourcePdf(), xml, level: 'en16931' })).rejects.toThrow('No ID found in the document')
+    })
+
+    it.each([
+      ['basic', 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic'],
+      ['extended', 'urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended'],
+    ])('accepts the explicit level %j for BT-24 %s', async (level, id) => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', id)
+      const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml, level }))
+      expect(readXmp(output).conformanceLevel).toEqual([level.toUpperCase()])
+    })
+
+    // Every guideline ID (BT-24) the vendored code lists allow (`<cl id="1">` of each profile's codedb)
+    // must be accepted with its matching explicit level, so the check never refuses a valid document.
+    const CODEDB: Record<string, [string, string]> = {
+      minimum: ['minimum/FACTUR-X_MINIMUM_codedb.xml', 'MINIMUM'],
+      basicwl: ['basicwl/FACTUR-X_BASIC-WL_codedb.xml', 'BASIC WL'],
+      basic: ['basic/FACTUR-X_BASIC_codedb.xml', 'BASIC'],
+      en16931: ['en16931/FACTUR-X_EN16931_codedb.xml', 'EN 16931'],
+      extended: ['extended/FACTUR-X_EXTENDED_codedb.xml', 'EXTENDED'],
+    }
+    it.each(Object.entries(CODEDB))('accepts every %s guideline ID of the vendored codedb with its matching level', async (level, [file, expected]) => {
+      const doc = XmlDocument.fromString(await readFile(resolve(import.meta.dirname, '../src/lib/xsd/facturx', file), 'utf8'))
+      let ids: string[]
+      try {
+        ids = doc.find('/codedb/cl[@id="1"]/enumeration/@value').map(node => node.content)
+      }
+      finally {
+        doc.dispose()
+      }
+      expect(ids.length).toBeGreaterThan(0)
+      const source = await readFile(SOURCE_XML, 'utf8')
+      for (const id of ids) {
+        expect(id).toMatch(/^urn:/)
+        const xml = source.replace('urn:cen.eu:en16931:2017', id)
+        const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml, level }))
+        expect(readXmp(output).conformanceLevel, id).toEqual([expected])
+      }
+    })
+
+    it('matches the level segment of BT-24 only: check: true (XSD) does not validate BT-24 itself', async () => {
+      // BT-24 is an udt:IDType in the XSD; only the Schematron checks it against the profile's code list.
+      const xml = (await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_MINIMUM.xml'), 'utf8')).replace('urn:factur-x.eu:1p0:minimum', 'urn:example:minimum')
+      const pdf = await PDFDocument.create()
+      pdf.addPage()
+      await expect(generate({ pdf, xml, level: 'minimum', check: true })).resolves.toBeInstanceOf(Uint8Array)
+      expect((await check({ xml, schematron: true })).schematronErrors?.map(e => e.message)).toContain('Value of \'ram:ID\' is not allowed.')
+    })
+
+    it('still reports an unknown flavor as such, whatever the level', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      await expect(generate({ pdf: await sourcePdf(), xml, flavor: 'foo', level: 'x' })).rejects.toThrow('Unknown schema flavor: "foo"')
+    })
+  })
+
   describe('order-X hybrid metadata (BR-HYBRID-06/07, CG-08)', () => {
     const ORDER_XML = resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml')
 
@@ -870,11 +953,12 @@ describe('generate', () => {
     })
 
     it.each([
-      ['comfort', 'COMFORT'],
-      ['EXTENDED', 'EXTENDED'],
-      [' Basic ', 'BASIC'],
-    ])('writes an explicit Order-X level %j as %j', async (level, expected) => {
-      expect(readXmp(await orderPdf(await readFile(ORDER_XML, 'utf8'), level)).conformanceLevel).toEqual([expected])
+      ['comfort', 'comfort', 'COMFORT'],
+      ['EXTENDED', 'extended', 'EXTENDED'],
+      [' Basic ', 'basic', 'BASIC'],
+    ])('writes an explicit Order-X level %j (BT-24 %s) as %j', async (level, profile, expected) => {
+      const xml = (await readFile(ORDER_XML, 'utf8')).replace('urn:order-x.eu:1p0:basic', `urn:order-x.eu:1p0:${profile}`)
+      expect(readXmp(await orderPdf(xml, level)).conformanceLevel).toEqual([expected])
     })
 
     it('rejects a Factur-X-only level and an unknown message type code before touching the PDF', async () => {

@@ -74,7 +74,9 @@ only what you passed in. Run [`check()`](/api/check) on the extracted XML to get
 
 You only need to pass `flavor` / `level` explicitly to **override** detection or to fail fast when a
 file isn't what you expect — for example `extract({ pdf, flavor: 'facturx' })` throws if the PDF
-turns out to contain an Order-X attachment.
+turns out to contain an Order-X attachment. [`generate()`](/api/generate) is the exception for
+`level`: there it does not override the profile, it is checked against the guideline ID (BT-24) and
+throws on a mismatch, because `fx:ConformanceLevel` has to describe the embedded XML.
 
 ## Document type codes
 
