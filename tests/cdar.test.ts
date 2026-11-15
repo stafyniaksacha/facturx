@@ -66,4 +66,19 @@ describe('cDAR lifecycle messages (was CG-20)', () => {
     const invoice = await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.xml'), 'utf8')
     await expect(validateCdar({ xml: invoice })).rejects.toThrow('Not a CDAR lifecycle message')
   })
+
+  // CG-34: the published BR-FR-CDV Schematron cannot fail on some Annex A rules (its rule context is
+  // the element itself, or a second rule with the same context never fires). Run as shipped; pinned
+  // here so a fixed upstream release shows up as a failing test.
+  it.each([
+    ['BR-FR-CDV-04 (ExchangedDocument/IssueDateTime, MDG-4)', (xml: string) => xml.replace(/(<rsm:ExchangedDocument>[\s\S]*?)<ram:IssueDateTime>[\s\S]*?<\/ram:IssueDateTime>/, '$1')],
+    ['BR-FR-CDV-10 (IssuerAssignedID, MDT-87)', (xml: string) => xml.replace(/<ram:IssuerAssignedID>[^<]*<\/ram:IssuerAssignedID>/, '')],
+    ['BR-FR-CDV-13 (ReferenceReferencedDocument/IssuerTradeParty, MDT-129)', (xml: string) => xml.replace(/(<ram:ReferenceReferencedDocument>[\s\S]*?)<ram:IssuerTradeParty>[\s\S]*?<\/ram:IssuerTradeParty>/, '$1')],
+  ])('accepts, as a documented gap (CG-34), a message missing what %s requires', async (_, mutate) => {
+    const original = await readFile(RECUE, 'utf8')
+    const xml = mutate(original)
+    expect(xml).not.toBe(original)
+    const result = await validateCdar({ xml })
+    expect(result.valid).toBe(true)
+  })
 })

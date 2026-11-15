@@ -38,7 +38,12 @@ function validateCdar(options: {
 ## Behaviour
 
 - Throws `Not a CDAR lifecycle message` when the root element is not a CDAR
-  `CrossDomainAcknowledgementAndResponse`.
+  `CrossDomainAcknowledgementAndResponse`. Malformed XML, and a document using an entity reference,
+  throw a libxml2 parse or validation error (entities are never expanded).
+- Runs the rules **as FNFE-MPE publishes them**. Every Annex A `BR-FR-CDV` rule has an assertion, but
+  some can never fail (for example a missing MDT-87 or MDG-4 is not reported), a few code lists differ
+  from Annex A, and conditions that need the invoice itself (the seller's legal ID, the rejected file
+  name) are not checked. A pass is not proof that every Annex A rule holds.
 - Runs the standard ("fatal") variant of the rules: 40 assertions are errors, 3 are warnings
   (`BR-FR-CDV-13` on MDT-129, and `BR-FR-CDV-CL-06` on the status codes MDT-105 / MDT-115). An
   unknown status code is therefore only a warning unless you pass `warningsAsErrors: true`. This is

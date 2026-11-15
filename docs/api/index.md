@@ -37,7 +37,7 @@ import { AmountType, CrossIndustryInvoiceType, IDType /* … */ } from '@stafyni
 | [`check(options)`](/api/check) | `() => Promise<CheckResult>` | XSD (+ optional Schematron) validation. |
 | [`validateSchematron(options)`](/api/validate-schematron) | `() => Promise<{ valid, errors }>` | EN 16931 business-rule validation (Factur-X only). |
 | [`validateFrCtc(options)`](/api/validate-fr-ctc) | `() => Promise<{ valid, errors }>` | French e-invoicing rules `BR-FR-Flux2` (Factur-X BASIC WL, EN16931, EXTENDED). |
-| [`validateCdar(options)`](/api/validate-cdar) | `() => Promise<{ valid, errors, schematronErrors }>` | French lifecycle status messages (CDAR D22B): XSD + `BR-FR-CDV`. |
+| [`validateCdar(options)`](/api/validate-cdar) | `() => Promise<{ valid, errors, schematronErrors, schematronWarnings }>` | French lifecycle status messages (CDAR D22B): XSD + `BR-FR-CDV`. |
 | [`xmlToInvoice(xml)`](/api/parsing) | `() => Promise<CrossIndustryInvoiceType>` | Parse XML into a typed model. |
 | [`invoiceToXml(invoice)`](/api/parsing) | `() => Promise<XmlDocument>` | Serialize a model back to XML. |
 | [`Models`](/api/models) | namespace | All Cross Industry Invoice model classes & types. |
