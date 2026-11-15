@@ -22,8 +22,9 @@ export interface FromCiiResult {
   /**
    * XPath-like paths (`/rsm:CrossIndustryInvoice/…/ram:X[n]`, an index only on repeatable elements)
    * of every CII value the model has no place for (typically Factur-X `BT-X-*` fields). Positions
-   * only, never the values. Repeated elements are matched by value first (a writer may reorder them),
-   * then by position, and a path carries the element's position in the source document.
+   * only, never the values. Repeated elements are paired by exact equality first, at any position (a
+   * writer may reorder them), then by position, and a path carries the element's position in the
+   * source document. Computed in time linear in the size of the document.
    */
   dropped: string[]
 }

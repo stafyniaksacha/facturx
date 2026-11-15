@@ -1,7 +1,8 @@
 /**
  * The `dropped` contract of `fromCii()`, computed by difference: map CII to the model, map the model
  * back, and report every CII value that did not survive, whatever the mapping misses. Repeated
- * elements are matched by value first, then by position (see `walkArray`). Relative to what
+ * elements are paired by exact equality first (any position), then by position (see `walkArray`). A
+ * NaN leaf is always reported: it equals nothing, so it can't be represented as kept. Relative to what
  * `xmlToInvoice()` reads: an XML element the CII parser does not read never reaches the CII model, so
  * it cannot be compared here (the parser round-trip tests cover that side).
  */
@@ -57,33 +58,101 @@ function childPath(path: string, key: string, node: Node, owner: string | undefi
   return `${path}/${path === ROOT && RSM.has(key) ? 'rsm' : 'ram'}:${name}`
 }
 
-/** True when no leaf of `a` is lost in `b`. */
-function kept(a: unknown, b: unknown, owner: string | undefined): boolean {
-  const lost: string[] = []
-  walk(a, b, '', owner, lost)
-  return lost.length === 0
+/** Marks an element that never pairs by value (it holds a NaN leaf, which `walk` always reports). */
+const UNMATCHABLE = Symbol('unmatchable')
+
+/**
+ * A canonical serialization of `value` for exact-equality pairing: object keys sorted, every key and
+ * leaf JSON-quoted (so `1` and `'1'` differ), prototypes ignored, and what `walk` treats as no data
+ * left out (`undefined`, `null`, empty arrays, nodes without a leaf), so parser output (`[]`) and
+ * written output (`undefined`) of the same content compare equal. Array positions are kept. A NaN
+ * leaf makes the whole value `UNMATCHABLE`. Linear in the size of `value`.
+ */
+function canonical(value: unknown): string | undefined | typeof UNMATCHABLE {
+  if (value === undefined || value === null)
+    return undefined
+  if (Array.isArray(value)) {
+    const items: string[] = []
+    for (const item of value) {
+      const key = canonical(item)
+      if (key === UNMATCHABLE)
+        return UNMATCHABLE
+      items.push(key ?? 'null')
+    }
+    return items.every(i => i === 'null') ? undefined : `[${items.join(',')}]`
+  }
+  if (isNode(value)) {
+    const fields: string[] = []
+    for (const key of Object.keys(value).sort()) {
+      const child = canonical(value[key])
+      if (child === UNMATCHABLE)
+        return UNMATCHABLE
+      if (child !== undefined)
+        fields.push(`${JSON.stringify(key)}:${child}`)
+    }
+    return fields.length ? `{${fields.join(',')}}` : undefined
+  }
+  if (typeof value === 'number')
+    // `String` keeps ±Infinity apart (JSON would write both as `null`); -0 and 0 are one key, as for `!==`.
+    return Number.isNaN(value) ? UNMATCHABLE : String(value)
+  return typeof value === 'string' ? JSON.stringify(value) : `${typeof value}:${String(value)}`
 }
 
 // Writers reorder repeated groups (VA before FC registrations, allowances before charges, BT-110 before
-// BT-111), so an element of `a` is first paired with any not yet paired element of `b` that keeps all
-// its values (a multiset match, the same position tried first); the elements left over are then
-// compared by position with the elements of `b` left over, or all their leaves reported when none
-// remains. Reported paths keep the position of the element in `a`.
+// BT-111), so an element of `a` is paired with an element of `b` in three passes: (1) the element at
+// the same position when the two are exactly equal (`canonical`); (2) any other not yet paired element
+// of `b` exactly equal to it, looked up by its canonical key (duplicates consume distinct elements);
+// (3) the elements of `a` left over are compared by position with the elements of `b` left over, or
+// all their leaves reported when none remains. Exact equality, not "keeps all values": a near-duplicate
+// is never taken for the element it resembles. Linear in the size of both arrays (an earlier subset
+// search was quadratic, a resource exhaustion on untrusted input). Reported paths keep the position
+// of the element in `a`.
 function walkArray(a: unknown[], b: unknown[], path: string, owner: string | undefined, out: string[]): void {
-  const used = new Set<number>()
-  const unpaired: number[] = []
-  a.forEach((item, i) => {
-    if (item === undefined || item === null)
-      return
-    const candidates = [i, ...b.keys()].filter((j, k, all) => j < b.length && !used.has(j) && all.indexOf(j) === k)
-    const match = candidates.find(j => kept(item, b[j], owner))
-    if (match === undefined)
-      unpaired.push(i)
-    else
-      used.add(match)
+  const keysA = a.map(canonical)
+  const keysB = b.map(canonical)
+  const paired = Array.from<boolean>({ length: a.length }).fill(false)
+  const used = Array.from<boolean>({ length: b.length }).fill(false)
+  // An element of `a` with no data has no leaf to report.
+  keysA.forEach((key, i) => {
+    if (key === undefined) {
+      paired[i] = true
+    }
+    else if (key !== UNMATCHABLE && i < b.length && keysB[i] === key) {
+      paired[i] = true
+      used[i] = true
+    }
   })
-  const rest = [...b.keys()].filter(j => !used.has(j))
-  unpaired.forEach((i, k) => walk(a[i], rest[k] === undefined ? undefined : b[rest[k]!], `${path}[${i + 1}]`, owner, out))
+  // Unused elements of `b` by key, in document order, with the next one to hand out (no `shift()`, which
+  // would make many duplicates quadratic again).
+  const byKey = new Map<string, { indices: number[], next: number }>()
+  keysB.forEach((key, j) => {
+    if (!used[j] && typeof key === 'string') {
+      const queue = byKey.get(key)
+      if (queue)
+        queue.indices.push(j)
+      else
+        byKey.set(key, { indices: [j], next: 0 })
+    }
+  })
+  keysA.forEach((key, i) => {
+    if (paired[i] || typeof key !== 'string')
+      return
+    const queue = byKey.get(key)
+    const j = queue?.indices[queue.next]
+    if (queue && j !== undefined) {
+      queue.next++
+      paired[i] = true
+      used[j] = true
+    }
+  })
+  const rest = used.flatMap((u, j) => (u ? [] : [j]))
+  let k = 0
+  a.forEach((item, i) => {
+    if (paired[i])
+      return
+    const j = rest[k++]
+    walk(item, j === undefined ? undefined : b[j], `${path}[${i + 1}]`, owner, out)
+  })
 }
 
 function walk(a: unknown, b: unknown, path: string, owner: string | undefined, out: string[]): void {
@@ -105,8 +174,8 @@ function walk(a: unknown, b: unknown, path: string, owner: string | undefined, o
 /**
  * XPath-like paths (`/rsm:CrossIndustryInvoice/…/ram:X[n]/@attr`, positions 1-based, never value
  * predicates) of every leaf value present in `a` and absent from or different in `b`. Values present
- * only in `b` are not reported. Array elements are matched by value first (any position), then the
- * leftovers by position; paths carry the position in `a`.
+ * only in `b` are not reported. Array elements are paired by exact equality first (any position), then
+ * the leftovers by position; paths carry the position in `a`. A NaN leaf is always reported.
  */
 export function diffPaths(a: CrossIndustryInvoiceType, b: CrossIndustryInvoiceType): string[] {
   const out: string[] = []

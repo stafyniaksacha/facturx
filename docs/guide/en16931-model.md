@@ -109,9 +109,11 @@ const { invoice, dropped } = fromCii(await xmlToInvoice(xml))
 (`/rsm:CrossIndustryInvoice/…/ram:AssociatedDocumentLineDocument/ram:LineStatusCode`), positions only, never the
 values; an index (`[2]`) appears only on repeatable elements. It is computed by mapping the invoice back to CII
 and comparing with the document. Repeated elements (several additional documents, tax registrations,
-allowances and charges, VAT totals) are paired by value first, at any position, because the writer
-orders some of them differently from the source; the elements left over are then compared by position.
-A path carries the element's position in the source document. It is empty for the official examples of Factur-X 1.09 and of XP Z12-012 annex B; it holds only
+allowances and charges, VAT totals) are first paired with an exactly equal element, at any position,
+because the writer orders some of them differently from the source; the elements left over are then
+compared by position, so a lost element is reported, not a kept one that resembles it. A path carries the
+element's position in the source document. The comparison takes time linear in the size of the document,
+so a large untrusted document can't make it blow up. It is empty for the official examples of Factur-X 1.09 and of XP Z12-012 annex B; it holds only
 `BT-X-*` content (and the excluded rows above) on Factur-X EXTENDED documents.
 
 `fromCii()` throws for MINIMUM and BASIC WL.

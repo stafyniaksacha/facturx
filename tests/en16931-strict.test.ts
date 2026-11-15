@@ -5,6 +5,8 @@ import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { check, EN16931, extract, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
+// `diffPaths` is the internal helper behind `dropped` (not exported): pairing is tested on it directly.
+import { diffPaths } from '../src/lib/mapping/cii/dropped'
 
 /**
  * What `toCii()` refuses and what `dropped` reports exactly (review fixes of PR ②): reordered repeated
@@ -86,6 +88,66 @@ describe('en 16931 model: dropped matches repeated elements by value, then by po
     sum.taxTotalAmount!.reverse()
     expect(fromCii(cii).dropped).toEqual([])
   })
+})
+
+describe('en 16931 model: dropped pairs repeated elements by exact equality, in linear time', () => {
+  const NOTE = '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:IncludedNote'
+  const LINE = '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem'
+  const notes = (...n: object[]) => ({ exchangedDocument: { includedNote: n } }) as never
+
+  it('blames the lost element, not a kept near-duplicate', () => {
+    // [{X}, {X, AAI}] written as [{X, AAI}]: the first note is the lost one (a subset test blamed the second's code).
+    const a = notes({ content: { value: 'X' } }, { content: { value: 'X' }, subjectCode: { value: 'AAI' } })
+    const b = notes({ content: { value: 'X' }, subjectCode: { value: 'AAI' } })
+    expect(diffPaths(a, b)).toEqual([`${NOTE}[1]/ram:Content`])
+  })
+
+  it('pairs duplicates with distinct elements and reports the one left over by position', () => {
+    const x = { content: { value: 'X' } }
+    expect(diffPaths(notes(x, x, x), notes(x, x))).toEqual([`${NOTE}[3]/ram:Content`])
+    expect(diffPaths(notes({ content: { value: 'Y' } }, x), notes(x, { content: { value: 'Z' } }))).toEqual([`${NOTE}[1]/ram:Content`])
+  })
+
+  it('treats [] and undefined as no data, keeps 1 and "1" apart, and always reports a NaN leaf', () => {
+    expect(diffPaths(notes({ content: { value: 'X' }, extra: [] }), notes({ content: { value: 'X' } }))).toEqual([])
+    expect(diffPaths(notes({ content: { value: 1 } }), notes({ content: { value: '1' } }))).toEqual([`${NOTE}[1]/ram:Content`])
+    const nan = { content: { value: Number.NaN } }
+    expect(diffPaths(notes(nan), notes(nan))).toEqual([`${NOTE}[1]/ram:Content`])
+  })
+
+  // A line template replicated `n` times, each with its own BT-126 and, optionally, a BT-X-7 line status code.
+  async function manyLines(n: number, status: boolean): Promise<CrossIndustryInvoiceType> {
+    const cii = await corpus('4.EXTENDED', 'F20260023')
+    const template = cii.supplyChainTradeTransaction.includedSupplyChainTradeLineItem![0]!
+    cii.supplyChainTradeTransaction.includedSupplyChainTradeLineItem = Array.from({ length: n }, (_, i) => {
+      const line = Object.setPrototypeOf(structuredClone(template), Object.getPrototypeOf(template)) as typeof template
+      line.associatedDocumentLineDocument.lineID = { value: String(i + 1) } as never
+      if (status)
+        line.associatedDocumentLineDocument.lineStatusCode = { value: 'X' } as never
+      return line
+    })
+    return cii
+  }
+
+  // Untrusted input must not make `fromCii()` quadratic (resource exhaustion): 5000 lines took minutes
+  // with the earlier subset search (250 lines 1.8 s, 1000 lines 29.8 s); about 0.6 s now on a laptop.
+  it('reads 5000 lines with one BT-X value each in well under a few seconds, reporting each exactly', async () => {
+    const cii = await manyLines(5000, true)
+    const start = performance.now()
+    const { dropped } = fromCii(cii)
+    const elapsed = performance.now() - start
+    expect(dropped).toEqual(Array.from({ length: 5000 }, (_, i) => `${LINE}[${i + 1}]/ram:AssociatedDocumentLineDocument/ram:LineStatusCode`))
+    expect(elapsed).toBeLessThan(5000)
+  }, 30_000)
+
+  it('reads 5000 clean lines in well under a few seconds, dropping nothing', async () => {
+    const cii = await manyLines(5000, false)
+    const start = performance.now()
+    const { dropped } = fromCii(cii)
+    const elapsed = performance.now() - start
+    expect(dropped).toEqual([])
+    expect(elapsed).toBeLessThan(5000)
+  }, 30_000)
 })
 
 async function enInvoice(): Promise<Invoice> {
