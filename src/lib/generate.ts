@@ -592,6 +592,9 @@ function sortEmbeddedFiles(pdf: PDFDocument, invoiceFilename: string): void {
   const embeddedFiles = names instanceof PDFDict ? pdf.context.lookup(names.get(PDFName.of('EmbeddedFiles'))) : undefined
   if (!(embeddedFiles instanceof PDFDict))
     return
+  // ISO 32000-1 §7.9.6 Table 36: the root has no /Limits; a stale one from the source would
+  // contradict the keys once the invoice is added.
+  embeddedFiles.delete(PDFName.of('Limits'))
   const entries = pdf.context.lookup(embeddedFiles.get(PDFName.of('Names')))
   if (!(entries instanceof PDFArray))
     return
@@ -785,8 +788,10 @@ function setNameTreeLimits(pdf: PDFDocument, node: PDFDict, isRoot: boolean): vo
     for (const kid of kids.asArray())
       setNameTreeLimits(pdf, pdf.context.lookup(kid) as PDFDict, false) // Validated by readEmbeddedFilesNames().
   }
-  if (isRoot)
+  if (isRoot) {
+    node.delete(PDFName.of('Limits'))
     return
+  }
   const range = nameTreeRange(pdf, node)
   if (range)
     node.set(PDFName.of('Limits'), pdf.context.obj([range.least.clone(), range.greatest.clone()]))

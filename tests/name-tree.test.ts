@@ -333,6 +333,24 @@ describe('generate() into a name tree with /Kids (CG-13)', () => {
     expect(keys).toContain('factur-x.xml')
   })
 
+  it('drops a /Limits the source put on the root', async () => {
+    const doc = await source(d => [leaf(d, 'a.txt')])
+    doc.catalog.lookup(PDFName.of('Names'), PDFDict).lookup(PDFName.of('EmbeddedFiles'), PDFDict).set(PDFName.of('Limits'), doc.context.obj([PDFString.of('a'), PDFString.of('z')]))
+    const { keys } = await generateInto(doc) // validTree() expects no root /Limits.
+    expect(keys).toEqual(['a.txt', 'factur-x.xml'])
+  })
+
+  it('drops a /Limits the source put on the root of a flat tree', async () => {
+    const doc = await PDFDocument.create()
+    doc.addPage()
+    doc.catalog.set(PDFName.of('Names'), doc.context.obj({
+      EmbeddedFiles: { Limits: [PDFString.of('a'), PDFString.of('z')], Names: [PDFString.of('a.txt'), plainSpec(doc, 'a.txt')] },
+    }))
+    const output = await PDFDocument.load(await generate({ pdf: Buffer.from(await doc.save()), xml: getEN16931XML() }))
+    const root = output.catalog.lookup(PDFName.of('Names'), PDFDict).lookup(PDFName.of('EmbeddedFiles'), PDFDict)
+    expect(root.has(PDFName.of('Limits'))).toBe(false)
+  })
+
   it('writes the invoice key in the encoding of the other keys', async () => {
     // PDFDocEncoded source keys: the invoice key is written as one too, so keys compare as bytes.
     const plain = await generateInto(await source(doc => [leaf(doc, 'a.txt')]))
