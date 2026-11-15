@@ -13,6 +13,37 @@ import {
   PDFString,
 } from 'pdf-lib'
 
+// File names are compared with short known names (factur-x.xml, …) and shown at most 80 characters
+// long, so a longer name is decoded only up to this many bytes. pdf-lib's decodeText() spreads the
+// whole string into one call, which overflows the stack on names of a few hundred kilobytes.
+const MAX_NAME_BYTES = 1024
+const decodedNames = new WeakMap<PDFString | PDFHexString, string>()
+
+/**
+ * The text of a PDF string used as a file name, decoded once per string object (a shared /F must
+ * not be decoded once per file specification). Names longer than 1024 bytes are decoded from their
+ * first 1024 bytes only (UTF-16BE with a BOM, else Latin-1 as an approximation of PDFDocEncoding),
+ * so they can never equal a known short name.
+ */
+export function decodeName(value: PDFString | PDFHexString): string {
+  const cached = decodedNames.get(value)
+  if (cached !== undefined)
+    return cached
+  const bytes = value.asBytes()
+  let text: string
+  if (bytes.length <= MAX_NAME_BYTES) {
+    text = value.decodeText()
+  }
+  else {
+    const head = bytes.subarray(0, MAX_NAME_BYTES)
+    text = head[0] === 0xFE && head[1] === 0xFF
+      ? new TextDecoder('utf-16be').decode(head.subarray(2))
+      : new TextDecoder('latin1').decode(head)
+  }
+  decodedNames.set(value, text)
+  return text
+}
+
 export function extractAttachments(pdfDoc: PDFDocument): {
   name: string
   data: Uint8Array<ArrayBufferLike>
@@ -25,30 +56,64 @@ export function extractAttachments(pdfDoc: PDFDocument): {
       .lookup(PDFName.of('F'), PDFStream) as PDFRawStream
 
     return {
-      name: fileName.decodeText(),
+      name: decodeName(fileName),
       data: decodePDFRawStream(stream).decode(),
     }
   })
 }
 
+// Bounds on the page tree and annotation walk, which reads untrusted input. Every distinct page
+// tree node, annotation and array is read once, and past any bound embeddedFileSpecs() throws
+// PageScanLimitError instead of reading on.
+const MAX_PAGE_TREE_NODES = 65536
+const MAX_ANNOTATIONS = 65536
+// Entries of the /Kids, /Annots and /AF arrays read, all arrays together.
+const MAX_SCAN_ENTRIES = 1024 * 1024
+// pdf-lib counts pages recursively in save(): a page tree thousands of levels deep overflows the
+// stack. Real page trees are a few levels deep.
+const MAX_PAGE_TREE_DEPTH = 256
+
+export class PageScanLimitError extends Error {}
+export class MalformedPageTreeError extends Error {}
+
 /**
- * Every embedded file the document references: each EmbeddedFiles name tree entry (read through
- * the validated reader below) and each file specification in the catalog `/AF` array (PDF/A-3
- * associated files), once each. `names` holds the tree key and the file specification's `/F` and
- * `/UF`, which can all differ; a file associated only through `/AF` has no tree key.
+ * Every embedded file the document references, once each:
+ * - each EmbeddedFiles name tree entry (read through the validated reader below);
+ * - each file specification in the catalog `/AF` array (PDF/A-3 associated files, document level);
+ * - each one in a page's `/AF` array (page level, Factur-X §6.2.1 p.25), in an annotation's `/AF`
+ *   (PDF 2.0 / PDF/A-3, not vendored), and the `/FS` of every `/FileAttachment` annotation
+ *   (ISO 32000-1 §12.5.6.15, not vendored).
+ *
+ * `names` holds the tree key and the file specification's `/F` and `/UF`, which can all differ; a
+ * file reached only through `/AF` or an annotation has no tree key. The page tree is walked without
+ * pdf-lib's traversal, which has no guard against cycles. Each page tree node, annotation, `/AF`
+ * array, file specification and file name string is read once, however many times it is
+ * referenced, and long names are decoded from their first 1024 bytes only. A node reached twice
+ * through `/Kids` throws MalformedPageTreeError: a cycle would overflow pdf-lib's recursive page
+ * count in save(), and a shared intermediate node makes that count exponential in depth; ISO
+ * 32000-1 §7.7.3 (not vendored) gives each page tree node one `/Parent`. pdf-lib's own addPage()
+ * can list a page twice; such a PDF is rejected too. More than 65536 page tree nodes or annotations,
+ * more than 1048576 array entries read, or a tree deeper than 256 levels throw PageScanLimitError.
+ * Other malformed objects are skipped. A file specification given as a string (a reference to an
+ * external file) embeds nothing and is ignored.
  */
 export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileSpec: PDFDict }[] {
   const specs = new Map<PDFDict, Set<string>>()
   const add = (fileSpec: unknown, key?: PDFHexString | PDFString): void => {
     if (!(fileSpec instanceof PDFDict))
       return
-    const names = specs.get(fileSpec) ?? new Set<string>()
-    if (key)
-      names.add(key.decodeText())
+    const known = specs.get(fileSpec)
+    if (known) {
+      if (key)
+        known.add(decodeName(key))
+      return
+    }
+    // The tree key first: error messages name a file by its first name.
+    const names = new Set<string>(key ? [decodeName(key)] : [])
     for (const entry of ['F', 'UF']) {
       const name = fileSpec.lookup(PDFName.of(entry))
       if (name instanceof PDFString || name instanceof PDFHexString)
-        names.add(name.decodeText())
+        names.add(decodeName(name))
     }
     specs.set(fileSpec, names)
   }
@@ -56,10 +121,72 @@ export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileS
   for (const { fileName, fileSpec } of readEmbeddedFilesNames(pdfDoc))
     add(fileSpec, fileName)
 
-  const af = pdfDoc.catalog.lookup(PDFName.of('AF'))
-  if (af instanceof PDFArray) {
+  let entries = 0
+  const charge = (count: number): void => {
+    entries += count
+    if (entries > MAX_SCAN_ENTRIES)
+      throw new PageScanLimitError(`more than ${MAX_SCAN_ENTRIES} page tree, annotation and /AF entries`)
+  }
+  // One visited set per role: an array used both as an /AF and as an /Annots must be read as both
+  // (each read is still charged to the shared budget).
+  const seenAf = new Set<PDFArray>()
+  const seenAnnots = new Set<PDFArray>()
+  const addAf = (dict: PDFDict): void => {
+    const af = dict.lookup(PDFName.of('AF'))
+    if (!(af instanceof PDFArray) || seenAf.has(af))
+      return
+    seenAf.add(af)
+    charge(af.size())
     for (let idx = 0; idx < af.size(); idx++)
       add(af.lookup(idx))
+  }
+  addAf(pdfDoc.catalog)
+
+  // Page tree: iterative, /Kids of any node followed whatever its /Type claims.
+  const root = pdfDoc.catalog.lookup(PDFName.of('Pages'))
+  const pending: { node: unknown, depth: number }[] = [{ node: root, depth: 0 }]
+  const reached = new Set<PDFDict>(root instanceof PDFDict ? [root] : [])
+  const annotations = new Set<PDFDict>()
+  while (pending.length > 0) {
+    const { node, depth } = pending.pop()!
+    if (!(node instanceof PDFDict))
+      continue
+    addAf(node)
+
+    const annots = node.lookup(PDFName.of('Annots'))
+    if (annots instanceof PDFArray && !seenAnnots.has(annots)) {
+      seenAnnots.add(annots)
+      charge(annots.size())
+      for (let idx = 0; idx < annots.size(); idx++) {
+        const annot = annots.lookup(idx)
+        if (!(annot instanceof PDFDict) || annotations.has(annot))
+          continue
+        annotations.add(annot)
+        if (annotations.size > MAX_ANNOTATIONS)
+          throw new PageScanLimitError(`more than ${MAX_ANNOTATIONS} annotations`)
+        addAf(annot)
+        if (annot.lookup(PDFName.of('Subtype')) === PDFName.of('FileAttachment'))
+          add(annot.lookup(PDFName.of('FS')))
+      }
+    }
+
+    const kids = node.lookup(PDFName.of('Kids'))
+    if (kids instanceof PDFArray) {
+      charge(kids.size())
+      if (kids.size() > 0 && depth >= MAX_PAGE_TREE_DEPTH)
+        throw new PageScanLimitError(`a page tree deeper than ${MAX_PAGE_TREE_DEPTH} levels`)
+      for (let idx = 0; idx < kids.size(); idx++) {
+        const kid = kids.lookup(idx)
+        if (!(kid instanceof PDFDict))
+          continue
+        if (reached.has(kid))
+          throw new MalformedPageTreeError('a page tree node is reached twice')
+        reached.add(kid)
+        if (reached.size > MAX_PAGE_TREE_NODES)
+          throw new PageScanLimitError(`more than ${MAX_PAGE_TREE_NODES} page tree nodes`)
+        pending.push({ node: kid, depth: depth + 1 })
+      }
+    }
   }
 
   return [...specs].map(([fileSpec, names]) => ({ names: [...names], fileSpec }))
