@@ -55,9 +55,11 @@ The level comes from `cbc:CustomizationID` (BT-24): `urn:cen.eu:en16931:2017`, o
 exact EXTENDED-CTC-FR id gives `extended-ctc-fr`; anything else (including a CIUS followed by an extension,
 such as the XRechnung extension) throws, naming the `level` option.
 
-An explicit `level` (`en16931` or `extended-ctc-fr`) is honoured when the document declares **no**
-`cbc:CustomizationID` or one this package has no rules for: the three steps run and the rule `BR-01` reports
-the missing identifier. It never overrides a level the document declares: a mismatch throws.
+An explicit `level: 'en16931'` may be forced on a document that declares **no** `cbc:CustomizationID` or one this
+package has no rules for: the three steps run, and the rule `BR-01` reports a missing identifier (an unsupported
+one is not reported by any rule). An explicit `level: 'extended-ctc-fr'` never stands in for an id: the document
+must declare exactly the EXTENDED-CTC-FR one, or the call throws (neither the XSD nor the dedicated Schematron
+checks it). Neither overrides a different level the document declares.
 
 The rule `id` of a UBL finding is the assert's `@id` in the Schematron (for example `BR-FREXT-26`, whose
 message starts with `[BR-26]`); `message` is unchanged. The Factur-X (CII) transforms keep taking the id from

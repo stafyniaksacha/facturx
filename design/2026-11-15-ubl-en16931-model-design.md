@@ -130,7 +130,7 @@ with a `SCHEMATRON.md` (source, SHA-256, compile command) and `pnpm spec:verify`
 - Rule ids: SVRL `@id` as-is (`BR-*`, `UBL-CR-*`, `UBL-FREXT-*`, `BR-FR-*`); reuse the `idFromAssert`
   mechanism if the UBL asserts need it.
 
-**Proof.** `tests/ubl-annex-b.test.ts`: all 12 annex B UBL documents
+**Proof.** `tests/ubl-check.test.ts`: all 12 annex B UBL documents
 (`spec/afnor-xp-z12-012-1.4/…/*_UBL_Commentee.xml`; 11 Invoice, 1 CreditNote; 6 EN16931 and
 6 EXTENDED-CTC-FR by `CustomizationID`) pass steps 1–3 at the level in their file name, no error and no warning. Plus
 negative cases (missing BT-1, wrong CustomizationID, a CII root with a UBL-like name, an `Invoice` in

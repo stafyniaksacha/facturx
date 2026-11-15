@@ -64,8 +64,9 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
   (CDAR XSD + `BR-FR-CDV`); building them is not supported.
 - **UBL 2.1 invoices and credit notes**, at the EN16931 and EXTENDED-CTC-FR levels (read from
   `cbc:CustomizationID`): `check({ xml, schematron: true, frCtc: true })` runs the UBL XSD, the UBL
-  profile Schematron, then `BR-FR-Flux2-Schematron-UBL` (standard variant). A `level` the document
-  does not declare throws. CIUS rules such as Peppol BIS are not run.
+  profile Schematron, then `BR-FR-Flux2-Schematron-UBL` (standard variant). A `level` that contradicts the
+  one the document declares throws, and so does `level: 'extended-ctc-fr'` unless the document declares exactly
+  that id; only `level: 'en16931'` may be forced on a document with a missing or unsupported id. CIUS rules such as Peppol BIS are not run.
 - Not covered: e-reporting (flux 10), and step 4 (Chorus Pro `BR-France-CTC-CPRO`), for which no
   Schematron is published.
 - The `EXTENDED-CTC-FR` French extension fields (`EXT-FR-FE-*`) are read by `xmlToInvoice()` and

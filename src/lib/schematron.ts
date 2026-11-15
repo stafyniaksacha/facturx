@@ -1,3 +1,4 @@
+import type { XmlDocument } from 'libxml2-wasm'
 import { Buffer } from 'node:buffer'
 import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -243,28 +244,39 @@ export async function validateSchematron(options: {
   // changing the Buffer in place meanwhile must not get the precheck on one document and the
   // transform on another. Strings are immutable.
   const xml = typeof options.xml === 'string' ? options.xml : Buffer.from(options.xml)
-  const rootIsUbl = await hasUblRoot(xml)
-  if (options.flavor === 'facturx' && rootIsUbl)
-    throw new Error('The XML root element is a UBL Invoice/CreditNote, which does not match the "facturx" flavor: the Factur-X Schematron is for CII')
-  if (options.flavor === 'ubl' && !rootIsUbl)
-    throw new Error('The XML root element does not match the "ubl" flavor')
-  const flavor = rootIsUbl ? 'ubl' : 'facturx'
+  // One parse serves the flavor, the level and the profile prechecks, and is disposed before the
+  // transform runs (which parses the text itself).
+  const doc = await resolveXml(xml)
+  let config: SchematronConfig | undefined
+  try {
+    const rootIsUbl = isUblDocument(doc)
+    if (options.flavor === 'facturx' && rootIsUbl)
+      throw new Error('The XML root element is a UBL Invoice/CreditNote, which does not match the "facturx" flavor: the Factur-X Schematron is for CII')
+    if (options.flavor === 'ubl' && !rootIsUbl)
+      throw new Error('The XML root element does not match the "ubl" flavor')
+    const flavor = rootIsUbl ? 'ubl' : 'facturx'
 
-  const config = (flavor === 'ubl' ? UBL_SCHEMATRON : FACTURX_SCHEMATRON).get(options.level)
-  if (!config) {
-    throw new Error(`No ${flavor === 'ubl' ? 'UBL' : 'Factur-X'} Schematron available for level: "${options.level}"`)
+    config = (flavor === 'ubl' ? UBL_SCHEMATRON : FACTURX_SCHEMATRON).get(options.level)
+    if (!config) {
+      throw new Error(`No ${flavor === 'ubl' ? 'UBL' : 'Factur-X'} Schematron available for level: "${options.level}"`)
+    }
+
+    if (flavor === 'ubl') {
+      // The two UBL transforms are picked by level, but the level is only a CustomizationID (BT-24).
+      // See assertUblLevelMatches for what an explicit level may and may not override.
+      assertUblLevelMatches(doc, options.level)
+    }
+    else if (options.level === 'extended-ctc-fr') {
+      const finding = extendedCtcFrPrecheck(doc)
+      if (finding)
+        return { valid: false, errors: [finding], warnings: [] }
+    }
+  }
+  finally {
+    doc.dispose()
   }
 
-  if (flavor === 'ubl') {
-    await ublLevelPrecheck(xml, options.level)
-  }
-  else if (options.level === 'extended-ctc-fr') {
-    const finding = await extendedCtcFrPrecheck(xml)
-    if (finding)
-      return { valid: false, errors: [finding], warnings: [] }
-  }
-
-  return runSchematron(config, xml, { warningsAsErrors: options.warningsAsErrors })
+  return runSchematron(config!, xml, { warningsAsErrors: options.warningsAsErrors })
 }
 
 /**
@@ -274,57 +286,24 @@ export async function validateSchematron(options: {
  * repeated container or a repeated ID as the CII-SR-009 / CII-SR-010 finding the Schematron would
  * give (each count must be 1).
  */
-async function extendedCtcFrPrecheck(xml: string | Buffer): Promise<SchematronError | undefined> {
-  const doc = await resolveXml(xml)
-  try {
-    const count = doc.find(`/*[local-name()='CrossIndustryInvoice']/*[local-name()='ExchangedDocumentContext']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']`).length
-    if (count > 1) {
-      return {
-        message: `[CII-SR-009] - GuidelineSpecifiedDocumentContextParameter must exist exactly once (found ${count})`,
-        id: 'CII-SR-009',
-        severity: 'error',
-      }
+function extendedCtcFrPrecheck(doc: XmlDocument): SchematronError | undefined {
+  const count = doc.find(`/*[local-name()='CrossIndustryInvoice']/*[local-name()='ExchangedDocumentContext']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']`).length
+  if (count > 1) {
+    return {
+      message: `[CII-SR-009] - GuidelineSpecifiedDocumentContextParameter must exist exactly once (found ${count})`,
+      id: 'CII-SR-009',
+      severity: 'error',
     }
-    const ids = doc.find(`/*[local-name()='CrossIndustryInvoice']/*[local-name()='ExchangedDocumentContext']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']/*[local-name()='ID']`).length
-    if (ids > 1) {
-      return {
-        message: `[CII-SR-010] - ID must exist exactly once (found ${ids})`,
-        id: 'CII-SR-010',
-        severity: 'error',
-      }
+  }
+  const ids = doc.find(`/*[local-name()='CrossIndustryInvoice']/*[local-name()='ExchangedDocumentContext']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']/*[local-name()='ID']`).length
+  if (ids > 1) {
+    return {
+      message: `[CII-SR-010] - ID must exist exactly once (found ${ids})`,
+      id: 'CII-SR-010',
+      severity: 'error',
     }
-    if (!declaresExtendedCtcFr(doc))
-      throw new Error(`level "extended-ctc-fr" does not match the document: its guideline ID (BT-24) must be ${EXTENDED_CTC_FR_GUIDELINE_ID}`)
-    return undefined
   }
-  finally {
-    doc.dispose()
-  }
-}
-
-async function hasUblRoot(xml: string | Buffer): Promise<boolean> {
-  const doc = await resolveXml(xml)
-  try {
-    return isUblDocument(doc)
-  }
-  finally {
-    doc.dispose()
-  }
-}
-
-/**
- * The two UBL transforms are picked by level, but the level is only a CustomizationID (BT-24): throw
- * when the document declares the other one (the EN16931 transform on an EXTENDED-CTC-FR document
- * would silently skip the extension rules; the reverse would apply them to a plain EN 16931 one).
- * A missing or unsupported id does not throw: the explicit level is honoured (BR-01 reports a
- * missing one).
- */
-async function ublLevelPrecheck(xml: string | Buffer, level: string): Promise<void> {
-  const doc = await resolveXml(xml)
-  try {
-    assertUblLevelMatches(doc, level)
-  }
-  finally {
-    doc.dispose()
-  }
+  if (!declaresExtendedCtcFr(doc))
+    throw new Error(`level "extended-ctc-fr" does not match the document: its guideline ID (BT-24) must be ${EXTENDED_CTC_FR_GUIDELINE_ID}`)
+  return undefined
 }

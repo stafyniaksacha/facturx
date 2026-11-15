@@ -350,9 +350,10 @@ published Schematron, and UBL is validation only (see above). Details:
 
 - The level comes from `cbc:CustomizationID`: `urn:cen.eu:en16931:2017` and a `#compliant#` CIUS id (with no
   `#conformant#` extension after it) give `en16931`; the exact EXTENDED-CTC-FR id gives `extended-ctc-fr`;
-  anything else throws. An explicit `level` is honoured for a document that declares none or an unsupported
-  id (`BR-01` then reports the missing one), never against a declared level.
-- `validateSchematron()` without `flavor` now reads it from the root. In 0.6.1 it assumed `facturx`; a UBL
+  anything else throws. An explicit `level: 'en16931'` may be forced on a document that declares none or an
+  unsupported id (`BR-01` reports only a missing one), but `level: 'extended-ctc-fr'` always requires the exact
+  EXTENDED-CTC-FR id; neither overrides a different declared level.
+- `validateSchematron()` parses its input with libxml2 first (once, for every flavor), so malformed XML now fails with a libxml2 parse error instead of a SaxonJS one. Without `flavor` it now reads the flavor from the root. In 0.6.1 it assumed `facturx`; a UBL
   document without `flavor` used to be run through the CII rules and pass, and now gets the UBL ones. A
   `flavor` that contradicts the root throws.
 - For the UBL profile Schematrons, `SchematronError.id` is the assert `@id` (for example `BR-FREXT-26`), not

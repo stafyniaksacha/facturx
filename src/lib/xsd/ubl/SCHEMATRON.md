@@ -49,6 +49,34 @@ below.
   provided (get it from OASIS), yet `1xsd_UBL2.1/` is in the distribution. `pnpm spec:verify` proves the
   vendored copy identical to it, not to OASIS os-UBL-2.1, which is unverified (`CONFORMANCE.md` CG-45).
 
+## Source SHA-256
+
+SHA-256 of each source file in the release (`spec/fnfe-ctc-fr-1.4.0.04/distribution/UBL/<path>`), as listed in
+`spec/fnfe-ctc-fr-1.4.0.04/SHA256SUMS`; each was also recomputed here and matches the listed value. The vendored
+`.xslt` of the two profile Schematrons differ from their source by the `sum()` patch, the SEFs are derived
+(`pnpm spec:verify` recompiles them), so only sources are listed. The compile command is under "Regenerating".
+
+| Source file | SHA-256 | Origin of the value |
+|---|---|---|
+| `1xsd_UBL2.1/maindoc/UBL-Invoice-2.1.xsd` | `40fae8cb436f3a9506d7acce65ba162caef3b0bed4d5cbc0992b2153ded4edf4` | listed, matches |
+| `1xsd_UBL2.1/maindoc/UBL-CreditNote-2.1.xsd` | `a54651b1225052f811bf2ba01346f13f2454e7cc3e0be290c91dd680dc7b7b1a` | listed, matches |
+| `1xsd_UBL2.1/common/CCTS_CCT_SchemaModule-2.1.xsd` | `dd546e4809df86b6445589f69f0d6c9df162840ae386574ddfc1da7638103e15` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-CommonAggregateComponents-2.1.xsd` | `939172ad8dd057cd403e7f763f6532184dd5ed4b9de24c42ebb35db4792ba613` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-CommonBasicComponents-2.1.xsd` | `bd4ad043ee1d9da1c7f8018dabf739cfafdfb59143d0d16b9ef769e6b7c408a7` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-CommonExtensionComponents-2.1.xsd` | `ad7a4e490978adfbcfc5ec0bb20941cf11ac960ccf0c4de8791a7c731a8dbe87` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-CommonSignatureComponents-2.1.xsd` | `3db472305f029bba5c1ae157bfd0178f715c3f9b94bd8e6c557dbce5e88da874` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-ExtensionContentDataType-2.1.xsd` | `fcee77a11870208e6377ea6311b9f2a050bca24bdad8606ea02d71e9f9e72f8d` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-QualifiedDataTypes-2.1.xsd` | `7dcb156e610239c97ae70940cf4653b88e48c3595bf5f56a2204a32e2893e6cf` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-SignatureAggregateComponents-2.1.xsd` | `17bb6b62d709b4fd81449a37655af36aa6a1276ad4fdb1b2e249a5ed4b7c2172` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-SignatureBasicComponents-2.1.xsd` | `cef924d7ba3d1d8ade14469325cde1364f8c174e46f0198ec02da8e9e748a489` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-UnqualifiedDataTypes-2.1.xsd` | `09052d406b4293e2a5f9c2bfee6df10ad4d8d5f0b36e24a6349d7f7936d89eb6` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-XAdESv132-2.1.xsd` | `a4f726bcf8cc3f7d9ffa4dab99e005535a8e8b60dced1e5d94578d2e05afa96e` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-XAdESv141-2.1.xsd` | `1fa4625e9cefcb7a9abb5ac1b64315547450031eece8a55bd584e4ba4b79dbc1` | listed, matches |
+| `1xsd_UBL2.1/common/UBL-xmldsig-core-schema-2.1.xsd` | `101909c9f06456d61ddcc4fb982f1d40dc357b439f393b1a2eb46e42acd60809` | listed, matches |
+| `EN16931/2xslt/EN16931-UBL-validation.xslt` | `39f9d282867f1a49e7708d9e29a53da89643e1ee56f10cec1ebcf1277595fcbd` | listed, matches |
+| `EXTENDED-CTC-FR/2xslt/EXTENDED-CTC-FR-UBL.xslt` | `5a30860a106680629afbbd6159d829bf5f353b835fd9eda24ea8e8e13587d4f9` | listed, matches |
+| `EN16931/2xslt/BR-FR-Flux2-Schematron-UBL.xslt` | `5ab722085cf69301acdecbb70b38620524488c602316bfba34b00fb78deb8631` | listed, matches |
+
 ## Regenerating
 
 ```bash

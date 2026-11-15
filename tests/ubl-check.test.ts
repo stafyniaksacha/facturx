@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
-import { check, validateSchematron } from '@stafyniaksacha/facturx'
+import { check, validateFrCtc, validateSchematron } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
 
 const FACTURES = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
@@ -281,5 +281,51 @@ describe('uBL routing, rule ids and level override', () => {
     await expect(check({ xml })).rejects.toThrow(/level/)
     await expect(check({ xml: await readFile(ext.file), level: 'en16931', schematron: true, frCtc: true })).rejects.toThrow(/does not match the document/)
     await expect(check({ xml: await readFile(en.file), level: 'extended-ctc-fr', frCtc: true })).rejects.toThrow(/does not match the document/)
+  })
+})
+
+describe('uBL explicit level, flavor guards and roots (final review)', () => {
+  const en = examples.find(e => e.level === 'en16931')!
+  const ext = examples.find(e => e.level === 'extended-ctc-fr')!
+  const EXT_MESSAGE = /level "extended-ctc-fr" does not match the document/
+
+  it('an explicit extended-ctc-fr always requires the exact CustomizationID (check, validateSchematron, validateFrCtc)', async () => {
+    for (const id of [null, 'urn:example:not-en16931', 'urn:cen.eu:en16931:2017#conformant#urn:example:other']) {
+      const xml = await withId(id)
+      await expect(check({ xml, level: 'extended-ctc-fr', schematron: true, frCtc: true }), String(id)).rejects.toThrow(EXT_MESSAGE)
+      await expect(validateSchematron({ xml, level: 'extended-ctc-fr' }), String(id)).rejects.toThrow(EXT_MESSAGE)
+      await expect(validateFrCtc({ xml, level: 'extended-ctc-fr' }), String(id)).rejects.toThrow(EXT_MESSAGE)
+    }
+  })
+
+  it('bounds the CustomizationID quoted by that error', async () => {
+    const xml = await withId(`urn:example:${'x'.repeat(500)}`)
+    const error = await check({ xml, level: 'extended-ctc-fr' }).catch(e => e as Error)
+    expect((error as Error).message).toMatch(EXT_MESSAGE)
+    expect((error as Error).message).not.toContain('x'.repeat(101))
+  })
+
+  it('an explicit en16931 still runs on a missing or unsupported id; the exact extended-ctc-fr id works', async () => {
+    const unsupported = await withId('urn:example:not-en16931')
+    await expect(check({ xml: unsupported, level: 'en16931', schematron: true, frCtc: true })).resolves.toMatchObject({ flavor: 'ubl', level: 'en16931' })
+    await expect(validateFrCtc({ xml: unsupported, level: 'en16931' })).resolves.toBeDefined()
+    await expect(check({ xml: await readFile(ext.file), level: 'extended-ctc-fr', schematron: true, frCtc: true })).resolves.toMatchObject({ level: 'extended-ctc-fr' })
+  })
+
+  it('an explicit facturx flavor on a UBL root throws up front', async () => {
+    await expect(check({ xml: await readFile(en.file), flavor: 'facturx' })).rejects.toThrow(/does not match the "facturx" flavor/)
+    await expect(check({ xml: await readFile(en.file), flavor: 'facturx', schematron: true })).rejects.toThrow(/does not match the "facturx" flavor/)
+  })
+
+  it('keeps the messages of the throw paths after the XSD lookup', async () => {
+    const xml = await readFile(en.file)
+    await expect(check({ xml, level: 'basic' })).rejects.toThrow(/level/)
+    await expect(check({ xml, flavor: 'orderx' })).rejects.toThrow(/Order-X level|does not match/)
+  })
+
+  it('does not recognize a UBL-looking root outside the UBL namespaces', async () => {
+    await expect(check({ xml: '<Invoice/>' })).rejects.toThrow(/not recognized/)
+    await expect(check({ xml: '<CreditNote xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>' })).rejects.toThrow(/not recognized/)
+    await expect(check({ xml: '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2"/>' })).rejects.toThrow(/not recognized/)
   })
 })

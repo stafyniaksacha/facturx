@@ -3,7 +3,7 @@ import type { SchematronConfig, SchematronError, SchematronResult } from './sche
 import { UBL_LEVELS } from './constants'
 import { resolveXml } from './resolve'
 import { runSchematron } from './schematron'
-import { getUblDeclaredLevel, getUblLevel, isUblDocument, levelFromGuidelineId } from './xml'
+import { assertUblLevelMatches, getUblLevel, isUblDocument, levelFromGuidelineId } from './xml'
 
 /**
  * French CTC business rules (`BR-FR-Flux2`) for invoices in UN/CEFACT CII D22B (hence Factur-X) and UBL 2.1.
@@ -137,10 +137,12 @@ async function declaredProfile(xml: string | Buffer, requested?: string, explici
     if (requested !== undefined && requested !== flavor)
       throw new Error(`French CTC rules (BR-FR): flavor "${requested}" does not match the document root element "${root.name}"`)
     if (flavor === 'ubl') {
-      // An explicit level stands in for a missing or unsupported CustomizationID (BR-01 reports a missing
-      // one); a declared level is never overridden: the caller's `level` is compared with it afterwards.
-      if (explicitLevel !== undefined && getUblDeclaredLevel(doc) === undefined)
+      // `en16931` may stand in for a missing or unsupported CustomizationID; `extended-ctc-fr` needs the exact
+      // id; a declared level is never overridden (see assertUblLevelMatches).
+      if (explicitLevel === 'en16931' || explicitLevel === 'extended-ctc-fr') {
+        assertUblLevelMatches(doc, explicitLevel)
         return { flavor, declared: explicitLevel }
+      }
       return { flavor, declared: getUblLevel(doc) }
     }
     const id = doc.get('/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:GuidelineSpecifiedDocumentContextParameter/ram:ID', { rsm: CII_NS, ram: RAM_NS })?.content.trim()

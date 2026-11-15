@@ -6,7 +6,7 @@ import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
 import { assertFrCtcApplicable, validateFrCtc } from './fr-ctc'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
-import { assertUblLevelMatches, declaresExtendedCtcFr, getFlavor, getLevel } from './xml'
+import { assertUblLevelMatches, declaresExtendedCtcFr, getFlavor, getLevel, isUblDocument } from './xml'
 import { getXsd } from './xsd'
 
 // XPath dynamic errors caused by the document's values (XPath and XQuery Functions and Operators 3.1
@@ -59,12 +59,15 @@ export async function check(options: {
     // nor the dedicated Schematron (BT-24 non-empty) checks the guideline ID.
     if (options.level === 'extended-ctc-fr' && flavor === 'facturx' && !declaresExtendedCtcFr(xml))
       throw new Error(`level "extended-ctc-fr" does not match the document: its guideline ID (BT-24) must be ${EXTENDED_CTC_FR_GUIDELINE_ID}`)
+    // Symmetric with the `ubl` guard below: the Factur-X XSD and rules are for CII.
+    if (flavor === 'facturx' && isUblDocument(xml))
+      throw new Error(`The XML root element "${xml.root?.name}" does not match the "facturx" flavor`)
     if (flavor === 'ubl') {
       // The root picks the XSD, so an explicit flavor cannot be applied to a non-UBL document.
       if (getFlavor(xml) !== 'ubl')
         throw new Error(`The XML root element "${xml.root?.name}" does not match the "ubl" flavor`)
-      // Same for an explicit UBL level: both share one XSD, which ignores the CustomizationID. An
-      // explicit level overrides a missing or unsupported id, never a declared level.
+      // Same for an explicit UBL level: both share one XSD, which ignores the CustomizationID.
+      // `en16931` may stand in for a missing or unsupported id, `extended-ctc-fr` may not.
       if (options.level === 'extended-ctc-fr' || options.level === 'en16931')
         assertUblLevelMatches(xml, options.level)
     }
@@ -80,7 +83,16 @@ export async function check(options: {
 
   // UBL has one XSD per root element (Invoice, CreditNote): getFlavor() already checked the namespace.
   const ublRoot = flavor === 'ubl' ? (xml.root?.name as UBL_ROOT | undefined) : undefined
-  const xsd = await getXsd(flavor, level, true, ublRoot)
+  let xsd: Awaited<ReturnType<typeof getXsd>>
+  try {
+    xsd = await getXsd(flavor, level, true, ublRoot)
+  }
+  catch (error) {
+    // An unknown level or a flavor with no schema for this level: don't leak the document we parsed.
+    if (!(options.xml instanceof XmlDocument))
+      xml.dispose()
+    throw error
+  }
   const validator = XsdValidator.fromDoc(xsd)
 
   let xsdValid = false

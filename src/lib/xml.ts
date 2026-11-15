@@ -135,17 +135,23 @@ export function getUblLevel(xmlDoc: XmlDocument): 'en16931' | 'extended-ctc-fr' 
 }
 
 /**
- * An explicit `level` overrides detection when the document declares none, or an id this package has
- * no rules for (BR-01 then reports a missing BT-24). It never overrides a level the document does
- * declare: throws when they differ.
+ * What an explicit UBL `level` may override. `en16931` may stand in for a missing or unsupported
+ * `cbc:CustomizationID` (BR-01 then reports a missing one; no rule reports an unsupported one).
+ * `extended-ctc-fr` never may: neither the XSD nor the dedicated Schematron checks the id, so the
+ * document must declare exactly the Annex A one. Neither overrides a different level the document
+ * declares. Throws otherwise; the message quotes at most the bounded id.
  */
 export function assertUblLevelMatches(xmlDoc: XmlDocument, level: string): void {
   const declared = getUblDeclaredLevel(xmlDoc)
-  if (declared === undefined || declared === level)
+  if (declared === level)
     return
-  throw new Error(level === 'extended-ctc-fr'
-    ? `level "extended-ctc-fr" does not match the document: its CustomizationID (BT-24) must be ${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}`
-    : `level "${level}" does not match the document: its CustomizationID (BT-24) declares ${declared === 'extended-ctc-fr' ? 'the EXTENDED-CTC-FR extension' : 'EN 16931'}`)
+  if (level === 'extended-ctc-fr') {
+    const id = ublCustomizationId(xmlDoc)
+    throw new Error(`level "extended-ctc-fr" does not match the document: its CustomizationID (BT-24) must be ${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID} (found ${id === undefined ? 'none' : `"${boundForMessage(id)}"`})`)
+  }
+  if (declared === undefined)
+    return
+  throw new Error(`level "${level}" does not match the document: its CustomizationID (BT-24) declares the EXTENDED-CTC-FR extension`)
 }
 
 /** Whether the root is a UBL 2.1 Invoice or CreditNote (name and namespace). Never throws. */
