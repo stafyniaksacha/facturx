@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
 import { check, extract, invoiceToXml, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
+import { xmlPaths } from './fixtures/xml-paths'
 
 // Official example invoices shipped with the Factur-X 1.09 distribution (see spec/README.md).
 // They are the conformance corpus: every one must extract, validate (XSD + Schematron) at the
@@ -54,5 +55,8 @@ describe('official Factur-X 1.09 examples', () => {
     const reparsed = await check({ xml: serialized, level })
     expect(reparsed.errors).toEqual([])
     expect(await xmlToInvoice(serialized)).toEqual(model)
+    // The model comparison goes through the parser on both sides, so it cannot see an element the
+    // parser drops: compare the element and attribute paths of the original and the re-serialized XML.
+    expect(xmlPaths(serialized)).toEqual(xmlPaths(extracted.xml))
   })
 })

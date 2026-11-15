@@ -72,7 +72,7 @@ describe('unit prices (CG-01)', () => {
 
   it('still writes *Amount*s (line, document, allowances outside a price) with 2 decimals', async () => {
     const { invoice, lines } = await model()
-    lines[0].specifiedLineTradeSettlement.specifiedTradeSettlementLineMonetarySummation!.lineTotalAmount.value = 81.9049
+    lines[0].specifiedLineTradeSettlement.specifiedTradeSettlementLineMonetarySummation!.lineTotalAmount!.value = 81.9049
     invoice.supplyChainTradeTransaction.applicableHeaderTradeSettlement.specifiedTradeAllowanceCharge = [
       new TradeAllowanceChargeType({
         chargeIndicator: new IndicatorType({ indicator: false }),
