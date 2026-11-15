@@ -497,9 +497,10 @@ reported to FNFE-MPE.
     missing MDG-4 (`ExchangedDocument/IssueDateTime`) or MDT-87 (`IssuerAssignedID`) is not reported;
     an empty `<ram:IssuerAssignedID/>` passes too. CDV-05/06 problems surface only through
     `BR-FR-CDV-CL-02`.
-  - `BR-FR-CDV-09` (MDT-77 mandatory) has the `TypeCode` element as context, and `BR-FR-CDV-13`
-    (MDT-129 mandatory unless MDT-105 = 501) the `IssuerTradeParty`: a missing element is never
-    reported.
+  - `BR-FR-CDV-09` (MDT-77 mandatory) has the `TypeCode` element as context, so a missing MDT-77 is
+    never reported as BR-FR-CDV-09; on the Annex B example the message still fails, through
+    `BR-FR-CDV-07_MDT-38_yes` and `BR-FR-CDV-CL-05_MDT-88_23`. `BR-FR-CDV-13` (MDT-129 mandatory unless
+    MDT-105 = 501) has the `IssuerTradeParty` as context: a missing group is not reported.
   - `BR-FR-CDV-07_MDT-38_no` sits in a second rule with the same context as the first rule of its
     pattern (only the first matching rule fires), and its test `count(…='DFH') ge 0` is always true.
 - **Code lists that differ from Annex A:**
@@ -515,6 +516,15 @@ reported to FNFE-MPE.
 - **Out of reach of a message-only check:** `BR-FR-CDV-13` (one MDT-129 value must equal the seller's
   legal ID, BT-30 of the invoice) is only approximated by the warning `BR-FR-CDV-13_MDT-129-2`;
   `BR-FR-CDV-10`'s condition on the rejected file name is not checked.
-- **Evidence:** `tests/cdar.test.ts` "accepts, as a documented gap (CG-34)…" (missing MDG-4, MDT-87,
-  MDT-129 group pass); spec review probes (2026-11-15) for the CDV-07, CDV-09 and code-list cases.
+- **Evidence**, all in `tests/cdar.test.ts`, on Annex B messages, each code-list case with a control
+  showing the rule runs:
+  - "accepts, as a documented gap (CG-34)…": missing MDG-4, MDT-87 and the MDT-129 group pass.
+  - "documented gaps (CG-34) vs Annex A":
+    - BR-FR-CDV-07: MDT-77 = 305 with an issuer MDT-38 and no DFH recipient passes.
+    - BR-FR-CDV-09: a missing MDT-77 fails only `BR-FR-CDV-07_MDT-38_yes` and `BR-FR-CDV-CL-05_MDT-88_23`.
+    - BR-FR-CDV-CL-09 (207): `DEST_INC` passes; `XXX_INC` fails `…_207`.
+    - BR-FR-CDV-CL-09 (210 B2G, sender `GlobalID@0238` = 9999): `CONTACT_ACHTR` fails `…_210B2G`;
+      `AUTRE` passes.
+    - BR-FR-CDV-CL-04: MDT-59 `DFH` passes; `XXX` fails `BR-FR-CDV-CL-04_MDT-59`.
+    - BR-FR-CDV-02: the POUR_PPF message with MDT-3 `CDV:invoice` passes.
 - **Close when:** FNFE-MPE publishes a Schematron that enforces these rules, or Annex A is aligned.
