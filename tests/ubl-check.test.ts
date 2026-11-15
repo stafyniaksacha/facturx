@@ -81,13 +81,40 @@ describe('uBL detection and XSD validation', () => {
     const xml = raw.slice(raw.charCodeAt(0) === 0xFEFF ? 1 : 0)
       .replace(/(<\?xml[^>]*\?>)?/, m => `${m}<!DOCTYPE Invoice [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>`)
       .replace(/<cbc:ID>/, '<cbc:Note>&xxe;</cbc:Note><cbc:ID>')
+    // Positive control: the payload really declares the entity and uses it.
+    expect(xml).toContain('<!ENTITY xxe SYSTEM "file:///etc/passwd">')
+    expect(xml).toContain('&xxe;')
     let out: string
+    let parsed = false
     try {
-      out = JSON.stringify(await check({ xml }))
+      const r = await check({ xml })
+      parsed = r.flavor === 'ubl'
+      out = JSON.stringify(r)
     }
     catch (error) {
       out = String(error)
     }
+    // Reached validation (valid or XSD errors), and nothing from the file leaked.
+    expect(parsed).toBe(true)
     expect(out).not.toContain('root:')
+  })
+
+  it('bounds an unknown CustomizationID in the error message', async () => {
+    const id = `urn:cen.eu:en16931:2017#conformant#${'x'.repeat(500)}`
+    const xml = await withId(id)
+    const error = await check({ xml }).catch(e => e as Error)
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).message).toContain(`"${id.slice(0, 100)}…"`)
+    expect((error as Error).message).not.toContain('x'.repeat(101))
+  })
+
+  it('rejects an explicit extended-ctc-fr level on an EN16931 UBL document', async () => {
+    const en = examples.find(e => e.level === 'en16931')!
+    await expect(check({ xml: await readFile(en.file), level: 'extended-ctc-fr' })).rejects.toThrow(/does not match the document/)
+  })
+
+  it('rejects an explicit ubl flavor on a CII document', async () => {
+    const cii = await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.xml'))
+    await expect(check({ xml: cii, flavor: 'ubl' })).rejects.toThrow(/does not match the "ubl" flavor/)
   })
 })

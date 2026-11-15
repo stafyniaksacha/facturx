@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { readdirSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { check, extract, generate, xmlToInvoice } from '@stafyniaksacha/facturx'
@@ -978,5 +979,28 @@ describe('generate', () => {
       const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml: await readFile(SOURCE_XML, 'utf8') }))
       expect(readXmp(output).documentType).toEqual(['INVOICE'])
     })
+  })
+})
+
+describe('generate: UBL documents', () => {
+  const FACTURES = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
+
+  async function ublXml(): Promise<string> {
+    const entry = readdirSync(FACTURES, { withFileTypes: true, recursive: true })
+      .filter(e => e.isFile() && e.name.endsWith('_UBL_Commentee.xml'))
+      .sort((a, b) => a.name.localeCompare(b.name))[0]
+    return readFile(resolve(entry.parentPath ?? (entry as { path?: string }).path ?? FACTURES, entry.name), 'utf8')
+  }
+
+  it('refuses to embed a UBL invoice as factur-x.xml', async () => {
+    await expect(generate({ pdf: await sourcePdf(), xml: await ublXml() })).rejects.toThrow(/UBL cannot be embedded/)
+  })
+
+  it('refuses it with an explicit ubl flavor too', async () => {
+    await expect(generate({ pdf: await sourcePdf(), xml: await ublXml(), flavor: 'ubl' })).rejects.toThrow(/UBL cannot be embedded/)
+  })
+
+  it('keeps the root/flavor mismatch error for an unrecognized root', async () => {
+    await expect(generate({ pdf: await sourcePdf(), xml: '<Foo/>', flavor: 'orderx' })).rejects.toThrow('does not match the "orderx" flavor')
   })
 })

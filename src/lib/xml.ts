@@ -105,7 +105,23 @@ export function getUblLevel(xmlDoc: XmlDocument): 'en16931' | 'extended-ctc-fr' 
     return 'extended-ctc-fr'
   if (id === UBL_EN16931_CUSTOMIZATION_ID || id.startsWith(`${UBL_EN16931_CUSTOMIZATION_ID}#compliant#`))
     return 'en16931'
-  throw new Error(`Unknown UBL CustomizationID: "${id}". Expected "${UBL_EN16931_CUSTOMIZATION_ID}", a CIUS "${UBL_EN16931_CUSTOMIZATION_ID}#compliant#…" or "${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}"; pass the \`level\` option to override`)
+  throw new Error(`Unknown UBL CustomizationID: "${boundForMessage(id)}". Expected "${UBL_EN16931_CUSTOMIZATION_ID}", a CIUS "${UBL_EN16931_CUSTOMIZATION_ID}#compliant#…" or "${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}"; pass the \`level\` option to override`)
+}
+
+/** Whether the root is a UBL 2.1 Invoice or CreditNote (name and namespace). Never throws. */
+export function isUblDocument(fileDoc: XmlDocument): boolean {
+  const root = fileDoc.root
+  if (!root)
+    return false
+  return (root.name === 'Invoice' && root.namespaceUri === UBL_INVOICE_NS)
+    || (root.name === 'CreditNote' && root.namespaceUri === UBL_CREDITNOTE_NS)
+}
+
+// Untrusted text in an error: no control characters, at most 100 characters.
+function boundForMessage(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  const clean = value.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
+  return clean.length > 100 ? `${clean.slice(0, 100)}…` : clean
 }
 
 function getFlavorOrUndefined(fileDoc: XmlDocument): string | undefined {
@@ -119,8 +135,7 @@ function getFlavorOrUndefined(fileDoc: XmlDocument): string | undefined {
 
 export function getFlavor(fileDoc: XmlDocument): string {
   const tag = fileDoc.root?.name
-  const ns = fileDoc.root?.namespaceUri
-  if ((tag === 'Invoice' && ns === UBL_INVOICE_NS) || (tag === 'CreditNote' && ns === UBL_CREDITNOTE_NS))
+  if (isUblDocument(fileDoc))
     return 'ubl'
   switch (tag) {
     case 'SCRDMCCBDACIOMessageStructure':
