@@ -529,7 +529,8 @@ function parseTradeCurrencyExchange(node: XmlElement | undefined): ram.TradeCurr
     sourceCurrencyCode: new qdt.CurrencyCodeType({ value: textOf(get(node, './ram:SourceCurrencyCode')) ?? '' }),
     targetCurrencyCode: new qdt.CurrencyCodeType({ value: textOf(get(node, './ram:TargetCurrencyCode')) ?? '' }),
     conversionRate: new udt.RateType({ value: Number.parseFloat(textOf(get(node, './ram:ConversionRate')) ?? '0') }),
-    // udt:DateTimeType in the EXTENDED XSD (the field matrix row names qdt:DateTimeString).
+    // udt:DateTimeType in the EXTENDED XSD; one of the two XPath columns of the field matrix row
+    // says qdt:DateTimeString (CONFORMANCE.md CG-38).
     conversionRateDateTime: parseDateTime(get(node, './ram:ConversionRateDateTime')),
   })
 }
