@@ -33,6 +33,14 @@ import { setPDFA3BMetadata, stripXmlInvalidChars } from './xmp'
 // attachment into the name tree on save(), so the tree alone cannot detect a reused document.
 const generated = new WeakSet<PDFDocument>()
 
+/**
+ * The levels `generate()` writes a HybridConformance value for (BR-HYBRID-07), per flavor. Order-X
+ * is absent until its fx:ConformanceLevel is written (CG-08), so it keeps its previous behaviour.
+ */
+const GENERATE_LEVELS: Record<string, readonly string[]> = {
+  facturx: Object.keys(FACTURX_CONFORMANCE_LEVEL),
+}
+
 export async function generate(options: {
   pdf: string | Buffer | PDFDocument
   xml: string | Buffer | XmlDocument
@@ -275,14 +283,6 @@ const AF_RELATIONSHIPS: Record<string, AFRelationship> = {
  */
 function normalizeLevel(value: string): string {
   return value.trim().toLowerCase().replace(/[\s_]+/g, '')
-}
-
-/**
- * The levels `generate()` writes a HybridConformance value for (BR-HYBRID-07), per flavor. Order-X
- * is absent until its fx:ConformanceLevel is written (CG-08), so it keeps its previous behaviour.
- */
-const GENERATE_LEVELS: Record<string, readonly string[]> = {
-  facturx: Object.keys(FACTURX_CONFORMANCE_LEVEL),
 }
 
 function assertKnownLevel(flavor: string, level: string): void {
