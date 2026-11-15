@@ -75,11 +75,12 @@ const PDF_LIB_SLICE = 64 * 1024
  * `/Filter` chain is applied in turn to the previous output, never lazily through a chain: Flate by
  * node:zlib with a capped output (raw inflate after the 2-byte zlib header, so the Adler-32 trailer
  * is not checked, like pdf-lib's own decoder), LZW, ASCII85, ASCIIHex and RunLength by pdf-lib in
- * slices. Every stage's output is charged to `budget`.
+ * slices. Each stage is capped at `maxBytes`, and every stage's output is charged to `budget`, so a
+ * filter chain counts its intermediate outputs too. The result may be a view into a larger buffer.
  *
  * Throws EmbeddedFileTooLargeError when a stage would produce more than `maxBytes`,
  * InflateBudgetExceededError when the budget runs out, and EmbeddedFileDecodeError for invalid
- * compressed data, an unknown filter, or a `/Predictor` (pdf-lib ignores predictors, so it would
+ * compressed data (truncated deflate data included), an unknown filter, or a `/Predictor` (pdf-lib ignores predictors, so it would
  * have returned wrong bytes).
  */
 export function readEmbeddedFile(stream: PDFStream, maxBytes: number, budget: InflateBudget): Uint8Array {
@@ -119,10 +120,9 @@ function inflateCapped(data: Uint8Array, maxBytes: number, budget: InflateBudget
   const limit = Math.min(maxBytes, Math.max(budget.remaining, 0))
   let inflated: Buffer
   try {
-    inflated = inflateRawSync(data.subarray(2), {
-      finishFlush: zlibConstants.Z_SYNC_FLUSH, // like pdf-lib: a truncated stream gives what it holds
-      maxOutputLength: Math.max(limit, 1),
-    })
+    // Z_FINISH (the default): a deflate stream that does not reach its end is refused, as pdf-lib
+    // refused it, instead of returning a silently truncated file. Bytes after the end are ignored.
+    inflated = inflateRawSync(data.subarray(2), { maxOutputLength: Math.max(limit, 1) })
   }
   catch (error) {
     if ((error as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE') {

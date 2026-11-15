@@ -57,9 +57,12 @@ function extract(options: {
   `filename` is the name that matched.
 - Decodes the matching attachment once, with its `/Filter` chain (`FlateDecode`, `LZWDecode`,
   `ASCII85Decode`, `ASCIIHexDecode`, `RunLengthDecode`), and throws
-  `The embedded file <name> is too large: more than 128 MiB once decoded` past that size. A matching
-  file specification without an embedded stream throws `Malformed embedded file <name>: …`; another
-  filter, a `/Predictor` or corrupt data throws `Cannot decode the embedded file <name>: …`.
+  `The embedded file <name> is too large: more than 128 MiB once decoded` past that size. With a
+  chain of filters, the 128 MiB count the output of every stage together. A matching file
+  specification without an embedded stream throws `Malformed embedded file <name>: …`; another
+  filter, a `/Predictor`, or Flate data that is invalid or cut short throws
+  `Cannot decode the embedded file <name>: …`. The Flate Adler-32 checksum is not checked, as before.
+- `bytes` is a copy you own: changing it changes neither the PDF you passed nor a later `extract()`.
 - Throws `No attachment found` when no recognised XML is present.
 - Throws `Malformed EmbeddedFiles name tree: …` when the PDF's attachment list is corrupt (for
   example a name without a value), instead of an internal `pdf-lib` error.

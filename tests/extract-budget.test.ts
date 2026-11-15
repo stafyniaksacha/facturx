@@ -66,6 +66,39 @@ async function pdfWith(build: (pdf: PDFDocument) => Entry[], leaves = 0): Promis
   return Buffer.from(await pdf.save())
 }
 
+// ASCII85 (ISO 32000-1 §7.4.3, not vendored), ending with the `~>` EOD marker.
+function ascii85(data: Buffer): string {
+  let out = ''
+  for (let idx = 0; idx < data.length; idx += 4) {
+    const chunk = Buffer.alloc(4)
+    data.copy(chunk, 0, idx, idx + 4)
+    const count = Math.min(4, data.length - idx)
+    let value = chunk.readUInt32BE(0)
+    if (count === 4 && value === 0) {
+      out += 'z'
+      continue
+    }
+    const digits: string[] = []
+    for (let k = 0; k < 5; k++) {
+      digits.unshift(String.fromCharCode(33 + (value % 85)))
+      value = Math.floor(value / 85)
+    }
+    out += digits.slice(0, count + 1).join('')
+  }
+  return `${out}~>`
+}
+
+// RunLength (ISO 32000-1 §7.4.5): literal runs of up to 128 bytes, then the EOD byte 128.
+function runLength(data: Buffer): Buffer {
+  const parts: Buffer[] = []
+  for (let idx = 0; idx < data.length; idx += 128) {
+    const run = data.subarray(idx, idx + 128)
+    parts.push(Buffer.from([run.length - 1]), run)
+  }
+  parts.push(Buffer.from([128]))
+  return Buffer.concat(parts)
+}
+
 describe('extract() decodes only the matching attachment (CG-29)', () => {
   it('never decodes the other entries, however many share one stream', async () => {
     const pdf = await pdfWith((doc) => {
@@ -136,6 +169,34 @@ describe('extract() limits and errors on the matching attachment (CG-29)', () =>
       stream: rawStream(doc, `${deflateSync(XML).toString('hex')}>`, ['ASCIIHexDecode', 'FlateDecode'], { Predictor: 1 }),
     }])
     expect(Buffer.from((await extract({ pdf: chained })).bytes).toString('utf8')).toBe(XML)
+  })
+
+  it('decodes ASCII85 and RunLength', async () => {
+    for (const [contents, filter] of [[ascii85(Buffer.from(XML)), 'ASCII85Decode'], [runLength(Buffer.from(XML)), 'RunLengthDecode']] as const) {
+      const pdf = await pdfWith(doc => [{ key: 'factur-x.xml', stream: rawStream(doc, contents, filter) }])
+      expect(Buffer.from((await extract({ pdf })).bytes).toString('utf8')).toBe(XML)
+    }
+  })
+
+  // pdf-lib refused a Flate stream cut short too; returning what it holds would hand back a
+  // truncated invoice.
+  it('refuses truncated Flate data', async () => {
+    const deflated = deflateSync(XML)
+    const pdf = await pdfWith(doc => [{ key: 'factur-x.xml', stream: rawStream(doc, deflated.subarray(0, deflated.length - 100), 'FlateDecode') }])
+    await expect(extract({ pdf })).rejects.toThrow('Cannot decode the embedded file factur-x.xml: invalid compressed data')
+  })
+
+  // The decoder's output can be a view into the caller's PDF bytes (unfiltered) or into a larger
+  // zlib buffer holding unrelated memory (Flate): `bytes` must be an owned copy of its own length.
+  it.each([['unfiltered', undefined], ['Flate', 'FlateDecode']] as const)('returns bytes it owns (%s)', async (_, filter) => {
+    const input = await pdfWith(doc => [{ key: 'factur-x.xml', stream: rawStream(doc, filter ? deflateSync(XML) : Buffer.from(XML), filter) }])
+    const before = Buffer.from(input)
+    const { bytes } = await extract({ pdf: input })
+    expect(bytes.byteOffset).toBe(0)
+    expect(bytes.buffer.byteLength).toBe(bytes.byteLength)
+    bytes.fill(0x58)
+    expect(input.equals(before)).toBe(true)
+    expect(Buffer.from((await extract({ pdf: input })).bytes).toString('utf8')).toBe(XML)
   })
 
   it('refuses a chain whose later stage goes over the cap', async () => {

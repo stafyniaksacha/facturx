@@ -270,7 +270,8 @@ These shipped on `main` after 0.6.1 and are included in the next release.
 
 - **`extract()` decodes only the invoice, within 128 MiB.** 0.6.1 decoded every attachment before
   looking at the names. It now matches on names first, decodes only the matching attachment, and
-  throws `The embedded file <name> is too large: more than 128 MiB once decoded` past that size.
+  throws `The embedded file <name> is too large: more than 128 MiB once decoded` past that size (with
+  a chain of filters, all stages' output together).
   When no name tree key is a known invoice name, the file specification's `/F` and `/UF` are tried
   too, so an invoice stored under another key is now found. A matching file specification without
   an embedded stream throws `Malformed embedded file <name>: …`, data that does not decode throws

@@ -75,13 +75,18 @@ function findInvoiceFile(pdf: PDFDocument): InvoiceFile | undefined {
   return undefined
 }
 
-/** The decoded bytes of the matched file, read once, within MAX_EXTRACTED_BYTES (was CG-29). */
+/**
+ * The decoded bytes of the matched file, read once (was CG-29). MAX_EXTRACTED_BYTES caps each filter
+ * stage and, as one budget, the output of all stages together.
+ */
 function readInvoiceFile({ filename, fileSpec }: InvoiceFile): Uint8Array {
   const stream = embeddedFileStream(fileSpec)
   if (!stream)
     throw new Error(`Malformed embedded file ${filename}: its file specification has no embedded file stream (/EF)`)
   try {
-    return readEmbeddedFile(stream, MAX_EXTRACTED_BYTES, new InflateBudget(MAX_EXTRACTED_BYTES))
+    // An owned copy of exactly the decoded length: the decoder's result can be a view into the
+    // caller's PDF bytes or into a larger zlib buffer holding unrelated memory.
+    return new Uint8Array(readEmbeddedFile(stream, MAX_EXTRACTED_BYTES, new InflateBudget(MAX_EXTRACTED_BYTES)))
   }
   catch (error) {
     if (error instanceof EmbeddedFileTooLargeError || error instanceof InflateBudgetExceededError)
