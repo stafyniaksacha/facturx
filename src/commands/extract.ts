@@ -36,16 +36,22 @@ export default defineCommand({
       description: 'Output XML file, defaults to stdout',
       alias: 'o',
     },
+    raw: {
+      type: 'boolean',
+      description: 'Write the attachment bytes exactly as embedded instead of the re-serialized XML',
+      default: false,
+    },
   },
   run: async (args) => {
     const pdf = await readFile(resolve(args.args.pdf))
 
-    const { xml } = await extract({
+    const result = await extract({
       pdf,
       flavor: args.args.flavor,
       level: args.args.level,
       check: args.args.check,
     })
+    const xml = args.args.raw ? result.bytes : result.xml
 
     if (args.args.output) {
       const out = resolve(args.args.output)

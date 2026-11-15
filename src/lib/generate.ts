@@ -47,10 +47,24 @@ export async function generate(options: {
    * `Alternative` for BASIC and above.
    */
   afRelationship?: 'Data' | 'Alternative' | 'Source'
+  /**
+   * Embed the `xml` bytes exactly as given instead of libxml2's re-serialization (BOM, XML
+   * declaration, quotes and line endings are kept), so a hash or signature taken over the issued
+   * XML still matches the embedded copy. A `Buffer` is embedded as is, a `string` as UTF-8. The
+   * XML is still parsed (and checked when `check` is set) from those same bytes. Requires a
+   * `string` or `Buffer`, UTF-8 (no other declared encoding) and no DOCTYPE. Defaults to `false`.
+   */
+  preserveXmlBytes?: boolean
 }): Promise<Uint8Array> {
+  if (options.preserveXmlBytes === true && options.xml instanceof XmlDocument)
+    throw new Error('preserveXmlBytes needs the XML as a string or Buffer: an XmlDocument has no original bytes')
+
   const xml = await resolveXml(options.xml)
 
   try {
+    // Before the PDF is read or marked as used, like the other input checks.
+    const passThrough = options.preserveXmlBytes === true ? passThroughBytes(options.xml as string | Buffer, xml) : undefined
+
     const flavor = options.flavor || getFlavor(xml)
     // Checked on the root too, so an explicit `flavor: 'facturx'` cannot embed a ZUGFeRD 1.0
     // document as factur-x.xml.
@@ -127,8 +141,7 @@ export async function generate(options: {
     assertNoEmbeddedInvoice(pdf, filename, flavor)
     setDocumentId(pdf)
 
-    const encoder = new TextEncoder()
-    const uint8Array = encoder.encode(xml.toString())
+    const uint8Array = passThrough ?? new TextEncoder().encode(xml.toString())
 
     await pdf.attach(uint8Array, filename, {
       afRelationship,
@@ -173,6 +186,32 @@ export async function generate(options: {
       xml.dispose()
     }
   }
+}
+
+// The encoding pseudo-attribute of an XML declaration, which can only open the document (after an
+// optional BOM).
+const XML_DECLARATION_ENCODING = /^\uFEFF?<\?xml\s[^?]*?\bencoding\s*=\s*(["'])([^"']*)\1/
+
+/**
+ * The bytes to embed for `preserveXmlBytes` (CG-26): exactly the input, which `xml` was parsed
+ * from. Unparsed bytes carry everything libxml2 would otherwise normalize away, so two things are
+ * refused:
+ * - a DOCTYPE (internal subset, SYSTEM or PUBLIC id): its entities and external references would
+ *   reach every later reader of the invoice (AGENTS.md "Security"). The parse itself used the
+ *   default options, which neither load the DTD nor substitute entities. CII documents have none;
+ * - an encoding other than UTF-8: the input is decoded as UTF-8 here (a string is encoded as
+ *   UTF-8), so a different declaration would make other readers see different text than the one
+ *   that was checked. This is a consistency rule; the vendored Factur-X text does not name an
+ *   encoding.
+ */
+function passThroughBytes(input: string | Buffer, xml: XmlDocument): Uint8Array {
+  if (xml.dtd !== null)
+    throw new Error('preserveXmlBytes refuses XML with a DOCTYPE: remove it, or let generate() re-serialize the XML')
+  const head = typeof input === 'string' ? input.slice(0, 1024) : new TextDecoder().decode(input.subarray(0, 1024))
+  const encoding = XML_DECLARATION_ENCODING.exec(head)?.[2]
+  if (encoding !== undefined && !/^utf-?8$/i.test(encoding))
+    throw new Error(`preserveXmlBytes needs UTF-8 XML, but the XML declaration says encoding="${encoding.slice(0, 40)}"`)
+  return typeof input === 'string' ? new TextEncoder().encode(input) : new Uint8Array(input)
 }
 
 const AF_RELATIONSHIPS: Record<string, AFRelationship> = {

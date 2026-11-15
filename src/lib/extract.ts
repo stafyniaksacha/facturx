@@ -9,7 +9,14 @@ import { resolvePdf, resolveXml } from './resolve'
 
 interface ExtractResult {
   filename: string
+  /** The XML as re-serialized by libxml2 (BOM, declaration and line endings may differ from the PDF's). */
   xml: string
+  /**
+   * The attachment's bytes exactly as embedded in the PDF, decoded from its stream filters only
+   * (CG-26). Use them to verify a hash or signature taken over the issued XML. They parsed as the
+   * same XML as `xml`.
+   */
+  bytes: Uint8Array
   flavor?: string
   level?: string
 }
@@ -87,6 +94,7 @@ export async function extract(options: {
     return {
       filename: file.name,
       xml: xml.toString(),
+      bytes: new Uint8Array(file.data),
       flavor,
       level,
     }

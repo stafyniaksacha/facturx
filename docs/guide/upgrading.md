@@ -209,6 +209,14 @@ legal advice.
 Germany expects `Alternative` for BASIC and above. See
 [`generate()`](/api/generate#behaviour).
 
+### Byte-exact XML: `preserveXmlBytes` and `extract().bytes`
+
+`generate({ pdf, xml, preserveXmlBytes: true })` (CLI `--preserveXmlBytes`) embeds the XML bytes you
+pass unchanged instead of libxml2's re-serialization, and `extract()` now also returns `bytes`, the
+attachment exactly as embedded (CLI `extract --raw`). A hash or signature taken over the issued XML
+then matches what is in the PDF. The default and the `xml` field are unchanged. `preserveXmlBytes`
+needs a `string` or `Buffer`, UTF-8, with no DOCTYPE. See [`generate()`](/api/generate#behaviour).
+
 ### New fields on `SchematronError`
 
 | Field | Meaning |

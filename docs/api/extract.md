@@ -13,6 +13,7 @@ function extract(options: {
 }): Promise<{
   filename: string
   xml: string
+  bytes: Uint8Array
   flavor?: string
   level?: string
 }>
@@ -32,7 +33,8 @@ function extract(options: {
 | Field | Type | Description |
 | --- | --- | --- |
 | `filename` | `string` | The embedded attachment filename (e.g. `factur-x.xml`). |
-| `xml` | `string` | The extracted XML as a string. |
+| `xml` | `string` | The extracted XML as a string, re-serialized by libxml2 (a BOM, the declaration's quotes and CRLF line endings are not kept). |
+| `bytes` | `Uint8Array` | The attachment exactly as embedded in the PDF (only its stream compression undone). Use it to check a hash or signature over the issued XML. CLI: `--raw`. |
 | `flavor` | `string?` | The detected (or asserted) flavor. |
 | `level` | `string?` | The `level` option, echoed back. It is **not** detected from the XML. |
 
