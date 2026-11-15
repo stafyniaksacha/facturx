@@ -3,7 +3,7 @@
 France's e-invoicing reform (CTC, *contrôle continu des transactions*) adds French business rules on
 top of EN 16931. They are defined by the AFNOR standard **XP Z12-012 v1.4.0** and published as
 Schematron by FNFE-MPE ("Schematrons FR CTC" v1.4.0). This library ships the rules for invoices in
-CII, hence for Factur-X: **`BR-FR-Flux2`**, from release v1.4.0.04 (fix 04).
+CII, hence for Factur-X, and in UBL 2.1: **`BR-FR-Flux2`**, from release v1.4.0.04 (fix 04).
 
 ::: warning Not legal advice
 This page describes what the library checks, not what the law requires of you. The release gives
@@ -17,8 +17,8 @@ The FNFE-MPE release notes define three validation steps for an invoice:
 
 | Step | What | In this library |
 | --- | --- | --- |
-| 1 | XSD of the profile | `check()` (always); the "uncoupled" CII D22B XSD for EXTENDED-CTC-FR |
-| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`: Factur-X **1.09.2.fixFR04** Schematrons from this release for BASIC WL, EN16931 and EXTENDED; the dedicated EXTENDED-CTC-FR Schematron for plain CII |
+| 1 | XSD of the profile | `check()` (always); the "uncoupled" CII D22B XSD for EXTENDED-CTC-FR; the UBL 2.1 XSD for UBL |
+| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`: Factur-X **1.09.2.fixFR04** Schematrons from this release for BASIC WL, EN16931 and EXTENDED; the dedicated EXTENDED-CTC-FR Schematron for plain CII; the EN 16931 and EXTENDED-CTC-FR UBL Schematrons for UBL |
 | 3 | French rules `BR-FR-Flux2` | `frCtc: true` |
 
 `frCtc` runs step 3 only: it neither requires nor implies `schematron`. Pass both to run the whole
@@ -48,7 +48,7 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
 - **Factur-X BASIC WL, EN16931 and EXTENDED**, and **plain-CII EXTENDED-CTC-FR**, only: the three Factur-X profiles the release selects (the
   release notes add "BASIC WL for the first year only"; XP Z12-012 Annex A lists guideline
   IDs for these three). The rules themselves read neither the root element nor the profile, so the
-  library checks the document: a non-CII document, a MINIMUM or BASIC invoice, or a `level` that
+  library checks the document: a document that is neither CII nor UBL, a MINIMUM or BASIC invoice, or a `level` that
   differs from the one the document declares **throws** instead of passing silently. A plain-CII
   `EXTENDED-CTC-FR` invoice is detected as level `extended-ctc-fr`, and
   `check({ xml, schematron: true, frCtc: true })` runs the release's full sequence on it: the
@@ -62,7 +62,12 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
   transition window that has closed and is not shipped.
 - Lifecycle status messages (CDAR) are validated separately with [`validateCdar()`](/api/validate-cdar)
   (CDAR XSD + `BR-FR-CDV`); building them is not supported.
-- Not covered: UBL invoices and e-reporting (flux 10).
+- **UBL 2.1 invoices and credit notes**, at the EN16931 and EXTENDED-CTC-FR levels (read from
+  `cbc:CustomizationID`): `check({ xml, schematron: true, frCtc: true })` runs the UBL XSD, the UBL
+  profile Schematron, then `BR-FR-Flux2-Schematron-UBL` (standard variant). A `level` the document
+  does not declare throws. CIUS rules such as Peppol BIS are not run.
+- Not covered: e-reporting (flux 10), and step 4 (Chorus Pro `BR-France-CTC-CPRO`), for which no
+  Schematron is published.
 - The `EXTENDED-CTC-FR` French extension fields (`EXT-FR-FE-*`) are read by `xmlToInvoice()` and
   written by `invoiceToXml()`, including the VAT currency exchange (`TaxApplicableTradeCurrencyExchange`).
 

@@ -49,7 +49,7 @@ const { xml: extractedXml, flavor } = await extract({ pdf })
 const { valid, errors, level } = await check({ xml: extractedXml })
 ```
 
-`generate` and `check` autodetect the `flavor` and `level` from the XML when not provided. `extract`
+`generate` and `check` autodetect the `flavor` and `level` from the XML when not provided. `check` also validates UBL 2.1 invoices (flavor `ubl`, validation only: UBL can't be embedded in a PDF). `extract`
 reports only the flavor; run `check` on the extracted XML to get its level.
 
 ## Documentation
