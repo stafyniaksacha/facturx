@@ -19,7 +19,7 @@ export async function check(options: {
   level?: string
   /**
    * Also run Schematron (business-rule) validation in addition to the XSD check.
-   * Only available for the `facturx` flavor. Defaults to `false`.
+   * Available for the `facturx` and `ubl` flavors. Defaults to `false`.
    */
   schematron?: boolean
   /**
@@ -63,9 +63,11 @@ export async function check(options: {
       // The root picks the XSD, so an explicit flavor cannot be applied to a non-UBL document.
       if (getFlavor(xml) !== 'ubl')
         throw new Error(`The XML root element "${xml.root?.name}" does not match the "ubl" flavor`)
-      // Same for an explicit `extended-ctc-fr`: both UBL levels share one XSD, which ignores the ID.
+      // Same for an explicit UBL level: both share one XSD, which ignores the CustomizationID.
       if (options.level === 'extended-ctc-fr' && getUblLevel(xml) !== 'extended-ctc-fr')
         throw new Error(`level "extended-ctc-fr" does not match the document: its CustomizationID (BT-24) must be ${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}`)
+      if (options.level === 'en16931' && getUblLevel(xml) !== 'en16931')
+        throw new Error(`level "en16931" does not match the document: its CustomizationID (BT-24) declares the EXTENDED-CTC-FR extension`)
     }
     // Fail before any validation work when the French rules can't apply.
     if (options.frCtc)

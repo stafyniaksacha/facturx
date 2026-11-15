@@ -89,6 +89,7 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 | CG-40 | spec, French CTC, upstream | `EXTENDED-CTC-FR-CII.sch` BR-EXT-CL-07 | Fatal (rule not run) | The EXTENDED-CTC-FR Schematron never checks a `ReferenceTypeCode` against UNTDID 1153 (always-true guard) |
 | CG-41 | PDF/A, XMP | BR-HYBRID-02 (via CG-05) | interop | `generate()` writes `pdfaid` PDF/A-3B into the XMP whatever the source, so a non-PDF/A base gives output that falsely claims PDF/A-3B |
 | CG-44 | spec | BR-HYBRID-15 EN/FR/DE wording | — | BR-HYBRID-15 is "SHOULD" in EN and DE but "DOIT" (must) in FR, all flagged Warning (unresolved) |
+| CG-42 | French CTC, UBL, upstream | `EXTENDED-CTC-FR-UBL.sch` BR-FREXT-IC-08rev | Warning | Annex B example F202500001 (EXTENDED-CTC-FR, UBL) raises the warning `BR-FREXT-IC-08rev` under the UBL profile Schematron |
 | CG-34 | French CTC, lifecycle, upstream | Annex A `annex-a--BR-FR-CDV_pour_factures.csv`, `annex-a--Tableau_des_motifs_de_STATUTS.csv` vs `BR-FR-CDV-Schematron-CDAR` | interop | The published BR-FR-CDV Schematron cannot fail on several Annex A rules, and some of its code lists differ from Annex A |
 | CG-36 | spec | §version history p.7–8 vs the EXTENDED field matrix | — | The 1.09 version history contradicts the field matrix on several new fields (unresolved) |
 | CG-37 | parser, models | EXTENDED XSD `NoteType/Content` `minOccurs="0"` | data-loss | A note without `Content` (BT-22 / BT-127) comes back with an empty `Content` element |
@@ -596,6 +597,33 @@ paths and the code supports both, so nothing here is picked.
 - **Evidence:** `pnpm build && pnpm vitest run tests/extract-budget.test.ts -t "prefers a tree key"`.
 - **Unresolved:** no vendored rule decides between them; the key-first order keeps every PDF that
   extracted before returning the same file.
+
+### CG-42 — Annex B UBL example F202500001 raises BR-FREXT-IC-08rev (upstream)
+
+- **Rule:** BR-FREXT-IC-08rev (`flag="warning"`), `spec/fnfe-ctc-fr-1.4.0.04/distribution/UBL/EXTENDED-CTC-FR/schematron/EXTENDED-CTC-FR-UBL.sch`
+  :618, compiled in `src/lib/xsd/ubl/extended-ctc-fr/EXTENDED-CTC-FR-UBL.xslt` at :3598. For a VAT
+  breakdown (BG-23) of category `K` it asserts
+  `(abs($basisAmount - $calculatedAmountBT131 + $allowancesAmountBT92 - $chargesAmountBT99) le 0.01 * ($nbLineItems + $nbAllowancesOrCharges))`:
+  the taxable amount (BT-116) must equal the line net amounts (BT-131) plus charges (BT-99) minus
+  allowances (BT-92) of the same category, rate, exemption reason code and exemption reason text.
+- **Upstream:** in the Annex B example
+  `F202500001/_EXTENDED-CTC-FR/F202500001_INV_20250201_EXTENDED-CTC-FR_UBL_Commentee.xml` the `K`
+  breakdown has BT-116 `2.00` with BT-121 `VATEX-EU-IC` and BT-120 `LIVRAISON INTRACOMMUNAUTAIRE`
+  (:374–377). The only `K` item is a document-level charge of `2.00` (:311–318) whose `cac:TaxCategory`
+  carries neither `cbc:TaxExemptionReasonCode` nor `cbc:TaxExemptionReason`. The `rev` variable
+  matches charges (`$chargesAmountBT99`, `$nbAllowancesOrCharges`), allowances and lines on code and
+  text too, so it counts none of them: the SVRL message reports `SumBT131 : 0`, `NBlines : 0`,
+  `sumChargesBT-99 : 0`, `NBAllowCharges : 0` for `basisAmount : 2`, and `2 le 0` is false. The fatal
+  sibling `BR-FREXT-IC-08` passes the same document through its `…ini` alternative, which ignores the
+  exemption reason. Which is wrong, the rule or the example, is not for this package to decide.
+- **Effect:** `check({ schematron: true })` on this example returns `valid: true` with one entry in
+  `schematronWarnings` (`BR-FREXT-IC-08rev`); the other 11 UBL annex B examples have none. Warnings do
+  not affect `valid` unless `warningsAsErrors` is set, which then makes this official example invalid.
+- **Evidence:** `pnpm build && pnpm vitest run tests/ubl-check.test.ts`: the row for
+  `F202500001_INV_20250201_EXTENDED-CTC-FR_UBL_Commentee.xml` is `it.fails` ("no error and no warning"
+  does not hold), so the run goes red as soon as the example passes.
+- **Close when:** FNFE-MPE fixes the rule or the example (to be reported upstream); then drop the
+  `it.fails` in `tests/ubl-check.test.ts`.
 
 ## Changing this file
 

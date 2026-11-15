@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import SaxonJS from 'saxon-js'
-import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
+import { EXTENDED_CTC_FR_GUIDELINE_ID, UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID } from './constants'
 import { resolveXml } from './resolve'
-import { declaresExtendedCtcFr } from './xml'
+import { declaresExtendedCtcFr, getFlavor, getUblLevel } from './xml'
 
 /**
  * Schematron (business-rule) validation for Factur-X: 1.09 FINAL for MINIMUM and
@@ -93,6 +93,19 @@ export const FACTURX_SCHEMATRON: Map<string, SchematronConfig> = new Map([
   // FNFE-MPE's dedicated EXTENDED-CTC-FR Schematron for plain CII (release notes p.9, step 2). It
   // loads no code list database. Rule ids are in a `[ID]` message prefix, as in Factur-X (CG-18, validation part).
   ['extended-ctc-fr', { sef: `${dir('extended-ctc-fr')}/EXTENDED-CTC-FR-CII.sef.json.gz` }],
+])
+
+const ublDir = (level: string): string => `./xsd/ubl/${level}`
+
+/**
+ * Profile Schematrons for UBL 2.1 (FNFE-MPE release notes p.9, step 2): `en16931` runs the
+ * EN16931-UBL-validation transform, `extended-ctc-fr` the EXTENDED-CTC-FR-UBL one. Neither loads a
+ * code list database. Rule ids are in a `[ID]` message prefix (checked on the first run: the
+ * `@id` is the same id), so `idFromAssert` stays unset.
+ */
+export const UBL_SCHEMATRON: Map<string, SchematronConfig> = new Map([
+  ['en16931', { sef: `${ublDir('en16931')}/EN16931-UBL-validation.sef.json.gz` }],
+  ['extended-ctc-fr', { sef: `${ublDir('extended-ctc-fr')}/EXTENDED-CTC-FR-UBL.sef.json.gz` }],
 ])
 
 // Per-process cache of prepared stylesheet locations (decompressed SEF + codedb), keyed by SEF path.
@@ -209,20 +222,24 @@ export async function validateSchematron(options: {
   /** Treat failed `warning`/`information` rules as errors (like a compiler's -Werror). Defaults to `false`. */
   warningsAsErrors?: boolean
 }): Promise<SchematronResult> {
-  if (options.flavor && options.flavor !== 'facturx') {
-    throw new Error(`Schematron validation is only available for the "facturx" flavor, got "${options.flavor}"`)
+  const flavor = options.flavor ?? 'facturx'
+  if (flavor !== 'facturx' && flavor !== 'ubl') {
+    throw new Error(`Schematron validation is only available for the "facturx" and "ubl" flavors, got "${flavor}"`)
   }
 
-  const config = FACTURX_SCHEMATRON.get(options.level)
+  const config = (flavor === 'ubl' ? UBL_SCHEMATRON : FACTURX_SCHEMATRON).get(options.level)
   if (!config) {
-    throw new Error(`No Factur-X Schematron available for level: "${options.level}"`)
+    throw new Error(`No ${flavor === 'ubl' ? 'UBL' : 'Factur-X'} Schematron available for level: "${options.level}"`)
   }
 
   // Read once, and copy a Buffer: the precheck awaits, and a caller replacing `options.xml` or
   // changing the Buffer in place meanwhile must not get the precheck on one document and the
   // transform on another. Strings are immutable.
   const xml = typeof options.xml === 'string' ? options.xml : Buffer.from(options.xml)
-  if (options.level === 'extended-ctc-fr') {
+  if (flavor === 'ubl') {
+    await ublLevelPrecheck(xml, options.level)
+  }
+  else if (options.level === 'extended-ctc-fr') {
     const finding = await extendedCtcFrPrecheck(xml)
     if (finding)
       return { valid: false, errors: [finding], warnings: [] }
@@ -260,6 +277,24 @@ async function extendedCtcFrPrecheck(xml: string | Buffer): Promise<SchematronEr
     if (!declaresExtendedCtcFr(doc))
       throw new Error(`level "extended-ctc-fr" does not match the document: its guideline ID (BT-24) must be ${EXTENDED_CTC_FR_GUIDELINE_ID}`)
     return undefined
+  }
+  finally {
+    doc.dispose()
+  }
+}
+
+/**
+ * The two UBL transforms are picked by level, but the level is only a CustomizationID (BT-24): throw
+ * when the document declares the other one (the EN16931 transform on an EXTENDED-CTC-FR document
+ * would silently skip the extension rules; the reverse would apply them to a plain EN 16931 one).
+ */
+async function ublLevelPrecheck(xml: string | Buffer, level: string): Promise<void> {
+  const doc = await resolveXml(xml)
+  try {
+    if (getFlavor(doc) !== 'ubl')
+      throw new Error(`The XML root element "${doc.root?.name}" does not match the "ubl" flavor`)
+    if (getUblLevel(doc) !== level)
+      throw new Error(`level "${level}" does not match the document: its CustomizationID (BT-24) must ${level === 'extended-ctc-fr' ? `be ${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}` : 'declare EN 16931, not the EXTENDED-CTC-FR extension'}`)
   }
   finally {
     doc.dispose()

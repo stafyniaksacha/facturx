@@ -1,7 +1,7 @@
 import { readdirSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
-import { check } from '@stafyniaksacha/facturx'
+import { check, validateSchematron } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
 
 const FACTURES = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
@@ -116,5 +116,70 @@ describe('uBL detection and XSD validation', () => {
   it('rejects an explicit ubl flavor on a CII document', async () => {
     const cii = await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.xml'))
     await expect(check({ xml: cii, flavor: 'ubl' })).rejects.toThrow(/does not match the "ubl" flavor/)
+  })
+
+  it('rejects an explicit en16931 level on an EXTENDED-CTC-FR UBL document', async () => {
+    const ext = examples.find(e => e.level === 'extended-ctc-fr')!
+    await expect(check({ xml: await readFile(ext.file), level: 'en16931', schematron: true })).rejects.toThrow(/does not match the document/)
+    await expect(validateSchematron({ xml: await readFile(ext.file), flavor: 'ubl', level: 'en16931' })).rejects.toThrow(/does not match the document/)
+  })
+})
+
+describe('uBL profile Schematron (step 2)', () => {
+  const en = examples.find(e => e.level === 'en16931')!
+
+  // CG-42: the EXTENDED-CTC-FR UBL example F202500001 raises the warning BR-FREXT-IC-08rev; the other 11 are clean.
+  // `it.fails` turns green again (and so fails the run) as soon as the example starts passing.
+  const cg42 = (name: string): boolean => name.includes('F202500001_INV_20250201_EXTENDED-CTC-FR_UBL')
+  for (const { file, level, name } of examples) {
+    const run = cg42(name) ? it.fails : it
+    run(`${name} passes XSD + profile Schematron with no error and no warning${cg42(name) ? ' (CG-42)' : ''}`, async () => {
+      const r = await check({ xml: await readFile(file), schematron: true })
+      expect(r).toMatchObject({ flavor: 'ubl', level, valid: true, schematronErrors: [], schematronWarnings: [] })
+    })
+  }
+
+  it('reports BR-CO-15 as an error when the totals do not add up', async () => {
+    const xml = (await readFile(en.file, 'utf8')).replace(/(<cbc:TaxInclusiveAmount[^>]*>)[^<]*/, '$1999999.00')
+    const r = await check({ xml, schematron: true })
+    expect(r.valid).toBe(false)
+    expect(r.errors).toEqual([])
+    expect(r.schematronValid).toBe(false)
+    expect(r.schematronErrors!.map(e => e.id)).toContain('BR-CO-15')
+  })
+
+  it('reports a UBL-CR restriction as a warning, not an error', async () => {
+    // UBL-CR-005: the CEN binding does not use cbc:UUID (XSD-valid, after cbc:ID in the sequence).
+    const xml = (await readFile(en.file, 'utf8')).replace('</cbc:ID>', '</cbc:ID><cbc:UUID>u</cbc:UUID>')
+    const r = await check({ xml, schematron: true })
+    expect(r).toMatchObject({ valid: true, errors: [], schematronValid: true, schematronErrors: [] })
+    expect(r.schematronWarnings!.map(w => w.id ?? w.assertId)).toContain('UBL-CR-005')
+    expect(r.schematronWarnings!.every(w => w.severity === 'warning')).toBe(true)
+  })
+
+  it('treats warnings as errors with warningsAsErrors', async () => {
+    const xml = (await readFile(en.file, 'utf8')).replace('</cbc:ID>', '</cbc:ID><cbc:UUID>u</cbc:UUID>')
+    const r = await check({ xml, schematron: true, warningsAsErrors: true })
+    expect(r.valid).toBe(false)
+    expect(r.schematronErrors!.map(w => w.id)).toContain('UBL-CR-005')
+  })
+
+  it('rejects an explicit level the document does not declare', async () => {
+    await expect(check({ xml: await readFile(en.file), level: 'extended-ctc-fr', schematron: true })).rejects.toThrow(/does not match/)
+  })
+
+  it('keeps XSD errors when the profile rules cannot run on invalid data', async () => {
+    const xml = (await readFile(en.file, 'utf8')).replace(/(<cbc:PayableAmount[^>]*>)[^<]*/, '$1abc')
+    const r = await check({ xml, schematron: true })
+    expect(r.valid).toBe(false)
+    expect(r.errors.length).toBeGreaterThan(0)
+    expect(r.schematronErrors![0].message).toMatch(/could not run/)
+    expect(r.schematronErrors![0].message).not.toContain('abc')
+  })
+
+  it('validateSchematron routes flavor ubl and rejects an unknown level', async () => {
+    const r = await validateSchematron({ xml: await readFile(en.file), flavor: 'ubl', level: 'en16931' })
+    expect(r).toMatchObject({ valid: true, errors: [], warnings: [] })
+    await expect(validateSchematron({ xml: await readFile(en.file), flavor: 'ubl', level: 'basic' })).rejects.toThrow(/level/)
   })
 })
