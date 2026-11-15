@@ -884,7 +884,7 @@ describe('generate', () => {
       expect(readXmp(output).conformanceLevel).toEqual([level.toUpperCase()])
     })
 
-    it('matches the last segment of BT-24 only: check: true (XSD) does not validate BT-24 itself', async () => {
+    it('matches the level segment of BT-24 only: check: true (XSD) does not validate BT-24 itself', async () => {
       // BT-24 is an udt:IDType in the XSD; only the Schematron checks it against the profile's code list.
       const xml = (await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_MINIMUM.xml'), 'utf8')).replace('urn:factur-x.eu:1p0:minimum', 'urn:example:minimum')
       const pdf = await PDFDocument.create()
