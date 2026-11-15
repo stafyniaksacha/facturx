@@ -78,6 +78,20 @@ describe('extract({ check: true }) on a ZUGFeRD file name (#38)', () => {
     await expect(extract({ pdf, check: true, flavor: 'zugferd' })).resolves.toMatchObject({ flavor: 'zugferd' })
   })
 
+  // The legacy ZUGFeRD 2.0 guideline IDs are still in the 1.09 code lists, marked deprecated
+  // (appendix-minimum.txt, `urn:zugferd.de:2p0:minimum`; EXTENDED codedb, `…#conformant#urn:zugferd.de:2p0:extended`).
+  it.each([
+    ['Facture_FR_MINIMUM.xml', 'urn:zugferd.de:2p0:minimum'],
+    ['Facture_FR_EN16931.xml', 'urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended'],
+  ])('validates %s declaring the ZUGFeRD 2.0 ID %s', async (example, id) => {
+    const source = await readFile(resolve(import.meta.dirname, '../examples', example), 'utf8')
+    const xml = source.replace(/(<ram:GuidelineSpecifiedDocumentContextParameter>\s*<ram:ID>)[^<]*/, `$1${id}`)
+    expect(xml).toContain(`<ram:ID>${id}</ram:ID>`)
+    await expect(extract({ pdf: await pdfWithAttachment('zugferd-invoice.xml', xml), check: true }))
+      .resolves
+      .toMatchObject({ flavor: 'zugferd', filename: 'zugferd-invoice.xml' })
+  })
+
   it('still rejects an invalid ZUGFeRD 2.x invoice', async () => {
     const original = await extract({ pdf: await readFile(EXAMPLE_PDF) })
     const broken = original.xml.replace(/<ram:TypeCode>380<\/ram:TypeCode>/, '<ram:Unknown>380</ram:Unknown>')

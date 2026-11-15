@@ -18,8 +18,10 @@ omit them.
 - **`orderx`** — Order-X purchase orders (SCRDMCCBDACIO message). Generate, extract and XSD
   validation. There is no Schematron for Order-X.
 - **`zugferd`** — recognised on **extraction** by its embedded filename. ZUGFeRD 2.x is technically
-  identical to Factur-X, so its XML validates as `facturx`: `extract({ check: true })` does this on
-  its own, and `check()` detects it from the root. ZUGFeRD 1.0 (`CrossIndustryDocument`) can be
+  a Factur-X `CrossIndustryInvoice`, so its XML is validated as `facturx`, against the current
+  Factur-X 1.09 / ZUGFeRD 2.5 schemas: `extract({ check: true })` does this on its own, and
+  `check()` detects it from the root. A ZUGFeRD 2.0 document (CII D16B) is checked against these
+  current rules, not its own. ZUGFeRD 1.0 (`CrossIndustryDocument`) can be
   extracted but not validated. `generate()` throws for this flavor: generate a ZUGFeRD 2.x invoice as
   `facturx`.
 

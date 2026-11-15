@@ -19,7 +19,7 @@ function validationFlavor(flavor: string | undefined, xml: XmlDocument, filename
     return flavor
   const root = getFlavor(xml)
   if (root === 'zugferd')
-    throw new Error('ZUGFeRD 1.0 validation is not supported: no ZUGFeRD 1.0 schema is shipped. Use `check: false` to extract it')
+    throw new Error('ZUGFeRD 1.0 validation is not supported: no ZUGFeRD 1.0 schema is shipped. Use `check: false` (CLI: --no-check) to extract it')
   if (root === 'orderx')
     throw new Error(`Invalid XML: ${filename} holds an Order-X order, not an invoice`)
   return root
