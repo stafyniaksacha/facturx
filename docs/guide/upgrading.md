@@ -213,6 +213,13 @@ legal advice.
 Germany expects `Alternative` for BASIC and above. See
 [`generate()`](/api/generate#behaviour).
 
+### Lifecycle status messages (CDAR): `validateCdar()`
+
+`validateCdar({ xml })` (CLI `facturx check-cdar <xml>`) validates a French lifecycle status message
+in CDAR D22B against the "uncoupled" CDAR XSD and the `BR-FR-CDV` rules (XP Z12-012 v1.4.0). It
+returns `{ valid, errors, schematronErrors, schematronWarnings }`. Validation only. See
+[`validateCdar()`](/api/validate-cdar).
+
 ### EXTENDED-CTC-FR (plain CII) validation
 
 `check()` now recognises the guideline ID `…urn.cpro.gouv.fr:1p0:extended-ctc-fr` as level

@@ -60,8 +60,10 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
   post-dating) or the Chorus Pro rules `BR-FR-CPRO-*` (step 4).
 - The **standard ("fatal") variant**: every rule is an error. The `_WARNING` variant was meant for a
   transition window that has closed and is not shipped.
-- Not covered: UBL invoices, the `EXTENDED-CTC-FR` French extension fields in the models, lifecycle
-  statuses (CDAR, `BR-FR-CDV`) and e-reporting (flux 10).
+- Lifecycle status messages (CDAR) are validated separately with [`validateCdar()`](/api/validate-cdar)
+  (CDAR XSD + `BR-FR-CDV`); building them is not supported.
+- Not covered: UBL invoices, the `EXTENDED-CTC-FR` French extension fields in the models and
+  e-reporting (flux 10).
 
 ## Reading BR-FR errors
 

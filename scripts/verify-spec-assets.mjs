@@ -23,12 +23,15 @@
  * vendored BR-FR-Flux2 XSLT must be byte-identical to every copy in the FNFE-MPE
  * release, embed no local path in its SEF, and its SEF must be reproducible.
  *
+ * CDAR (src/lib/xsd/cdar/, see verifyCdar): the uncoupled CDAR XSDs and the BR-FR-CDV XSLT must be
+ * byte-identical to the release, and the SEF reproducible with no local path.
+ *
  * Usage: node scripts/verify-spec-assets.mjs [--sef]
  */
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { gunzipSync } from 'node:zlib'
@@ -163,6 +166,78 @@ function verifyFrCtc() {
     console.log(`skip  fr-ctc   ${name}.sef.json.gz  (run with --sef to recompile)`)
 }
 
+/**
+ * CDAR lifecycle messages (FNFE-MPE Schematrons FR CTC v1.4.0.04, release notes p.10): the uncoupled
+ * CDAR D22B XSDs and the standard BR-FR-CDV transform, all byte-identical to the release (the transform
+ * needs no sum() patch); the SEF is reproducible and embeds no local path; the _WARNING variant is not
+ * vendored.
+ */
+function verifyCdar() {
+  const cdarDir = join(repoRoot, 'src/lib/xsd/cdar')
+  const release = join(repoRoot, 'spec/fnfe-ctc-fr-1.4.0.04/distribution/CDAR')
+  const name = 'BR-FR-CDV-Schematron-CDAR'
+  console.log('----  cdar     CDAR D22B uncoupled + BR-FR-CDV (FNFE-MPE FR CTC 1.4.0.04)')
+
+  // Required inventory first: comparing only the files present would let a deleted schema pass.
+  // Every XSD of the release, the transform and its SEF must be vendored, and every schemaLocation
+  // reachable from the root schema must resolve inside the folder.
+  const xsdSource = join(release, '1xsd-CDAR_D22B_uncoupled')
+  const required = [...readdirSync(xsdSource).filter(f => f.endsWith('.xsd')), `${name}.xslt`, `${name}.sef.json.gz`]
+  for (const file of required) {
+    if (!existsSync(join(cdarDir, file)))
+      report(false, 'cdar', file, 'required file missing from src/lib/xsd/cdar/')
+  }
+  const root = 'CrossDomainAcknowledgementAndResponse_100pD22B.xsd'
+  const folder = resolve(cdarDir)
+  const pending = [join(folder, root)]
+  const reached = new Set()
+  while (pending.length) {
+    const xsd = pending.pop()
+    if (reached.has(xsd))
+      continue
+    reached.add(xsd)
+    const shown = relative(folder, xsd)
+    if (shown.startsWith('..') || isAbsolute(shown)) {
+      report(false, 'cdar', shown, 'schemaLocation resolves outside src/lib/xsd/cdar/')
+      continue
+    }
+    if (!existsSync(xsd)) {
+      report(false, 'cdar', shown, 'imported schema missing from src/lib/xsd/cdar/')
+      continue
+    }
+    // import, include and redefine; single or double quotes, whitespace around `=`. Each location is
+    // resolved against the schema that names it.
+    for (const [, , location] of readFileSync(xsd, 'utf8').matchAll(/\bschemaLocation\s*=\s*(["'])(.*?)\1/g))
+      pending.push(resolve(dirname(xsd), location.trim()))
+  }
+  report(reached.size > 1, 'cdar', root, `import closure: ${reached.size} schemas`)
+  for (const file of readdirSync(cdarDir).sort()) {
+    if (file === 'SCHEMATRON.md' || file === `${name}.sef.json.gz`)
+      continue
+    if (/_WARNING/.test(file)) {
+      report(false, 'cdar', file, 'the _WARNING variant must not be vendored')
+      continue
+    }
+    const source = join(release, file.endsWith('.xsd') ? '1xsd-CDAR_D22B_uncoupled' : '2xslt', file)
+    if (!existsSync(source)) {
+      report(false, 'cdar', file, 'no counterpart in spec/ — untraceable')
+      continue
+    }
+    report(same(source, join(cdarDir, file)), 'cdar', file)
+  }
+
+  // A missing SEF was reported above; skip the checks that read it.
+  if (!existsSync(join(cdarDir, `${name}.sef.json.gz`)))
+    return
+  const sef = gunzipSync(readFileSync(join(cdarDir, `${name}.sef.json.gz`))).toString('utf8')
+  const leak = [homedir(), repoRoot].find(p => sef.includes(p))
+  report(!leak, 'cdar', `${name}.sef.json.gz`, leak ? 'embeds a local path, recompile from a neutral directory' : 'no local path embedded')
+  if (withSef)
+    verifySef('cdar', join(cdarDir, `${name}.xslt`), `${name}.sef.json.gz`, cdarDir)
+  else
+    console.log(`skip  cdar     ${name}.sef.json.gz  (run with --sef to recompile)`)
+}
+
 try {
   const known = new Set(SOURCES.map(s => s.folder))
   for (const entry of readdirSync(vendored)) {
@@ -212,6 +287,7 @@ try {
   }
 
   verifyFrCtc()
+  verifyCdar()
 
   console.log('note  orderx   XSDs not verifiable: the Order-X specification is not vendored under spec/')
 }
@@ -223,4 +299,4 @@ if (failures) {
   console.error(`\n${failures} vendored asset(s) do not match the spec.`)
   process.exit(1)
 }
-console.log('\nAll vendored Factur-X and French CTC assets match their spec sources.')
+console.log('\nAll vendored Factur-X, French CTC and CDAR assets match their spec sources.')
