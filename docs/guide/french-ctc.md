@@ -62,8 +62,10 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
   transition window that has closed and is not shipped.
 - Lifecycle status messages (CDAR) are validated separately with [`validateCdar()`](/api/validate-cdar)
   (CDAR XSD + `BR-FR-CDV`); building them is not supported.
-- Not covered: UBL invoices, the `EXTENDED-CTC-FR` French extension fields in the models and
-  e-reporting (flux 10).
+- Not covered: UBL invoices and e-reporting (flux 10).
+- The `EXTENDED-CTC-FR` French extension fields (`EXT-FR-FE-*`) are read by `xmlToInvoice()` and
+  written by `invoiceToXml()`, except the VAT currency exchange (`TaxApplicableTradeCurrencyExchange`),
+  which `xmlToInvoice()` does not read yet.
 
 ## Reading BR-FR errors
 

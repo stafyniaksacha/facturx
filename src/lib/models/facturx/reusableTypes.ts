@@ -1296,6 +1296,7 @@ export class TradeSettlementLineMonetarySummationType {
     chargeTotalAmount,
     allowanceTotalAmount,
     taxTotalAmount,
+    taxTotalAmountInAccountingCurrency,
     grandTotalAmount,
     totalAllowanceChargeAmount,
   }: {
@@ -1303,6 +1304,7 @@ export class TradeSettlementLineMonetarySummationType {
     chargeTotalAmount?: udt.AmountType
     allowanceTotalAmount?: udt.AmountType
     taxTotalAmount?: udt.AmountType
+    taxTotalAmountInAccountingCurrency?: udt.AmountType
     grandTotalAmount?: udt.AmountType
     totalAllowanceChargeAmount?: udt.AmountType
   }) {
@@ -1310,6 +1312,7 @@ export class TradeSettlementLineMonetarySummationType {
     this.chargeTotalAmount = chargeTotalAmount
     this.allowanceTotalAmount = allowanceTotalAmount
     this.taxTotalAmount = taxTotalAmount
+    this.taxTotalAmountInAccountingCurrency = taxTotalAmountInAccountingCurrency
     this.grandTotalAmount = grandTotalAmount
     this.totalAllowanceChargeAmount = totalAllowanceChargeAmount
   }
@@ -1317,7 +1320,20 @@ export class TradeSettlementLineMonetarySummationType {
   lineTotalAmount: udt.AmountType
   chargeTotalAmount?: udt.AmountType
   allowanceTotalAmount?: udt.AmountType
+  /**
+   * Line total VAT amount, BT-X-329 (EXTENDED-CTC-FR EXT-FR-FE-181), in the invoice currency (BT-5).
+   * `xmlToInvoice()` reads the first line `TaxTotalAmount` here, whatever its `currencyID`.
+   */
   taxTotalAmount?: udt.AmountType
+  /**
+   * Line total VAT amount in the VAT accounting currency, BT-X-590 (Factur-X 1.09 EXTENDED; EXTENDED-CTC-FR
+   * EXT-FR-FE-182), whose `currencyID` shall be BT-6. Same element as `taxTotalAmount` (EXTENDED allows
+   * two): `invoiceToXml()` writes it right after `taxTotalAmount`, and `xmlToInvoice()` reads the second
+   * element here by position, without looking at `currencyID`. Set alone, it is written as the only
+   * element and so reads back as `taxTotalAmount`.
+   * @profile EXTENDED
+   */
+  taxTotalAmountInAccountingCurrency?: udt.AmountType
   grandTotalAmount?: udt.AmountType
   totalAllowanceChargeAmount?: udt.AmountType
 }
