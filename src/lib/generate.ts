@@ -109,6 +109,14 @@ export async function generate(options: {
     // fx:ConformanceLevel SHALL be a HybridConformance value (BR-HYBRID-07, Fatal): a level with no
     // value for this flavor used to write an empty one (was CG-30). Thrown before the PDF is read.
     assertKnownLevel(flavor, level)
+    // fx:ConformanceLevel must describe the embedded XML (BR-HYBRID-15: EN "SHOULD", FR "DOIT"), so an
+    // explicit `level` has to name the profile its guideline ID (BT-24) declares (was CG-42). Thrown
+    // before the PDF is read.
+    if (options.level?.trim()) {
+      const declared = getLevel(xml)
+      if (level !== declared)
+        throw new Error(`level "${level}" does not match the profile declared by the document ("${declared}"): fx:ConformanceLevel must describe the embedded XML (BR-HYBRID-15)`)
+    }
     // fx:DocumentType SHALL be a HybridDocumentType value (BR-HYBRID-06, Fatal): an order is not an
     // INVOICE (was CG-08). Thrown before the PDF is read.
     const documentType = flavor === 'orderx' ? orderDocumentType(xml) : 'INVOICE'

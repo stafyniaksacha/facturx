@@ -787,8 +787,8 @@ describe('generate', () => {
 
   describe('fx:ConformanceLevel is never empty (BR-HYBRID-07, CG-30)', () => {
     const MINIMUM_XML = resolve(import.meta.dirname, '../examples/Facture_FR_MINIMUM.xml')
-    // Each spelling is paired with an invoice whose BT-24 names that profile, so the XMP matches the
-    // embedded XML (BR-HYBRID-15). An explicit level that contradicts BT-24 is CG-42.
+    // Each spelling is paired with an invoice whose BT-24 names that profile: an explicit level must
+    // match it (BR-HYBRID-15, see the CG-42 tests below).
     async function invoiceFor(profile: string): Promise<string> {
       if (profile === 'minimum')
         return readFile(MINIMUM_XML, 'utf8')
@@ -844,6 +844,33 @@ describe('generate', () => {
     })
   })
 
+  describe('an explicit level must match the guideline ID BT-24 (BR-HYBRID-15, CG-42)', () => {
+    it('rejects a Factur-X level that contradicts BT-24, before touching the PDF', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      const pdf = await PDFDocument.load(await sourcePdf())
+
+      await expect(generate({ pdf, xml, level: 'minimum' }))
+        .rejects
+        .toThrow('level "minimum" does not match the profile declared by the document ("en16931"): fx:ConformanceLevel must describe the embedded XML (BR-HYBRID-15)')
+      await expect(generate({ pdf, xml, level: 'BASIC WL' })).rejects.toThrow('level "basicwl" does not match the profile declared by the document ("en16931")')
+      // Not marked as used: the matching level still works on the same document.
+      const output = await PDFDocument.load(await generate({ pdf, xml, level: 'EN 16931' }))
+      expect(readXmp(output).conformanceLevel).toEqual(['EN 16931'])
+    })
+
+    it('rejects an Order-X level that contradicts BT-24', async () => {
+      const order = await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8')
+      const pdf = await PDFDocument.create()
+      pdf.addPage()
+      await expect(generate({ pdf, xml: order, level: 'comfort' })).rejects.toThrow('level "comfort" does not match the profile declared by the document ("basic")')
+    })
+
+    it('rejects an explicit level when BT-24 names no level it can be compared with', async () => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0')
+      await expect(generate({ pdf: await sourcePdf(), xml, level: 'en16931' })).rejects.toThrow('Unknown level')
+    })
+  })
+
   describe('order-X hybrid metadata (BR-HYBRID-06/07, CG-08)', () => {
     const ORDER_XML = resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml')
 
@@ -870,11 +897,12 @@ describe('generate', () => {
     })
 
     it.each([
-      ['comfort', 'COMFORT'],
-      ['EXTENDED', 'EXTENDED'],
-      [' Basic ', 'BASIC'],
-    ])('writes an explicit Order-X level %j as %j', async (level, expected) => {
-      expect(readXmp(await orderPdf(await readFile(ORDER_XML, 'utf8'), level)).conformanceLevel).toEqual([expected])
+      ['comfort', 'comfort', 'COMFORT'],
+      ['EXTENDED', 'extended', 'EXTENDED'],
+      [' Basic ', 'basic', 'BASIC'],
+    ])('writes an explicit Order-X level %j (BT-24 %s) as %j', async (level, profile, expected) => {
+      const xml = (await readFile(ORDER_XML, 'utf8')).replace('urn:order-x.eu:1p0:basic', `urn:order-x.eu:1p0:${profile}`)
+      expect(readXmp(await orderPdf(xml, level)).conformanceLevel).toEqual([expected])
     })
 
     it('rejects a Factur-X-only level and an unknown message type code before touching the PDF', async () => {

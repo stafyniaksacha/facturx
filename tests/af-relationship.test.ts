@@ -44,7 +44,7 @@ describe('generate() afRelationship (CG-07)', () => {
   })
 
   it('rejects Alternative for an explicit basicwl level', async () => {
-    await expect(generate({ pdf: await blankPdf(), xml: getEN16931XML(), level: 'basicwl', afRelationship: 'Alternative' }))
+    await expect(generate({ pdf: await blankPdf(), xml: getEN16931XML().replace('urn:cen.eu:en16931:2017', 'urn:factur-x.eu:1p0:basicwl'), level: 'basicwl', afRelationship: 'Alternative' }))
       .rejects
       .toThrow('is not allowed for the')
   })

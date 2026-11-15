@@ -19,7 +19,7 @@ facturx generate --pdf <input.pdf> --xml <input.xml> --output <output.pdf> [opti
 | `--output` | `-o` | string | — | **Required.** Output PDF file path. |
 | `--check` | | boolean | `true` | Validate the XML (XSD) before embedding. Use `--no-check` to skip. |
 | `--flavor` | `-f` | string | autodetect | `facturx` or `orderx`. `zugferd` (extraction only) fails. |
-| `--level` | `-l` | string | autodetect | Schema level (e.g. `en16931`). |
+| `--level` | `-l` | string | autodetect | Schema level (e.g. `en16931`). Must match the profile the XML declares (BT-24). |
 | `--language` | | string | — | Language code for the PDF (RFC 3066), e.g. `en-GB`. |
 | `--afRelationship` | | string | `Data` | `Data`, `Alternative` or `Source` (MINIMUM and BASIC WL: `Data` only). See [`generate()`](/api/generate#behaviour). |
 | `--preserveXmlBytes` | | boolean | `false` | Embed the XML file byte for byte instead of re-serializing it. The file must be XML 1.0, UTF-8, without a DOCTYPE. See [`generate()`](/api/generate#behaviour). |
@@ -46,7 +46,7 @@ npx @stafyniaksacha/facturx generate \
   --xml factur-x.xml \
   --output facturx.pdf
 
-# Force the flavor/level and set a language, skip validation
+# Name the flavor/level explicitly and set a language, skip validation
 npx @stafyniaksacha/facturx generate \
   --pdf invoice.pdf \
   --xml factur-x.xml \
