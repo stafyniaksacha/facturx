@@ -23,7 +23,7 @@ import pkg from '../../package.json' with { type: 'json' }
 import { check } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
-import { embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
+import { embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
 import { extractBaseInfo, getFlavor, getLevel } from './xml'
@@ -339,6 +339,9 @@ function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: str
   catch (error) {
     if (error instanceof PageScanLimitError)
       throw new Error(`The PDF has ${error.message}: could not check it for an existing ${kind}`)
+    // pdf-lib's own page traversal (save() counts the pages) would overflow the stack on a cycle.
+    if (error instanceof MalformedPageTreeError)
+      throw new Error(`Malformed page tree: ${error.message}`)
     throw error
   }
 

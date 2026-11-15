@@ -88,29 +88,84 @@ describe('existing invoice outside the name tree and catalog /AF (CG-14)', () =>
     await expect(generate({ pdf: await save(pdf), xml })).resolves.toBeInstanceOf(Uint8Array)
   })
 
-  it('walks a page tree with a cycle once', async () => {
+  // The root /Pages lists itself as a kid: pdf-lib's own traversal (save() counts the pages) would
+  // overflow the stack, so the walk rejects it with a library error first.
+  it.each([
+    ['with', true],
+    ['without', false],
+  ])('rejects a page tree cycle %s an invoice', async (_, withInvoice) => {
     const { pdf, xml, invoiceSpec, pageDict } = await setup()
-    pageDict.set(PDFName.of('AF'), pdf.context.obj([invoiceSpec('cyclic.xml')]))
+    if (withInvoice)
+      pageDict.set(PDFName.of('AF'), pdf.context.obj([invoiceSpec('cyclic.xml')]))
+    const root = pdf.catalog.lookup(PDFName.of('Pages'), PDFDict)
     const rootRef = pdf.catalog.get(PDFName.of('Pages')) as PDFRef
-    // The page lists the root as a kid: a cycle pdf-lib's own traversal would not leave.
-    pageDict.set(PDFName.of('Kids'), pdf.context.obj([rootRef]))
-    const loaded = await PDFDocument.load(await save(pdf))
-    await expect(generate({ pdf: loaded, xml })).rejects.toThrow('already has an embedded invoice (cyclic.xml)')
+    root.lookup(PDFName.of('Kids'), PDFArray).push(rootRef)
+    await expect(generate({ pdf, xml })).rejects.toThrow('Malformed page tree: a page tree node is reached twice')
   }, 5000)
 
-  it('refuses a PDF with more annotations than it checks', async () => {
-    const { pdf, xml, pageDict } = await setup()
-    const annot = pdf.context.register(pdf.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: [0, 0, 1, 1] }))
-    pageDict.set(PDFName.of('Annots'), pdf.context.obj(Array.from<PDFRef>({ length: 65537 }).fill(annot)))
-    await expect(generate({ pdf, xml })).rejects.toThrow('The PDF has more than 65536 annotations: could not check it for an existing invoice')
-  })
-
-  it('refuses a PDF with more page tree nodes than it checks', async () => {
+  it('rejects a page listed twice in /Kids', async () => {
     const { pdf, xml } = await setup()
     const root = pdf.catalog.lookup(PDFName.of('Pages'), PDFDict)
-    const leaf = pdf.context.register(pdf.context.obj({ Type: 'Pages', Kids: [], Count: 0 }))
-    root.set(PDFName.of('Kids'), pdf.context.obj(Array.from<PDFRef>({ length: 65537 }).fill(leaf)))
+    const kids = root.lookup(PDFName.of('Kids'), PDFArray)
+    kids.push(kids.get(0))
+    await expect(generate({ pdf, xml })).rejects.toThrow('Malformed page tree: a page tree node is reached twice')
+  })
+
+  // Spec review probe: one /AF array of 1000 entries shared by an annotation listed 65536 times
+  // took ~27 s when every reference re-read it. Each array and annotation is now read once.
+  it('reads a shared /AF array and a repeated annotation once', async () => {
+    const { pdf, xml, pageDict } = await setup()
+    const png = pdf.context.register(pdf.context.flateStream(new Uint8Array([0x89, 0x50, 0x4E, 0x47]), { Type: 'EmbeddedFile' }))
+    const fs = pdf.context.register(pdf.context.obj({ Type: 'Filespec', F: PDFString.of('logo.png'), EF: { F: png } }))
+    const af = pdf.context.register(pdf.context.obj(Array.from<PDFRef>({ length: 1000 }).fill(fs)))
+    const annot = pdf.context.register(pdf.context.obj({ Type: 'Annot', Subtype: 'Text', Rect: [0, 0, 1, 1], AF: af }))
+    pageDict.set(PDFName.of('Annots'), pdf.context.obj(Array.from<PDFRef>({ length: 65536 }).fill(annot)))
+    pageDict.set(PDFName.of('AF'), af)
+    const started = performance.now()
+    await expect(generate({ pdf, xml })).resolves.toBeInstanceOf(Uint8Array)
+    expect(performance.now() - started).toBeLessThan(5000)
+  }, 10000)
+
+  it.each([
+    [65536, true],
+    [65537, false],
+  ])('%i distinct annotations: accepted %s', async (count, accepted) => {
+    const { pdf, xml, pageDict } = await setup()
+    pageDict.set(PDFName.of('Annots'), pdf.context.obj(Array.from({ length: count }, () => pdf.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: [0, 0, 1, 1] }))))
+    const result = generate({ pdf, xml })
+    if (accepted)
+      await expect(result).resolves.toBeInstanceOf(Uint8Array)
+    else
+      await expect(result).rejects.toThrow('The PDF has more than 65536 annotations: could not check it for an existing invoice')
+  }, 30000)
+
+  it('refuses a PDF with more distinct page tree nodes than it checks', async () => {
+    const { pdf, xml } = await setup()
+    const root = pdf.catalog.lookup(PDFName.of('Pages'), PDFDict)
+    // The root plus 65536 distinct (empty) intermediate nodes.
+    root.set(PDFName.of('Kids'), pdf.context.obj(Array.from({ length: 65536 }, () => pdf.context.obj({ Type: 'Pages', Kids: [], Count: 0 }))))
     await expect(generate({ pdf, xml })).rejects.toThrow('The PDF has more than 65536 page tree nodes: could not check it for an existing invoice')
+  }, 30000)
+
+  it('refuses a PDF with more array entries than it reads', async () => {
+    const { pdf, xml, pageDict } = await setup()
+    // 17 distinct /AF arrays of 65536 null entries each: 1114112 entries in all.
+    const annots = Array.from({ length: 17 }, () => pdf.context.obj({ Type: 'Annot', Subtype: 'Text', Rect: [0, 0, 1, 1], AF: pdf.context.obj(Array.from<null>({ length: 65536 }).fill(null)) }))
+    pageDict.set(PDFName.of('Annots'), pdf.context.obj(annots))
+    await expect(generate({ pdf, xml })).rejects.toThrow('The PDF has more than 1048576 page tree, annotation and /AF entries: could not check it for an existing invoice')
+  }, 30000)
+
+  // A consequence of the wider scan: the existing limit of 256 distinct embedded file streams now
+  // counts the files of annotations and page /AF too.
+  it('counts annotation files against the 256-stream limit', async () => {
+    const { pdf, xml, pageDict } = await setup()
+    const annots = Array.from({ length: 257 }, (_, i) => {
+      const stream = pdf.context.register(pdf.context.flateStream(new TextEncoder().encode(`note ${i}`), { Type: 'EmbeddedFile' }))
+      const fs = pdf.context.obj({ Type: 'Filespec', F: PDFString.of(`note-${i}.txt`), EF: { F: stream } })
+      return pdf.context.obj({ Type: 'Annot', Subtype: 'FileAttachment', Rect: [0, 0, 1, 1], FS: fs })
+    })
+    pageDict.set(PDFName.of('Annots'), pdf.context.obj(annots))
+    await expect(generate({ pdf, xml })).rejects.toThrow('The PDF has more than 256 distinct embedded file streams')
   })
 
   it('applies the same scan to Order-X: an order in a page /AF', async () => {

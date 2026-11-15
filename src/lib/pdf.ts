@@ -31,34 +31,48 @@ export function extractAttachments(pdfDoc: PDFDocument): {
   })
 }
 
-// Bounds on the page tree and annotation walk, which reads untrusted input. Past either,
-// embeddedFileSpecs() throws instead of reading on.
+// Bounds on the page tree and annotation walk, which reads untrusted input. Every distinct page
+// tree node, annotation and array is read once, and past any bound embeddedFileSpecs() throws
+// PageScanLimitError instead of reading on.
 const MAX_PAGE_TREE_NODES = 65536
 const MAX_ANNOTATIONS = 65536
+// Entries of the /Kids, /Annots and /AF arrays read, all arrays together.
+const MAX_SCAN_ENTRIES = 1024 * 1024
 
 export class PageScanLimitError extends Error {}
+export class MalformedPageTreeError extends Error {}
 
 /**
  * Every embedded file the document references, once each:
  * - each EmbeddedFiles name tree entry (read through the validated reader below);
  * - each file specification in the catalog `/AF` array (PDF/A-3 associated files, document level);
- * - each one in a page's `/AF` array (page level, Factur-X §6.2.1 p.25), in an annotation's `/AF`,
- *   and the `/FS` of every `/FileAttachment` annotation (ISO 32000-1 §12.5.6.15).
+ * - each one in a page's `/AF` array (page level, Factur-X §6.2.1 p.25), in an annotation's `/AF`
+ *   (PDF 2.0 / PDF/A-3, not vendored), and the `/FS` of every `/FileAttachment` annotation
+ *   (ISO 32000-1 §12.5.6.15, not vendored).
  *
  * `names` holds the tree key and the file specification's `/F` and `/UF`, which can all differ; a
  * file reached only through `/AF` or an annotation has no tree key. The page tree is walked without
- * pdf-lib's traversal, which has no guard against cycles: each node is visited once, and more than
- * 65536 page tree nodes or annotations throw PageScanLimitError. Malformed nodes are skipped. A file
- * specification given as a string (a reference to an external file) embeds nothing and is ignored.
+ * pdf-lib's traversal, which has no guard against cycles. Each page tree node, annotation, `/AF`
+ * array and file specification is read once, however many times it is referenced, so a small file
+ * cannot multiply the work. A node reached twice through `/Kids` (a cycle or a shared node, which a
+ * page tree cannot have: each node has one `/Parent`) throws MalformedPageTreeError. More than 65536
+ * page tree nodes or annotations, or more than 1048576 array entries read, throw PageScanLimitError.
+ * Other malformed objects are skipped. A file specification given as a string (a reference to an
+ * external file) embeds nothing and is ignored.
  */
 export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileSpec: PDFDict }[] {
   const specs = new Map<PDFDict, Set<string>>()
   const add = (fileSpec: unknown, key?: PDFHexString | PDFString): void => {
     if (!(fileSpec instanceof PDFDict))
       return
-    const names = specs.get(fileSpec) ?? new Set<string>()
-    if (key)
-      names.add(key.decodeText())
+    const known = specs.get(fileSpec)
+    if (known) {
+      if (key)
+        known.add(key.decodeText())
+      return
+    }
+    // The tree key first: error messages name a file by its first name.
+    const names = new Set<string>(key ? [key.decodeText()] : [])
     for (const entry of ['F', 'UF']) {
       const name = fileSpec.lookup(PDFName.of(entry))
       if (name instanceof PDFString || name instanceof PDFHexString)
@@ -70,37 +84,46 @@ export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileS
   for (const { fileName, fileSpec } of readEmbeddedFilesNames(pdfDoc))
     add(fileSpec, fileName)
 
+  let entries = 0
+  const charge = (count: number): void => {
+    entries += count
+    if (entries > MAX_SCAN_ENTRIES)
+      throw new PageScanLimitError(`more than ${MAX_SCAN_ENTRIES} page tree, annotation and /AF entries`)
+  }
+  const seenArrays = new Set<PDFArray>()
   const addAf = (dict: PDFDict): void => {
     const af = dict.lookup(PDFName.of('AF'))
-    if (af instanceof PDFArray) {
-      for (let idx = 0; idx < af.size(); idx++)
-        add(af.lookup(idx))
-    }
+    if (!(af instanceof PDFArray) || seenArrays.has(af))
+      return
+    seenArrays.add(af)
+    charge(af.size())
+    for (let idx = 0; idx < af.size(); idx++)
+      add(af.lookup(idx))
   }
   addAf(pdfDoc.catalog)
 
-  // Page tree: iterative, each node once, /Kids of any node followed whatever its /Type claims.
-  const pending: unknown[] = [pdfDoc.catalog.lookup(PDFName.of('Pages'))]
-  const visited = new Set<PDFDict>()
-  let annotations = 0
+  // Page tree: iterative, /Kids of any node followed whatever its /Type claims.
+  const root = pdfDoc.catalog.lookup(PDFName.of('Pages'))
+  const pending: unknown[] = [root]
+  const reached = new Set<PDFDict>(root instanceof PDFDict ? [root] : [])
+  const annotations = new Set<PDFDict>()
   while (pending.length > 0) {
     const node = pending.pop()
-    if (!(node instanceof PDFDict) || visited.has(node))
+    if (!(node instanceof PDFDict))
       continue
-    visited.add(node)
-    if (visited.size > MAX_PAGE_TREE_NODES)
-      throw new PageScanLimitError(`more than ${MAX_PAGE_TREE_NODES} page tree nodes`)
     addAf(node)
 
     const annots = node.lookup(PDFName.of('Annots'))
-    if (annots instanceof PDFArray) {
-      annotations += annots.size()
-      if (annotations > MAX_ANNOTATIONS)
-        throw new PageScanLimitError(`more than ${MAX_ANNOTATIONS} annotations`)
+    if (annots instanceof PDFArray && !seenArrays.has(annots)) {
+      seenArrays.add(annots)
+      charge(annots.size())
       for (let idx = 0; idx < annots.size(); idx++) {
         const annot = annots.lookup(idx)
-        if (!(annot instanceof PDFDict))
+        if (!(annot instanceof PDFDict) || annotations.has(annot))
           continue
+        annotations.add(annot)
+        if (annotations.size > MAX_ANNOTATIONS)
+          throw new PageScanLimitError(`more than ${MAX_ANNOTATIONS} annotations`)
         addAf(annot)
         if (annot.lookup(PDFName.of('Subtype')) === PDFName.of('FileAttachment'))
           add(annot.lookup(PDFName.of('FS')))
@@ -109,10 +132,18 @@ export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileS
 
     const kids = node.lookup(PDFName.of('Kids'))
     if (kids instanceof PDFArray) {
-      if (visited.size + pending.length + kids.size() > MAX_PAGE_TREE_NODES)
-        throw new PageScanLimitError(`more than ${MAX_PAGE_TREE_NODES} page tree nodes`)
-      for (let idx = 0; idx < kids.size(); idx++)
-        pending.push(kids.lookup(idx))
+      charge(kids.size())
+      for (let idx = 0; idx < kids.size(); idx++) {
+        const kid = kids.lookup(idx)
+        if (!(kid instanceof PDFDict))
+          continue
+        if (reached.has(kid))
+          throw new MalformedPageTreeError('a page tree node is reached twice')
+        reached.add(kid)
+        if (reached.size > MAX_PAGE_TREE_NODES)
+          throw new PageScanLimitError(`more than ${MAX_PAGE_TREE_NODES} page tree nodes`)
+        pending.push(kid)
+      }
     }
   }
 
