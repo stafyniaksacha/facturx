@@ -80,6 +80,18 @@ describe('byte-exact XML pass-through (was CG-26)', () => {
     expect((await extract({ pdf: Buffer.from(output) })).bytes).toEqual(embedded)
   })
 
+  // CodeRabbit review: the bytes embedded must be the ones parsed, even if the caller reuses its
+  // Buffer while generate() awaits.
+  it('embeds a snapshot of the Buffer taken before parsing', async () => {
+    const source = await readFile(examples[0].file)
+    const raw = Buffer.from(embeddedBytes(await PDFDocument.load(source), 'factur-x.xml'))
+    const input = Buffer.from(raw)
+    const pending = generate({ pdf: await plainPdf(source), xml: input, preserveXmlBytes: true, check: true })
+    input.fill(0x20)
+    const embedded = embeddedBytes(await PDFDocument.load(await pending), 'factur-x.xml')
+    expect(Buffer.from(embedded).equals(raw)).toBe(true)
+  })
+
   it('still re-serializes without the option', async () => {
     const source = await readFile(examples[0].file)
     const raw = embeddedBytes(await PDFDocument.load(source), 'factur-x.xml')

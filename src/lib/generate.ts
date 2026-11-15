@@ -1,4 +1,3 @@
-import type { Buffer } from 'node:buffer'
 import type {
   PDFDocument,
   PDFObject,
@@ -6,6 +5,7 @@ import type {
 } from 'pdf-lib'
 import type { PdfMetadata } from '../types'
 
+import { Buffer } from 'node:buffer'
 import { randomBytes } from 'node:crypto'
 
 import { XmlDocument } from 'libxml2-wasm'
@@ -60,11 +60,14 @@ export async function generate(options: {
   if (options.preserveXmlBytes === true && options.xml instanceof XmlDocument)
     throw new Error('preserveXmlBytes needs the XML as a string or Buffer: an XmlDocument has no original bytes')
 
-  const xml = await resolveXml(options.xml)
+  // Pass-through embeds the very bytes that were parsed and checked: snapshot a caller's Buffer
+  // first, so changing it during an await below cannot swap in bytes that were never parsed.
+  const source = options.preserveXmlBytes === true && Buffer.isBuffer(options.xml) ? Buffer.from(options.xml) : options.xml
+  const xml = await resolveXml(source)
 
   try {
     // Before the PDF is read or marked as used, like the other input checks.
-    const passThrough = options.preserveXmlBytes === true ? passThroughBytes(options.xml as string | Buffer, xml) : undefined
+    const passThrough = options.preserveXmlBytes === true ? passThroughBytes(source as string | Buffer, xml) : undefined
 
     const flavor = options.flavor || getFlavor(xml)
     // Checked on the root too, so an explicit `flavor: 'facturx'` cannot embed a ZUGFeRD 1.0
