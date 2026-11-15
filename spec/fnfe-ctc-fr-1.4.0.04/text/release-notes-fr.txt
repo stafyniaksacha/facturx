@@ -1,0 +1,519 @@
+
+=== PDF page 1 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 1/14
+Schematrons en application des Règles de gestion
+de la norme XP Z12-012
+Version 1.4.0 du 30 juin 2026
+GESTION DE VERSION
+N° de Version Date de Version Description des évolutions
+V0.1 2025 07 31 Version initiale
+V1.2.0 2025 11 14
+Corrections de le version Beta des schematrons UBL / CII.
+Ajout d’identifiants pour chaque contrôle (assert)
+Schematron CDAR
+Prise en compte de la maintenance des schematrons de la Norme EN16931
+(ceux applicables au 15 novembre 2025)
+Mise à jour du présent document
+V1.3.0 2026 02 16
+Quelques corrections des schematrons UBL / CII / CDAR des règles France CTC
+Finalisation des Schematrons Flux 2 France CTC intégrant toutes les règles pour
+les factures Multi-Vendeur
+Schematron profil EXTENDED-CTC-FR en UBL et en CII. Ces profils anticipent
+la version de la norme XP Z12-012 de février 2026, notamment par une gestion
+des contrôles de ventilation de TVA tenant compte des raisons d’exemption de
+TVA en ligne et relises et charges de niveau document.
+Uniquement pour les factures Multi-vendeur en Factur-x, il est nécessaire
+d’intégrer en avance de phase les données et règles de gestion nécessaires aux
+contrôles de ventilation de TVA AVEC prise en compte des motifs d’exemption
+et texte et en code au niveau des lignes et des remises et charges de niveau
+document. Un schematron Factur-X_1.08_EXTENDED_Multi_Seller_Beta.sch a
+donc été créé, à utiliser à la place du schematron EXTENDED pour ceux qui
+pratiquent ou testent les factures Multi-Vendeurs.
+V1.3.1 2026 04 30 
+Correctifs divers :
+20260430_BR-FR-CDV-Schematron-CDAR_V1.3.1.sch : pas de changement
+
+=== PDF page 2 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 2/14
+N° de Version Date de Version Description des évolutions
+20260430_BR-FR-Flux2-Schematron-CII_V1.3.1.sch :
+• Function ‘custom:is-valid-schemeid-format’ (BR-23, BR-24) :
+suppression du « / » et ajout du « . ».
+• BR-FR-17 : Ajout de RECAPITULATIF_COTRAITANCE dans la liste des
+types de pièces jointes.
+20260430_BR-FR-Flux2-Schematron-UBL_V1.3.1.sch :
+• Function ‘custom:is-valid-schemeid-format’ (BR-23, BR-24) :
+suppression du « / » et ajout du « . ».
+• BR-FR-03/EXT-FR-FE-136 : correction Xpath EXT-FR-FE-136
+• BR-FR-17 : Ajout de RECAPITULATIF_COTRAITANCE dans la liste des
+types de pièces jointes.
+• BR-FR-CO-09 : correction Xpath BT-9 pour CreditNote
+20260430_EXTENDED-CTC-FR-CII-V1.3.1.sch :
+• Corrections Xpath des raisons d’exemption en texte et en code (BT-92,
+BT-99), et des variables NBLineItems, NB Allowances & Charges pour
+toutes les règles BR-FREXT-ZZ-08, ZZ = S, E, O, G, AE, IC, Z, AF, AG.
+• Ajout CII-FREXT-SR-293 en remplacement de CII-SR-293 pour
+accepter INCOTERMS et localité au niveau document.
+• Correction de BR-EXT-CL-07 pour exclure Le codetype de contrat
+(EXT-FR-FE-01) de la vérification de liste 1153, car le secteur public
+oblige pour l’instant « CONTRAT » et « MARCHE », qui vont bientôt être
+remplacés par « CT » et « GC » pour rentrer dans la liste 1153.
+TEMPORAIRE.
+• Ajout BR-FREXT-CL-24 en remplacement de BR-CL-24 pour ajouter les
+fichiers joints xml.
+20260430_EXTENDED-CTC-FR-UBL-V1.3.1.sch :
+• BR-FREXT-CO-12 Xpath dans « not(cbc:ChargeTotalAmount) »
+• Ajout UBL-FREXT-CR-410 en remplacement de UBL-CR-410 pour
+accepter INCOTERMS et localité au niveau document.
+• Suppression de UBL-SR-20 pour rendre BT-60 de cardinalité 0..n
+• Ajout BR-FREXT-CL-24 en remplacement de BR-CL-24 pour ajouter les
+fichiers joints xml.
+20260430_Factur-X_1.08_EXTENDED_Multi_Seller_Beta-V1.08.1.sch :
+• Corrections Xpath des raisons d’exemption en texte et en code (BT-92,
+BT-99), et des variables NBLineItems, NB Allowances & Charges
+logisticChargeAmount, nblogisticCharge pour toutes les règles BR-
+FREXT-ZZ-08, ZZ = S, E, O, G, AE, IC, Z, AF, AG.
+V1.4.0 2026 06 30
+Cette version prend en compte les évolutions de la norme XP Z12-012 V1.4.0.
+Le nommage des fichiers est sans les dates et les versions pour permettre une
+exploitabilité directe sans avoir a renommer les fichiers dans les traitements.
+Les schematrons comportent des commentaires avec V1.4.0 en référence,
+permettant de voir chaque changement opéré par cette version.
+C’est le package qui porte la date et la version.
+
+=== PDF page 3 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 3/14
+BR-FR-CDV-Schematron-CDAR :
+• BR-FR-CDV-02 : correction : le matricule du PPF est 0000 (et pas
+9998).
+• BR-FR-CDV-13 : correction Xpath pour MDT-105.
+• BR-FR-CDV-14 : Ajout de la présence du taux de TVA pour les statuts
+encaissés.
+• BR-FR-CDV-16 : correction suite à commentaire.
+• BR-FR-CDV-CL-05 : ajout de la valeur « 5 » pour la phase de traitement.
+• BR-FR-CDV-CL-06 : liste des codes statuts laissés en « warning » pour
+permettre d’autres codes à venir.
+• BR-FR-CDV-CL-09 : ajout des codes MOTIF de REFUS B2G + règles
+permettant de les accepter uniquement quand le refus vient d’un
+acheteur G utilisant CPRO (matricule « 9999 »).
+BR-FR-Flux2-Schematron-CII :
+• BR-FR-28 : suppression des règles schematrons qui sont déjà dans les
+profils EN16931 et EXTENDED-CTC-FR.
+• BR-FR-CO-05 : correction pour exclure les sous-lignes GROUP et
+INFORMATION de l’obligation de renseigner une facture antérieure en
+cas d’avoir en ligne (si pas présent en entête).
+BR-FR-Flux2-Schematron-UBL :
+• BR-FR-28 : suppression des règles schematrons qui sont déjà dans les
+profils EN16931 et EXTENDED-CTC-FR.
+• BR-FR-CO-05 : correction pour exclure les sous-lignes GROUP et
+INFORMATION de l’obligation de renseigner une facture antérieure en
+cas d’avoir en ligne (si pas présent en entête).
+• BR-FR-CO-09 : correction de l’Xpath de dueDate en cas de CreditNote
+EXTENDED-CTC-FR-CII : (application des modifications de règle + ajout des
+données additionnelles) :
+• Suppression des règles BR-S-01, BR-Z-01, … BR-O-01 remplacées par
+les règles BR-FREXT-S-01, … BR-FREXT-O-01 pour permettre
+plusieurs lignes de détail TVA par catégorie TVA (S, E, AE, O, G, IC, AF,
+AG, Z).
+• Suppression de BR-28 et BR-FREXT-27 pour permettre des Prix
+unitaire négatifs.
+• BR-44 et BR-CO-24 remplacés par BR-FREXT-BR-44
+• BR-FREXT-O-08 : correction, le taux de TVA est enlevé de la règle car il
+n’est pas présent pour les factures hors scope.
+• Suppression de la règle BR-Z-10
+• Suppression des règles CII-SR-068 et 070 pour permettre le code
+d’attribut (EXT-FR-FE-159) et la valeur avec mesure ((EXT-FR-FE-
+160).
+• Suppression de la règle CII-SR-106 remplacée par CII-FREXT-SR-106
+pour permettre l’INCOTERMS et son lieu de livraison à la ligne.
+• Suppression de CII-SR-127 et CII-SR-128 pour inclure les raisons en
+code et en texte de remise sur Prix Unitaire brut (EXT-FR-FE-195 et
+EXT-FR-FE-196).
+• Suppression de CII-SR-458 pour rendre BT-18 de cardinalité 0..n.
+• Suppression de CII-SR-333 et CII-SR-334 (qui sont identiques) pour
+intégrer le numéro de ligne des avis d’expédition (EXT-FR-FE-141).
+
+=== PDF page 4 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 4/14
+N° de Version Date de Version Description des évolutions
+• Suppression de CII-SR-366, remplacée par CII-FREXT-SR-366 pour
+intégrer le taux de change entre BT-5 et BT-6, et sa date (BT-167, EXT-
+FR-FE-192).
+• Suppression de CII-DT-027, remplacée par CII-FREXT- DT-027 pour
+ajouter la Date de contrat (EXT-FR-FE-199).
+• Ajout de BR-FREXT-CL-19-GP pour contrôle les codes de raison de
+remise sur Prix Unitaire brut (EXT-FR-FE-196).
+• Suppression de BR-CL-20 remplacée par BR-FREXT-CL-20 pour gérer
+la liste de code des motifs de Taxe hors TVA (BT-177 et BT-193).
+EXTENDED-CTC-FR-UBL : (application des modifications de règle + ajout des
+données additionnelles) :
+• Suppression des règles BR-S-01, BR-Z-01, … BR-O-01 remplacées par
+les règles BR-FREXT-S-01, … BR-FREXT-O-01 pour permettre
+plusieurs lignes de détail TVA par catégorie TVA (S, E, AE, O, G, IC, AF,
+AG, Z).
+• Suppression de BR-28 et BR-FREXT-BR-27 pour permettre des Prix
+unitaire négatifs.
+• Modification de BR-55 pour qu’elle s’applique que sur le niveau
+Document du fait de l’ajout des factures antérieures en ligne qui
+peuvent indiquer uniquement le numéro de ligne de la facture
+antérieure indiquée au niveau document (et donc sans numéro de
+document antérieur en ligne).
+• BR-FREXT-O-08 : correction, le taux de TVA est enlevé de la règle car il
+n’est pas présent pour les factures hors scope.
+• Suppression de UBL-CR-018 pour intégrer la date du Bon de
+Commande au niveau document (EXT-FR-FE-197) et en ligne (EXT-FR-
+FE-200).
+• Suppression de UBL-CR-047 pour intégrer la date de l’avis d’expédition
+au niveau document (EXT-FR-FE-198) et en ligne (EXT-FR-FE-201).
+• Suppression de UBL-CR-096 pour intégrer la date du contrat (EXT-FR-
+FE-199).
+• Suppression de UBL-CR-490, remplacée par UBL-FREXT-CR-490 pour
+intégrer le taux de change entre BT-5 et BT-6, et sa date (BT-167, EXT-
+FR-FE-192).
+• Suppression de UBL-CR-633 et UBL-CR-634 et UBL-CR-669 et UBL-CR-
+670 (doublon) pour inclure les raisons en code et en texte de remise
+sur Prix Unitaire brut (EXT-FR-FE-195 et EXT-FR-FE-196).
+• Suppression de UBL-CR-645 remplacée par UBL-FREXT-CR-645 pour
+permettre l’INCOTERMS et son lieu de livraison à la ligne.
+• Suppression de UBL-CR-662 pour permettre @listID pour BT-177 et
+BT-193 (raisons de Taxe hors TVA).
+• Suppression de UBL-SR-37 pour changer la cardinalité de BT-147
+(rabais sur Prix Unitaire) à 0..n.
+• Suppression de BR-CL-20 remplacée par BR-FREXT-CL-20 pour gérer
+la liste de code des motifs de Taxe hors TVA (BT-177 et BT-193).
+Factur-X_EXTENDED (1.09.2 en avance de phase sur correctif début août) :
+• Suppression des règles BR-S-01, BR-Z-01, … BR-O-01 remplacées par
+les règles BR-FREXT-S-01, … BR-FREXT-O-01 pour permettre
+
+=== PDF page 5 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 5/14
+N° de Version Date de Version Description des évolutions
+plusieurs lignes de détail TVA par catégorie TVA (S, E, AE, O, G, IC, AF,
+AG, Z).
+• Remplacement de BR-54 par BR-FXEXT-54-1 et BR-FXEXT-54-2 pour
+forcer à ce qu’un attribut contienne, d’une part un code ou un nom de
+description, et d’autre part, une valeur ou une valeur avec mesure (et
+pas les 2).
+• Modification de la règle BR-FXEXT-CO-04 pour permettre l‘absence de
+catégorie TVA en ligne (BT-151) pour les lignes INFORMATION et
+GROUP (pour pouvoir signifier un code de date d’exigibilité en EXT-FR-
+FE-180 pour les factures multi-vendeur). Pour cela, l’xsd du profil a
+aussi été modifié pour passer ram :TypeCode et ram :CategoryCode en
+0..1 au lieu de 1..1.
+
+=== PDF page 6 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 6/14
+APPLICATION
+CETTE VERSION 1.4.0 DES COMPOSANTS TECHNIQUES DE CONTRÔLE IMPLÉMENTE LES RÈGLES DE GESTION DE LA
+NORME XP Z12-012 V1.4.0. ELLE INTÈGRE AUSSI LES SCHEMATRONS FACTUR-X 1.09, AVEC UN CORRECTIF APPORTÉ
+POUR LE PROFIL EXTENDED DE FACTUR-X (1.09.2BETA, QUI SERA PUBLIÉ DÉBUT AOÛT EN V1.09.2).
+POUR RAPPEL, IL Y A D’UNE PART LE RESPECT DES PROFILS (XSD ET SCHEMATRONS DES PROFILS) ET D’AUTRE PART
+LE RESPECT DES RÈGLES DE GESTION FRANCE (SCHEMATRON BR-FR-CDV-Schematron-CDAR, BR-FR-Flux2-
+Schematron-CII, BR-FR-Flux2-Schematron-UBL).
+CE CHAPITRE TRAITE DE L’APPLICATION DE CES CONTRÔLES PAR LES PLATEFORMES AGRÉÉES POUR PERMETTRE
+AUX FLUX DE S’ÉCHANGER VALABLEMENT. LES UTILISATEURS PEUVENT CONTINUER D’ÉCHANGER DES FACTURES
+CONFORMES À LA VERSION 1.3.1 DÈS LORS QU’ELLES N’UTILISENT PAS LES NOUVELLES FONCTIONNALITÉS
+APPORTÉES PAR LA VERSION 1.4.0.
+LES XSD ET SCHEMATRONS DES DIFFÉRENTS PROFILS SONT INCHANGÉS (SAUF MISE À JOUR DES LISTES DE CODES)
+À L’EXCEPTION DU PROFIL EXTENDED-CTC-FR (ET EXTENDED DE FACTUR-X). L’APPLICATION DES PROFILS DE
+CETTE VERSION 1.4.0, C’EST-A-DIRE LES XSD CDAR, CII, UBL ET CII PAR PROFIL FACTUR-X, ET LES SCHEMATRONS
+EN16931-CII-validation-preprocessed, EN16931-UBL-validation-preprocessed, EXTENDED-CTC-FR-CII,
+EXTENDED-CTC-FR-UBL ET EN16931, BASIC WL ET EXTENDED DE FACTUR-X, EST DONC SOUMISE AUX RÈGLES
+SUIVANTES :
+• ILS SONT APPLICABLES EN RÉCEPTION DÈS PUBLICATION, ET AU PLUS TARD LE 1
+ER 
+SEPTEMBRE 2026.
+• ILS DOIVENT ÊTRE UTILISÉS EN ÉMISSION LE 1
+ER 
+SEPTEMBRE 2026 EN LIEU ET PLACE DE LA VERSION
+1.3.1.
+LES SCHEMATRONS DES RÈGLES ADDITIONNELLES FRANCE POUR LE RESPECT DES EXIGENCES DE LA REFORME
+REFORME ET LA GESTION DES CAS D’USAGES FRANCE (BR-FR-CDV-Schematron-CDAR, BR-FR-Flux2-Schematron-
+CII, BR-FR-Flux2-Schematron-UBL) SONT FOURNIS EN VERSION STANDARD (AVEC FLAG « FATAL ») ET EN VERSION
+« WARNING »,C’EST-A-DIRE PASSANT POUR TOUTES LES RÈGLES. ILS SONT UTILISABLES DE LA FAÇON SUIVANTE :
+• LA VERSION « WARNING » : EST UTILISABLE EN RÉCEPTION DÈS LA PUBLICATION JUSQU’AU 30
+SEPTEMBRE 2026 (POUR RESTER EN MODE PASSANT POUR LES PREMIERS FLUX).
+• LA VERSION « WARNING » EST UTILISABLE EN ÉMISSION DÈS LA PUBLICATION JUSQU’AU 31 AOÛT.
+• LA VERSION STANDARD (flag « FATAL ») EST APPLICABLE EN RÉCEPTION EN LIEU ET PLACE DE LA
+VERSION « WARNING » À PARTIR DU 1
+ER 
+SEPTEMBRE ET AU PLUS TARD LE 1
+ER 
+OCTOBRE 2026.
+• LA VERSION STANDARD (flag « FATAL ») DOIT ÊTRE APPLIQUÉE EN ÉMISSION EN LIEU ET PLACE DE LA
+VERSION « WARNING » À PARTIR DU 1
+ER 
+SEPTEMBRE 2026.
+IL FAUT BIEN DISTINGUER L’APPLICATION DE CES COMPOSANTS DE CONTRÔLE PAR LES PLATEFORMES AGRÉÉES ET
+LES SOLUTIONS COMPATBLES, ET LA VERSION DE LA NORME XP Z12-012 DONT DÉPEND LA FACTURE. CETTE VERSION
+1.4.0 DES COMPOSANTS DE CONTRÔLE (XSD ET SCHEMATRONS) PERMET D‘ADRESSER DES BESOINS ADDITIONNELS
+LISTÉS DANS LES ÉVOLUTIONS DE LA NORME XP Z12-012.
+TOUTES LES FACTURES CONFORMES À LA VERSION 1.3.1 DE LA NORME XP Z12-012 RESTERONT CONFORMES À LA
+VERSION 1.4.0 DE CETTE MÊME NORME ET SERONT DONC VALABLEMENT VALIDÉS PAR LES COMPOSANTS DE
+CONTRÔLE V1.4.0, CE QUI PERMET AUX ÉMETTEURS DE DÉCIDER S’ILS ONT BESOIN D’INTÉGRER LES ÉVOLUTIONS
+APPORTÉS PAR LA VERSION 1.4.0 OU PAS.
+LES DESTINATAIRES PEUVENT ÊTRE AMENÉS À RECEVOIR DES FACTURES AVEC DES DONNEES ADDITIONNELLES
+(OPTIONNELLES) DE LA VERSION 1.4.0 DE LA NORME XP Z12-012, CHARGE À EUX DE LES IGNORER OU DE LES
+PRENDRE EN COMPTE DANS LES TRAITEMENTS AUTOMATIQUES. ELLES SERONT PRÉSENTES DANS LES LISIBLES DE
+TOUTE FAÇON (POUR RAPPEL, LA FOURNITURE D’UN LISIBLE DOIT CONTENIR TOUTES LES INFORMATIONS DU
+FICHIER STRUCTURÉ DE FACTURE ÉLECTRONIQUE). LES PLATEFORMES AGRÉÉES ET LES SOLUTIONS COMPATIBLES
+DOIVENT DONC METTRE À, JOUR LEURS COMPOSANTS DE CRÉATION DE LISIBLE POUR FAIRE APPARAÎTRE LES
+QUELQUES DONNEES ADDITIONNELLES DU PROFIL EXTENDED-CTC-FR LORSQU’ILS SONT UTILISÉS DANS LES
+FACTURES.
+
+=== PDF page 7 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 7/14
+Table des matières
+APPLICATION ....................................................................................................................................................... 6
+Préambule ............................................................................................................................................................ 8
+IMPORTANT - MODIFICATION MAJEURE pour le profil EXTENDED-CTC-FR (opérée sur la
+version 1.3, complétée sur la version 1.4) .................................................................................................. 8
+1 Rappel sur l’organisation des contrôles ................................................................................. 9
+2 Périmètre de la publication et plan de travail .................................................................. 10
+2.1 Périmètre de la présente publication ......................................................................................................................... 10
+2.2 Commentaires ....................................................................................................................................................................... 14
+2.3 Plan de travail ....................................................................................................................................................................... 14
+
+=== PDF page 8 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 8/14
+Préambule
+En application de la Norme XP Z12-012, il convient de compléter la documentation des composants techniques
+applicatifs, nécessaires à l’exécution des contrôles des formats et profils de cette norme.
+Il s’agit d‘abord de produire les schematrons de contrôle des factures (Flux 2) pour les deux syntaxes de données (UBL
+et UN/CEFACT CII, qui est aussi la syntaxe utilisée pour Factur-X).
+Ceci fait l’objet de cette publication par le FNFE-MPE qui a souhaité produire des composants communs, qui ont
+vocation à servir de référence, voire à être utilisés par le plus grand nombre de façon à garantir un traitement de
+contrôle uniformisé.
+Cette publication concerne uniquement les schematrons de contrôles des règles de gestion spécifiques France décrites
+dans la Norme Z12-012, à l’exception de ceux correspondants aux factures multi-vendeurs (BR-FR-MV) et ceux des
+règles B2G (BR-FR-CPRO), qui seront publiées dans une version ultérieure. Elle contient aussi les règles applicables
+sur le message CDAR (Statuts de cycle de vie).
+Les contributeurs de ces composants ne peuvent en aucun cas être tenus responsables de tout dommages directs ou
+indirects, de toute perte d'utilisation, de perte de profit, de perte de données, de perte de communication, de perte de
+revenus, de perte de contrat, de perte d’exploitation qui pourrait résulter de leur utilisation
+Il revient donc à chaque utilisateur de faire ses propres tests et de transmettre au FNFE-MPE (à ce stade sur l’adresse
+schematronReformeFE@fnfe-mpe.org, un espace github est e construction et sera proposé pendant l’été 2026) les
+commentaires et éventuels bugs constatés de façon à participer à l’amélioration continue de ces productions.
+Pour faciliter l’utilisation, les composants schematron de contrôles standards de la Norme EN16931, ainsi que certains
+xsd sont aussi joints, dans leur version à jour au moment de la présente publication. Ils sont aussi disponibles auprès
+des entités qui les publient et les mettent à jour.
+L’utilisation des schematrons d’application de la Norme XP Z12-012 est libre de droits, sur une base « TEL QUEL »
+(« AS IS »), sous réserve des limitations susmentionnées, et relève des dispositions de licence Apache 2.0 disponibles
+sur le site https://www.apache.org/licenses/LICENSE-2.0.
+IMPORTANT - MODIFICATION MAJEURE pour le profil EXTENDED-CTC-FR (opérée sur
+la version 1.3, complétée sur la version 1.4)
+La Norme EN16931 n’autorisait qu’un seul motif d’exemption de TVA par facture, et n’autorisait pas de facture avec
+des catégorie TVA « hors scope » (O) et d‘autres catégories (standard, exemption, autoliquidation …). Ceci a été corrigé
+avec la Révision de la Norme, ce qui va imposer de renseigner les raisons d’exemption en ligne et remise et charges de
+niveau document, puis d’en tenir compte dans les règles de contrôle de la ventilation de TVA (BG-23).
+A cette occasion, il a aussi été ajouté la capacité à utiliser les raisons d’exemption pour les catégories TVA « S » et « Z ».
+Comme il s‘agit d’une des modifications majeures, puisque ceci ajoute des données à renseigner obligatoirement en
+ligne ou remise ou charge de niveau document a minima dès lors qu’il existe des catégories de TVA autres que « S »
+(standard) ou « Z » (TVA à taux 0, à ne pas confondre avec les Exemption, Autoliquidation, Export, …), cette possibilité
+a été ajouté dans les profils EXTENDED-CTC-FR (et EXTENDED).
+Par contre pour permettre une phase de transition, le contrôle de ventilation de TVA s’opère AVEC et SANS prise en
+compte de ces motifs d’exemption en TVA en ligne, remise ou charge de niveau document. Il suffit que l’un des deux
+contrôles soit passant pour la facture soit considérée comme conforme. Toutefois, si l’un des deux contrôles est en
+erreur, ceci apparait en mode « warning » en identifiant s’il s’agit de la règle « ini » (SANS Motifs) ou de la règle « rev »
+(AVEC Motifs).
+Enfin, comme cette évolution est utilisée pour les factures Multi-Vendeur, elle doit être respectée pour ces factures.
+Pour le profil EXTENDED-CTC-FR ou le profil EXTENDED de Factur-X, cette évolution nécessitant de renseigner les
+motifs d’exemption en code et / ou en texte en ligne et en remise et charge de niveau document pour toute catégorie
+TVA autre que « S » ou « Z » en cohérence avec la ventilation de TVA deviendra obligatoire à compter de juillet 2026.
+Pour l’ensemble des factures hors factures Multi-vendeur, ceci revient uniquement à renseigner ces motifs en ligne et
+remise et charge de niveau document de la même façon que ce qui est renseigné en pied de TVA.
+
+=== PDF page 9 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 9/14
+1 Rappel sur l’organisation des contrôles
+Les contrôles de facture s’opèrent par un enchainement de contrôles suivant :
+• Étape 1 : un contrôle de structure du message facture ou avoir au travers de l’application d’un xsd :
+✓ Pour UBL : l’xsd UBL 2.1, disponible sur https://docs.oasis-open.org/ubl/os-UBL-2.1/. En UBL, il existe un
+xsd pour les messages de type Facture (UBL-Invoice-2.1.xsd) et une autre pour les mes messages de type
+« Avoir » (UBL-CreditNote-2.1.xsd).
+✓ Pour CII : l’xsd UN/CEFACT D22B, joint (CrossIndustryInvoice_100pD22B.xsd : un seul message identique
+pour les factures, les factures rectificatives et les avoirs). Il faut utiliser la version « uncoupled », c’est-
+à-dire sans contrôle des listes de codes embarquées par UN/CEFACT puisque la Norme EN16931 s’en est
+un peu écarté s’agissant des codes de raison de charges ou de remises. Ces codes seront contrôlés à l’étape
+suivante. Pour les profils EXTENDED, un schematron dédié sera nécessaire pour permettre l’ajout de
+certaines données et la modification de certaines règles de gestion.
+✓ Pour Factur-X, un xsd a été publié par profil pour le réduire à la structure minimum utile. Seuls les xsd des
+3 profils retenus BASIC WL (Factur-X_BASICWL.xsd), EN16931 (Factur-X_EN16931.xsd) et EXTENDED
+(Factur-X_EXTENDED.xsd) sont joints en version 1.09 et 1.09.2Beta pour le profil EXTENDED (anticipation
+d’un correctif 1.09.2 de la version 1.09 du 10 juin 2026).
+• Étape 2 : un contrôle des règles de gestion de la Norme EN16931 et du profil EXTENDED-CTC-FR :
+✓ Ces schematrons contrôlent :
+▪ la réduction de la structure xsd de chaque syntaxe au périmètre précis de l’implémentation de la Norme
+EN16931 (réduction de branches et feuilles du modèle syntaxique), ainsi qu’au profil EXTENDED-CTC-
+FR respectivement.
+▪ Les règles de gestion spécifiques, que ce soit sur la réduction de certaines cardinalités, sur les calculs,
+règles fiscales, règles conditionnelles, sur le nombre de décimales et sur le respect des listes de codes
+✓ Chaque schematron est donc lié à une syntaxe et un profil de la façon suivante :
+▪ Pour le profil EN16931 : les schematrons de la Norme EN16931 (en UBL et en CII), publiés et maintenu
+tous les 6 mois par la Commission Européenne, ci-joint en version applicable au 15 mai 2026 (et aussi
+disponible sur CE LIEN). Il faut noter que ces schématrons indiquent des contrôles en « warning » et
+non en erreur « fatal » pour des données qui sont présentes dans la facture mais pas dans le modèle
+sémantique EN16931, ce qui conduit à ne pas rejeter ces factures.
+▪ Pour le profil EXTENDED-CTC-FR : un schematron dédié, publié avec cette version 1.4.0 (les noms de
+fochier ne porte pas de numéro de version pour faciliter la mise en production d’une version à l’autre) :
+EXTENDED-CTC-FR-UBL.sch et EXTENDED-CTC-FR-CII-.sch.
+▪ Pour Factur-X : à chaque profil disposant de son propre xsd correspond un schematron. Le profil
+EXTENDED de Factur-x étant plus large que le profil EXTENDED-CTC (qui en est un subset), il est
+possible de l’utiliser pour le profil EXTENDED-CTC-FR du CII. Pour rappel, comme Factur-X repose sur
+UN/CEFACT CII, il est possible d’utiliser les composants de contrôle de Factur-x pour une facture
+UN/CEFACT CII.
+IMPORTANT : pour ceux qui souhaitent implémenter les factures Multi-Vendeur, il est nécessaire que
+le profil EXTENDED soit utilisé. La version 1.09 publiée en juin nécessite un correctif pour permettre
+plusieurs lignes de détail TVA pour des catégories autre que S. Le profil EXTENDED fourni anticipe ce
+correctif.
+• Étape 3 : application des contrôles additionnels spécifiques à la réforme en France, objet de la
+présente publication. Pour ce faire, il suffit d’appliquer les schématrons suivants, qui ont été conçus
+pour s’exécuter de la même façon sur les différents profils :
+✓ En version applicable sur UBL (profils EN16931 et EXTENDED-CTC-FR) :
+BR-FR-Flux2-Schematron-UBL.sch.
+✓ En version applicable sur UN/CEFACT CII (donc aussi pour les profils Factur-X sur le fichier factur-x.xml
+attaché dans le PDF/A-3) : BR-FR-Flux2-Schematron-CII.sch.
+• Potentiellement, Étape 4 : pour les factures à destination du secteur public (B2G) et donc de Chorus Pro : un
+schematron correspondant aux règles BR-France-CTC-CPRO en cours de construction pourra être utilisé (un
+UBL et un autre pour UN/CEFAT CII).
+
+=== PDF page 10 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 10/14
+Pour le message de cycle de vie, le principe est le même, mais avec uniquement 2 étapes :
+• Étape 1 : Contrôle syntaxique avec l’xsd du Cross Domain Acknowledgement and Response (CDAR)
+« uncoupled » puisque les listes de codes sont spécifiques
+(CrossDomainAcknowledgementAndResponse_100pD22B.xsd).
+• Étape 2 : Contrôle des règles de gestion France pour l’utilisation du message CDAR pour les statuts de Cycle
+de Vie avec le schematron publié par le FNFE : BR-FR-CDV-Schematron-CDAR.sch.
+Tout ceci montre que les contrôles de factures et CDV doivent s’organiser comme une succession de contrôles
+syntaxiques (xsd) dépendant de la syntaxe du message et potentiellement de son profil, voire de son type facture ou
+avoir (en UBL), ET de plusieurs phases de contrôles de règles de gestion à plusieurs niveaux (normatif
+international, réglementation France, métier). Il peut y avoir aussi une petite variation en fonction du type de
+traitement attendu (intégré dans le schematron BR-FR-Flux2 au travers de l’utilisation de la Note avec code sujet BAR
+et contenu B2B, B2BINT, B2C, …) :
+• B2B domestique soumis à l’obligation de facture électronique : flux 2.
+• B2B international émis : flux 8.
+• B2B international d’acquisition : flux 8, mais émis depuis l’international et donc sur lequel les règles
+spécifiques France ne s’appliquent pas forcément.
+• voire B2C : flux 9.
+2 Périmètre de la publication et plan de travail
+2.1 Périmètre de la présente publication
+La présente publication est constituée de 3 schematrons en application des règles de gestion de contrôle spécifiques
+décrits dans la norme XP Z12-012, en version 1.4.0 du 30 juin 2026 :
+• BR-FR-Flux2-Schematron-CII.sch, et sa version compilée (xslt), applicable sur les factures dans la syntaxe
+UN/CEFACT CII D22B (y compris factur-x).
+• BR-FR-Flux2-Schematron-UBL.sch et sa version compilée (xslt), applicable sur les factures dans la syntaxe
+UBL 2.1, pour le message INVOICE et le message CREDITNOTE (à utiliser pour les AVOIRS).
+• BR-FR-CDV-Schematron-CDAR.sch et sa version compilée (xslt), applicable sur les messages de Cycle de Vie
+sous syntaxe CDAR (Cross Domain Acknowledgement and Response D22B), pour les statuts sur factures
+(entre Plateformes Agrées ou à destination du PPF).
+Les schematrons sur factures s’appliquent indifféremment sur les différents profils (EN16931 et EXTENDED-CTC-FR,
+ainsi que BASIC WL, EN16931 et EXTENDED de Factur-x).
+Ce sont des schématrons de contrôle des factures ou messages de cycle de vie, qui n’implémentent donc pas les règles
+de mapping (BR-FR-MAPXXX), qui ont pour objet de corriger l’extraction des données de flux 2 ou flux 8 en vue de
+constituer les flux 1 ou 10.1, pour tenir compte de spécificités des exigences du PPF sur certaines données de facture.
+Cette version de schématron n’implémente pas les contrôles relatifs aux règles de gestion additionnelles ChorusPro
+(BR-FR-CPRO-01 à BR-FR-CPRO-50). Ils sont donc restreints aux règles suivantes :
+• Pour les factures (flux 2, 8, 9) émises par un assujetti à la TVA établi en France :
+✓ les règles de gestion BR-FR-01 à BR-FR-32,
+✓ les règles de gestion conditionnelles BR-FR-CO-01 à BR-FR-CO-17,
+✓ les règles de gestion du nombre de décimales BR-FR-DEC-01 à BR-FR-DEC-04.
+✓ les règles de gestion des factures Multi-Vendeurs et Bidirectionnelles BR-FR-MV-01 à BR-FR-MV-14, et BR-
+FR-BD-02 et BR-FR-BD-13.
+• Pour les messages de cycle de vie :
+✓ les règles de gestion BR-FR-CDV-01 à BR-FR-CDV-16,
+
+=== PDF page 11 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 11/14
+✓ les règles de gestion des listes de codes BR-FR-CDV-CL-01 à BR-FR-CDV-CL-11.
+L’ensemble des règles des schematrons BR-FR-Flux2 implémentées est en mode « warning », sauf celles relatives au
+Multi-Vendeur, donc non bloquants (« fatal »), de façon à pouvoir être utilisés sans bloquer l’échange de factures
+(puisque les règles spécifiques France s’appliqueront au plus tard au 1
+er 
+septembre 2026).
+Ceci permet leur utilisation en identifiant ce qu’il faudra corriger pour que les données soient conformes aux exigences
+de la réforme.
+L’organisation du dossier 20260630_FNFE-V1.4.0.zip a été modifié pour s’organiser par message (CDAR, CII,
+Factur-X, UBL) et avec une arborescence stable et ne dépendant pas des versions et permettant de conserver
+des noms stables pour les composants à exécuter pour les traitements, de la façon suivante :
+• CDAR, qui contient
+✓ L’xsd à utiliser, uncoupled (1xsd-CDAR_D22B_uncoupled)
+✓ Les schematrons complilés (2xslt), exécutables
+✓ Les schematrons (schematron)
+• CII, qui contient
+✓ L’xsd à utiliser, uncoupled (1xsd-CII_D22B_uncoupled)
+✓ Puis pour chaque profil EN16931 et EXTENDED-CTC-FR
+▪ Les schematrons complilés (2xslt), exécutables
+▪ Les schematrons (schematron)
+• Factur-X qui reprend les 3 profils à utiliser (BASIC WL juste la première année, EN16931 et EXTENDED), qui
+ont chacun :
+✓ L’xsd à utiliser, dédié à chaque profil (1xsd)
+✓ Les schematrons complilés (2xslt), exécutables
+✓ Les schematrons (schematron)
+• UBL, qui contient :
+✓ L’xsd n’est pas fourni, mais se trouve sur le site d’oasis (https://docs.oasis-open.org/ubl/os-UBL-2.1/)
+✓ Puis pour chaque profil EN16931 et EXTENDED-CTC-FR
+▪ Les schematrons complilés (2xslt), exécutables
+▪ Les schematrons (schematron)
+
+=== PDF page 12 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 12/14
+Pour cette version, les schematrons de contrôle France sont fournis en 2 versions :
+• une version « WARNING » où les règles ont été laissés en flag « warning », qui reste donc passant.
+• Une version standard, avec des flag « fatal » qui sont donc à utiliser à partir du 1
+er 
+septembre 2026 (voir
+l’introduction du document pour les instructions d’applicabilité).
+Le détail du dossier (hors Factur-X) est le suivant :
+
+=== PDF page 13 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 13/14
+S’agissant de Factur-x, la structure est un peu différente car elle contient un xsd par profil :
+
+=== PDF page 14 ===
+Schematrons en application des Règles de gestion de la norme XP Z12-012 – V1.4.0
+©2026FNFE-MPE – droits réservés 
+Page 14/14
+2.2 Commentaires
+La version publiée a fait l’objet de nombreux tests mais est susceptible de corrections et d’optimisation.
+Pour ce faire, ces composants sont publiés sur Github (https://github.com/fnfempe/France_RFE), d’accès public pour
+traiter des éventuels commentaires et améliorations.
+Il est aussi possible de faire part de commentaires en les transmettant à schematronReformeFE@fnfe-mpe.org.
+2.3 Plan de travail
+Ces travaux ont vocation à se compléter des éléments suivants :
+• Schematron additionnel dédié aux règles B2G (BR-FR-CPRO).
+• Evolution des schematrons suite à la prise en compte de la plupart des modifications de la révision de la Norme
+EN16931 dans le profil EXTENDED / EXTENDED-CTC-FR (en avance de phase de la mise en application de
+cette révision avant 2029), et passant aux nouvelles version UBL 2.6 et UN/CEFACT CII D25A.
+• Schematrons d’extraction du flux 1 ou composant flux 10.1 à partir d’un flux 2 ou flux 8, avec prise en compte
+des règles de gestion de mapping décrites dans la Norme XP Z12-012.
+• Une version plus optimisée en temps de traitement est aussi en cours.
+Le cas échéant les travaux pourront se poursuivre sur des composants de conversion entre formats du socle minimum
+(décrits dans la norme XP Z12-012), voire de création de LISIBLE standards sur les 2 profils EN16931 et EXTENDED-
+CTC-FR.

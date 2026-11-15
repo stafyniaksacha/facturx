@@ -1,0 +1,531 @@
+
+=== PDF page 1 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page1 14
+Schematrons in accordance with the Management Rules
+of the XP Z12-012 standard
+Version 1.4.0, June 30
+th
+, 2026
+VERSION MANAGEMENT
+Version No. Release Date Description of Changes
+V0.1 July 31
+th
+, 2025 Initial Version
+V1.2.0 November 14
+th
+, 2025
+Corrections to the beta version of the UBL/CII Schematrons.
+Added identifiers for each assertion
+CDAR Schematron
+Incorporation of updates to the schematrons in Standard EN 16931 (those
+applicable as of November 15, 2025)
+Update to this document
+V1.3.0 February 16
+th
+, 2026
+Some corrections to the UBL / CII / CDAR Schematrons for the France CTC rules
+Finalization of the France CTC Flow 2 Schematrons incorporating all rules for
+multi-vendor invoices
+EXTENDED-CTC-FR Schematron profiles in UBL and CII. These profiles
+anticipate the February 2026 version of the XP Z12-012 standard, notably
+through the handling of VAT breakdown validations that account for VAT
+exemption reasons in the line items and document-level charges.
+For multi-vendor invoices in Factur-X specifically, it is necessary to incorporate
+in advance the data and management rules required for VAT breakdown
+checks, taking into account exemption reasons—both text and code—at the line
+item level, as well as discounts and charges at the document level. A
+Schematron file named Factur-X_1.08_EXTENDED_Multi_Seller_Beta.sch has
+therefore been created to be used in place of the EXTENDED Schematron for
+those who use or are testing multi-seller invoices.
+V1.3.1 April 30
+th
+, 2026 
+Miscellaneous fixes:
+20260430_BR-FR-CDV-Schematron-CDAR_V1.3.1.sch: no changes
+
+=== PDF page 2 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page2 14
+Version No. Release Date Description of Changes
+20260430_BR-FR-Flux2-Schematron-CII_V1.3.1.sch:
+• Function ‘custom:is-valid-schemeid-format’ (BR-23, BR-24): removal
+of “/” and addition of “.”
+• BR-FR-17: Added RECAPITULATIF_COTRAITANCE to the list of
+attachment types.
+20260430_BR-FR-Flux2-Schematron-UBL_V1.3.1.sch:
+• Function ‘custom:is-valid-schemeid-format’ (BR-23, BR-24): removal
+of “/” and addition of “.”
+• BR-FR-03/EXT-FR-FE-136: Corrected the XPath for EXT-FR-FE-136
+• BR-FR-17: Added RECAPITULATIF_COTRAITANCE to the list of
+attachment types.
+• BR-FR-CO-09: Correction to the BT-9 XPath for CreditNote
+20260430_EXTENDED-CTC-FR-CII-V1.3.1.sch:
+• XPath corrections for exemption reasons in text and code (BT-92, BT-
+99), and for the variables NBLineItems, NB Allowances & Charges for
+all rules BR-FREXT-ZZ-08, where ZZ = S, E, O, G, AE, IC, Z, AF, AG.
+• Added CII-FREXT-SR-293 to replace CII-SR-293 to accept INCOTERMS
+and location at the document level.
+• Correction to BR-EXT-CL-07 to exclude the contract codetype (EXT-FR-
+FE-01) from the List 1153 validation, as the public sector currently
+requires “CONTRAT” and “MARCHE,” which will soon be replaced by
+“CT” and “GC” to comply with list 1153. TEMPORARY.
+• Added BR-FREXT-CL-24 to replace BR-CL-24 to include XML
+attachment files.
+20260430_EXTENDED-CTC-FR-UBL-V1.3.1.sch:
+• BR-FREXT-CO-12 XPath in “not(cbc:ChargeTotalAmount)”
+• Added UBL-FREXT-CR-410 to replace UBL-CR-410 to accept
+INCOTERMS and location at the document level.
+• Removed UBL-SR-20 to make BT-60 have a cardinality of 0..n
+• Added BR-FREXT-CL-24 to replace BR-CL-24 to add XML attachments.
+20260430_Factur-X_1.08_EXTENDED_Multi_Seller_Beta-V1.08.1.sch:
+• XPath corrections for exemption reasons in text and code (BT-92, BT-
+99), and for the variables NBLineItems, NB Allowances & Charges,
+logisticChargeAmount, and nblogisticCharge for all BR-FREXT-ZZ-08
+rules, where ZZ = S, E, O, G, AE, IC, Z, AF, AG.
+V1.4.0 June 30
+th
+, 2026
+This version incorporates the updates to the XP Z12-012 V1.4.0 standard.
+File names do not include dates or versions to allow for direct use without
+having to rename the files during processing.
+The Schematron files include comments referencing V1.4.0, allowing to see
+every change made in this version.
+The package itself includes the date and version.
+BR-FR-CDV-Schematron-CDAR:
+• BR-FR-CDV-02: correction: the PPF ID is 0000 (not 9998).
+
+=== PDF page 3 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page3 14
+Version No. Release Date Description of Changes
+• BR-FR-CDV-13: XPath correction for MDT-105.
+• BR-FR-CDV-14: Added the VAT rate for collected statuses.
+• BR-FR-CDV-16: Correction based on a comment.
+• BR-FR-CDV-CL-05: Added the value “5” for the processing phase.
+• BR-FR-CDV-CL-06: List of status codes left as “warning” to allow for
+additional codes in the future.
+• BR-FR-CDV-CL-09: Added B2G REASON FOR REFUSAL codes + rules
+allowing them to be accepted only when the rejection comes from a G
+buyer using CPRO (ID “9999”).
+BR-FR-Flux2-Schematron-CII:
+• BR-FR-28: Removal of Schematron rules already included in the
+EN16931 and EXTENDED-CTC-FR profiles.
+• BR-FR-CO-05: Correction to exclude the GROUP and INFORMATION
+sub-lines from the requirement to provide a prior invoice in the case of
+an online credit memo (if not present in the header).
+BR-FR-Flux2-Schematron-UBL:
+• BR-FR-28: Removal of Schematron rules that are already included in
+the EN16931 and EXTENDED-CTC-FR profiles.
+• BR-FR-CO-05: Correction to exclude the GROUP and INFORMATION
+sub-lines from the requirement to provide a previous invoice in the
+case of an online credit memo (if not present in the header).
+• BR-FR-CO-09: Correction to the dueDate XPath in the case of a credit
+note
+EXTENDED-CTC-FR-CII: (application of rule changes + addition of
+supplementary data):
+• Removal of rules BR-S-01, BR-Z-01, … BR-O-01, replaced by rules BR-
+FREXT-S-01, … BR-FREXT-O-01 to allow multiple VAT detail lines per
+VAT category (S, E, AE, O, G, IC, AF, AG, Z).
+• Removal of BR-28 and BR-FREXT-27 to allow for negative unit prices.
+• BR-44 and BR-CO-24 replaced by BR-FREXT-BR-44
+• BR-FREXT-O-08: Correction—the VAT rate has been removed from the
+rule because it does not apply to invoices outside the scope.
+• Removal of rule BR-Z-10
+• Removed rules CII-SR-068 and 070 to allow the attribute code (EXT-
+FR-FE-159) and the value with unit of measure (EXT-FR-FE-160).
+• Removal of rule CII-SR-106, replaced by CII-FREXT-SR-106 to allow for
+INCOTERMS and its delivery location on the line item.
+• Removal of CII-SR-127 and CII-SR-128 to include the reasons for
+discounts on the gross unit price in code and text (EXT-FR-FE-195 and
+EXT-FR-FE-196).
+• Removal of CII-SR-458 to make BT-18 have a cardinality of 0..n.
+• Removed CII-SR-333 and CII-SR-334 (which are identical) to include
+the line number of shipping notices (EXT-FR-FE-141).
+• Removal of CII-SR-366, replaced by CII-FREXT-SR-366 to include the
+exchange rate between BT-5 and BT-6, and its date (BT-167, EXT-FR-
+FE-192).
+
+=== PDF page 4 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page4 14
+Version No. Release Date Description of Changes
+• Removal of CII-DT-027, replaced by CII-FREXT-DT-027 to add the
+Contract Date (EXT-FR-FE-199).
+• Added BR-FREXT-CL-19-GP to validate the discount reason codes for
+the gross unit price (EXT-FR-FE-196).
+• Removal of BR-CL-20, replaced by BR-FREXT-CL-20 to manage the
+code list for non-VAT tax reasons (BT-177 and BT-193).
+EXTENDED-CTC-FR-UBL: (application of rule changes + addition of
+supplementary data):
+• Removal of rules BR-S-01, BR-Z-01, … BR-O-01, replaced by rules BR-
+FREXT-S-01, … BR-FREXT-O-01 to allow multiple VAT detail lines per
+VAT category (S, E, AE, O, G, IC, AF, AG, Z).
+• Removal of BR-28 and BR-FREXT-BR-27 to allow negative unit prices.
+• BR-55 has been modified so that it applies only at the Document level
+due to the addition of prior-period invoices that can specify only the
+line number of the prior-period invoice indicated at the document level
+(and therefore without a prior-period document number in the line).
+• BR-FREXT-O-08: Correction—the VAT rate has been removed from the
+rule because it is not applicable to invoices outside the scope.
+• Removal of UBL-CR-018 to include the purchase order date at the
+document level (EXT-FR-FE-197) and at the line item level (EXT-FR-
+FE-200).
+• Removal of UBL-CR-047 to include the shipping notice date at the
+document level (EXT-FR-FE-198) and online (EXT-FR-FE-201).
+• Removal of UBL-CR-096 to include the contract date (EXT-FR-FE-199).
+• Removal of UBL-CR-490, replaced by UBL-FREXT-CR-490 to include
+the exchange rate between BT-5 and BT-6, and its date (BT-167, EXT-
+FR-FE-192).
+• Removal of UBL-CR-633, UBL-CR-634, UBL-CR-669, and UBL-CR-670
+(duplicate) to include the reasons for discounts on the gross unit price
+in both code and text (EXT-FR-FE-195 and EXT-FR-FE-196).
+• Removal of UBL-CR-645, replaced by UBL-FREXT-CR-645 to allow for
+INCOTERMS and its delivery location on the line.
+• Removal of UBL-CR-662 to allow @listID for BT-177 and BT-193
+(reasons for tax excluding VAT).
+• Removal of UBL-SR-37 to change the cardinality of BT-147 (discount
+on unit price) to 0..n.
+• Removed BR-CL-20 and replaced it with BR-FREXT-CL-20 to manage
+the code list for non-VAT tax reasons (BT-177 and BT-193).
+Factur-X_EXTENDED (1.09.2 released ahead of the patch scheduled for early
+August):
+• Removal of rules BR-S-01, BR-Z-01, … BR-O-01, replaced by rules BR-
+FREXT-S-01, … BR-FREXT-O-01 to enabl of multiple VAT detail lines
+per VAT category (S, E, AE, O, G, IC, AF, AG, Z).
+• Replacement of BR-54 with BR-FXEXT-54-1 and BR-FXEXT-54-2 to
+enforce that an attribute must contain either a code or a descriptive
+name on one hand, and a value or a value with a unit of measure on the
+other (not both).
+
+=== PDF page 5 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page5 14
+Version No. Release Date Description of Changes
+• Modification of rule BR-FXEXT-CO-04 to allow for the absence of a VAT
+category in a line (BT-151) for INFORMATION and GROUP lines (to
+enable the specification of a due date code in EXT-FR-FE-180 for multi-
+vendor invoices). To achieve this, the profile’s XSD was also modified
+to set `ram:TypeCode` and `ram:CategoryCode` to 0..1 instead of 1..1.
+
+=== PDF page 6 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page6 14
+APPLICATION
+THIS VERSION 1.4.0 OF THE TECHNICAL VALIDATION COMPONENTS IMPLEMENTS THE BUSINESS RULES OF THE XP
+Z12-012 V1.4.0 STANDARD. IT ALSO INCLUDES THE FACTUR-X 1.09 SCHEMATRONS, WITH A FIX FOR THE FACTUR-X
+EXTENDED PROFILE (1.09.2BETA, WHICH WILL BE RELEASED IN EARLY AUGUST AS V1.09.2).
+AS A REMINDER, THIS INVOLVES, ON THE ONE HAND, COMPLIANCE WITH THE PROFILES (XSD AND SCHEMATRONS OF
+THE PROFILES) AND, ON THE OTHER HAND, COMPLIANCE WITH FRENCH MANAGEMENT RULES (SCHEMATRON BR-
+FR-CDV-Schematron-CDAR, BR-FR-Flux2-Schematron-CII, BR-FR-Flux2-Schematron-UBL).
+THIS CHAPTER DISCUSSES HOW THESE CHECKS ARE APPLIED BY ACCREDITED PLATFORMS (PLATEFORMES
+AGRÉÉES) TO ENSURE THAT DATA FLOWS CAN BE EXCHANGED VALIDLY. USERS MAY CONTINUE TO EXCHANGE
+INVOICES COMPLIANT WITH VERSION 1.3.1 AS LONG AS THEY DO NOT USE THE NEW FEATURES INTRODUCED IN
+VERSION 1.4.0.
+THE XSDs AND SCHEMATRONS FOR THE VARIOUS PROFILES REMAIN UNCHANGED (EXCEPT FOR UPDATES TO THE
+CODE LISTS), WITH THE EXCEPTION OF THE EXTENDED-CTC-FR PROFILE (AND THE EXTENDED PROFILE OF
+FACTUR-X). THE APPLICATION OF THE PROFILES IN THIS VERSION 1.4.0—WHICH IS, THE CDAR, CII, UBL, AND CII
+PER FACTUR-X PROFILE, AS WELL AS THE SCHEMATRONS EN16931-CII-validation-preprocessed, EN16931-UBL-
+validation-preprocessed, EXTENDED-CTC-FR-CII, EXTENDED-CTC-FR-UBL, AND EN16931, BASIC WL AND
+EXTENDED VERSIONS OF FACTUR-X, IS THEREFORE SUBJECT TO THE FOLLOWING RULES:
+• THESE RULES ARE APPLICABLE ON RECEPTION SIDE, UPON PUBLICATION, AND NO LATER THAN
+SEPTEMBER 1
+ST 
+2026.
+• THEY SHALL BE IMPLEMENTED ON SENDING SIDE AS OF SEPTEMBER 1
+ST 
+2026, IN PLACE OF VERSION
+1.3.1.
+THE SCHEMATRONS FOR THE ADDITIONAL FRENCH RULES TO COMPLY WITH THE REFORM REQUIREMENTS AND USE
+CASE MANAGEMENT IN FRANCE (BR-FR-CDV-Schematron-CDAR, BR-FR-Flux2-Schematron-CII, BR-FR-Flux2-
+Schematron-UBL) ARE PROVIDED IN A STANDARD VERSION (WITH THE “FATAL” FLAG) AND IN A “WARNING”
+VERSION, MEANING THEY PASS ALL RULES. THEY CAN BE USED AS FOLLOWS:
+• THE “WARNING” VERSION: CAN BE USED ON RECEPTION SIDE FROM THE DATE OF PUBLICATION
+THROUGH SEPTEMBER 30
+th
+, 2026 (TO REMAIN IN “PASS-THROUGH” MODE FOR THE FIRST INVOICE
+EXCHANGES).
+• THE “WARNING” VERSION CAN BE USED ON SENDING SIDE FROM THE DATE OF PUBLICATION THROUGH
+AUGUST 31
+th
+.
+• THE STANDARD VERSION (the “FATAL” flag) IS TO BE USED ON RECEPTION SIDE IN PLACE OF THE
+“WARNING” VERSION BEGINNING SEPTEMBER 1
+ST 
+AND NO LATER THAN OCTOBER 1
+ST 
+2026.
+• THE STANDARD VERSION (the “FATAL” flag) SHALL BE APPLIED ON SENDING SIDE IN PLACE OF THE
+“WARNING” VERSION, STARTING SEPTEMBER 1
+ST 
+2026.
+A CLEAR DISTINCTION MUST BE MADE BETWEEN THE APPLICATION OF THESE CONTROL COMPONENTS BY
+ACCREDITED PLATFORMS AND COMPATIBLE SOLUTIONS AND THE VERSION OF THE XP Z12-012 STANDARD ON
+WHICH THE INVOICE IS BASED. THIS VERSION 1.4.0 OF THE VALIDATION COMPONENTS (XSD AND SCHEMATRONS)
+ADDRESSES ADDITIONAL REQUIREMENTS LISTED IN THE UPDATES 1.4.0 OF THE XP Z12-012 STANDARD.
+ALL INVOICES WHICH COMPLY WITH VERSION 1.3.1 OF THE XP Z12-012 STANDARD WILL REMAIN COMPLIANT
+WITH VERSION 1.4.0 OF THAT SAME STANDARD AND WILL THEREFORE BE VALIDLY VALIDATED BY THE V1.4.0
+VALIDATION ARTEFACTS, WHICH ALLOWS ISSUERS TO DECIDE WHETHER OR NOT THEY NEED TO INCORPORATE THE
+CHANGES INTRODUCED BY VERSION 1.4.0.
+RECIPIENTS MAY RECEIVE INVOICES CONTAINING ADDITIONAL (OPTIONAL) DATA FROM VERSION 1.4.0 OF THE XP
+Z12-012 STANDARD, IT IS UP TO THEM TO IGNORE THESE FIELDS OR TO TAKE THEM INTO ACCOUNT IN AUTOMATED
+PROCESSING. THESE FIELDS WILL APPEAR IN THE READABLE FILES IN ANY CASE (AS A REMINDER, A READABLE FILE
+SHALL CONTAIN ALL THE INFORMATION FROM THE STRUCTURED ELECTRONIC INVOICE FILE). ACCREDITED
+PLATFORMS AND COMPATIBLE SOLUTIONS SHALL THEREFORE UPDATE THEIR READABLE-VIEW GENERATION
+COMPONENT TO DISPLAY THE ADDITIONAL DATA FROM THE EXTENDED-CTC-FR PROFILE WHEN IT IS USED IN
+INVOICES.
+
+=== PDF page 7 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page7 14
+Table of Contents
+APPLICATION ....................................................................................................................................................... 6
+Preamble ............................................................................................................................................................... 8
+IMPORTANT - MAJOR CHANGE to the EXTENDED-CTC-FR profile (implemented in version 1.3,
+completed in version 1.4) ................................................................................................................................. 8
+1 Reminder on the Organization of Checks ............................................................................... 9
+2 Scope of this publication and work plan ............................................................................. 10
+2.1 Scope of this publication .................................................................................................................................................. 10
+2.2 Comments ............................................................................................................................................................................... 14
+2.3 Work Plan ............................................................................................................................................................................... 14
+
+=== PDF page 8 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page8 14
+Preamble
+In accordance with Standard XP Z12-012, the documentation for the technical application components required to
+perform the format and profile validations specified in this standard must be completed.
+The first step is to produce the invoice validation schematrons (Flux 2) for the two data syntaxes (UBL and UN/CEFACT
+CII, which is also the syntax used for Factur-X).
+This is the subject of this publication by the FNFE-MPE, which sought to produce common components intended to
+serve as a reference—and even to be used by as many parties as possible—in order to ensure standardized validation
+processing.
+This publication concerns only the schematrons for validating France-specific business rules described in Standard
+Z12-012, with the exception of those corresponding to multi-vendor invoices (BR-FR-MV) and those for B2G rules (BR-
+FR-CPRO), which will be published in a later version. It also contains the rules applicable to the CDAR message
+(Lifecycle Statuses).
+The contributors to these components cannot under any circumstances be held liable for any direct or indirect
+damages, loss of use, loss of profits, loss of data, loss of communication, loss of revenue, loss of contracts, or operational
+losses that may result from their use.
+It is therefore up to each user to conduct their own tests and to submit comments and any identified bugs to the FNFE-
+MPE (currently atschematronReformeFE@fnfe-mpe.org ; a GitHub repository is under construction and will be
+available during the summer of 2026) in order to contribute to the continuous improvement of these products.
+To facilitate use, the Schematron components for standard controls defined in the EN 16931 standard, as well as
+certain XSDs, are also included, in the versions current as of the date of this publication. They are also available from
+the entities that publish and update them.
+Use of the Schematron schemas for the XP Z12-012 Standard is royalty-free, on an “AS IS” basis, subject to the
+aforementioned limitations, and is governed by the terms of the Apache 2.0 License available at
+https://www.apache.org/licenses/LICENSE-2.0.
+IMPORTANT - MAJOR CHANGE to the EXTENDED-CTC-FR profile (implemented in
+version 1.3, completed in version 1.4)
+The EN 16931 standard allowed only one reason for VAT exemption per invoice and did not permit invoices containing
+VAT categories “out of scope” (O) alongside other categories (standard, exemption, reverse charge, etc.). This has been
+corrected with the revision of the standard, which will require specifying the reasons for exemption, discounts, and
+charges at the document level, and then taking them into account in the VAT breakdown validation rules (BG-23).
+At the same time, the ability to use exemption reasons for VAT categories “S” and “Z” was also added.
+Since this is one of the major changes—as it adds data that must be entered online or in the return or at the document
+level at a minimum whenever VAT categories other than “S” (standard) or “Z” (0% VAT, not to be confused with
+Exemption, Reverse Charge, Export, …), this capability has been added to the EXTENDED-CTC-FR (and EXTENDED)
+profiles.
+However, to allow for a transition period, the VAT breakdown check is performed BOTH WITH and WITHOUT taking
+these VAT exemption reasons into account—whether entered online, submitted, or uploaded at the document level.
+The invoice is considered compliant as long as one of the two checks passes. However, if either check fails, this is
+indicated in “warning” mode, specifying whether it relates to the “ini” rule (WITHOUT grounds) or the “rev” rule (WITH
+grounds).
+Finally, since this change applies to multi-vendor invoices, it must be followed for these invoices.
+For the EXTENDED-CTC-FR profile or the EXTENDED profile of Factur-X, this change—which requires specifying
+exemption reasons using codes and/or text in the “online” field and in the “discounts and charges” section at the
+document level for any VAT category other than “S” or “Z,” consistent with the VAT breakdown—will become
+mandatory as of July 2026.
+For all invoices except multi-vendor invoices, this simply involves entering these reasons in the “online” and
+“document-level credits and debits” fields in the same manner as the information provided in the VAT footer.
+
+=== PDF page 9 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page9 14
+1 Reminder on the Organization of Checks
+Invoice validations are performed through the following sequence of checks:
+• Step 1: A structural validation of the invoice or credit memo message using an XSD:
+✓ For UBL: the UBL 2.1 XSD, available at https://docs.oasis-open.org/ubl/os-UBL-2.1/. In UBL, there is one
+XSD for invoice-type messages (UBL-Invoice-2.1.xsd) and another for credit note-type messages (UBL-
+CreditNote-2.1.xsd).
+✓ For CII: the UN/CEFACT D22B XSD, attached (CrossIndustryInvoice_100pD22B.xsd: a single, identical
+message for invoices, corrected invoices, and credit notes). The “uncoupled” version—that is, without
+validation of the code lists embedded by UN/CEFACT—SALL BE USED since the EN 16931 standard
+deviates slightly from it regarding codes for charge reasons or discounts. These codes will be validated in
+the next step. For EXTENDED profiles, a dedicated Schematron will be required to allow for the addition of
+certain data and the modification of certain business rules.
+✓ For Factur-X, an XSD has been published for each profile to reduce it to the minimum useful structure. Only
+the XSDs for the three selected profiles—BASIC WL (Factur-X_BASICWL.xsd), EN16931 (Factur-
+X_EN16931.xsd), and EXTENDED (Factur-X_EXTENDED.xsd) are included in versions 1.09 and 1.09.2Beta
+for the EXTENDED profile (in anticipation of a 1.09.2 patch to version 1.09 dated June 10
+th
+, 2026).
+• Step 2: Validation of the business rules for the EN16931 standard and the EXTENDED-CTC-FR profile:
+✓ These Schematrons validate:
+▪ Reducing the XSD structure of each syntax to the precise scope of the implementation of the EN 16931
+standard (reducing branches and leaves of the syntactic model), as well as to the EXTENDED-CTC-FR
+profile, respectively.
+▪ The specific business rules, whether regarding the reduction of certain cardinalities, calculations, tax
+rules, conditional rules, the number of decimal places, or compliance with code lists
+✓ Each Schematron is therefore linked to a syntax and a profile as follows:
+▪ For the EN16931 profile: the schematrons of the EN16931 Standard (in UBL and CII), published and
+updated every 6 months by the European Commission, are attached here in the version applicable as of
+May 15
+th
+, 2026 (and also available at THIS LINK). It should be noted that these Schematrons specify
+“warning” validations rather than “fatal” errors for data that is present in the invoice but not in the
+EN16931 semantic model, which means these invoices are not rejected.
+▪ For the EXTENDED-CTC-FR profile: a dedicated Schematron, published with this version 1.4.0 (file
+names do not include version numbers to facilitate deployment from one version to the next):
+EXTENDED-CTC-FR-UBL.sch and EXTENDED-CTC-FR-CII-.sch.
+▪ For Factur-X: each profile with its own XSD has a corresponding Schematron. Since the Factur-X
+EXTENDED profile is broader than the EXTENDED-CTC profile (of which it is a subset), it can be used
+for the CII’s EXTENDED-CTC-FR profile. As a reminder, since Factur-X is based on UN/CEFACT CII, it is
+possible to use Factur-X validation components for a UN/CEFACT CII invoice.
+IMPORTANT: For those wishing to implement multi-vendor invoices, the EXTENDED profile must be
+used. Version 1.09, released in June, requires a patch to allow multiple VAT detail lines for categories
+other than S. The provided EXTENDED profile anticipates this patch.
+• Step 3: Apply the additional controls specific to the reform in France, which is the subject of this
+publication. To do so, simply apply the following schematrons, which have been designed to run in the
+same way across the different profiles:
+✓ For the version applicable to UBL (EN16931 and EXTENDED-CTC-FR profiles):
+BR-FR-Flux2-Schematron-UBL.sch.
+✓ Version applicable to UN/CEFACT CII (and therefore also for Factur-X profiles in the factur-x.xml file
+attached to the PDF/A-3): BR-FR-Flux2-Schematron-CII.sch.
+• Potentially, Step 4: for invoices intended for the public sector (B2G) and therefore for Chorus Pro: a
+Schematron corresponding to the BR-France-CTC-CPRO rules, currently under development, may be used
+(one UBL and another for UN/CEFACT CII).
+
+=== PDF page 10 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page10 14
+For the lifecycle message, the principle is the same, but with only two steps:
+• Step 1: Syntax validation using the “uncoupled” Cross Domain Acknowledgement and Response (CDAR) XSD,
+since the code lists are specific
+(CrossDomainAcknowledgementAndResponse_100pD22B.xsd).
+• Step 2: Validation against French business rules for using the CDAR message for lifecycle statuses using the
+Schematron published by the FNFE: BR-FR-CDV-Schematron-CDAR.sch.
+All of this demonstrates that invoice and CDV validations must be organized as a sequence of syntactic checks (XSD)
+based on the message’s syntax and potentially its profile, or even its invoice or credit memo type (in UBL), AND
+multiple phases of business rule validation at various levels (international standards, French regulations,
+business domain). There may also be a slight variation depending on the expected processing type (integrated into the
+BR-FR-Flux2 Schematron through the use of the “Note” element with subject code “BAR” and content such as “B2B,”
+“B2BINT,” “B2C,” etc.):
+• Domestic B2B subject to the electronic invoicing requirement: flow 2.
+• Outbound international B2B: flow 8.
+• International B2B purchase transactions: flow 8, but issued from abroad and therefore not necessarily subject
+to specific French rules.
+• Or even B2C: flow 9.
+2 Scope of this publication and work plan
+2.1 Scope of this publication
+This publication consists of 3 Schematrons in accordance with the specific control management rules described in the
+XP Z12-012 standard, version 1.4.0 dated June 30, 2026:
+• BR-FR-Flux2-Schematron-CII.sch, and its compiled version (XSLT), applicable to invoices in the UN/CEFACT
+CII D22B syntax (including factur-x).
+• BR-FR-Flux2-Schematron-UBL.sch and its compiled version (XSLT), applicable to invoices in UBL 2.1 syntax,
+for the INVOICE message and the CREDITNOTE message (to be used for credit memos).
+• BR-FR-CDV-Schematron-CDAR.sch and its compiled version (XSLT), applicable to Life Cycle messages in CDAR
+(Cross Domain Acknowledgement and Response D22B) syntax, for invoice statuses (between Accredited
+Platforms or destined for the PPF).
+The invoice Schematrons apply equally to the various profiles (EN16931 and EXTENDED-CTC-FR, as well as BASIC
+WL, EN16931, and EXTENDED from Factur-x).
+These are Schematron validators for invoices or lifecycle messages; therefore, they do not implement the mapping
+rules (BR-FR-MAPXXX), which are intended to correct the extraction of data from flows 2 or 8 in order to construct
+flows 1 or 10.1, to account for specific PPF requirements regarding certain invoice data.
+This version of the Schematron does not implement the validations related to the additional ChorusPro management
+rules (BR-FR-CPRO-01 through BR-FR-CPRO-50). They are therefore limited to the following rules:
+• For invoices (flows 2, 8, 9) issued by a VAT-registered entity established in France:
+✓ business rules BR-FR-01 through BR-FR-32,
+✓ the conditional business rules BR-FR-CO-01 through BR-FR-CO-17,
+✓ the rules for managing the number of decimal places BR-FR-DEC-01 through BR-FR-DEC-04,
+✓ the business rules for multi-vendor and bidirectional invoices BR-FR-MV-01 through BR-FR-MV-14, and
+BR-FR-BD-02 and BR-FR-BD-13.
+• For lifecycle messages:
+✓ the management rules BR-FR-CDV-01 through BR-FR-CDV-16,
+
+=== PDF page 11 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page11 14
+✓ the code list management rules BR-FR-CDV-CL-01 through BR-FR-CDV-CL-11.
+All implemented BR-FR-Flux2 Schematron rules are set to “warning” mode, except for those related to Multi-Vendor,
+and are therefore non-blocking (“fatal”), so that they can be used without blocking the exchange of invoices (since the
+France-specific rules will apply no later than September 1
+st 
+2026).
+This allows them to be used while identifying what needs to be corrected so that the data complies with the reform’s
+requirements.
+The structure of the 20260630_FNFE-V1.4.0.zip file has been modified to organize its contents by message type
+(CDAR, CII, Factur-X, UBL) using a stable directory structure that is independent of specific versions, thereby
+allowing for consistent filenames for the components to be executed during processing, as follows:
+• CDAR, which contains
+✓ The XSD to be used, uncoupled (1xsd-CDAR_D22B_uncoupled)
+✓ The compiled Schematrons (2xslt), which are executable
+✓ The Schematrons (schematron)
+• CII, which contains
+✓ The XSD to be used, uncoupled (1xsd-CII_D22B_uncoupled)
+✓ Then, for each EN16931 and EXTENDED-CTC-FR profile
+▪ Compiled Schematrons (2xslt), executable
+▪ The Schematrons (schematron)
+• Factur-X, which includes the three profiles to be used (BASIC WL for the first year only, EN16931, and
+EXTENDED), each of which has:
+✓ The XSD to use, specific to each profile (1xsd)
+✓ The compiled Schematron files (2xslt), executable
+✓ Schematrons (schematron)
+• UBL, which contains:
+✓ The XSD is not provided but can be found on the OASIS website (https://docs.oasis-open.org/ubl/os-UBL-
+2.1/)
+✓ Then, for each EN16931 and EXTENDED-CTC-FR profile
+▪ Compiled Schematrons (2xslt), executable
+▪ The Schematrons (schematron)
+
+=== PDF page 12 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page12 14
+For this version, the French validation Schematrons are provided in two versions:
+• a “WARNING” version, where the rules have been left as “warning” flags, which therefore remain passable.
+• A standard version, with “fatal” flags, which must be used starting September
+1, 
+2026 (see the document’s
+introduction for applicability instructions).
+The details of the file (excluding Factur-X) are as follows:
+
+=== PDF page 13 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page13 14
+As for Factur-X, the structure is slightly different because it contains one XSD per profile:
+
+=== PDF page 14 ===
+Schematrons in accordance with the Management Rules of the XP Z12-012 Standard – V1.4.0
+©2026 FNFE-MPE – All rights reserved 
+Page14 14
+2.2 Comments
+The published version has undergone extensive testing but is subject to corrections and optimization.
+To this end, these components are published on GitHub (https://github.com/fnfempe/France_RFE), where they are
+publicly available to facilitate feedback and suggestions for improvement.
+Comments can also be sent to schematronReformeFE@fnfe-mpe.org.
+2.3 Work Plan
+This work is intended to be supplemented by the following elements:
+• An additional Schematron dedicated to B2G rules (BR-FR-CPRO).
+• Updates to the Schematrons following the incorporation of most changes from the revision of the EN 16931
+standard into the EXTENDED / EXTENDED-CTC-FR profile (in advance of the implementation of this revision
+before 2029), and transitioning to the new UBL 2.6 and UN/CEFACT CII D25A versions.
+• Schematrons for extracting Flow 1 or Flow 10.1 components from Flow 2 or Flow 8, taking into account the
+mapping management rules described in the XP Z12-012 Standard.
+• A version optimized for processing time is also in development.
+If necessary, work may continue on components for converting between the minimum framework formats (described
+in the XP Z12-012 standard), or even on creating standard LISIBLE files for both the EN16931 and EXTENDED-CTC-
+FR profiles.

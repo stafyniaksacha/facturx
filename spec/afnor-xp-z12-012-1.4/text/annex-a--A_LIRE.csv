@@ -1,0 +1,22 @@
+"PR XP Z12-012 : Formats et Profils des messages Factures et Statuts de cycle de vie, constitutifs du socle minimal applicable à la Réforme Facture Électronique en France"
+Nom de la feuille,Description
+FE EN16931 + EXTENDED,"Description sémantique de la facture pour les 2 profils (EN16931 et EXTENDED-CTC-FR), le profil EXTENDED-CTC-FR intègre toutes les données dont l'ID commence par EXT. La cardinalité peut être augmentée dans le profil EXTENDED-CTC-FR par rapport à EN16931 . Colonne C : cardinalité sémantique EN16931 . Colonne D : Cardinalité sémantique profil EN16931 France (CIUS) . Colonne E : cardinalité sémantique  EXTENDED-CTC-FR"
+BR-France CTC,"Règles de gestion spécifiques France, par catégories : . BR-FR : règle de gestion sur une donnée . BR-FR-CO : règle de gestion conditionnelle . BR-FR-DEC : règle de nombre de décimales . BR-FR-MAP : règle de mapping pour créer le flux 1 ou 10.1 . BR-FR-MV : règles de gestion pour les factures multi-vendeurs . BR-FR-MVMP : règles de mapping pour les factures multi-vendeurs"
+BR-France-CTC-CPRO,Règles de gestion pour les factures B2G (Chorus Pro)
+BR EN16931 + EXT FR et FX,"Règles de gestion de la Norme EN16931, + Règle alternative pour le profil EXTENDED-CTC-FR (tolérance dans les calculs en pied de 0,01 par ligne. L'application des règles est ensuite indiquée aussi pour les profils additionnels Factur-x (BASIC, BASIC WL, MINIMUM, EXTENDED). Des règles de gestion additionnelles sont aussi indiquées pour Factur-X EXTENDED : . BR-FREXT-XXXX : règle pour le profil EXTENDED-CTC-FR . BR-FXEXT-XXX : Règle profil EXTENDED Factur-x"
+Codelists for XML Fx - 15 05 25,"Liste de codes applicables sur les profils EN16931 (éventuellement réduit du fait des règles de gestion France), et le profil EXTENDED de Factur-X, applicable à compter du 15 mai 2025"
+Flux 2 UBL EN16931 FR,"Description du format de Facture en UBL, pour le profil EN16931. Il s'agit de l'implémentation syntaxique de la Norme EN16931, avec prise en compte des règles de gestion spécifiques France"
+Flux 2 UBL EXT-CTC-FR,"Description du format de Facture en UBL, pour le profil EXTENDED-CTC-FR. Il s'agit de l'implémentation syntaxique du profil Sémantique EN16931, avec prise en compte des règles de gestion spécifiques France"
+CII D22B & FX EN16931 FR,"Description du format de Facture en UN/CEFACT CII D22B, pour le profil EN16931 (et donc aussi Factur-X EN16931). Il s'agit de l'implémentation syntaxique de la Norme EN16931, avec prise en compte des règles de gestion spécifiques France"
+CII D22B & FX EXT-CTC-FR,"Description du format de Facture en UN/CEFACT CII D22B, pour le profil EXTENDED-CTC-FR (et donc aussi Factur-X EXTENDED-CTC-FR qui est un subset du profil EXTENDED de Factur-X). Il s'agit de l'implémentation syntaxique du profil Sémantique EN16931, avec prise en compte des règles de gestion spécifiques France"
+FACTUR-X BASIC WL FR,"Description du format des données Factur-X en UN/CEFACT CII D22B, pour le profil BASIC WL. Il s'agit de l'implémentation syntaxique de la Norme EN16931, avec prise en compte des règles de gestion spécifiques France"
+FE - Flux 1,"Description sémantique du Flux 1, telle que publiée dans les spécifications externes de l'AIFE 3.0, annexe 1."
+Flux 1 UBL,"Implémentation du Flux 1 en UBL (à vérifier avec xsd, et schematron)"
+Flux 1 CII,"Implémentation du Flux 1 en UN/CEFACT (à vérifier avec xsd, et schematron)"
+E-REPORTING - Flux 10,"Description sémantique et syntaxique du Flux 10, telle que publiée dans les spécifications externes de l'AIFE"
+Règles de gestion 3.1,Règles de gestion applicable pour les échanges entre Plateforme Agréée et le PPF (annexe 7 des spécifications externes 3.1)
+CDV FE - CDAR,"Description sémantique et syntaxique du Flux 6 (CDV) en CDAR, d'une part pour son utilisation entre Plateforme Agréée et le PPF (cf spécifications externes AIFE), d'autre part entre Plateforme Agréée+B22 entre elles et avec leurs clients respectifs (objet de cette publication)"
+BR-FR-CDV pour factures,"Règles de gestion pour les CDV (CDAR) relatif à des Factures (Flux 2, 3)"
+Acteurs CDV,"Cycle de vie : dans le cadre des échanges de Cycle de vie, quels sont les acteurs référencés dans le CDAR (pour conserver une confidentialité des Plateformes Agréées entre utilisateurs finaux)"
+Codes Action,"Codes ""action attendue"" utilisable dans les messages de statut de cycle de vie"
+Tableau des motifs de STATUTS,"Motifs possibles pour chaque statut, en B2B, à utiliser et contrôler dans le CDAR (Codes Motifs)"
