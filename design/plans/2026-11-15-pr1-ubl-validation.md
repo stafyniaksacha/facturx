@@ -96,7 +96,7 @@ git commit -m "feat(ubl): vendor UBL 2.1 XSD and FR CTC 1.4.0.04 UBL Schematrons
 
 - [ ] **Step 1: Write the failing tests** in `tests/ubl-check.test.ts`. Collect annex B UBL files with the `readdirSync(…, { recursive: true })` pattern of `tests/cdar.test.ts`, filtered on `_UBL_Commentee.xml`, under `spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures`. Expected level: `/EXTENDED-CTC-FR/.test(name) ? 'extended-ctc-fr' : 'en16931'`.
 
-```ts
+```text
 it('finds the 12 annex B UBL examples (6 EN16931, 6 EXTENDED-CTC-FR, 1 CreditNote)', ...)
 // expect(examples).toHaveLength(12); counts by level 6/6; exactly one file whose root is CreditNote (UC5b)
 
@@ -143,7 +143,7 @@ Expected: PASS. If an annex B file fails the XSD, stop: record a `CG-xx` (file, 
 
 - [ ] **Step 1: Write the failing tests**
 
-```ts
+```text
 it.each(examples)('$name passes XSD + profile Schematron with no error and no warning', async ({ file, level }) => {
   const r = await check({ xml: await readFile(file), schematron: true })
   expect(r).toMatchObject({ flavor: 'ubl', level, valid: true, schematronErrors: [], schematronWarnings: [] })
@@ -182,7 +182,7 @@ Expected: PASS. A failing official example → `CG-xx` with the rule id, `it.fai
 
 - [ ] **Step 1: Write the failing tests**
 
-```ts
+```text
 it.each(examples)('$name passes the full sequence (XSD + profile + BR-FR) with no finding', async ({ file, level }) => {
   const r = await check({ xml: await readFile(file), schematron: true, frCtc: true })
   expect(r).toMatchObject({ valid: true, frCtcValid: true, frCtcErrors: [], frCtcWarnings: [] })
@@ -217,7 +217,7 @@ Expected: FAIL, `French CTC rules (BR-FR) apply to Factur-X / CII D22B invoices 
 
 - [ ] **Step 1: Write the failing tests**
 
-```ts
+```text
 it('generate() refuses a UBL invoice', ...)     // generate({ pdf, xml: <annex B UBL> }) → rejects /UBL cannot be embedded/
 it('CLI check validates a UBL file', ...)       // run node bin/facturx.mjs check <UBL file> --schematron --fr-ctc → exit 0, stdout mentions 'ubl'
 ```

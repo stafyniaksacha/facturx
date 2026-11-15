@@ -40,7 +40,7 @@
 
 - [ ] **Step 1: Write the failing tests.** Inputs come from the CII twins of the annex B UBL files (PR ② `fromCii(xmlToInvoice(cii))`), so the writer is tested before the reader exists.
 
-```ts
+```text
 it.each(twins)('$name: written UBL passes XSD + profile + BR-FR at its level', ...)
 // twins: each annex B UBL file paired with the CII file of the same case and level (F202500001, UC1, UC4, UC4b, UC5, UC5b at EN16931; F202500001, UC1, UC10–UC13 at EXTENDED-CTC-FR — match by case id and level token in the file name)
 // check({ xml: (await invoiceToUbl(invoice, { level })).toString(), schematron: true, frCtc: true }) → valid, no error, no warning
@@ -66,7 +66,7 @@ it('throws on an EXT-FR-FE value at en16931', ...)
 
 - [ ] **Step 1: Write the failing tests**
 
-```ts
+```text
 it.each(ublExamples)('$name: read → write → read gives the same model and nothing dropped', ...)
 it.each(ublExamples)('$name: re-written UBL passes XSD + profile + BR-FR', ...)
 it('reports UBL elements outside the model in dropped', ...) // add a cac:ProjectReference-like element allowed by XSD and only warned by UBL-CR-* (pick one from EN16931-UBL-validation) to a Peppol-ID'd copy → its path in dropped
@@ -89,7 +89,7 @@ it('rejects a non-UBL document', ...)                         // CII input → t
 
 - [ ] **Step 1: Write the failing tests**
 
-```ts
+```text
 it.each(twins)('$name: the UBL and CII publications give the same model', async ({ ubl, cii }) => {
   const a = (await ublToInvoice(await readFile(ubl))).invoice
   const b = fromCii(await xmlToInvoice(await readFile(cii))).invoice
