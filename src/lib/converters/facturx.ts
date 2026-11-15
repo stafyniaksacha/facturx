@@ -54,7 +54,9 @@ export async function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<X
 
 /** *Amount* data type: at most 2 decimals (§7.1.5 p.35, BR-DEC-*). */
 function convertAmount({ value, currencyID }: udt.AmountType, parent: XmlElement): XmlElement {
-  parent.addText(value.toFixed(2))
+  // `toFixed()` falls back to exponent notation from 1e21 up, which `xs:decimal` rejects (was CG-28).
+  const fixed = value.toFixed(2)
+  parent.addText(/e/i.test(fixed) ? formatDecimal(value) : fixed)
   if (currencyID) {
     parent.setAttr('currencyID', currencyID)
   }
@@ -76,6 +78,8 @@ function convertUnitPriceAmount({ value, currencyID }: udt.AmountType, parent: X
 /**
  * Writes a number as an `xs:decimal` lexical value: the shortest string that reads back as the same
  * number, without the exponent notation (`1e-7`) `String()` uses for very small or large values.
+ * Every `xs:decimal` the converter writes goes through it: unit prices (was CG-01), quantities,
+ * measures, rates, percentages and numerics (was CG-28).
  */
 function formatDecimal(value: number): string {
   const text = String(value)
@@ -126,7 +130,7 @@ function convertCode({ value, listID, listVersionID }: udt.CodeType, parent: Xml
 }
 
 function convertQuantity({ value, unitCode }: udt.QuantityType, parent: XmlElement): XmlElement {
-  parent.addText(String(value))
+  parent.addText(formatDecimal(value))
   if (unitCode) {
     parent.setAttr('unitCode', unitCode)
   }
@@ -134,7 +138,7 @@ function convertQuantity({ value, unitCode }: udt.QuantityType, parent: XmlEleme
 }
 
 function convertMeasure({ value, unitCode }: udt.MeasureType, parent: XmlElement): XmlElement {
-  parent.addText(String(value))
+  parent.addText(formatDecimal(value))
   if (unitCode) {
     parent.setAttr('unitCode', unitCode)
   }
@@ -1060,7 +1064,7 @@ function convertTradeCurrencyExchange(
 ): void {
   parent.addElement('ram:SourceCurrencyCode').addText(sourceCurrencyCode.value)
   parent.addElement('ram:TargetCurrencyCode').addText(targetCurrencyCode.value)
-  parent.addElement('ram:ConversionRate').addText(String(conversionRate.value))
+  parent.addElement('ram:ConversionRate').addText(formatDecimal(conversionRate.value))
   if (conversionRateDateTime) {
     convertDateTime(conversionRateDateTime, parent.addElement('ram:ConversionRateDateTime'))
   }
@@ -1163,7 +1167,7 @@ function convertTradeTax(
     parent.addElement('ram:DueDateTypeCode').addText(dueDateTypeCode.value)
   }
   if (rateApplicablePercent) {
-    parent.addElement('ram:RateApplicablePercent').addText(String(rateApplicablePercent.value))
+    parent.addElement('ram:RateApplicablePercent').addText(formatDecimal(rateApplicablePercent.value))
   }
 }
 
@@ -1187,10 +1191,10 @@ function convertAllowanceCharge(
   const convertAllowanceAmount = unitPrice ? convertUnitPriceAmount : convertAmount
   convertIndicator(chargeIndicator, parent.addElement('ram:ChargeIndicator'))
   if (sequenceNumeric) {
-    parent.addElement('ram:SequenceNumeric').addText(String(sequenceNumeric.value))
+    parent.addElement('ram:SequenceNumeric').addText(formatDecimal(sequenceNumeric.value))
   }
   if (calculationPercent) {
-    parent.addElement('ram:CalculationPercent').addText(String(calculationPercent.value))
+    parent.addElement('ram:CalculationPercent').addText(formatDecimal(calculationPercent.value))
   }
   if (basisAmount) {
     convertAllowanceAmount(basisAmount, parent.addElement('ram:BasisAmount'))
@@ -1276,7 +1280,7 @@ function convertPaymentPenaltyTerms(
     convertAmount(basisAmount, parent.addElement('ram:BasisAmount'))
   }
   if (calculationPercent) {
-    parent.addElement('ram:CalculationPercent').addText(String(calculationPercent.value))
+    parent.addElement('ram:CalculationPercent').addText(formatDecimal(calculationPercent.value))
   }
   if (actualPenaltyAmount) {
     convertAmount(actualPenaltyAmount, parent.addElement('ram:ActualPenaltyAmount'))
@@ -1297,7 +1301,7 @@ function convertPaymentDiscountTerms(
     convertAmount(basisAmount, parent.addElement('ram:BasisAmount'))
   }
   if (calculationPercent) {
-    parent.addElement('ram:CalculationPercent').addText(String(calculationPercent.value))
+    parent.addElement('ram:CalculationPercent').addText(formatDecimal(calculationPercent.value))
   }
   if (actualDiscountAmount) {
     convertAmount(actualDiscountAmount, parent.addElement('ram:ActualDiscountAmount'))
