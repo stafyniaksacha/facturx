@@ -64,8 +64,7 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
   (CDAR XSD + `BR-FR-CDV`); building them is not supported.
 - Not covered: UBL invoices and e-reporting (flux 10).
 - The `EXTENDED-CTC-FR` French extension fields (`EXT-FR-FE-*`) are read by `xmlToInvoice()` and
-  written by `invoiceToXml()`, except the VAT currency exchange (`TaxApplicableTradeCurrencyExchange`),
-  which `xmlToInvoice()` does not read yet.
+  written by `invoiceToXml()`, including the VAT currency exchange (`TaxApplicableTradeCurrencyExchange`).
 
 ## Reading BR-FR errors
 

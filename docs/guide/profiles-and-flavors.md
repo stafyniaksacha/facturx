@@ -40,8 +40,8 @@ by FNFE-MPE runs only with `schematron: true`; `frCtc: true` adds the French rul
 Schematron on, so pass both for the full sequence. Only the exact Annex A guideline ID is recognised, also when you pass `level: 'extended-ctc-fr'`. It
 has no conformance label, so `generate()` refuses a document that declares it (even with an explicit
 `level`), and `extract({ check: true })` rejects a PDF whose `factur-x.xml` declares it. Its French extension fields (`EXT-FR-FE-*`) are EXTENDED fields of the models: `xmlToInvoice()` reads
-them and `invoiceToXml()` writes them back. One exception: `xmlToInvoice()` does not read the VAT currency exchange
-(`TaxApplicableTradeCurrencyExchange`, incl. the exchange rate date) yet.
+them and `invoiceToXml()` writes them back, including the VAT currency exchange
+(`TaxApplicableTradeCurrencyExchange`, incl. the exchange rate date).
 
 The `conformanceLevel` strings above are written into the PDF/A-3 XMP metadata by
 [`generate()`](/api/generate).
