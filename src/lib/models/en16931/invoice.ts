@@ -8,21 +8,10 @@
  * strings; codes are strings, checked by the Schematron, not by the type system.
  */
 
+import type { BillingParty, BuyerAgent, Invoicee, Payee, Payer, SellerAgent } from './additional-parties'
 import type { Identifier } from './common'
 import type { InvoiceLine } from './lines'
-import type {
-  BillingParty,
-  Buyer,
-  BuyerAgent,
-  Delivery,
-  DeliveryTerms,
-  Invoicee,
-  Payee,
-  Payer,
-  Seller,
-  SellerAgent,
-  SellerTaxRepresentative,
-} from './parties'
+import type { Buyer, Delivery, DeliveryTerms, Seller, SellerTaxRepresentative } from './parties'
 import type {
   DocumentAllowance,
   DocumentCharge,

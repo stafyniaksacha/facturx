@@ -12,20 +12,9 @@
 import type { Invoice } from '../../models/en16931/invoice'
 import type { CrossIndustryInvoiceType } from '../../models/facturx/crossIndustryInvoice'
 import type { TermGate } from './levels'
+import { BillingParty, BuyerAgent, Invoicee, Payee, Payer, SellerAgent } from '../../models/en16931/additional-parties'
 import { Contact, Identifier, PostalAddress } from '../../models/en16931/common'
-import {
-  BillingParty,
-  Buyer,
-  BuyerAgent,
-  Delivery,
-  DeliveryTerms,
-  Invoicee,
-  Payee,
-  Payer,
-  Seller,
-  SellerAgent,
-  SellerTaxRepresentative,
-} from '../../models/en16931/parties'
+import { Buyer, Delivery, DeliveryTerms, Seller, SellerTaxRepresentative } from '../../models/en16931/parties'
 import * as qdt from '../../models/facturx/qualifiedTypes'
 import * as ram from '../../models/facturx/reusableTypes'
 import * as udt from '../../models/facturx/unqualifiedTypes'

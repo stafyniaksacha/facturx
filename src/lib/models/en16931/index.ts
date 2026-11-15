@@ -3,6 +3,7 @@
  * XP Z12-012 EXTENDED-CTC-FR), independent of the CII and UBL syntaxes.
  */
 
+export * from './additional-parties'
 export * from './common'
 export * from './invoice'
 export * from './line-extensions'
