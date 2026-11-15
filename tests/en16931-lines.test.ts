@@ -3,7 +3,7 @@ import type { CrossIndustryInvoiceType } from '@stafyniaksacha/facturx/models'
 import { readdirSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { EN16931, extract, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, EN16931, extract, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
 
@@ -404,6 +404,73 @@ describe('en 16931 model: line terms', () => {
     }
   })
 
+  // The XSD of the level accepts what `toCii()` writes for every line term the level carries.
+  async function xsdErrors(line: InstanceType<typeof EN16931.InvoiceLine>, level: Level): Promise<string[]> {
+    const xml = (await invoiceToXml(ciiOf(line, level))).toString()
+    return (await check({ xml, level })).errors
+  }
+  const EN_LINE = () => new EN16931.InvoiceLine({
+    ...FULL_LINE(),
+    notes: [new EN16931.LineNote({ note: 'n' })],
+    parentLineIdentifier: undefined,
+    statusReasonCode: undefined,
+    objectIdentifiers: [new EN16931.Identifier({ value: 'obj', schemeId: 'AWV' })],
+    unitsInParentLine: undefined,
+    unitsInParentLineUnitCode: undefined,
+    vatAmount: undefined,
+    vatAmountInAccountingCurrency: undefined,
+    grandTotalAmount: undefined,
+    charges: [new EN16931.LineCharge({ amount: 3.5, baseAmount: 7, percentage: 50, reasonCode: 'FC', reason: 'c' })],
+    price: new EN16931.PriceDetails({ netPrice: 10.123456, priceBaseQuantity: 1.5, priceBaseQuantityUnitCode: 'LTR', grossPrice: 10.5, grossPriceBaseQuantity: 2.5, grossPriceBaseQuantityUnitCode: 'LTR', priceDiscount: 0.376544 }),
+    vat: new EN16931.LineVat({ categoryCode: 'E', rate: 0 }),
+    item: new EN16931.Item({
+      ...FULL_LINE().item,
+      attributes: [new EN16931.ItemAttribute({ name: 'colour', value: 'rouge' })],
+    }),
+    purchaseOrderReference: undefined,
+    purchaseOrderDate: undefined,
+    sellerOrderReference: undefined,
+    despatchAdviceReference: undefined,
+    receivingAdviceReference: undefined,
+    precedingInvoiceReferences: [],
+    deliverTo: undefined,
+    actualDelivery: undefined,
+    seller: undefined,
+    deliveryTerms: undefined,
+  })
+
+  it.each(['extended', 'extended-ctc-fr'] as const)('writes XML that the %s XSD accepts, every line term included', async (level) => {
+    expect(await xsdErrors(FULL_LINE(), level)).toEqual([])
+    // The three VAT block shapes of 1.09.2.fixFR04: no block, a block without codes, a coded block.
+    for (const vat of [undefined, new EN16931.LineVat({ rate: 5 }), new EN16931.LineVat({}), new EN16931.LineVat({ categoryCode: 'S', rate: 5 })])
+      expect(await xsdErrors(MINIMAL_LINE({ vat }), level)).toEqual([])
+    // A group line: no price, quantity or VAT block.
+    expect(await xsdErrors(MINIMAL_LINE({ price: undefined, vat: undefined, invoicedQuantity: undefined, invoicedQuantityUnitCode: undefined, statusReasonCode: 'GROUP' }), level)).toEqual([])
+  })
+
+  it.each(['en16931', 'basic'] as const)('writes XML that the %s XSD accepts, every line term the level carries', async (level) => {
+    const line = level === 'basic'
+      ? MINIMAL_LINE({
+          notes: [new EN16931.LineNote({ note: 'n' })],
+          period: new EN16931.LinePeriod({ startDate: '2025-01-01', endDate: '2025-02-01' }),
+          allowances: [new EN16931.LineAllowance({ amount: 1, reasonCode: '95', reason: 'r' })],
+          charges: [new EN16931.LineCharge({ amount: 1, reasonCode: 'FC', reason: 'r' })],
+          price: new EN16931.PriceDetails({ netPrice: 1.123456, priceBaseQuantity: 1, priceBaseQuantityUnitCode: 'C62', grossPrice: 2, grossPriceBaseQuantity: 1, grossPriceBaseQuantityUnitCode: 'C62', priceDiscount: 0.876544 }),
+          item: new EN16931.Item({ name: 'N', standardIdentifier: new EN16931.Identifier({ value: '4012345678901', schemeId: '0160' }) }),
+        })
+      : EN_LINE()
+    expect(await xsdErrors(line, level)).toEqual([])
+  })
+
+  it('keeps several notes and object identifiers only where the XSD of the level allows them', async () => {
+    const line = MINIMAL_LINE({
+      notes: [new EN16931.LineNote({ note: 'a' }), new EN16931.LineNote({ note: 'b' })],
+      objectIdentifiers: [new EN16931.Identifier({ value: 'o1', schemeId: 'AWV' }), new EN16931.Identifier({ value: 'o2', schemeId: 'AWV' })],
+    })
+    expect(await xsdErrors(line, 'extended')).toEqual([])
+    expect(await xsdErrors(line, 'extended-ctc-fr')).toEqual([])
+  })
+
   it('writes a line without VAT block, with an empty block, and with a block without codes, apart', () => {
     const none = linesOf(ciiOf(MINIMAL_LINE({ vat: undefined })))[0]
     expect(none.specifiedLineTradeSettlement.applicableTradeTax).toEqual([])
@@ -618,6 +685,21 @@ describe('en 16931 model: line level gates and mandatory terms', () => {
   ])('throws on %s without what CII needs beside it', (id, invoice) => {
     const text = message(invoice, 'extended-ctc-fr')
     expect(text).toMatch(new RegExp(`${id}[ )]`))
+  })
+
+  it('throws on several notes or object identifiers of a line below the extended levels, naming BT-127 / BT-128', () => {
+    const notes = withLine({ notes: [new EN16931.LineNote({ note: 'a' }), new EN16931.LineNote({ note: 'SECRET-B' })] })
+    const objects = withLine({ objectIdentifiers: [new EN16931.Identifier({ value: 'a' }), new EN16931.Identifier({ value: 'SECRET-B' })] })
+    for (const level of ['basic', 'en16931'] as const) {
+      expect(message(notes, level)).toMatch(/BT-127.*once/)
+      expect(message(notes, level)).not.toMatch(/SECRET/)
+    }
+    expect(message(objects, 'en16931')).toMatch(/BT-128.*once/)
+    expect(message(objects, 'en16931')).not.toMatch(/SECRET/)
+    for (const level of ['extended', 'extended-ctc-fr'] as const) {
+      expect(message(notes, level)).toBe('')
+      expect(message(objects, level)).toBe('')
+    }
   })
 
   it('throws on a second preceding invoice reference of a line, which CII cannot hold', () => {
