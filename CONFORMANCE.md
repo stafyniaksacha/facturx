@@ -42,7 +42,8 @@ open entry is "known", anything else is new.
 | `invoiceToXml()` writes every other `xs:decimal` in plain notation too: quantities, measures, the currency `ConversionRate`, VAT and allowance/charge percentages and `SequenceNumeric` go through the same `formatDecimal` as unit prices, and an *Amount* from 1e21 up (where `toFixed(2)` switches to `1e+21`) is written in full. `1e-7` → `0.0000001`, `1.2345678901234569e+23` → `123456789012345690000000`, `-1.5e-7` → `-0.00000015`. The test sets a line `BilledQuantity`, a line VAT rate, the `ConversionRate`, a document allowance's `SequenceNumeric` and `CalculationPercent`, a payment penalty's `BasisPeriodMeasure` and `CalculationPercent`, and a `LineTotalAmount`; the other quantity elements share the same writer. The result is XSD-valid (EXTENDED) and round-trips (`xs:decimal` has no exponent, XSD; §7.1.5 p.35; was CG-28) | `pnpm build && pnpm vitest run tests/decimal-notation.test.ts` |
 | `generate()` refuses the `zugferd` flavor, given or auto-detected, and any ZUGFeRD 1.0 `CrossIndustryDocument` root even under an explicit `flavor: 'facturx'`, before reading or marking the PDF: it wrote `zugferd-invoice.xml` with the Factur-X `fx:` XMP and an empty conformance level, which matches neither §6.3.1 nor the deprecated ZUGFeRD 2.0 settings of §6.3.2 p.29 (`zugferd-invoice.xml` + `zf:` schema), and the filename is not a HybridDocumentFilename (BR-HYBRID-08/13, Fatal; see CG-27). ZUGFeRD 2.x invoices are generated as `facturx` (was CG-09) | `pnpm build && pnpm vitest run tests/generate.test.ts -t CG-09` |
 | README, `docs/` and the CLI help no longer claim `generate()` produces PDF/A-3: they say it attaches the XML and writes the XMP, and that the caller supplies a PDF/A-3 base (was the docs part of CG-05) | `grep -rniE 'compliant PDF/A\|PDF-A/3\|→ PDF/A-3' README.md docs src/commands --include='*.md' --include='*.ts' \| grep -v docs/api/models` (no match) |
-| `generate({ afRelationship })` writes `Data` (default), `Alternative` or `Source` as the embedded XML's `/AFRelationship`, checked against §6.2.2 table p.27 (BR-HYBRID-11): MINIMUM and BASIC WL accept `Data` only (p.26: `Data` "must be used" when the visual holds more data than the XML), BASIC / EN 16931 / EXTENDED all three; `Supplement`, `Unspecified` and any other value are rejected; Order-X is not restricted (no table vendored); the German column is documented, not enforced. The level is matched by the same key as `fx:ConformanceLevel` (CG-30) (was CG-07) | `pnpm build && pnpm vitest run tests/af-relationship.test.ts` |
+| `generate({ afRelationship })` writes `Data` (default), `Alternative` or `Source` as the embedded XML's `/AFRelationship`, checked against §6.2.2 table p.27 (BR-HYBRID-11): MINIMUM and BASIC WL accept `Data` only (p.26: `Data` "must be used" when the visual holds more data than the XML), BASIC / EN 16931 / EXTENDED all three; `Supplement`, `Unspecified` and any other value are rejected; Order-X is not restricted (no table vendored); the German column is documented, not enforced. The level is normalized and checked once, then used for both `fx:ConformanceLevel` and this check (was CG-07) | `pnpm build && pnpm vitest run tests/af-relationship.test.ts` |
+| `generate()` never writes an empty `fx:ConformanceLevel` for Factur-X: `level` is read ignoring case, spaces and underscores (`BASIC WL`, `BASICWL`, `EN 16931`, `MINIMUM` work), and a level with no HybridConformance value for the flavor (e.g. `comfort` or `xrechnung` for Factur-X) throws before the PDF is read (BR-HYBRID-07, Fatal; was CG-30). Order-X conformance levels are CG-08 | `pnpm build && pnpm vitest run tests/generate.test.ts -t "CG-30"` |
 | `extract()` finds an invoice embedded as `xrechnung.xml` (§6.2 p.25, `text/codelists--Filename.csv`) and returns it with flavor `facturx`, which `getFlavor()` gives its `CrossIndustryInvoice` root. The fixture is a Factur-X EN 16931 invoice renamed to `xrechnung.xml` (the evidence recipe of CG-12), not a real XRECHNUNG hybrid (none is vendored): `extract({ check: true })` validates it only because its guideline ID is a Factur-X one, and fails on a real XRECHNUNG ID (CG-12) | `pnpm build && pnpm vitest run tests/extract.test.ts` |
 | `extract({ check: true })` validates an attachment under a ZUGFeRD file name (`zugferd-invoice.xml`, the ZUGFeRD 2.0 name of §6.3.2 p.29; `ZUGFeRD-invoice.xml`) by its root element (#38): a `CrossIndustryInvoice` against the Factur-X 1.09 XSD for its level, with the EXTENDED-CTC-FR rejection kept (BR-HYBRID-07/15); a ZUGFeRD 1.0 `CrossIndustryDocument` throws "not supported" (no ZUGFeRD 1.0 schema is vendored); an Order-X order throws. The result's `flavor` stays `zugferd`. Fixtures: the Factur-X EN 16931 example renamed, plus the MINIMUM and EN 16931 examples declaring the deprecated ZUGFeRD 2.0 IDs that the 1.09 code lists still carry (`urn:zugferd.de:2p0:minimum`, `…#conformant#urn:zugferd.de:2p0:extended`). Not covered: the `2p0:basicwl` / `2p0:basic` IDs, real ZUGFeRD 2.0 (CII D16B) documents (none vendored: they are checked against the 1.09 D22B rules, not their own), XRECHNUNG under these names (CG-12) | `pnpm build && pnpm vitest run tests/extract.test.ts` |
 | `extract()` reads an EmbeddedFiles name tree with one or two `/Kids` levels (§6.2.2 p.27, §6.4 p.31), in tree order, ignoring `/Limits`. The tree is untrusted: past two `/Kids` levels or 4096 nodes it throws `Unsupported EmbeddedFiles name tree`, and a cycle, a shared kid, a node with both `/Kids` and `/Names` or a non-dictionary kid throw `Malformed EmbeddedFiles name tree` (ISO 32000-1 §7.9.6 Table 36). Decoding the entries is not bounded (CG-29) (reader side of CG-13) | `pnpm build && pnpm vitest run tests/name-tree.test.ts` |
@@ -82,11 +83,11 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 | CG-23 | French CTC, upstream | `BR-FR-Flux2-Schematron-CII.xslt` | — | SVRL `test` of 4 BR-FR asserts loses its regex quantifier (`^\d{9}$` reported as `^\d9$`) |
 | CG-27 | spec, ZUGFeRD | §6.3.2 p.29 vs BR-HYBRID-08/13, `codelists--Filename.csv` | — | Spec says ZUGFeRD 2.0 legacy XMP settings are still supported, but its filename `zugferd-invoice.xml` is not an allowed hybrid filename |
 | CG-29 | extraction, security | — | interop | `extract()` decodes every embedded file, with no budget, before matching the file name |
-| CG-30 | XMP | BR-HYBRID-07 | Fatal | A `level` option outside the lower-case keys (`BASIC WL`, `BASICWL`, `MINIMUM`) writes an empty `fx:ConformanceLevel` |
 | CG-31 | embedding, security | AGENTS.md Security | interop | Default `generate()` re-serializes but keeps a DOCTYPE (incl. `SYSTEM`/`PUBLIC` ids) and an XML 1.1 declaration in the embedded invoice |
 | CG-33 | spec, French CTC, upstream | `EXTENDED-CTC-FR-CII.sch` BR-DEC-19/20 | Fatal (rules not run) | The EXTENDED-CTC-FR Schematron never fires BR-DEC-19/20 on VAT breakdowns of categories that have their own rules (first-match shadowing) |
 | CG-40 | spec, French CTC, upstream | `EXTENDED-CTC-FR-CII.sch` BR-EXT-CL-07 | Fatal (rule not run) | The EXTENDED-CTC-FR Schematron never checks a `ReferenceTypeCode` against UNTDID 1153 (always-true guard) |
 | CG-41 | PDF/A, XMP | BR-HYBRID-02 (via CG-05) | interop | `generate()` writes `pdfaid` PDF/A-3B into the XMP whatever the source, so a non-PDF/A base gives output that falsely claims PDF/A-3B |
+| CG-42 | XMP | BR-HYBRID-15 (Warning; see entry for the EN/FR wording) | interop | An explicit `level` is not compared with the guideline ID (BT-24): `fx:ConformanceLevel` can contradict the embedded XML |
 | CG-34 | French CTC, lifecycle, upstream | Annex A `annex-a--BR-FR-CDV_pour_factures.csv`, `annex-a--Tableau_des_motifs_de_STATUTS.csv` vs `BR-FR-CDV-Schematron-CDAR` | interop | The published BR-FR-CDV Schematron cannot fail on several Annex A rules, and some of its code lists differ from Annex A |
 | CG-36 | spec | §version history p.7–8 vs the EXTENDED field matrix | — | The 1.09 version history contradicts the field matrix on several new fields (unresolved) |
 | CG-37 | parser, models | EXTENDED XSD `NoteType/Content` `minOccurs="0"` | data-loss | A note without `Content` (BT-22 / BT-127) comes back with an empty `Content` element |
@@ -397,18 +398,6 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 - **Fix direction:** match on the tree key, `/F` and `/UF` first, decode only the match, once, through
   the capped inflate path and budget `generate()` uses.
 
-### CG-30 — Unrecognized `level` spelling gives an empty conformance level
-
-- **Spec:** BR-HYBRID-07 (Fatal): `fx:ConformanceLevel` SHALL be a value of the HybridConformance code
-  list.
-- **Code:** `generate()` looks `level` up in `FACTURX_CONFORMANCE_LEVEL` by its exact lower-case key
-  (`src/lib/generate.ts`); any other spelling silently writes an empty `fx:ConformanceLevel`. The
-  `afRelationship` check uses the same exact key, so the two stay consistent.
-- **Evidence:** `generate({ pdf, xml: <EN 16931 XML>, level: 'BASIC WL' })` (or `'BASICWL'`,
-  `'MINIMUM'`) → `<fx:ConformanceLevel></fx:ConformanceLevel>`; `'minimum'` → `MINIMUM`.
-- **Fix direction:** validate `level` against the known levels of the flavor and throw on unknown
-  values.
-
 ### CG-31 — Default `generate()` keeps a DOCTYPE and an XML 1.1 declaration
 
 - **Rule:** no vendored rule; AGENTS.md "Security" (untrusted XML, metadata injection). CII documents
@@ -631,3 +620,19 @@ paths and the code supports both, so nothing here is picked.
   test). Suspicions go to an issue, not here.
 - Close an entry by moving its proof (test name or command) to **Verified**, in the same PR as the fix.
 - Re-run every proof in **Verified** when the spec version or a vendored asset changes.
+
+### CG-42 — An explicit `level` can contradict the embedded XML
+
+- **Spec:** BR-HYBRID-15 (`text/fields--Business_Rules_HYBRID.csv` line 17), Warning. The EN text
+  says `fx:ConformanceLevel` "SHOULD match the profile of the embedded XML document"; the FR text of
+  the same row says "DOIT correspondre" (must), still flagged Warning. Recorded without picking a
+  reading.
+- **Code:** `generate()` (`src/lib/generate.ts`) uses the `level` option as given (normalized, and
+  checked against the flavor's levels since CG-30) and never compares it with the level of BT-24
+  (`getLevel`). This predates CG-30, which only made more spellings reach it.
+- **Evidence:** `generate({ pdf, xml: <examples/Facture_FR_EN16931.xml, BT-24 urn:cen.eu:en16931:2017>,
+  level: 'minimum' })` writes `<fx:ConformanceLevel>MINIMUM</fx:ConformanceLevel>` (spec review probe,
+  2026-11-15).
+- **Fix direction:** when `level` is given, compare it with BT-24 and throw on a mismatch (a
+  behaviour change: `upgrading.md` entry).
+

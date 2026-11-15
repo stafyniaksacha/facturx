@@ -27,7 +27,7 @@ function generate(options: {
 | `xml` | `string \| Buffer \| XmlDocument` | — | **Required.** Invoice XML to embed (the XML content, not a file path). |
 | `check` | `boolean` | `false` | Set `true` to run XSD validation before embedding; throws on invalid XML. |
 | `flavor` | `string` | autodetect | `facturx` or `orderx`. `zugferd` (extraction only) throws. |
-| `level` | `string` | autodetect | Schema level (e.g. `en16931`). |
+| `level` | `string` | autodetect | Schema level (e.g. `en16931`). Factur-X: `minimum`, `basicwl`, `basic`, `en16931`, `extended`; case, spaces and underscores are ignored, so `EN 16931` or `BASIC WL` work too, and any other value throws (BR-HYBRID-07). Order-X: `basic`, `comfort`, `extended`, as written. |
 | `language` | `string` | — | PDF language code (RFC 3066), e.g. `en-GB`. |
 | `meta` | `PdfMetadata` | derived from XML | Override the PDF document metadata. |
 | `afRelationship` | `'Data' \| 'Alternative' \| 'Source'` | `'Data'` | Relationship between the embedded XML and the PDF (see below). |
@@ -87,6 +87,11 @@ interface PdfMetadata {
   `zf:` XMP schema are the deprecated ZUGFeRD 2.0 legacy settings, and the filename is
   not in the hybrid filename code list. A ZUGFeRD 2.x invoice is a Factur-X
   `CrossIndustryInvoice`: generate it as `facturx`.
+- Throws `Unknown level "<level>" for the <flavor> flavor: expected one of …`, before reading the
+  PDF, when the level (the `level` option, or the one read from the guideline ID BT-24 when it is
+  omitted or blank) has no Factur-X conformance level, so a Factur-X `fx:ConformanceLevel` is never
+  written empty (BR-HYBRID-07). An explicit `level` is not compared
+  with BT-24: pass the profile of the XML (BR-HYBRID-15, CONFORMANCE.md CG-42).
 - Throws, before writing the invoice, when the source PDF cannot take the invoice correctly: see the
   table below. Bytes you pass are never modified. A `PDFDocument` you pass is marked as used before
   the existing-invoice check, and attachments you queued with `attach()` may already be written into

@@ -152,6 +152,19 @@ that used it has its own `zf:` XMP schema, so the output matched neither. `zugfe
 A ZUGFeRD 2.x invoice is a Factur-X `CrossIndustryInvoice`: drop `flavor: 'zugferd'` (it is then
 detected as `facturx`) or pass `flavor: 'facturx'`. It is embedded as `factur-x.xml`.
 
+### `generate()` rejects an unknown `level`
+
+For Factur-X, `generate({ level })` now throws `Unknown level "<level>" for the facturx flavor:
+expected one of …` before reading the PDF when the level has no conformance value (`minimum`,
+`basicwl`, `basic`, `en16931`, `extended`). 0.6.1 wrote an empty `fx:ConformanceLevel` instead,
+which breaks BR-HYBRID-07 (Fatal). The same check applies when `level` is omitted and the level comes
+from the XML's guideline ID (BT-24), e.g. a Factur-X invoice that declares the Order-X `comfort`
+profile. A blank `level` (`'  '`) is treated like no level, for every flavor.
+
+A Factur-X level is also read more leniently: case, surrounding spaces, inner spaces and underscores are
+ignored, so the spellings of the hybrid code list (`BASIC WL`, `EN 16931`, `MINIMUM`) now work.
+They used to give the same empty conformance level.
+
 ## Other behaviour changes
 
 These shipped on `main` after 0.6.1 and are included in the next release.
@@ -329,6 +342,7 @@ left undefined.
 - [ ] If `generate()` used to throw `Document ID already set` and you worked around it, drop the
       workaround. Then check the new rejection list against your source PDFs.
 - [ ] If you call `generate()` with `flavor: 'zugferd'`, use `facturx` instead.
+- [ ] If you pass `level` to `generate()`, make sure it is a level of the flavor (an unknown one now throws).
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).
 - [ ] If you compare PDF dates with the invoice date, or snapshot `generate()` output, pass `meta.date`
       or expect the generation time.

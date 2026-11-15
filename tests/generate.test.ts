@@ -783,4 +783,70 @@ describe('generate', () => {
     await expect(generate({ pdf: await sourcePdf(), xml })).rejects.toThrow('Cannot generate the "zugferd" flavor')
     await expect(generate({ pdf: await sourcePdf(), xml, flavor: 'facturx', level: 'en16931', meta })).rejects.toThrow('Cannot generate the "zugferd" flavor')
   })
+
+  describe('fx:ConformanceLevel is never empty (BR-HYBRID-07, CG-30)', () => {
+    const MINIMUM_XML = resolve(import.meta.dirname, '../examples/Facture_FR_MINIMUM.xml')
+    // Each spelling is paired with an invoice whose BT-24 names that profile, so the XMP matches the
+    // embedded XML (BR-HYBRID-15). An explicit level that contradicts BT-24 is CG-42.
+    async function invoiceFor(profile: string): Promise<string> {
+      if (profile === 'minimum')
+        return readFile(MINIMUM_XML, 'utf8')
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      // BT-24 values of Factur-X 1.09 §7 (BASIC WL is not EN 16931 compliant, EXTENDED is conformant).
+      const ids: Record<string, string> = { basicwl: 'urn:factur-x.eu:1p0:basicwl', extended: 'urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended' }
+      return profile === 'en16931' ? xml : xml.replace('urn:cen.eu:en16931:2017', ids[profile]!)
+    }
+
+    it.each([
+      ['minimum', 'minimum', 'MINIMUM'],
+      ['MINIMUM', 'minimum', 'MINIMUM'],
+      ['BASIC WL', 'basicwl', 'BASIC WL'],
+      ['BASICWL', 'basicwl', 'BASIC WL'],
+      ['basic_wl', 'basicwl', 'BASIC WL'],
+      ['EN 16931', 'en16931', 'EN 16931'],
+      [' Extended ', 'extended', 'EXTENDED'],
+    ])('accepts the level %j (BT-24 %s) and writes %j', async (level, profile, expected) => {
+      const xml = await invoiceFor(profile)
+      const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml, level }))
+      expect(readXmp(output).conformanceLevel).toEqual([expected])
+    })
+
+    it('treats a blank level like no level (auto-detected)', async () => {
+      const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml: await readFile(SOURCE_XML, 'utf8'), level: '   ' }))
+      expect(readXmp(output).conformanceLevel).toEqual(['EN 16931'])
+    })
+
+    it('rejects an auto-detected level the flavor has no conformance level for', async () => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', 'urn:factur-x.eu:1p0:comfort')
+      await expect(generate({ pdf: await sourcePdf(), xml })).rejects.toThrow('Unknown level "comfort" for the facturx flavor')
+    })
+
+    it('rejects an unknown level before touching the PDF', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      const pdf = await PDFDocument.load(await sourcePdf())
+
+      await expect(generate({ pdf, xml, level: 'comfort' })).rejects.toThrow('Unknown level "comfort" for the facturx flavor: expected one of basic, basicwl, en16931, extended, minimum')
+      await expect(generate({ pdf, xml, level: 'XRECHNUNG' })).rejects.toThrow('Unknown level "xrechnung" for the facturx flavor')
+      // Not marked as used: the same document still takes the invoice.
+      const output = await PDFDocument.load(await generate({ pdf, xml }))
+      expect(readXmp(output).conformanceLevel).toEqual(['EN 16931'])
+    })
+
+    it('leaves an Order-X level as given, so an upper-case one cannot reach an empty fx:ConformanceLevel', async () => {
+      const order = await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8')
+      const pdf = await PDFDocument.create()
+      pdf.addPage()
+      await expect(generate({ pdf, xml: order, level: 'BASIC', check: true })).rejects.toThrow('Unknown Order-X level: "BASIC"')
+    })
+
+    it.each(['constructor', 'toString', '__proto__'])('reports an inherited property name as flavor %j as an unknown flavor', async (flavor) => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      await expect(generate({ pdf: await sourcePdf(), xml, flavor, level: 'en16931' })).rejects.toThrow(`Unknown schema flavor: "${flavor}"`)
+    })
+
+    it('still refuses EXTENDED-CTC-FR, whatever its spelling', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      await expect(generate({ pdf: await sourcePdf(), xml, level: 'EXTENDED-CTC-FR' })).rejects.toThrow('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile')
+    })
+  })
 })

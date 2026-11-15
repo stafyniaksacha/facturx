@@ -33,6 +33,14 @@ import { setPDFA3BMetadata, stripXmlInvalidChars } from './xmp'
 // attachment into the name tree on save(), so the tree alone cannot detect a reused document.
 const generated = new WeakSet<PDFDocument>()
 
+/**
+ * The levels `generate()` writes a HybridConformance value for (BR-HYBRID-07), per flavor. Order-X
+ * is absent until its fx:ConformanceLevel is written (CG-08), so it keeps its previous behaviour.
+ */
+const GENERATE_LEVELS: Record<string, readonly string[]> = {
+  facturx: Object.keys(FACTURX_CONFORMANCE_LEVEL),
+}
+
 export async function generate(options: {
   pdf: string | Buffer | PDFDocument
   xml: string | Buffer | XmlDocument
@@ -84,7 +92,13 @@ export async function generate(options: {
     const isOrder = xml.root?.name === 'SCRDMCCBDACIOMessageStructure'
     if ((flavor === 'orderx') !== isOrder)
       throw new Error(`The XML root element "${xml.root?.name}" does not match the "${flavor}" flavor`)
-    const level = options.level || getLevel(xml)
+    // A blank `level` means "not given", as `''` always did.
+    // Only the flavors generate() writes a conformance level for get the lenient spelling and the
+    // check below: normalizing an Order-X level would let `BASIC` through to an empty
+    // fx:ConformanceLevel, where it used to fail the XSD lookup (Order-X metadata is CG-08).
+    const level = options.level?.trim()
+      ? (Object.hasOwn(GENERATE_LEVELS, flavor) ? normalizeLevel(options.level) : options.level)
+      : getLevel(xml)
     if (level === 'extended-ctc-fr' || declaresExtendedCtcFr(xml)) {
       // A plain CII profile of XP Z12-012, not a HybridConformance value (BR-HYBRID-07,
       // codelists--HybridConformance.csv): no fx:ConformanceLevel can describe it, and an explicit
@@ -92,6 +106,9 @@ export async function generate(options: {
       // the PDF is read or marked as used.
       throw new Error('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile: it is a plain CII profile with no Factur-X conformance level. Use a Factur-X profile (e.g. extended)')
     }
+    // fx:ConformanceLevel SHALL be a HybridConformance value (BR-HYBRID-07, Fatal): a level with no
+    // value for this flavor used to write an empty one (was CG-30). Thrown before the PDF is read.
+    assertKnownLevel(flavor, level)
 
     if (options.check === true) {
       const result = await check({
@@ -257,6 +274,23 @@ const AF_RELATIONSHIPS: Record<string, AFRelationship> = {
   Data: AFRelationship.Data,
   Alternative: AFRelationship.Alternative,
   Source: AFRelationship.Source,
+}
+
+/**
+ * The `level` option in the form of the level keys (`basicwl`, `en16931`, …): case, surrounding
+ * whitespace, inner spaces and underscores are ignored, so the HybridConformance spelling
+ * (`BASIC WL`, `EN 16931`, `MINIMUM`) is accepted too (CG-30).
+ */
+function normalizeLevel(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s_]+/g, '')
+}
+
+function assertKnownLevel(flavor: string, level: string): void {
+  // Own properties only: `flavor` is caller input, and `constructor` or `toString` are inherited.
+  const known = Object.hasOwn(GENERATE_LEVELS, flavor) ? GENERATE_LEVELS[flavor] : undefined
+  // A flavor without an entry (Order-X, or an unknown one reported by the switch below) is not checked.
+  if (known && !known.includes(level))
+    throw new Error(`Unknown level "${level}" for the ${flavor} flavor: expected one of ${known.join(', ')}`)
 }
 
 /**
