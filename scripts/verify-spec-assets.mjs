@@ -26,6 +26,10 @@
  * CDAR (src/lib/xsd/cdar/, see verifyCdar): the uncoupled CDAR XSDs and the BR-FR-CDV XSLT must be
  * byte-identical to the release, and the SEF reproducible with no local path.
  *
+ * UBL (src/lib/xsd/ubl/, see verifyUbl): the UBL 2.1 Invoice / CreditNote XSDs with their import closure
+ * (byte-identical), the two step-2 transforms (identical after the sum() patch), the BR-FR-Flux2 UBL
+ * transform (identical to both release copies), SEFs reproducible with no local path.
+ *
  * Usage: node scripts/verify-spec-assets.mjs [--sef]
  */
 import { spawnSync } from 'node:child_process'
@@ -238,6 +242,131 @@ function verifyCdar() {
     console.log(`skip  cdar     ${name}.sef.json.gz  (run with --sef to recompile)`)
 }
 
+/**
+ * UBL 2.1 invoices (FNFE-MPE Schematrons FR CTC v1.4.0.04): step 1 is the UBL 2.1 XSD (Invoice and
+ * CreditNote maindocs plus their import closure), step 2 the level Schematron (EN16931 or
+ * EXTENDED-CTC-FR, identical to the release after the sum() patch), step 3 the standard BR-FR-Flux2 UBL
+ * transform (unpatched, identical to both release copies). The _WARNING variant is not vendored.
+ */
+function verifyUbl() {
+  const ublDir = resolve(repoRoot, 'src/lib/xsd/ubl')
+  const release = join(repoRoot, 'spec/fnfe-ctc-fr-1.4.0.04/distribution/UBL')
+  const xsdSource = join(release, '1xsd_UBL2.1')
+  const brfr = 'BR-FR-Flux2-Schematron-UBL'
+  const maindocs = ['maindoc/UBL-Invoice-2.1.xsd', 'maindoc/UBL-CreditNote-2.1.xsd']
+  const step2 = [
+    { folder: 'en16931', name: 'EN16931-UBL-validation', source: 'EN16931' },
+    { folder: 'extended-ctc-fr', name: 'EXTENDED-CTC-FR-UBL', source: 'EXTENDED-CTC-FR' },
+  ]
+  const brfrCopies = ['EN16931', 'EXTENDED-CTC-FR'].map(d => join(release, d, '2xslt', `${brfr}.xslt`))
+  console.log('----  ubl      UBL 2.1 XSD + EN16931 / EXTENDED-CTC-FR / BR-FR-Flux2 (FNFE-MPE FR CTC 1.4.0.04)')
+
+  // schemaLocation closure of the two maindocs within `root` (paths relative to it). Reports a schema
+  // that is missing or resolves outside `root`.
+  function closure(root, label) {
+    const pending = maindocs.map(m => join(root, m))
+    const reached = new Set()
+    while (pending.length) {
+      const xsd = pending.pop()
+      if (reached.has(xsd))
+        continue
+      reached.add(xsd)
+      const shown = relative(root, xsd)
+      if (shown.startsWith('..') || isAbsolute(shown)) {
+        report(false, 'ubl', shown, `schemaLocation resolves outside ${label}`)
+        continue
+      }
+      if (!existsSync(xsd)) {
+        report(false, 'ubl', shown, `imported schema missing from ${label}`)
+        continue
+      }
+      for (const [, , location] of readFileSync(xsd, 'utf8').matchAll(/\bschemaLocation\s*=\s*(["'])(.*?)\1/g))
+        pending.push(resolve(dirname(xsd), location.trim()))
+    }
+    return [...reached].map(f => relative(root, f)).filter(f => !f.startsWith('..') && !isAbsolute(f)).sort()
+  }
+
+  // Required inventory first: comparing only the files present would let a deleted schema pass.
+  const required = [
+    ...closure(xsdSource, 'the release 1xsd_UBL2.1/'),
+    ...step2.flatMap(({ folder, name }) => [`${folder}/${name}.xslt`, `${folder}/${name}.sef.json.gz`]),
+    `fr-ctc/${brfr}.xslt`,
+    `fr-ctc/${brfr}.sef.json.gz`,
+  ]
+  for (const file of required) {
+    if (!existsSync(join(ublDir, file)))
+      report(false, 'ubl', file, 'required file missing from src/lib/xsd/ubl/')
+  }
+  if (maindocs.every(m => existsSync(join(ublDir, m)))) {
+    const reached = closure(ublDir, 'src/lib/xsd/ubl/')
+    report(reached.length > maindocs.length, 'ubl', 'maindoc/*.xsd', `import closure: ${reached.length} schemas`)
+  }
+
+  // Every vendored file needs a source, else it is untraceable.
+  const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)])
+  const sefs = []
+  for (const abs of existsSync(ublDir) ? walk(ublDir).sort() : []) {
+    const file = relative(ublDir, abs).split(/[\\/]/).join('/')
+    if (file === 'SCHEMATRON.md')
+      continue
+    if (/_WARNING/.test(file)) {
+      report(false, 'ubl', file, 'the _WARNING variant must not be vendored')
+      continue
+    }
+    if (file.endsWith('.sef.json.gz')) {
+      if (required.includes(file))
+        sefs.push(file)
+      else
+        report(false, 'ubl', file, 'no counterpart in spec/ — untraceable')
+      continue
+    }
+    const [folder, ...rest] = file.split('/')
+    if (file.endsWith('.xsd') && (folder === 'maindoc' || folder === 'common')) {
+      const source = join(xsdSource, file)
+      if (existsSync(source))
+        report(same(source, abs), 'ubl', file)
+      else
+        report(false, 'ubl', file, 'no counterpart in spec/ — untraceable')
+      continue
+    }
+    const step = step2.find(s => s.folder === folder && rest.join('/') === `${s.name}.xslt`)
+    if (step) {
+      const source = join(release, step.source, '2xslt', `${step.name}.xslt`)
+      if (!existsSync(source)) {
+        report(false, 'ubl', file, 'no counterpart in spec/ — untraceable')
+        continue
+      }
+      const ok = same(patchedCopy(source), abs)
+      report(ok, 'ubl', file, ok ? 'identical after sum() patch' : 'differs from spec even after sum() patch')
+      continue
+    }
+    if (file === `fr-ctc/${brfr}.xslt`) {
+      const missing = brfrCopies.filter(c => !existsSync(c))
+      if (missing.length) {
+        report(false, 'ubl', file, `release copy not found: ${missing.join(', ')}`)
+        continue
+      }
+      const ok = brfrCopies.every(c => same(c, abs))
+      report(ok, 'ubl', file, ok ? `identical to both ${brfrCopies.length} release copies` : 'differs from a release copy')
+      continue
+    }
+    report(false, 'ubl', file, 'no counterpart in spec/ — untraceable')
+  }
+
+  // SEFs embed no local path and, with --sef, recompile from the vendored XSLT next to them.
+  for (const file of sefs) {
+    const sefDir = join(ublDir, dirname(file))
+    const base = file.slice(file.lastIndexOf('/') + 1, -'.sef.json.gz'.length)
+    const sef = gunzipSync(readFileSync(join(ublDir, file))).toString('utf8')
+    const leak = [homedir(), repoRoot].find(p => sef.includes(p))
+    report(!leak, 'ubl', file, leak ? 'embeds a local path, recompile from a neutral directory' : 'no local path embedded')
+    if (withSef)
+      verifySef(`ubl-${dirname(file)}`, join(sefDir, `${base}.xslt`), `${base}.sef.json.gz`, sefDir)
+    else
+      console.log(`skip  ubl      ${file}  (run with --sef to recompile)`)
+  }
+}
+
 try {
   const known = new Set(SOURCES.map(s => s.folder))
   for (const entry of readdirSync(vendored)) {
@@ -288,6 +417,7 @@ try {
 
   verifyFrCtc()
   verifyCdar()
+  verifyUbl()
 
   console.log('note  orderx   XSDs not verifiable: the Order-X specification is not vendored under spec/')
 }
@@ -299,4 +429,4 @@ if (failures) {
   console.error(`\n${failures} vendored asset(s) do not match the spec.`)
   process.exit(1)
 }
-console.log('\nAll vendored Factur-X, French CTC and CDAR assets match their spec sources.')
+console.log('\nAll vendored Factur-X, French CTC, CDAR and UBL assets match their spec sources.')

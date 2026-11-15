@@ -26,7 +26,7 @@ import { baseInfo2PdfMetadata } from './metadata'
 import { decodeName, embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
-import { declaresExtendedCtcFr, extractBaseInfo, getFlavor, getLevel } from './xml'
+import { declaresExtendedCtcFr, extractBaseInfo, getFlavor, getLevel, isUblDocument } from './xml'
 import { setPDFA3BMetadata, stripXmlInvalidChars } from './xmp'
 
 // PDFDocument objects generate() has already attached an invoice to. pdf-lib only writes the
@@ -92,6 +92,9 @@ export async function generate(options: {
       // Thrown before the PDF is read or marked as used (was CG-09).
       throw new Error('Cannot generate the "zugferd" flavor: ZUGFeRD 1.0 and the legacy ZUGFeRD 2.0 hybrid (zugferd-invoice.xml) are extraction only. A ZUGFeRD 2.x invoice is a Factur-X CrossIndustryInvoice: generate it with flavor "facturx"')
     }
+    // getFlavor() now recognizes UBL, which is not a Factur-X syntax (CII D22B only): never embed it.
+    if (flavor === 'ubl' || isUblDocument(xml))
+      throw new Error('Cannot generate a Factur-X PDF from a UBL document: UBL cannot be embedded as factur-x.xml, Factur-X embeds CII D22B XML')
     // The root decides what the file is: an explicit flavor cannot embed an invoice as order-x.xml
     // or an order as factur-x.xml (BR-HYBRID-06/07).
     const isOrder = xml.root?.name === 'SCRDMCCBDACIOMessageStructure'

@@ -93,6 +93,7 @@ interface PdfMetadata {
   `Buffer` or an `XmlDocument`, before reading the PDF. libxml2's re-serialization would keep both
   in the embedded invoice; CII documents have no DOCTYPE. With `preserveXmlBytes: true` the same
   checks name `preserveXmlBytes` instead.
+- Throws `Cannot generate a Factur-X PDF from a UBL document: UBL cannot be embedded as factur-x.xml, …` for a UBL 2.1 `Invoice` / `CreditNote`, with or without `flavor: 'ubl'`. A hybrid PDF embeds a CII invoice; validate UBL with [`check()`](/api/check) instead.
 - Throws `Cannot generate the "zugferd" flavor: …` for `flavor: 'zugferd'` or a ZUGFeRD 1.0
   (`CrossIndustryDocument`) XML, whatever the flavor option, before reading the PDF. The `zugferd-invoice.xml` filename and the
   `zf:` XMP schema are the deprecated ZUGFeRD 2.0 legacy settings, and the filename is

@@ -1,6 +1,6 @@
 # `validateSchematron()`
 
-Run **Schematron** (EN 16931 `BR-*` business-rule and code-list) validation against a Factur-X XML
+Run **Schematron** (EN 16931 `BR-*` business-rule and code-list) validation against a Factur-X or UBL 2.1 XML
 document. This is the business-rule layer that [`check()`](/api/check) runs when you pass
 `schematron: true`; call it directly when you only want the rule check.
 
@@ -24,14 +24,16 @@ function validateSchematron(options: {
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `xml` | `string \| Buffer` | — | **Required.** The invoice XML. |
-| `flavor` | `string` | — | If given, must be `facturx` — any other value throws. |
-| `level` | `string` | — | **Required.** Profile to validate against: `minimum`, `basicwl`, `basic`, `en16931`, `extended`, or `extended-ctc-fr` (the FNFE-MPE EXTENDED-CTC-FR Schematron for plain CII; the document's guideline ID must then be the EXTENDED-CTC-FR one, or the call throws). |
+| `flavor` | `string` | from the root | `facturx` or `ubl` — any other value throws. Read from the document root when omitted (a UBL `Invoice` / `CreditNote` gets the UBL rules, anything else the Factur-X ones). A `flavor` that contradicts the root throws: one syntax's rules are never run on the other. |
+| `level` | `string` | — | **Required.** Profile to validate against: `minimum`, `basicwl`, `basic`, `en16931`, `extended`, or `extended-ctc-fr` (the FNFE-MPE EXTENDED-CTC-FR Schematron for plain CII; the document's guideline ID must then be the EXTENDED-CTC-FR one, or the call throws). With `flavor: 'ubl'` only `en16931` and `extended-ctc-fr` exist, and the level must agree with the document's `cbc:CustomizationID` when it declares a supported one; `en16931` may be forced on a document with no `cbc:CustomizationID` or an unsupported one (`BR-01` then reports a missing one; no rule reports an unsupported one), but `extended-ctc-fr` requires the exact EXTENDED-CTC-FR id, or the call throws. |
 | `warningsAsErrors` | `boolean` | `false` | Also count rules flagged `warning`/`information` as errors (like a compiler's `-Werror`). |
 
-::: warning Factur-X only
-The spec ships no Order-X Schematron. Passing a `flavor` other than `facturx` throws
-`Schematron validation is only available for the "facturx" flavor`. An unknown `level` throws
-`No Factur-X Schematron available for level`.
+::: warning Factur-X and UBL only
+The spec ships no Order-X Schematron. Passing a `flavor` other than `facturx` or `ubl` throws
+`Schematron validation is only available for the "facturx" and "ubl" flavors`. An unknown `level` throws
+`No Factur-X Schematron available for level` (`No UBL Schematron available for level` for `ubl`).
+For UBL these are the EN 16931 and EXTENDED-CTC-FR UBL Schematrons of the FNFE-MPE release; CIUS rules
+such as Peppol BIS are **not** run.
 :::
 
 ## Returns
@@ -52,7 +54,7 @@ and don't affect `valid` unless you pass `warningsAsErrors: true`.
 interface SchematronError {
   /** Human-readable assertion message, e.g. "[BR-16]-An Invoice shall have ...". */
   message: string
-  /** Rule id from the "[BR-16]" message prefix; for BR-FR, the rule from the assert id (e.g. "BR-FR-05"). */
+  /** Rule id from the "[BR-16]" message prefix; for BR-FR and the UBL profile Schematrons, the rule from the assert `@id` (e.g. "BR-FR-05", "BR-FREXT-26"). */
   id?: string
   /**
    * Raw SVRL assert id, when the rule sets one: an internal number for Factur-X structural

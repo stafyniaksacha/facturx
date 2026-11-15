@@ -281,6 +281,17 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   **reads attachment lists with one or two `/Kids` levels**, which 0.6.1 reported as
   `No attachment found`. Deeper or larger trees throw `Unsupported EmbeddedFiles name tree: …`.
   `generate()` still rejects sources with `/Kids`.
+- **UBL 2.1 invoices are recognised** (flavor `ubl`). In 0.6.1 a UBL `Invoice` / `CreditNote` made
+  `check()` throw `XML not recognized as Factur-X, Order-X or ZUGFeRD`; now `check()`,
+  `validateSchematron()` and `validateFrCtc()` accept it (see below). `check({ frCtc: true })` and
+  `validateFrCtc()` used to throw on UBL and now validate it. If you catch that error to detect "not a
+  Factur-X document", look at `result.flavor` instead. The `flavor` you get back can now be `'ubl'`,
+  with levels `en16931` and `extended-ctc-fr`.
+- **`generate()` and `extract()` reject UBL.** UBL has no PDF form: a hybrid PDF embeds a CII
+  invoice. `generate()` throws `UBL cannot be embedded as factur-x.xml…` (also with an explicit
+  `flavor: 'ubl'`), and `extract({ check: true })` throws `a UBL invoice cannot be a Factur-X/ZUGFeRD
+  attachment` for a UBL file stored under an invoice file name. Without `check`, `extract()` still
+  returns the bytes it finds.
 
 - **`extract()` decodes only the invoice, within 128 MiB.** 0.6.1 decoded every attachment before
   looking at the names. It now matches on names first, decodes only the matching attachment, and
@@ -315,10 +326,39 @@ const { valid, errors } = await validateFrCtc({ xml })
 npx @stafyniaksacha/facturx check invoice.xml --schematron --fr-ctc
 ```
 
-`frCtc` doesn't turn on `schematron`; pass both to get the full sequence. MINIMUM, BASIC, Order-X and
-UBL documents throw. The messages are in French and quote invoice values, so treat them as personal
+`frCtc` doesn't turn on `schematron`; pass both to get the full sequence. MINIMUM, BASIC and Order-X
+documents throw; UBL is validated (see "UBL 2.1 validation" below). The messages are in French and quote invoice values, so treat them as personal
 data in logs. See [French e-invoicing rules](/guide/french-ctc) for scope and known gaps. This is not
 legal advice.
+
+### UBL 2.1 validation
+
+`check()` validates UBL 2.1 `Invoice` and `CreditNote` documents with the three steps of the FNFE-MPE
+release notes: the UBL 2.1 XSD, then `schematron: true` (EN 16931 UBL Schematron, or EXTENDED-CTC-FR
+UBL when the `cbc:CustomizationID` declares that extension), then `frCtc: true`
+(`BR-FR-Flux2-Schematron-UBL`). `validateSchematron({ flavor: 'ubl', level })` and `validateFrCtc()` do
+each step alone; the CLI accepts UBL files too (`check invoice.xml --schematron --fr-ctc`).
+
+```ts
+const result = await check({ xml: ublXml, schematron: true, frCtc: true })
+result.flavor // 'ubl'
+result.level // 'en16931' | 'extended-ctc-fr', from cbc:CustomizationID
+```
+
+CIUS rule sets such as Peppol BIS are **not** run, step 4 (Chorus Pro `BR-France-CTC-CPRO`) has no
+published Schematron, and UBL is validation only (see above). Details:
+
+- The level comes from `cbc:CustomizationID`: `urn:cen.eu:en16931:2017` and a `#compliant#` CIUS id (with no
+  `#conformant#` extension after it) give `en16931`; the exact EXTENDED-CTC-FR id gives `extended-ctc-fr`;
+  anything else throws. An explicit `level: 'en16931'` may be forced on a document that declares none or an
+  unsupported id (`BR-01` reports only a missing one), but `level: 'extended-ctc-fr'` always requires the exact
+  EXTENDED-CTC-FR id; neither overrides a different declared level.
+- `validateSchematron()` parses its input with libxml2 first (once, for every flavor), so malformed XML now fails with a libxml2 parse error instead of a SaxonJS one. Without `flavor` it now reads the flavor from the root. In 0.6.1 it assumed `facturx`; a UBL
+  document without `flavor` used to be run through the CII rules and pass, and now gets the UBL ones. A
+  `flavor` that contradicts the root throws.
+- For the UBL profile Schematrons, `SchematronError.id` is the assert `@id` (for example `BR-FREXT-26`), not
+  the `[ID]` prefix of the message: they differ on 8 EXTENDED-CTC-FR-UBL asserts. Rule ids of CII findings
+  are unchanged. See [Validation](/guide/validation).
 
 ### `afRelationship` option for `generate()`
 
@@ -392,6 +432,8 @@ left undefined.
 - [ ] If the XML you pass to `generate()` has a DOCTYPE or an XML 1.1 declaration, remove the
       DOCTYPE and declare `version="1.0"`: both now throw.
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).
+- [ ] If you handle UBL invoices: `check()` now returns `flavor: 'ubl'` instead of throwing, and
+      `generate()` / `extract({ check: true })` refuse UBL. Drop any code that relied on the old error.
 - [ ] If you compare PDF dates with the invoice date, or snapshot `generate()` output, pass `meta.date`
       or expect the generation time.
 - [ ] Make sure the PDF you pass to `generate()` is already PDF/A-3: it is not converted (the docs

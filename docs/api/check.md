@@ -1,7 +1,7 @@
 # `check()`
 
-Validate an XML invoice against the Factur-X **XSD** (official 1.09 for MINIMUM/BASIC, FNFE-MPE 1.09.2.fixFR04 for BASIC WL/EN 16931/EXTENDED), and optionally the EN 16931 **Schematron**
-business rules.
+Validate an XML invoice against the Factur-X **XSD** (official 1.09 for MINIMUM/BASIC, FNFE-MPE 1.09.2.fixFR04 for BASIC WL/EN 16931/EXTENDED), or a UBL 2.1 invoice or credit note against the UBL 2.1 XSD, and optionally the EN 16931 **Schematron**
+business rules and the French `BR-FR` rules.
 
 ## Signature
 
@@ -32,10 +32,10 @@ function check(options: {
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `xml` | `string \| Buffer \| XmlDocument` | — | **Required.** The invoice XML. |
-| `flavor` | `string` | autodetect | `facturx`, `orderx` or `zugferd`. |
-| `level` | `string` | autodetect | Schema level (e.g. `en16931`). |
-| `schematron` | `boolean` | `false` | Also run Schematron business-rule validation. **Factur-X only** — throws otherwise. |
-| `frCtc` | `boolean` | `false` | Also run the French e-invoicing rules `BR-FR-Flux2` ([guide](/guide/french-ctc)). Independent of `schematron`. **Factur-X BASIC WL, EN16931 and EXTENDED, and plain-CII EXTENDED-CTC-FR only** — throws otherwise, including when a forced `level` differs from the one the document declares. |
+| `flavor` | `string` | autodetect | `facturx`, `orderx`, `zugferd` or `ubl`. |
+| `level` | `string` | autodetect | Schema level (e.g. `en16931`). For `ubl`: `en16931` or `extended-ctc-fr`, read from `cbc:CustomizationID`. |
+| `schematron` | `boolean` | `false` | Also run Schematron business-rule validation. **Factur-X and UBL** — throws for Order-X and ZUGFeRD 1.0. |
+| `frCtc` | `boolean` | `false` | Also run the French e-invoicing rules `BR-FR-Flux2` ([guide](/guide/french-ctc)). Independent of `schematron`. **Factur-X BASIC WL, EN16931 and EXTENDED, plain-CII EXTENDED-CTC-FR, and UBL (EN16931, EXTENDED-CTC-FR) only** — throws otherwise, including when a forced `level` differs from the one the document declares. |
 | `warningsAsErrors` | `boolean` | `false` | With `schematron` and/or `frCtc`, also count rules flagged `warning`/`information` as errors. |
 
 ## Returns
@@ -63,8 +63,12 @@ non-decimal amount), `check()` keeps the XSD errors and reports that layer as in
 
 <<< ../../examples/check.ts#main{ts}
 
-::: warning Schematron is Factur-X only
-`schematron: true` for a non-`facturx` flavor throws. See [Validation](/guide/validation).
+::: warning Schematron is Factur-X and UBL only
+`schematron: true` for Order-X (or ZUGFeRD 1.0) throws. See [Validation](/guide/validation).
+:::
+
+::: info UBL
+A UBL 2.1 `Invoice` or `CreditNote` is detected as flavor `ubl`. The level comes from `cbc:CustomizationID`: `urn:cen.eu:en16931:2017` (or a `#compliant#` CIUS id, validated as EN 16931 only) gives `en16931`, the exact EXTENDED-CTC-FR id gives `extended-ctc-fr`, anything else throws unless you pass `level`: an explicit `level: 'en16931'` may be forced on a document that declares none or an unsupported id (a CIUS followed by a `#conformant#` extension counts as unsupported), whereas `level: 'extended-ctc-fr'` requires the exact EXTENDED-CTC-FR id; a level that contradicts a declared one throws. An explicit `flavor: 'facturx'` on a UBL document throws. CIUS rule sets such as Peppol BIS are **not** run. UBL is XML only: it cannot be embedded in a PDF by [`generate()`](/api/generate).
 :::
 
 ## See also

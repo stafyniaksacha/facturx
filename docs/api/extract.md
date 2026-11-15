@@ -73,6 +73,9 @@ function extract(options: {
   `zugferd`. A ZUGFeRD 2.x `CrossIndustryInvoice` is validated as `facturx`. A ZUGFeRD 1.0
   `CrossIndustryDocument` throws `ZUGFeRD 1.0 validation is not supported…`, since no ZUGFeRD 1.0
   schema is shipped; extract it with `check: false`. An Order-X order under that name throws.
+- With `check: true`, a UBL invoice stored under an invoice file name (`factur-x.xml`, `xrechnung.xml`,
+  a ZUGFeRD name) throws `a UBL invoice cannot be a Factur-X/ZUGFeRD attachment`: a hybrid PDF embeds
+  CII only. Validate the UBL file with [`check()`](/api/check). The message does not quote the invoice.
 
 ## Example
 

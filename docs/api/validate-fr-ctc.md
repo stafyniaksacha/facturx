@@ -1,6 +1,6 @@
 # `validateFrCtc()`
 
-Check a Factur-X invoice against the French e-invoicing business rules **`BR-FR-Flux2`** (XP Z12-012
+Check a Factur-X (CII) or UBL 2.1 invoice against the French e-invoicing business rules **`BR-FR-Flux2`** (XP Z12-012
 v1.4.0, FNFE-MPE "Schematrons FR CTC" v1.4.0.04). This is the layer that [`check()`](/api/check)
 runs when you pass `frCtc: true`. See [French e-invoicing rules](/guide/french-ctc) for the scope.
 
@@ -23,14 +23,15 @@ function validateFrCtc(options: {
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `xml` | `string \| Buffer` | — | **Required.** The invoice XML (CII D22B). |
-| `level` | `string` | declared | `basicwl`, `en16931`, `extended` or `extended-ctc-fr`. Defaults to the profile the document declares (BT-24); when given, it must match it. |
-| `flavor` | `string` | `facturx` | If given, must be `facturx`: any other value throws. |
+| `xml` | `string \| Buffer` | — | **Required.** The invoice XML (CII D22B or UBL 2.1). |
+| `level` | `string` | declared | `basicwl`, `en16931`, `extended` or `extended-ctc-fr`. Defaults to the profile the document declares (BT-24); when given, it must match it. A UBL document with no `cbc:CustomizationID` (or an unsupported one) runs at the `level` you give; one that declares a level never accepts a different one. |
+| `flavor` | `string` | from the root | `facturx` or `ubl`; if given, it must match the document root (CII `CrossIndustryInvoice` or UBL `Invoice` / `CreditNote`); any other value throws. |
 | `warningsAsErrors` | `boolean` | `false` | Also count rules flagged `warning`/`information` as errors. Every vendored BR-FR rule is `fatal`, so this has no effect today. |
 
 The document is checked first: it must be a CII invoice (`rsm:CrossIndustryInvoice`) declaring BASIC
-WL, EN16931, EXTENDED or plain-CII `EXTENDED-CTC-FR` (for which `level: 'extended'` is also accepted), otherwise the
-call throws. The rules themselves don't check this and would pass any other document.
+WL, EN16931, EXTENDED or plain-CII `EXTENDED-CTC-FR` (for which `level: 'extended'` is also accepted), or a UBL 2.1
+invoice or credit note declaring EN 16931 or EXTENDED-CTC-FR in `cbc:CustomizationID` (levels `en16931`, `extended-ctc-fr`), otherwise the
+call throws. The transform (CII or UBL) is chosen from the document root. The rules themselves don't check this and would pass any other document.
 
 ## Returns
 

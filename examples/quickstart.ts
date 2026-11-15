@@ -16,7 +16,7 @@ const { xml: extractedXml, flavor } = await extract({ pdf: facturxPdf })
 // 3. Validate an XML invoice against the official XSD (flavor and level are detected from the XML)
 const { valid, errors, level } = await check({ xml: extractedXml })
 
-// …and additionally against the EN 16931 business rules (Factur-X only)
+// …and additionally against the EN 16931 business rules (Factur-X and UBL)
 const result = await check({ xml, schematron: true })
 
 console.log(generated.length, extractedXml.length, flavor, level, valid, errors.length, result.valid, result.schematronValid)

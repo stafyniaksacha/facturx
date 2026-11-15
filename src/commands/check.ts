@@ -14,7 +14,7 @@ function formatFrCtc(error: SchematronError): string {
 export default defineCommand({
   meta: {
     name: 'check',
-    description: 'Checks if a XML file is a valid Factur-X/Order-X file',
+    description: 'Checks if a XML file is a valid Factur-X/Order-X/ZUGFeRD file or UBL 2.1 invoice',
   },
   args: {
     'xml': {
@@ -24,23 +24,23 @@ export default defineCommand({
     },
     'flavor': {
       type: 'string',
-      description: 'Schema flavor, autodetect by default (facturx, orderx, zugferd)',
+      description: 'Schema flavor, autodetect by default (facturx, orderx, zugferd, ubl)',
       alias: 'f',
     },
     'level': {
       type: 'string',
-      description: 'Schema level, autodetect by default (orderx: basic, extended, comfort) (facturx: basic, basicwl, en16931, extended, minimum, extended-ctc-fr)',
+      description: 'Schema level, autodetect by default (orderx: basic, extended, comfort) (facturx: basic, basicwl, en16931, extended, minimum, extended-ctc-fr) (ubl: en16931, extended-ctc-fr)',
       alias: 'l',
     },
     'schematron': {
       type: 'boolean',
-      description: 'Also run Schematron business-rule validation (EN 16931 BR-*, Factur-X only)',
+      description: 'Also run Schematron business-rule validation (EN 16931 BR-*; Factur-X and UBL, not Order-X)',
       alias: 's',
       default: false,
     },
     'fr-ctc': {
       type: 'boolean',
-      description: 'Also run the French CTC business rules BR-FR-Flux2 (XP Z12-012 v1.4.0; Factur-X BASIC WL, EN16931, EXTENDED; CII EXTENDED-CTC-FR). Combine with --schematron for the full validation sequence',
+      description: 'Also run the French CTC business rules BR-FR-Flux2 (XP Z12-012 v1.4.0; Factur-X BASIC WL, EN16931, EXTENDED; CII EXTENDED-CTC-FR; UBL EN16931 and EXTENDED-CTC-FR). Combine with --schematron for the full validation sequence',
       default: false,
     },
     'warnings-as-errors': {

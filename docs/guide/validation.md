@@ -6,7 +6,7 @@ questions:
 | Layer | Question it answers | Available for |
 | --- | --- | --- |
 | **XSD** (structure) | Is the XML *shaped* correctly — right elements, right order, right data types? | all flavors |
-| **Schematron** (business rules) | Do the *values* satisfy the EN 16931 `BR-*` rules and use valid codes? | `facturx` only |
+| **Schematron** (business rules) | Do the *values* satisfy the EN 16931 `BR-*` rules and use valid codes? | `facturx` and `ubl` |
 
 ::: tip Valid structure ≠ valid business rules
 A document can be perfectly valid XSD-wise and still break business rules (e.g. totals that don't
@@ -19,7 +19,7 @@ see [French e-invoicing rules](/guide/french-ctc).
 ## XSD validation
 
 This is the default. [`check()`](/api/check) validates the XML structure against the
-**Factur-X / ZUGFeRD** XSD for the detected (or supplied) flavor and level: Factur-X 1.09 / ZUGFeRD 2.5
+**Factur-X / ZUGFeRD** XSD (or the UBL 2.1 XSD for a UBL invoice) for the detected (or supplied) flavor and level: Factur-X 1.09 / ZUGFeRD 2.5
 for MINIMUM and BASIC, and Factur-X **1.09.2** (the `fixFR04` assets supplied by FNFE-MPE, not an official Factur-X distribution, for the
 French e-invoicing reform) for BASIC WL, EN 16931 and EXTENDED. The Schematron below follows the same
 split.
@@ -37,6 +37,44 @@ if (!valid) {
 
 `errors` is the list of structural problems reported by the XSD validator (empty when `valid` is
 `true`).
+
+## UBL invoices
+
+`check()` also validates **UBL 2.1** `Invoice` and `CreditNote` documents (flavor `ubl`), the other syntax
+the French reform accepts besides CII. It runs the same three steps as for CII: the UBL 2.1 XSD, then
+`schematron: true` for the level Schematron, then `frCtc: true` for the French rules.
+
+```ts
+const result = await check({ xml: ublXml, schematron: true, frCtc: true })
+result.flavor // 'ubl'
+result.level // 'en16931' or 'extended-ctc-fr', read from cbc:CustomizationID
+```
+
+The level comes from `cbc:CustomizationID` (BT-24): `urn:cen.eu:en16931:2017`, or an id starting with
+`urn:cen.eu:en16931:2017#compliant#` (a CIUS) with no `#conformant#` extension after it, gives `en16931`; the
+exact EXTENDED-CTC-FR id gives `extended-ctc-fr`; anything else (including a CIUS followed by an extension,
+such as the XRechnung extension) throws, naming the `level` option.
+
+An explicit `level: 'en16931'` may be forced on a document that declares **no** `cbc:CustomizationID` or one this
+package has no rules for: the three steps run, and the rule `BR-01` reports a missing identifier (an unsupported
+one is not reported by any rule). An explicit `level: 'extended-ctc-fr'` never stands in for an id: the document
+must declare exactly the EXTENDED-CTC-FR one, or the call throws (neither the XSD nor the dedicated Schematron
+checks it). Neither overrides a different level the document declares.
+
+The rule `id` of a UBL finding is the assert's `@id` in the Schematron (for example `BR-FREXT-26`, whose
+message starts with `[BR-26]`); `message` is unchanged. The Factur-X (CII) transforms keep taking the id from
+the message prefix.
+
+`validateSchematron()` without `flavor` reads it from the root element, and refuses a `flavor` that
+contradicts the root: the Factur-X rules are never run on a UBL document, nor the UBL ones on CII.
+
+What this does **not** do:
+
+- CIUS rule sets such as **Peppol BIS** or XRechnung are not run: a `#compliant#` invoice is validated as
+  plain EN 16931.
+- Step 4 of the release notes (Chorus Pro, `BR-France-CTC-CPRO`) has no published Schematron.
+- UBL is **XML only**: it cannot be embedded in a Factur-X PDF (a hybrid PDF carries CII), so
+  [`generate()`](/api/generate) refuses it and `extract({ check: true })` refuses a UBL attachment.
 
 ## Schematron (business-rule) validation
 
@@ -72,9 +110,9 @@ const { valid, errors, warnings } = await validateSchematron({
 })
 ```
 
-::: warning Schematron is Factur-X only
-The spec ships no Order-X Schematron. Passing `schematron: true` for a non-`facturx` flavor (or
-calling `validateSchematron` with another flavor) **throws**. XSD validation works for all flavors.
+::: warning Schematron is Factur-X and UBL only
+The spec ships no Order-X Schematron. Passing `schematron: true` for an Order-X document (or
+calling `validateSchematron` with a flavor other than `facturx` or `ubl`) **throws**. XSD validation works for all flavors.
 :::
 
 ## Reading Schematron errors
@@ -117,7 +155,7 @@ which makes it easy to look up exactly what failed.
 ## Validation during generate / extract
 
 Both [`generate()`](/api/generate) and [`extract()`](/api/extract) can run an XSD `check` and throw
-on invalid XML, so you don't accidentally embed or trust a malformed invoice. Validation is **off by
+on invalid XML, so you don't accidentally embed or trust a malformed invoice. Neither accepts UBL, which has no PDF form (see above). Validation is **off by
 default** — pass `check: true` to opt in (e.g. skip it when you've already validated, or are working
 with a known-imperfect document).
 
