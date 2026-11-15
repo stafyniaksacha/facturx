@@ -8,7 +8,7 @@ import { PDFName } from 'pdf-lib'
 const XMP_PACKET_ID = 'W5M0MpCehiHzreSzNTczkc9d'
 
 export function setPDFA3BMetadata(
-  { date, title, subject, author, producer, creator, filename, conformanceLevel }: XmpMetadata,
+  { date, title, subject, author, keywords, producer, creator, filename, conformanceLevel }: XmpMetadata,
   pdf: PDFDocument,
 ): void {
   const metadataXML = `
@@ -40,6 +40,7 @@ export function setPDFA3BMetadata(
 
         <rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/">
           <pdf:Producer>${xmlEscape(producer)}</pdf:Producer>
+          <pdf:Keywords>${xmlEscape((keywords ?? []).join(' '))}</pdf:Keywords>
         </rdf:Description>
 
         <rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/">

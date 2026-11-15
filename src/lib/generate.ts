@@ -151,6 +151,8 @@ export async function generate(options: {
     pdf.setAuthor(meta.author)
     pdf.setKeywords(meta.keywords)
     pdf.setCreator(creator)
+    // Same value as the XMP pdf:Producer, instead of the pdf-lib default (CG-04).
+    pdf.setProducer(creator)
 
     setPDFA3BMetadata({
       ...meta,

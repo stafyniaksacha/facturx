@@ -103,3 +103,34 @@ describe('generate() dates (CG-25)', () => {
     expect(pdfDate(params(pdf).get(PDFName.of('ModDate')))).toEqual(date)
   })
 })
+
+// Info dictionary and XMP carry the same Producer and Keywords (CG-04).
+describe('generate() Info / XMP consistency (CG-04)', () => {
+  it('derived from the XML', async () => {
+    const pdf = await PDFDocument.load(await generate({ pdf: await blankPdf(), xml: getEN16931XML() }), { updateMetadata: false })
+    expect(pdf.getProducer()).toMatch(/^@stafyniaksacha\/facturx npm lib v/)
+    expect(xmpTexts(pdf, '//pdf:Producer')).toEqual([pdf.getProducer()])
+    expect(xmpTexts(pdf, '//xmp:CreatorTool')).toEqual([pdf.getCreator()])
+    expect(pdf.getKeywords()).toBe('Invoice Factur-X')
+    expect(xmpTexts(pdf, '//pdf:Keywords')).toEqual([pdf.getKeywords()])
+  })
+
+  it('with keywords that need escaping and are not ASCII', async () => {
+    const keywords = ['Société', 'Dupont & Fils', '<SARL>', '€']
+    const bytes = await generate({
+      pdf: await blankPdf(),
+      xml: getEN16931XML(),
+      meta: { author: 'a', title: 't', subject: 's', keywords, date: new Date() },
+    })
+    const pdf = await PDFDocument.load(bytes, { updateMetadata: false })
+    expect(pdf.getKeywords()).toBe(keywords.join(' '))
+    expect(xmpTexts(pdf, '//pdf:Keywords')).toEqual([keywords.join(' ')])
+  })
+
+  it('overrides the Producer of a PDFDocument pdf-lib already stamped', async () => {
+    const source = await blankPdf()
+    expect(source.getProducer()).toMatch(/pdf-lib/)
+    const pdf = await PDFDocument.load(await generate({ pdf: source, xml: getEN16931XML() }), { updateMetadata: false })
+    expect(pdf.getProducer()).toBe(xmpTexts(pdf, '//pdf:Producer')[0])
+  })
+})

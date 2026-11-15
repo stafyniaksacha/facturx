@@ -166,6 +166,9 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   dates, so the output changed with `TZ`. They are now the time `generate()` runs. The title and
   subject still show the issue date as a calendar date (`dated 20260131`). To keep a fixed date, pass
   `meta` with your own `date`; it is used as before.
+- **The Info `Producer` is the library's name and version**, the same value as the XMP
+  `pdf:Producer`, instead of `pdf-lib (https://github.com/Hopding/pdf-lib)`. The XMP also gets a
+  `pdf:Keywords` equal to the Info `Keywords` (CG-04).
 - **`extract()` finds `xrechnung.xml`** (Factur-X §7.7) and reports it as flavor `facturx`, and
   **reads attachment lists with one or two `/Kids` levels** (§6.2.2 p.27), which 0.6.1 reported as
   `No attachment found`. Deeper or larger trees throw `Unsupported EmbeddedFiles name tree: …`.
