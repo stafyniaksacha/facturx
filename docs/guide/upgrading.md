@@ -143,6 +143,14 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   65536 nodes or deeper than 256 levels, a page tree node reached twice (including a page added twice
   with `pdf-lib`'s `addPage()`), more than 65536 annotations or more than 1048576 `/Kids`, `/Annots`
   and `/AF` entries is rejected.
+- **`xmlToInvoice()` reads EXTENDED logistics service charges** (`SpecifiedLogisticsServiceCharge`).
+  They were written by `invoiceToXml()` but dropped on parsing, so `specifiedLogisticsServiceCharge`
+  was always undefined in parsed models. It is now an array: the charges, or `[]` when there are none,
+  like the other repeated fields.
+- **Non-VAT tax codes on charges** (EXTENDED): `AllowanceChargeReasonCodeType` has an optional
+  `listID`. Set it to `'5153'` to write a UNTDID 5153 tax code instead of a charge reason, on a
+  document charge, a line charge or a gross price charge; `xmlToInvoice()` reads it back. It used to
+  be dropped, so such a code was read as a charge reason.
 - **A malformed EmbeddedFiles name tree** now throws `Malformed EmbeddedFiles name tree: <reason>`
   from `extract()` and `generate()`, instead of a raw `pdf-lib` error ([#41](https://github.com/stafyniaksacha/facturx/pull/41)). A `/Name` key, which
   0.6.1 decoded, is now rejected.

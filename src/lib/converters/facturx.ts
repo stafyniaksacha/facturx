@@ -1198,7 +1198,11 @@ function convertAllowanceCharge(
     convertAllowanceAmount(actualAmount, parent.addElement('ram:ActualAmount'))
   }
   if (reasonCode) {
-    parent.addElement('ram:ReasonCode').addText(reasonCode.value)
+    const el = parent.addElement('ram:ReasonCode')
+    el.addText(reasonCode.value)
+    // BT-177-1 / BT-193-1 / BT-X-616-1 (EXTENDED): listID 5153 marks a non-VAT tax code.
+    if (reasonCode.listID)
+      el.setAttr('listID', reasonCode.listID)
   }
   if (reason) {
     convertText(reason, parent.addElement('ram:Reason'))

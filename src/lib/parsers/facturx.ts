@@ -472,6 +472,7 @@ function parseHeaderTradeSettlement(node: XmlElement): HeaderTradeSettlementType
     applicableTradeTax: findAll(settlement, './ram:ApplicableTradeTax').map(parseTradeTax),
     billingSpecifiedPeriod: parseSpecifiedPeriod(get(settlement, './ram:BillingSpecifiedPeriod')),
     specifiedTradeAllowanceCharge: findAll(settlement, './ram:SpecifiedTradeAllowanceCharge').map(parseAllowanceCharge),
+    specifiedLogisticsServiceCharge: findAll(settlement, './ram:SpecifiedLogisticsServiceCharge').map(parseLogisticsServiceCharge),
     specifiedTradePaymentTerms: findAll(settlement, './ram:SpecifiedTradePaymentTerms').map(parsePaymentTerms),
     specifiedTradeSettlementHeaderMonetarySummation: parseHeaderMonetarySummation(sum, currency),
     specifiedFinancialAdjustment: findAll(settlement, './ram:SpecifiedFinancialAdjustment').map(a => new ram.FinancialAdjustmentType({
@@ -617,9 +618,22 @@ function parseAllowanceCharge(node: XmlElement): ram.TradeAllowanceChargeType {
     basisAmount: parseAmount(get(node, './ram:BasisAmount')),
     basisQuantity: parseQuantity(get(node, './ram:BasisQuantity')),
     actualAmount: parseAmount(get(node, './ram:ActualAmount')) ?? new udt.AmountType({ value: 0 }),
-    reasonCode: textOf(get(node, './ram:ReasonCode')) ? new qdt.AllowanceChargeReasonCodeType({ value: textOf(get(node, './ram:ReasonCode'))! }) : undefined,
+    reasonCode: textOf(get(node, './ram:ReasonCode'))
+      ? new qdt.AllowanceChargeReasonCodeType({ value: textOf(get(node, './ram:ReasonCode'))!, listID: get(node, './ram:ReasonCode')!.attr('listID')?.value })
+      : undefined,
     reason: parseText(get(node, './ram:Reason')),
     categoryTradeTax: get(node, './ram:CategoryTradeTax') ? parseTradeTax(get(node, './ram:CategoryTradeTax')!) : undefined,
+  })
+}
+
+// EXTENDED logistics service charges (BG-X-42: BT-X-271…274, and BT-X-591/592 for the exemption
+// reason of their tax, Factur-X 1.09). The converter always wrote them; reading them back was missing.
+function parseLogisticsServiceCharge(node: XmlElement): ram.LogisticsServiceChargeType {
+  const taxes = findAll(node, './ram:AppliedTradeTax').map(parseTradeTax)
+  return new ram.LogisticsServiceChargeType({
+    description: parseText(get(node, './ram:Description')) ?? new udt.TextType({ value: '' }),
+    appliedAmount: parseAmount(get(node, './ram:AppliedAmount')) ?? new udt.AmountType({ value: 0 }),
+    appliedTradeTax: taxes.length > 0 ? taxes : undefined,
   })
 }
 
