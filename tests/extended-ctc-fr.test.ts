@@ -14,7 +14,7 @@ const ANNEX_B = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distr
 
 const examples = readdirSync(ANNEX_B, { withFileTypes: true, recursive: true })
   .filter(entry => entry.isFile() && /_EXTENDED-CTC-FR_CII_.*\.xml$/.test(entry.name))
-  .map(entry => join(entry.parentPath, entry.name))
+  .map(entry => join(entry.parentPath ?? (entry as { path?: string }).path ?? '', entry.name))
   .sort()
   .map(file => ({ file, name: relative(ANNEX_B, file) }))
 
@@ -129,5 +129,32 @@ describe('eXTENDED-CTC-FR plain CII profile (CG-18 validation)', () => {
     expect(result.errors.filter(e => e.id === 'BR-EXT-CL-07')).toEqual([])
     const fx = await validateSchematron({ xml, level: 'extended' })
     expect(fx.errors.map(e => e.message)).toContain('Value of \'ram:ReferenceTypeCode\' is not allowed.')
+  })
+
+  // Spec review: a repeated BT-24 made the dedicated Schematron abort with a raw XPTY0004 quoting
+  // document values; it is now the CII-SR-009 finding (BT-24 must occur once).
+  it('reports a repeated guideline ID as CII-SR-009 instead of a Schematron crash', async () => {
+    const xml = (await readFile(F1, 'utf8')).replace(/(<ram:GuidelineSpecifiedDocumentContextParameter>[\s\S]*?<\/ram:GuidelineSpecifiedDocumentContextParameter>)/, '$1<ram:GuidelineSpecifiedDocumentContextParameter><ram:ID>urn:junk</ram:ID></ram:GuidelineSpecifiedDocumentContextParameter>')
+    expect(xml).toContain('urn:junk')
+    const result = await check({ xml, schematron: true })
+    expect(result.valid).toBe(false)
+    expect(result.schematronErrors?.map(e => e.id)).toEqual(['CII-SR-009'])
+    expect(JSON.stringify(result.schematronErrors)).not.toContain('urn:junk')
+  })
+
+  it('validateSchematron({ level: \'extended-ctc-fr\' }) refuses a document with another guideline ID', async () => {
+    const xml = (await readFile(F1, 'utf8')).replace(/urn:cen\.eu:en16931:2017#conformant#urn\.cpro\.gouv\.fr:1p0:extended-ctc-fr(?=<)/, 'urn:example:not-a-profile')
+    await expect(validateSchematron({ xml, level: 'extended-ctc-fr' })).rejects.toThrow('level "extended-ctc-fr" does not match the document')
+  })
+
+  it('generate() refuses a flavor that contradicts the root element', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    await expect(generate({ pdf, xml: await readFile(F1, 'utf8'), flavor: 'orderx' })).rejects.toThrow('does not match the "orderx" flavor')
+    const invoice = await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.xml'), 'utf8')
+    await expect(generate({ pdf, xml: invoice, flavor: 'orderx' })).rejects.toThrow('does not match the "orderx" flavor')
+    const order = await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8')
+    await expect(generate({ pdf, xml: order, flavor: 'facturx' })).rejects.toThrow('does not match the "facturx" flavor')
+    await expect(generate({ pdf, xml: invoice })).resolves.toBeInstanceOf(Uint8Array)
   })
 })

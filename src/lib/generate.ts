@@ -79,8 +79,13 @@ export async function generate(options: {
       // Thrown before the PDF is read or marked as used (was CG-09).
       throw new Error('Cannot generate the "zugferd" flavor: ZUGFeRD 1.0 and the legacy ZUGFeRD 2.0 hybrid (zugferd-invoice.xml) are extraction only. A ZUGFeRD 2.x invoice is a Factur-X CrossIndustryInvoice: generate it with flavor "facturx"')
     }
+    // The root decides what the file is: an explicit flavor cannot embed an invoice as order-x.xml
+    // or an order as factur-x.xml (BR-HYBRID-06/07).
+    const isOrder = xml.root?.name === 'SCRDMCCBDACIOMessageStructure'
+    if ((flavor === 'orderx') !== isOrder)
+      throw new Error(`The XML root element "${xml.root?.name}" does not match the "${flavor}" flavor`)
     const level = options.level || getLevel(xml)
-    if (flavor === 'facturx' && (level === 'extended-ctc-fr' || declaresExtendedCtcFr(xml))) {
+    if (level === 'extended-ctc-fr' || declaresExtendedCtcFr(xml)) {
       // A plain CII profile of XP Z12-012, not a HybridConformance value (BR-HYBRID-07,
       // codelists--HybridConformance.csv): no fx:ConformanceLevel can describe it, and an explicit
       // `level` would make fx:ConformanceLevel disagree with BT-24 (BR-HYBRID-15). Thrown before

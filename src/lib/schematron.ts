@@ -4,6 +4,9 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import SaxonJS from 'saxon-js'
+import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
+import { resolveXml } from './resolve'
+import { declaresExtendedCtcFr } from './xml'
 
 /**
  * Schematron (business-rule) validation for Factur-X: 1.09 FINAL for MINIMUM and
@@ -215,5 +218,37 @@ export async function validateSchematron(options: {
     throw new Error(`No Factur-X Schematron available for level: "${options.level}"`)
   }
 
+  if (options.level === 'extended-ctc-fr') {
+    const finding = await extendedCtcFrPrecheck(options.xml)
+    if (finding)
+      return { valid: false, errors: [finding], warnings: [] }
+  }
+
   return runSchematron(config, options.xml, { warningsAsErrors: options.warningsAsErrors })
+}
+
+/**
+ * The dedicated EXTENDED-CTC-FR Schematron neither checks the BT-24 value (only BR-01, non-empty)
+ * nor survives a repeated BT-24 (`normalize-space()` on a sequence aborts with XPTY0004 and quotes
+ * the values). So, before running it: throw unless BT-24 is the exact Annex A ID, and report a
+ * repeated BT-24 as the CII-SR-009 finding the Schematron would give (count must be 1).
+ */
+async function extendedCtcFrPrecheck(xml: string | Buffer): Promise<SchematronError | undefined> {
+  const doc = await resolveXml(xml)
+  try {
+    const count = doc.find(`/*[local-name()='CrossIndustryInvoice']/*[local-name()='ExchangedDocumentContext']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']`).length
+    if (count > 1) {
+      return {
+        message: `[CII-SR-009] - GuidelineSpecifiedDocumentContextParameter must exist exactly once (found ${count})`,
+        id: 'CII-SR-009',
+        severity: 'error',
+      }
+    }
+    if (!declaresExtendedCtcFr(doc))
+      throw new Error(`level "extended-ctc-fr" does not match the document: its guideline ID (BT-24) must be ${EXTENDED_CTC_FR_GUIDELINE_ID}`)
+    return undefined
+  }
+  finally {
+    doc.dispose()
+  }
 }
