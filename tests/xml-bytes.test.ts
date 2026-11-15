@@ -50,7 +50,7 @@ async function plainPdf(source: Buffer): Promise<PDFDocument> {
   return pdf
 }
 
-describe('byte-exact XML pass-through (CG-26)', () => {
+describe('byte-exact XML pass-through (was CG-26)', () => {
   it('finds the 56 official examples', () => {
     expect(examples).toHaveLength(56)
   })
