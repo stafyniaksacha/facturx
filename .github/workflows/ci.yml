@@ -170,8 +170,6 @@ jobs:
     needs: package
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
-    # A lane with a known upstream bug reports it without blocking merges.
-    continue-on-error: ${{ !!matrix.known-issue }}
     strategy:
       fail-fast: false
       matrix:
@@ -277,8 +275,13 @@ jobs:
           EOF
 
       # Network off: the package must not need it at runtime.
+      # A lane with a known upstream bug may fail here without failing the job (its checkmark stays
+      # green): the outcome is reported as a warning below. Install and the native-code check above
+      # still fail the job on every lane.
       - name: Smoke test (offline)
+        id: smoke-linux
         if: runner.os == 'Linux'
+        continue-on-error: ${{ !!matrix.known-issue }}
         working-directory: ${{ runner.temp }}
         env:
           PLATFORM: ${{ matrix.platform }}
@@ -290,16 +293,29 @@ jobs:
             -w /app smoke /opt/node/bin/node smoke.mjs /fixtures
 
       - name: Smoke test
+        id: smoke
         if: runner.os != 'Linux'
+        continue-on-error: ${{ !!matrix.known-issue }}
         working-directory: ${{ runner.temp }}/consumer
         run: node smoke.mjs "$GITHUB_WORKSPACE/examples"
 
+      # always(): without a status function GitHub adds success(), and the report would be skipped
+      # exactly when an earlier step failed. That earlier failure still fails the job.
       - name: Report known issue
-        if: failure() && matrix.known-issue
+        if: always() && matrix.known-issue
         env:
           PLATFORM: ${{ matrix.platform }}
           KNOWN_ISSUE: ${{ matrix.known-issue }}
-        run: echo "::warning::Expected failure on $PLATFORM ($KNOWN_ISSUE), not blocking."
+          OUTCOME: ${{ runner.os == 'Linux' && steps.smoke-linux.outcome || steps.smoke.outcome }}
+        run: |
+          case "$OUTCOME" in
+            success)
+              echo "::warning::$PLATFORM passed although marked as a known issue ($KNOWN_ISSUE): remove known-issue from this lane." ;;
+            failure)
+              echo "::warning::Expected failure on $PLATFORM ($KNOWN_ISSUE), not blocking (smoke test: failure)." ;;
+            *)
+              echo "::error::Smoke test on $PLATFORM did not run (${OUTCOME:-skipped}): an earlier step failed, and that failure blocks the job." ;;
+          esac
 
   # The one status check to require in branch protection: matrix entries can
   # change without touching repository settings.
