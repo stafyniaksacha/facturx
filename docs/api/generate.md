@@ -95,6 +95,7 @@ turn into a correct hybrid document instead of producing a broken one:
 | `This PDFDocument was already passed to generate(): load a new one for each call` | The same `pdf-lib` `PDFDocument` object was passed again, even if the earlier call failed. Load the PDF again for each call. |
 | `PDFs whose embedded files name tree has /Kids are not supported` | The source's attachments use a multi-level name tree, which `pdf-lib` cannot append to correctly. |
 | `Malformed EmbeddedFiles name tree: …` | The source's attachment list is corrupt (e.g. a name without a value). |
+| `Unsupported EmbeddedFiles name tree: …` | The source's attachment list has more than two `/Kids` levels or more than 4096 nodes. |
 
 ## Supplying the PDF base
 

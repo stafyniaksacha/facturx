@@ -42,6 +42,9 @@ function extract(options: {
   `order-x.xml`, or a ZUGFeRD filename) and returns the first match. `xrechnung.xml` (reference
   profile XRECHNUNG, Factur-X §7.7) is reported as flavor `facturx`, but `check()` does not know the
   XRECHNUNG level yet.
+- Reads the attachment list whether it is a flat name tree or has one or two `/Kids` levels (Factur-X
+  §6.2.2 p.27). Deeper trees, trees with more than 4096 nodes and corrupt trees throw
+  `Unsupported EmbeddedFiles name tree: …` or `Malformed EmbeddedFiles name tree: …`.
 - The flavor is inferred from the attachment filename. Passing `flavor` asserts an expectation:
   e.g. `flavor: 'facturx'` throws `Invalid flavor, expected facturx but found orderx` if the PDF
   actually contains an Order-X file.
