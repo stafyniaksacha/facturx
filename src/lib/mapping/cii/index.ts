@@ -167,31 +167,31 @@ function checked(cii: CrossIndustryInvoiceType): CrossIndustryInvoiceType {
  * - BT-11-0 is set without BT-11;
  * - an *Amount* has more than two decimals (spec §7.1.5).
  */
-export function toCii(source: Invoice, options: ToCiiOptions): CrossIndustryInvoiceType {
+export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInvoiceType {
   const level = options?.level
   if (!isEn16931Level(level))
     throw new Error(`toCii: options.level must be one of ${LEVEL_LIST}`)
-  const invoice = withArrays(source)
+  const full = withArrays(invoice)
   for (const [id, term, get] of MANDATORY) {
-    const value = get(invoice)
+    const value = get(full)
     if (value === undefined || value === '')
       throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
   }
-  assertHeaderComplete(invoice)
-  assertPartiesComplete(invoice)
-  assertPartyIdentifierCounts(invoice, level)
-  assertSettlementComplete(invoice)
-  assertLinesComplete(invoice, level)
-  assertLevelCarries(invoice, level, [...HEADER_GATES, ...PARTY_GATES, ...SETTLEMENT_GATES, ...LINE_GATES])
+  assertHeaderComplete(full)
+  assertPartiesComplete(full)
+  assertPartyIdentifierCounts(full, level)
+  assertSettlementComplete(full)
+  assertLinesComplete(full, level)
+  assertLevelCarries(full, level, [...HEADER_GATES, ...PARTY_GATES, ...SETTLEMENT_GATES, ...LINE_GATES])
   // CII has the project name only inside the project reference: writing it alone would lose it.
-  if (invoice.projectName !== undefined && invoice.projectReference === undefined)
+  if (full.projectName !== undefined && full.projectReference === undefined)
     throw new Error('toCii: BT-11-0 (project name) needs BT-11 (project reference)')
   // Exact allow-list (Factur-X matrices, BT-24 usage note): another level's id, Order-X or a CIUS
   // identifier would make the written document claim a profile it was not checked against.
-  const specification = invoice.specificationIdentifier
+  const specification = full.specificationIdentifier
   if (specification === '')
-    return checked(buildCii(new Invoice({ ...invoice, specificationIdentifier: undefined }), level))
+    return checked(buildCii(new Invoice({ ...full, specificationIdentifier: undefined }), level))
   if (specification !== undefined && specification !== GUIDELINE_IDS[level])
     throw new Error(`toCii: BT-24 (specification identifier) is not the identifier of level "${level}"; clear it to write that identifier, or set ${GUIDELINE_IDS[level]}`)
-  return checked(buildCii(invoice, level))
+  return checked(buildCii(full, level))
 }

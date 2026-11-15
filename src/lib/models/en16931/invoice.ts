@@ -371,7 +371,8 @@ export class Invoice {
   /**
    * Project name: the name of the project of BT-11, written only with BT-11. A Factur-X sub-term
    * (matrix "Project name", mandatory in CII when BT-11 is present); `toCii()` writes the Factur-X
-   * default `Project reference` when unset (appendix EN 16931 p.38).
+   * default `Project reference` when unset (appendix EN 16931 p.38), and `fromCii()` reads exactly
+   * that default back as unset, so the CII written again is the same (any other name is kept).
    * @bt BT-11-0
    */
   projectName?: string

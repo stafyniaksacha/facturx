@@ -238,8 +238,9 @@ describe('en 16931 model: corpus', () => {
     // The gross price charge shares its XPath with the BT-147 discount (the matrix tells them apart by the
     // ChargeIndicator value, `true` for BT-X-302-02), which the XPath classifier can't see: check it apart.
     expect(dropped.filter(p => !p.startsWith(gross)).flatMap(notBtX)).toEqual([])
-    expect(matrixRows.some(r => r.id === 'BT-X-302' && r.xpath === norm(`${gross}/ram:ActualAmount`))).toBe(true)
-    expect(matrixRows.some(r => r.id === 'BT-X-302-02' && r.xpath === norm(`${gross}/ram:ChargeIndicator/udt:Indicator`))).toBe(true)
+    const btX302 = (id: string, path: string) => matrixRows.some(r => r.id === id && !r.ctc.startsWith('EXT-FR-FE') && r.xpath === norm(path))
+    expect(btX302('BT-X-302', `${gross}/ram:ActualAmount`)).toBe(true)
+    expect(btX302('BT-X-302-02', `${gross}/ram:ChargeIndicator/udt:Indicator`)).toBe(true)
     // The classifier is not vacuous: a path with an EXT-FR-FE id, an unknown path and a ruled-out id are told apart.
     expect(notBtX('/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID')).not.toEqual([])
     expect(notBtX('/rsm:CrossIndustryInvoice/rsm:Nonsense')).not.toEqual([])

@@ -31,17 +31,20 @@ Conventions:
   named in the JSDoc, and checked by the Schematron, not by the type system).
 - A repeatable term is an array and a mandatory term a required property. Where EN 16931 and
   EXTENDED-CTC-FR disagree on the cardinality, the model takes the **wider** (BT-60, for instance, is an array).
+  The note text is the exception: annex A leaves BT-22 optional at EXTENDED-CTC-FR, the model keeps it
+  mandatory, as EN 16931 does (CG-57).
 - Optional terms are `undefined` when absent. The model never invents a value; `toCii()` writes the
   Factur-X default `Project reference` for BT-11-0 when BT-11 is set without a name (CG-49), and
   `fromCii()` reads exactly that default back as no name (`projectName` `undefined`), so the CII written
   again is the same. Any other name, `Project Reference` included, is kept.
 - The text of a note (BT-22 in BG-1, BT-127 on a line) is the mandatory term of its group, so it is a
   required `string`. `fromCii()` reads `''` for a note without text, as the CII parser does, and `toCii()`
-  refuses an empty one.
-- An invoice can be a plain object instead of class instances. An optional repeatable group left out
-  (`notes`, `precedingInvoiceReferences`, a party's `identifiers`, a line's `notes` ...) reads as empty;
-  anything other than an array in its place, or a missing mandatory group (BG-23, BG-25), is an error
-  naming the term.
+  refuses an empty one (CG-57).
+- An invoice can be a plain object instead of class instances. The TypeScript types still require the
+  array properties, but at runtime (plain JavaScript, data from JSON) `toCii()` guards them: an optional
+  repeatable group left out (`notes`, `precedingInvoiceReferences`, a party's `identifiers`, a line's
+  `notes` ...) reads as empty, and anything other than an array in its place, or a missing mandatory group
+  (BG-23, BG-25), is an error naming the term, never a `TypeError`.
 
 ## Scope
 

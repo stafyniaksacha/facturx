@@ -303,6 +303,22 @@ describe('en 16931 model: a plain-object invoice', () => {
     expect(result.valid).toBe(true)
   })
 
+  it('writes the same CII as class instances for the extended groups left without arrays (BG-17, payee, line deliver to and seller)', async () => {
+    const withClasses = await enInvoice()
+    withClasses.paymentInstructions = new EN16931.PaymentInstructions({ paymentMeansTypeCode: '30' })
+    withClasses.payee = new EN16931.Payee({ name: 'P' })
+    withClasses.lines[0]!.deliverTo = new EN16931.LineDeliverTo({ name: 'D' })
+    withClasses.lines[0]!.seller = new EN16931.LineSeller({ name: 'S' })
+    const { lines, ...rest } = withClasses
+    const plainInvoice = {
+      ...rest,
+      paymentInstructions: { paymentMeansTypeCode: '30' },
+      payee: { name: 'P' },
+      lines: [{ ...lines[0]!, deliverTo: { name: 'D' }, seller: { name: 'S' } }, ...lines.slice(1)],
+    } as unknown as Invoice
+    expect(toCii(plainInvoice, { level: 'extended' })).toEqual(toCii(withClasses, { level: 'extended' }))
+  })
+
   it('names the term for a group that is not an array, and the mandatory BG-23 and BG-25, never a TypeError', async () => {
     const message = (invoice: object): string => {
       try {
