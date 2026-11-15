@@ -98,7 +98,9 @@ interface PdfMetadata {
 - Throws `level "<level>" does not match the profile declared by the document ("<declared>")`, before
   reading the PDF, when an explicit `level` differs from the profile of the guideline ID (BT-24), so
   `fx:ConformanceLevel` always describes the embedded XML (BR-HYBRID-15). An explicit `level` on a
-  document whose BT-24 names no known level throws `Unknown level`.
+  document whose BT-24 names no known level throws `Unknown level`, and on one without BT-24
+  `No ID found in the document`. BT-24 is read from its last `:` segment; `check: true` also
+  validates it against the profile's code list.
 - Throws, before writing the invoice, when the source PDF cannot take the invoice correctly: see the
   table below. Bytes you pass are never modified. A `PDFDocument` you pass is marked as used before
   the existing-invoice check, and attachments you queued with `attach()` may already be written into

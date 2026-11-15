@@ -851,7 +851,7 @@ describe('generate', () => {
 
       await expect(generate({ pdf, xml, level: 'minimum' }))
         .rejects
-        .toThrow('level "minimum" does not match the profile declared by the document ("en16931"): fx:ConformanceLevel must describe the embedded XML (BR-HYBRID-15)')
+        .toThrow('level "minimum" does not match the profile declared by the document ("en16931"): generate() writes fx:ConformanceLevel for the embedded XML\'s own profile (BR-HYBRID-15)')
       await expect(generate({ pdf, xml, level: 'BASIC WL' })).rejects.toThrow('level "basicwl" does not match the profile declared by the document ("en16931")')
       // Not marked as used: the matching level still works on the same document.
       const output = await PDFDocument.load(await generate({ pdf, xml, level: 'EN 16931' }))
@@ -867,7 +867,26 @@ describe('generate', () => {
 
     it('rejects an explicit level when BT-24 names no level it can be compared with', async () => {
       const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0')
-      await expect(generate({ pdf: await sourcePdf(), xml, level: 'en16931' })).rejects.toThrow('Unknown level')
+      await expect(generate({ pdf: await sourcePdf(), xml, level: 'en16931' })).rejects.toThrow('Unknown level: "kosit"')
+    })
+
+    it('rejects an explicit level when the document has no BT-24 at all', async () => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace(/<ram:GuidelineSpecifiedDocumentContextParameter>[\s\S]*?<\/ram:GuidelineSpecifiedDocumentContextParameter>/, '')
+      await expect(generate({ pdf: await sourcePdf(), xml, level: 'en16931' })).rejects.toThrow('No ID found in the document')
+    })
+
+    it.each([
+      ['basic', 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic'],
+      ['extended', 'urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended'],
+    ])('accepts the explicit level %j for BT-24 %s', async (level, id) => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', id)
+      const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml, level }))
+      expect(readXmp(output).conformanceLevel).toEqual([level.toUpperCase()])
+    })
+
+    it('still reports an unknown flavor as such, whatever the level', async () => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      await expect(generate({ pdf: await sourcePdf(), xml, flavor: 'foo', level: 'x' })).rejects.toThrow('Unknown schema flavor: "foo"')
     })
   })
 

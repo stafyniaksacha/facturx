@@ -38,7 +38,7 @@ export default defineCommand({
     },
     level: {
       type: 'string',
-      description: 'Schema level, autodetect by default; must match the profile the XML declares (orderx: basic, extended, comfort) (facturx: basic, basicwl, en16931, extended, minimum)',
+      description: 'Schema level, autodetect by default; when given, it is checked against the profile the XML declares (orderx: basic, extended, comfort) (facturx: basic, basicwl, en16931, extended, minimum)',
       alias: 'l',
     },
     language: {

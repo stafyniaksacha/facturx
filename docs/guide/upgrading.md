@@ -169,9 +169,11 @@ They used to give the same empty conformance level.
 
 `generate({ level })` now throws `level "<level>" does not match the profile declared by the document
 ("<declared>")` before reading the PDF when `level` differs from the profile of the XML's guideline
-ID (BT-24). 0.6.1 wrote the `level` you passed as `fx:ConformanceLevel` whatever the XML declared, so
-the PDF metadata could contradict the embedded invoice (BR-HYBRID-15). An explicit `level` on a
-document whose BT-24 names no known level now throws `Unknown level`, as auto-detection already did.
+ID (BT-24). For Factur-X, 0.6.1 wrote the `level` you passed as `fx:ConformanceLevel` whatever the XML
+declared, so the PDF metadata could contradict the embedded invoice (BR-HYBRID-15); for Order-X it
+wrote an empty level either way (see the Order-X entry). An explicit `level` on a document whose BT-24
+names no known level now throws `Unknown level`, and on one without BT-24 `No ID found in the
+document`, as auto-detection already did.
 
 Drop `level` to let it be read from the XML, or fix the XML's BT-24 if it names the wrong profile.
 
