@@ -14,6 +14,7 @@ export default defineBuildConfig({
     'src/index.ts',
     'src/cli.ts',
     'src/models.ts',
+    'src/en16931.ts',
     {
       input: 'src/lib/xsd/',
       outDir: 'dist/shared/xsd',

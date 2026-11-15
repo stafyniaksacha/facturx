@@ -6,6 +6,11 @@ attachments, delivery, payment means (IBAN/BIC), allowances/charges, payment ter
 items and product details. You only populate the fields relevant to your target
 [profile](/guide/profiles-and-flavors).
 
+::: tip Looking for business terms?
+These classes mirror the CII elements. For a syntax-neutral model keyed by EN 16931 business terms
+(`BT-*`, `BG-*`), see the [EN 16931 model](/guide/en16931-model).
+:::
+
 ## Importing
 
 The classes are exposed two ways:

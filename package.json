@@ -27,6 +27,10 @@
     "./models": {
       "types": "./dist/models.d.mts",
       "import": "./dist/models.mjs"
+    },
+    "./en16931": {
+      "types": "./dist/en16931.d.mts",
+      "import": "./dist/en16931.mjs"
     }
   },
   "main": "./dist/index.mjs",

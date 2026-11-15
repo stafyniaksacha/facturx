@@ -30,6 +30,9 @@ open entry is "known", anything else is new.
 | All vendored XSD and `_codedb.xml` are byte-identical to their source (per profile, see Spec of record); all XSLT identical after the documented `sum()` patch, which is idempotent; all `.sef.json.gz` reproducible from them; no vendored folder without a declared source | `pnpm spec:verify` |
 | All 56 official example PDFs (11–12 per profile) extract, pass XSD + Schematron at their profile (no error and no warning), and round-trip through `xmlToInvoice` → `invoiceToXml` with an identical model (this is what caught the 0.6.x `RoleCode` regression fixed in #25) | `pnpm build && pnpm vitest run tests/spec-examples.test.ts` |
 | All 24 Factur-X documents of XP Z12-012 v1.4 annex B (12 PDFs + their 12 commented CII XML, EN 16931 and EXTENDED) pass XSD + profile Schematron at the level in their name with no error and no warning, and re-serialize XSD-valid; the model round-trip is identical, including the sub-cent unit prices of UC11 and UC13 | `pnpm build && pnpm vitest run tests/annex-b-examples.test.ts` |
+| The EN 16931 model (`EN16931.Invoice`, `fromCii()` / `toCii()`) maps the official examples to CII without loss: for all 64 documents of the two corpora (34 Factur-X 1.09 PDFs at BASIC, EN 16931 and EXTENDED, and the 30 annex B Factur-X documents, 12 PDFs and 18 commented CII XML, EN 16931, EXTENDED and EXTENDED-CTC-FR; MINIMUM and BASIC WL are not EN 16931 invoices and `fromCii()` rejects them) `fromCii` then `toCii` then `invoiceToXml` passes the XSD and the profile Schematron at the document's own level with no error and no warning; for every document `dropped` is empty (none of them carries content outside the model, the Factur-X EXTENDED ones included) and the CII model read back from the written XML equals the original, also compared path by path in both directions, so no value is lost and none is added or changed on write (BT-7 / BT-8 on the first VAT entry only in F20260023, -24 and -31 is the one normalisation: `toCii()` writes them on every entry; the BT-11-0 default `Project reference` of the annex B documents reads as no project name and is written back). `dropped` is proven on F20260023 Factur-X EXTENDED with injected content (BT-X-1 test indicator, BT-X-7 line status code, BT-X-543 seller role code, BT-X-302 gross price charge, BT-X-265 sequence number on a document charge moved before the allowances): it holds exactly those 6 paths, each with a `BT-X-*` matrix row and no `EXT-FR-FE` twin (the two gross price charge paths share their XPath with BT-147 and are told apart by the `ChargeIndicator` value, so the test checks their BT-X-302 / BT-X-302-02 rows directly), and nothing else changes in either direction. Text with `&`, `<` and non-ASCII characters survives the trip | `pnpm build && pnpm vitest run tests/en16931-corpus.test.ts` |
+| Every EN 16931 id and every `EXT-FR-FE` id of Annex A (CII and UBL) in the model's scope has a model property, and every `@bt` / `@bg` / `@ext` tag names an id of the matrices or Annex A | `pnpm vitest run tests/en16931-coverage.test.ts` |
+| `toCii()` refuses what the level's XSD / Schematron or the spec would reject or silently change, naming the term and never quoting content: an *Amount* with more than 2 decimals (§7.1.5 p.35, BR-DEC; unit prices, quantities, percentages and rates stay free), more buyer (BT-46, BT-46-0) or payee (BT-60, BT-60-0) identifiers than the level carries (FX-SCH-A-000163 / -000164 / -000467), and an empty BT-25 (BR-55), BT-122 / BT-17 / BT-18 (BR-52), BT-22 / BT-127 at basic and en16931 (and with a subject code at Factur-X EXTENDED, BR-FXEXT-01 / -02; a note without text is written without `ram:Content` at the extended levels), BT-125-1 / BT-125-2 with a BT-125 (matrix `1..1`), a credit transfer without BT-84 or BT-84-0 (BR-50), or a BG-14 without BT-73 / BT-74 (BR-CO-19); a plain-object invoice gets the same named errors, an optional repeatable group left out reading as empty; `fromCii()`'s `dropped` pairs repeated elements by exact equality before position, so a writer reordering (VA / FC registrations, document types 50 / 130 / 916, allowances and charges, BT-110 / BT-111) is not reported and a lost element is blamed rather than a kept near-duplicate, in time linear in the document (5000 lines with one `BT-X` value each: about 0.6 s) | `pnpm build && pnpm vitest run tests/en16931-strict.test.ts` |
 | 1.09.2.fixFR04 behaviour: EXTENDED accepts a line VAT block without `TypeCode`/`CategoryCode` (XSD `minOccurs="0"`, release notes p.5) and the model round-trips it, EN 16931 still rejects it; detail lines, BG-23 and document allowances/charges still need both codes (`BR-FXEXT-CO-04`, `BR-47`, structural `count(ram:TypeCode)=1`); `BR-FXEXT-S-01` still accepts several S breakdowns and now catches S lines without one (1.09 FINAL's `BR-S-01` did not); two Z breakdowns no longer fire `BR-Z-01` but still fail `BR-FXEXT-Z-08b`; `BR-FXEXT-06` no longer fires on an untyped parent line; `BR-FXEXT-BR-54-1/-2` replace `BR-54`; `BR-CO-27` is `CII-SR-470` in BASIC WL / EN 16931 and gone from EXTENDED | `pnpm build && pnpm vitest run tests/fixfr04.test.ts` |
 | External XML entities are not expanded with the default libxml2-wasm parse options used by `resolveXml` / `xmlToInvoice` (no XXE) | probe in the audit (entity resolves to empty / `check()` rejects the document); keep `XML_PARSE_NOENT` / `XML_PARSE_DTDLOAD` / `XML_PARSE_XINCLUDE` off |
 | The XMP packet header uses the fixed packet id `W5M0MpCehiHzreSzNTczkc9d` of the reference packet `distribution/2. FACTUR-X_extension_schema_exemple.xmp.txt` (was CG-06), and `generate()` keeps a source PDF's permanent trailer `/ID` (ISO 32000-1 §14.4) instead of throwing (#37), while rejecting encrypted (§6.1 p.25) and signed sources and sources that already embed a document of the kind being written (§6 p.24 for invoices; one order per PDF for Order-X is by analogy, no Order-X spec is vendored). That document is detected by content, whatever its file name: any stream of a file (`/EF` `/F`, `/UF` or a deprecated key) in the EmbeddedFiles name tree or catalog `/AF` whose root element (namespace and name) is a CII invoice, or an Order-X order when an order is written, including UTF-8 and UTF-16 with a BOM and invoices hidden behind tricky prolog comments. A file whose name tree key, `/F` or `/UF` is a recognized invoice name (`factur-x.xml`, `xrechnung.xml`, ZUGFeRD names; `order-x.xml` for orders) is rejected too, whatever its content can be read as, and so is one already using the filename being written. Other XML is accepted as a supporting file (§6.4 p.30–32), including an Order-X order attached to an invoice. Reading untrusted input is bounded: each distinct stream is read once, inflated with node:zlib in growing slices (at most 64 KiB of compressed input and 2 MiB of output per attempt), 64 KiB of text is examined, and per PDF at most 256 distinct streams and 128 MiB of inflation are allowed (a failed attempt is charged as much as it could have produced); past either limit the PDF is rejected. Known misses are listed in CG-14 | `pnpm build && pnpm vitest run tests/generate.test.ts` |
@@ -93,6 +96,16 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 | CG-46 | French CTC, UBL/CII, upstream | message `[ID]` prefix vs assert `@id` in the vendored Schematrons | interop | 8 EXTENDED-CTC-FR-UBL asserts, 13 EXTENDED-CTC-FR-CII asserts and 1 BR-FR UBL assert carry a message prefix that is not their `@id`; the UBL profile Schematrons now report `@id`, the CII one still the prefix |
 | CG-47 | French CTC, spec, upstream | release notes p.8 vs `EXTENDED-CTC-FR-UBL.sch` BR-FREXT-IC-08 / -08rev | Warning | The notes make exemption reasons on document-level allowances/charges mandatory "as of July 2026", yet the fatal BR-FREXT-IC-08 passes without them and only the `rev` variant (a warning) checks them |
 | CG-48 | UBL, provenance | release notes p.9, p.11; `UBL/1xsd_UBL2.1/UBL2.1_README.md` | docs | The release says the UBL 2.1 XSD is not provided (get it from OASIS) yet vendors it; identity to OASIS os-UBL-2.1 is not verified |
+| CG-49 | spec | `fields--Factur-X_CII_D22B_EN16931.csv` / `_EXTENDED.csv` BT-11-0; `spec-main.txt` p.125 | — | The default value of BT-11-0 (project name) is written "Project Reference" in one cell and "Project reference" in the next (unresolved) |
+| CG-50 | spec, French CTC, UBL | Annex A `annex-a--Flux_2_UBL_EXT-CTC-FR.csv` BG-13 vs `UBL-SR-24` (both vendored UBL Schematrons) | interop | BG-13 delivery is `0..n` in Annex A (EXTENDED-CTC-FR UBL) and "at most once" at header level in UBL-SR-24; the model holds one |
+| CG-51 | models, spec | BG-16 (EN 16931 `0..1`) vs the Factur-X matrices and Annex A CII (`0..n`) | interop | `EN16931.PaymentInstructions` is a single group, CII allows several `SpecifiedTradeSettlementPaymentMeans`; a differing later means is reported in `dropped` |
+| CG-52 | models, spec | BG-30 line VAT: EN 16931 `1..1`, Annex A CII `1..n`, EXTENDED matrix `0..n` | interop | `EN16931.LineVat` is a single group; a later `ApplicableTradeTax` of a line is reported in `dropped` |
+| CG-53 | spec, French CTC | EXT-FR-FE-192 / BT-X-261 in the EXTENDED matrix vs Annex A | — | The matrix marks the exchange rate date (BT-X-261) EXTENDED only, Annex A puts it in EXTENDED-CTC-FR (unresolved) |
+| CG-54 | spec, French CTC | Annex A UBL BG-29, BT-129, BG-30 `1..1` vs the EXTENDED matrix `0..1` and annex B UC10–UC13 | — | Annex A makes the price, quantity and VAT of every line mandatory, yet the EXTENDED matrix does not and the annex B examples carry lines without them (unresolved) |
+| CG-55 | models, spec | EXTENDED matrix BT-X-565 (EXTENDED-CTC-FR column `X`) vs Annex A | interop | BT-X-565 (line delivery terms, trade location name) is in the EXTENDED-CTC-FR profile of the matrix but has no `EXT-FR-FE` id, so the EN 16931 model has no place for it; it is reported in `dropped` |
+| CG-56 | parser | `src/lib/parsers/facturx.ts` | data-loss | `xmlToInvoice()` reads a missing mandatory amount (BT-92 / BT-99, BT-109, BT-112, BT-115, BT-167) as `0`, so neither the CII model nor `fromCii()` can tell it from a real zero (pre-existing) |
+| CG-57 | models, spec | `fields--Business_Rules.csv` BR-FXEXT-01 / -02 (Factur-X EXTENDED Schematron) vs annex A EXTENDED-CTC-FR BT-22 / BT-127 `0..1` | interop | At Factur-X EXTENDED a note subject code needs the text or the coded text (BT-X-5 / BT-X-9), which the model does not hold: a note with a subject code and only a coded text reads into the model, and `toCii()` refuses to write it back at `extended` |
+| CG-58 | models, spec | `fields--Business_Rules.csv` BR-50 vs the vendored Schematron context (`TypeCode` 30 or 58) | interop | BR-50 reads "BT-84 shall be present if BG-16 is provided"; the Schematron checks it only under payment means TypeCode 30 / 58. A document with another TypeCode whose `PayeePartyCreditorFinancialAccount` holds only BT-85 / BT-86 reads with `fromCii()`, and `toCii()` refuses to write it back (BR-50) |
 | CG-34 | French CTC, lifecycle, upstream | Annex A `annex-a--BR-FR-CDV_pour_factures.csv`, `annex-a--Tableau_des_motifs_de_STATUTS.csv` vs `BR-FR-CDV-Schematron-CDAR` | interop | The published BR-FR-CDV Schematron cannot fail on several Annex A rules, and some of its code lists differ from Annex A |
 | CG-36 | spec | §version history p.7–8 vs the EXTENDED field matrix | — | The 1.09 version history contradicts the field matrix on several new fields (unresolved) |
 | CG-37 | parser, models | EXTENDED XSD `NoteType/Content` `minOccurs="0"` | data-loss | A note without `Content` (BT-22 / BT-127) comes back with an empty `Content` element |
@@ -552,6 +565,11 @@ paths and the code supports both, so nothing here is picked.
     totals) although the XPath is on the line; EXT-FR-FE-182 is `BT-X-ZZZ` in Annex A, BT-X-590 in the
     matrix; EXT-FR-FE-181-1 (`@currencyID`) is `1..1` in Annex A, BT-X-329-0 is `0..1` ("if present")
     in the matrix.
+- EXT-FR-FE-193 (BT-X-562, line incoterms) has the header path `ApplicableHeaderTradeAgreement/ApplicableTradeDeliveryTerms/DeliveryTypeCode`
+  in Annex A CII (row 49), while Annex A UBL (`/Invoice/cac:InvoiceLine/cac:DeliveryTerms/cbc:ID`) and the matrix
+  (`SpecifiedLineTradeAgreement/ApplicableTradeDeliveryTerms/DeliveryTypeCode`) make it the line incoterm; and
+  EXT-FR-FE-199 (the contract date, BT-X-148) carries the `/@format` XPath of its qualifier row EXT-FR-FE-199-1
+  (the matrix puts the value at `.../qdt:DateTimeString`). The model follows the matrix and Annex A UBL.
 - **Code:** unaffected: these are existing EXTENDED elements, written at their XSD position whatever
   label they carry. `tests/extended-ctc-fr-fields.test.ts` follows the matrix for EXT-FR-FE-01 and
   checks that every Annex A column-42 XPath occurs in its document.
@@ -698,6 +716,111 @@ paths and the code supports both, so nothing here is picked.
   prints nothing (identical to the release); comparing with a download of `UBL-2.1.zip` is what closes this.
 - **Close when:** the vendored `maindoc/` and `common/` are compared with the OASIS os-UBL-2.1 archive.
 
+### CG-49 — BT-11-0 default value: "Project Reference" vs "Project reference" (unresolved)
+
+- **Spec:** the Factur-X matrices give BT-11-0 (`SpecifiedProcuringProject/Name`, project name, mandatory
+  inside the project group) a usage note in two cells of the same row. The "Business Term" column says
+  `Value : "Project Reference"` (capital R), the "CIUS" column says `Use "Project reference" as default value
+  for Name.` (lower-case r). The EN 16931 appendix writes `Default = "Project reference"` and the main spec
+  table (`spec-main.txt`, PDF page 125, line 10022) has both spellings in adjacent cells of the BT-11-0 row.
+- **Inconsistency:** the two spellings differ in case only. Neither the XSD nor the Schematron checks the value.
+- **Code:** the contradiction stays open, but the library has to write something when BT-11 is set without a
+  name, and it writes the lower-case `Project reference` (the CIUS-column wording and the EN 16931 appendix's
+  `Default = "Project reference"`, `header.ts` `DEFAULT_PROJECT_NAME`); nothing checks the value, so either
+  spelling is accepted when read. A project name that is set is written as given, and `toCii()` throws when it
+  is set without BT-11, as CII has the name only inside the project reference.
+- **Evidence:** `grep -n 'BT-11-0,' spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_EN16931.csv | cut -c1-300`;
+  `sed -n 10022p spec/factur-x-1.09/text/spec-main.txt`; `sed -n 2503p spec/factur-x-1.09/text/appendix-en16931.txt`.
+
+### CG-50 — BG-13 delivery: `0..n` in Annex A UBL EXTENDED-CTC-FR, "maximum once" in UBL-SR-24 (unresolved)
+
+- **Spec:** Annex A `annex-a--Flux_2_UBL_EXT-CTC-FR.csv` gives BG-13 (`/Invoice/cac:Delivery`) the cardinality
+  `0..1` for EN 16931 and `0..n` for EXTENDED-CTC-FR ("Card UBL XML EXTENDED", column 7). Both vendored UBL
+  Schematrons, `EN16931-UBL-validation` and `EXTENDED-CTC-FR-UBL`, carry `UBL-SR-24` "Deliver to information
+  shall occur maximum once". The CII side, `ApplicableHeaderTradeDelivery`, is single.
+- **Effect:** the model keeps one delivery (`EN16931.Invoice.delivery`): the `0..n` cannot be written as a
+  UBL document that passes UBL-SR-24, and the CII side is single. A UBL reader would have to report a second
+  `cac:Delivery` in `dropped`.
+- **Evidence:** `grep -n ',BG-13,' spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv | cut -d, -f2-7`;
+  `grep -o 'UBL-SR-24[^<]\{0,60\}' src/lib/xsd/ubl/extended-ctc-fr/EXTENDED-CTC-FR-UBL.xslt src/lib/xsd/ubl/en16931/EN16931-UBL-validation.xslt`.
+- **Close when:** FNFE-MPE reconciles Annex A with the rule, or the rule is relaxed for EXTENDED-CTC-FR.
+
+### CG-51 — BG-16 payment instructions: one group in the model, several payment means in CII (model limit)
+
+- **Spec:** EN 16931 has BG-16 `0..1`. The Factur-X EXTENDED matrix row for
+  `ApplicableHeaderTradeSettlement/SpecifiedTradeSettlementPaymentMeans` has "EXT PROFILES Cardinality"
+  `0..n`, and Annex A CII agrees (EN 16931 `0..1`, EXTENDED `0..n`). The matrix repeats BT-81 / BT-82 on every
+  means.
+- **Model:** `EN16931.PaymentInstructions` is single (BG-16 `0..1`, EN 16931). BT-81, BT-82, the card and
+  the debited account come from the first payment means, every credit transfer (BG-17) is read.
+  What a later means holds beyond that is in `dropped`, positions only.
+- **Effect:** `fromCii()` reports it, so nothing is lost silently; a caller who needs several payment means keeps
+  the CII model.
+- **Evidence:** `grep -n ',BG-16,' spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_EXTENDED.csv | cut -c1-140`;
+  `pnpm vitest run tests/en16931-settlement.test.ts -t "reports differing payment means"`.
+
+### CG-52 — BG-30 line VAT: one block in the model, `1..n` in Annex A CII (model limit)
+
+- **Spec:** EN 16931 has BG-30 `1..1`; Annex A UBL EXTENDED-CTC-FR `1..1`; Annex A CII
+  (`annex-a--CII_D22B_FX_EXT-CTC-FR.csv`, `SpecifiedLineTradeSettlement/ApplicableTradeTax`) `1..n`, and the
+  EXTENDED matrix `0..n`.
+- **Model:** `EN16931.LineVat` is single, as EN 16931 and UBL are. The first block is read, a later one is in
+  `dropped` (by position). The block itself is optional at EXTENDED (see CG-54).
+- **Evidence:** `grep -n ',BG-30,' spec/afnor-xp-z12-012-1.4/text/annex-a--CII_D22B_FX_EXT-CTC-FR.csv | cut -c1-220`;
+  `grep -n ',BG-30,' spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_EXTENDED.csv | cut -c1-120`.
+
+### CG-53 — EXT-FR-FE-192 (BT-X-261, exchange rate date): EXTENDED only in the matrix, in CTC-FR in Annex A (unresolved)
+
+- **Spec:** the EXTENDED matrix row `BT-X-261` (`TaxApplicableTradeCurrencyExchange/ConversionRateDateTime`)
+  is marked `X` for EXTENDED-B2B-FR and EXTENDED, `-` for EXTENDED-CTC-FR (columns 30 to 32 of the file: EXTENDED-CTC-FR, EXTENDED-B2B-FR, EXTENDED). Annex A CII and UBL
+  list the same element as `EXT-FR-FE-192`, a field of the EXTENDED-CTC-FR profile (CG-39 already records its
+  qualifier row).
+- **Code:** the model holds it (`EN16931.VatCurrencyExchange.exchangeRateDate`, `@ext EXT-FR-FE-192`) at `extended` and
+  `extended-ctc-fr`: Annex A is the id source for the scope, and the element is valid in the plain CII XSD that
+  EXTENDED-CTC-FR uses.
+- **Evidence:** `grep -n ',BT-X-261,' spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_EXTENDED.csv | cut -c1-80`
+  and read columns 30 to 32; `grep -n 'EXT-FR-FE-192' spec/afnor-xp-z12-012-1.4/text/annex-a--CII_D22B_FX_EXT-CTC-FR.csv | cut -c1-120`.
+
+### CG-54 — Annex A makes the line price, quantity and VAT mandatory; the matrix and annex B do not (unresolved)
+
+- **Spec:** Annex A UBL EXTENDED-CTC-FR gives BG-29 (price), BT-146, BT-129 (quantity) and BG-30 `1..1`. The
+  EXTENDED matrix has "EXT PROFILES Cardinality" `0..1` for BG-29 and BT-129 and `0..n` for BG-30. In the
+  annex B Factur-X examples UC10, UC11 and UC13, the GROUP lines, and in UC12 the INFORMATION lines, carry no net
+  price, no quantity and no VAT block, and pass the profile Schematron.
+- **Model:** `EN16931.InvoiceLine.price`, `.invoicedQuantity` and `.vat` are optional and mandatory below
+  `extended` only (`toCii()` throws naming BG-29, BT-129, BG-30, BT-151, BT-161 there). A UBL writer (PR ③) will
+  need a rule for these lines: Annex A and the UBL Schematron have to be checked first.
+- **Evidence:** `grep -n 'IncludedSupplyChainTradeLineItem' "spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Sous-ligne/UC12_F202600025_SOUS-LIGNE_EXTENDED-CTC-FR_CII_Commentee.xml"`
+  (line 4 has no `NetPriceProductTradePrice` and no VAT); `grep -n ',BG-29,' spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv | cut -d, -f2-8`;
+  `pnpm vitest run tests/en16931-lines.test.ts -t "annex B UC12"`.
+
+### CG-55 — BT-X-565 is in the EXTENDED-CTC-FR column of the matrix, yet has no EXT-FR-FE id (model limit)
+
+- **Spec:** the EXTENDED matrix row `BT-X-565` (`SpecifiedLineTradeAgreement/ApplicableTradeDeliveryTerms/RelevantTradeLocation/Name`,
+  line delivery terms: trade location) is `X` for EXTENDED-CTC-FR. Annex A (CII and UBL) has no row for it, so it
+  has neither an EN 16931 nor an `EXT-FR-FE` id; CG-38 already records that its two XPath columns disagree.
+- **Model:** the scope is "every EN 16931 id and every `EXT-FR-FE` id", so BT-X-565 is not modelled and a
+  document that carries it reports it in `dropped` (also in an `extended-ctc-fr` document).
+- **Evidence:** `grep -n ',BT-X-565,' spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_EXTENDED.csv | cut -c1-90`
+  (column 30, EXTENDED-CTC-FR, is `X`); `grep -c 'BT-X-565' spec/afnor-xp-z12-012-1.4/text/annex-a--CII_D22B_FX_EXT-CTC-FR.csv` prints 0.
+  The rest of the model scope notes (BT-X-7 and the other BT-X outside annex A) are in `docs/guide/en16931-model.md`.
+
+### CG-56 — The CII parser zero-fills missing mandatory amounts (data integrity, pre-existing)
+
+- **Code:** `src/lib/parsers/facturx.ts` reads a missing `ChargeAmount` of a trade price (BT-146 / BT-148, ~363),
+  `ConversionRate` (BT-167, ~533), `TaxBasisTotalAmount` (BT-109), `GrandTotalAmount` (BT-112) and
+  `DuePayableAmount` (BT-115) (~553 to 567), `AppliedAmount` of a logistics service charge (BT-X-272, ~697)
+  and `ActualAmount` (~682, the shared `parseAllowanceCharge`: document allowances and charges BT-92 / BT-99,
+  line ones BT-136 / BT-141 and the price discount BT-147) as `0`. A document that lacks them reads exactly like one that
+  states `0`, so the CII model, and `fromCii()` on top of it, cannot report the omission; the XSD (BASIC and
+  above) and the Schematron do, when the document is checked.
+- **Effect:** `fromCii(await xmlToInvoice(xml))` on an unchecked document can return an invoice with a zero amount
+  that the source never had. The EN 16931 model inherits it; a caller who reads untrusted documents runs `check()`
+  first.
+- **Close when:** the parser keeps the amount absent (a CII model typing change: these fields would become
+  optional, a compatibility decision under AGENTS.md) or `fromCii()` is given the XML.
+- **Evidence:** `grep -n "?? new udt.AmountType({ value: 0\|?? zero()\|ConversionRate')) ?? '0'" src/lib/parsers/facturx.ts`.
+
 ## Changing this file
 
 - Add an entry when a gap is confirmed **with evidence** (a command and its output, or a failing
@@ -715,3 +838,45 @@ paths and the code supports both, so nothing here is picked.
   reader-side check (e.g. `extract()` comparing the XMP with the XML) would have to choose a severity;
   none exists today.
 - **Evidence:** `grep -n "HYBRID-15" spec/factur-x-1.09/text/fields--Business_Rules_HYBRID.csv`.
+
+### CG-57 — Note subject code without text: BR-FXEXT-01 / -02 at Factur-X EXTENDED (model limit)
+
+- **Spec:** EN 16931 makes BT-22 `1..1` in BG-1 (Factur-X BASIC and EN 16931 matrices too). The EXTENDED XSD
+  `NoteType/Content` is `minOccurs="0"` (CG-37) and annex A EXTENDED-CTC-FR gives BT-22 and BT-127 `0..1`
+  ("EXT PROFILES Cardinality"), so a note may have no text there. The Factur-X EXTENDED Schematron adds
+  BR-FXEXT-01 (BT-21 needs BT-X-5 or BT-22) and BR-FXEXT-02 (BT-X-10 / EXT-FR-FE-183 needs BT-X-9 or
+  BT-127); the EXTENDED-CTC-FR Schematron has no such rule.
+- **Model:** `InvoiceNote.note` and `LineNote.note` are optional (the wider cardinality). `toCii()` refuses a
+  note without text at `basic` and `en16931`, refuses a subject code without text at `extended`
+  (BR-FXEXT-01 / -02), refuses a note with neither text nor subject code at both extended levels (it would
+  write an empty `ram:IncludedNote`: at `extended` that avoids PEPPOL-EN16931-R008, at `extended-ctc-fr`, whose
+  Schematron has no such rule, it is a deliberate choice, stricter than that level's Schematron), and otherwise writes a note without text without
+  `ram:Content`. The coded texts
+  BT-X-5 / BT-X-9 are true `BT-X` fields outside the model (reported in `dropped`).
+- **Effect:** a Factur-X EXTENDED note holding a subject code and only a coded text reads into the model with
+  no text (the coded text in `dropped`), and `toCii()` refuses to write it back at `extended`. No official
+  example carries such a note.
+- **Close when:** the model holds BT-X-5 / BT-X-9 (out of scope today), or BR-FXEXT-01 / -02 change.
+- **Evidence:** `grep -n 'BR-FXEXT-01\|BR-FXEXT-02' spec/factur-x-1.09/text/fields--Business_Rules.csv`;
+  `grep -n ',BT-22,\|,BT-127,\|EXT-FR-FE-183' spec/afnor-xp-z12-012-1.4/text/annex-a--CII_D22B_FX_EXT-CTC-FR.csv`;
+  `pnpm build && pnpm vitest run tests/en16931-strict.test.ts -t "note"`.
+
+### CG-58 — BR-50 in `toCii()` vs the vendored Schematron's payment means context (unresolved)
+
+- **Spec:** BR-50 (`spec/factur-x-1.09/text/fields--Business_Rules.csv`): "A Payment account identifier (BT-84)
+  shall be present if Credit transfer (BG-16) information is provided in the Invoice." The matrices give
+  BT-84 `1..1` in BG-17. The vendored Schematrons (BASIC WL, BASIC, EN 16931, EXTENDED and EXTENDED-CTC-FR
+  alike) fire BR-50 only in the context
+  `//ram:SpecifiedTradeSettlementPaymentMeans[ram:TypeCode='30' or ram:TypeCode='58']/ram:PayeePartyCreditorFinancialAccount`
+  (e.g. `src/lib/xsd/facturx/en16931/FACTUR-X_EN16931.xslt` l.3372). Under any other payment means type code
+  the Schematron accepts a bank account block without BT-84; the rule text and the matrix do not.
+- **Model:** `toCii()` follows the rule text: every BG-17 needs BT-84 or BT-84-0 (`settlement.ts`), whatever
+  `paymentMeansTypeCode` is. The code is not weakened to match the Schematron.
+- **Effect:** a document with payment means TypeCode other than 30 / 58 whose
+  `PayeePartyCreditorFinancialAccount` has only BT-85 / BT-86 reads with `fromCii()`, but `toCii()` refuses to
+  write it back (BR-50). No official example does this.
+- **Status:** unresolved (spec contradiction between the rule text and the executable Schematron).
+- **Close when:** the spec text or the Schematron context change, or the controller decides to align.
+- **Evidence:** `grep -n "BR-50" spec/factur-x-1.09/text/fields--Business_Rules.csv`;
+  `grep -n "BR-50\]" -B12 src/lib/xsd/facturx/en16931/FACTUR-X_EN16931.xslt | grep fired-rule`;
+  `pnpm build && pnpm vitest run tests/en16931-strict.test.ts -t "CG-58"`.
