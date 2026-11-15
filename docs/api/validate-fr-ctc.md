@@ -24,12 +24,12 @@ function validateFrCtc(options: {
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `xml` | `string \| Buffer` | — | **Required.** The invoice XML (CII D22B). |
-| `level` | `string` | declared | `basicwl`, `en16931` or `extended`. Defaults to the profile the document declares (BT-24); when given, it must match it. |
+| `level` | `string` | declared | `basicwl`, `en16931`, `extended` or `extended-ctc-fr`. Defaults to the profile the document declares (BT-24); when given, it must match it. |
 | `flavor` | `string` | `facturx` | If given, must be `facturx`: any other value throws. |
 | `warningsAsErrors` | `boolean` | `false` | Also count rules flagged `warning`/`information` as errors. Every vendored BR-FR rule is `fatal`, so this has no effect today. |
 
 The document is checked first: it must be a CII invoice (`rsm:CrossIndustryInvoice`) declaring BASIC
-WL, EN16931 or EXTENDED (a plain-CII `EXTENDED-CTC-FR` invoice counts as `extended`), otherwise the
+WL, EN16931, EXTENDED or plain-CII `EXTENDED-CTC-FR` (for which `level: 'extended'` is also accepted), otherwise the
 call throws. The rules themselves don't check this and would pass any other document.
 
 ## Returns

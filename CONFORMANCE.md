@@ -14,6 +14,7 @@ open entry is "known", anything else is new.
   | --- | --- |
   | MINIMUM, BASIC | Factur-X 1.09 FINAL, `spec/factur-x-1.09/distribution/4. FACTUR-X_1.09_XSD_SCHEMATRON_2026-06-10/` |
   | BASIC WL, EN 16931, EXTENDED | Factur-X **1.09.2.fixFR04**, `spec/fnfe-ctc-fr-1.4.0.04/distribution/Factur-X_1.09.2.fixFR04/` (FNFE-MPE Schematrons FR CTC 1.4.0.04; release notes `text/release-notes-en.txt` p.4–5) |
+  | EXTENDED-CTC-FR (plain CII, level `extended-ctc-fr`) | UN/CEFACT CII D22B "uncoupled" XSD and FNFE-MPE `EXTENDED-CTC-FR-CII` Schematron, `spec/fnfe-ctc-fr-1.4.0.04/distribution/CII/` (release notes p.9 steps 1–2) |
 
   For the French reform, field cardinalities and examples are also checked against XP Z12-012 v1.4
   annexes A and B (`spec/afnor-xp-z12-012-1.4/`).
@@ -47,6 +48,7 @@ open entry is "known", anything else is new.
 | Info `Producer` equals XMP `pdf:Producer` (the library name and version, instead of pdf-lib's default) and XMP `pdf:Keywords` equals Info `Keywords`, escaped and UTF-8. Characters XML 1.0 cannot carry are dropped from `meta` once, before both are written, so control characters cannot make them differ. This is consistency between the two metadata stores (`AGENTS.md`), not a proven PDF/A requirement: the Factur-X spec says nothing (§6.3 p.28–29), ISO 19005-3 is not vendored, and veraPDF 1.30.4's PDF/A-3B profile has no Info↔XMP equivalence check (the mismatch passed it on 2026-11-15, `2741b28`) (was CG-04) | `pnpm build && pnpm vitest run tests/pdf-metadata.test.ts -t CG-04` |
 | `generate({ preserveXmlBytes: true })` embeds the caller's XML bytes unchanged (a `Buffer` as is, a `string` as UTF-8) and `extract()` returns the attachment's decoded stream in `bytes` (CLI `generate --preserveXmlBytes`, `extract --raw`). Over all 56 official examples, `bytes` equals the `factur-x.xml` stream read from the PDF and inflated with node:zlib (not pdf-lib's decoder), and pass-through `generate()` of those bytes onto the example stripped of its attachments embeds them byte for byte (BOM, `'` declaration, CRLF), where the default still re-serializes. The bytes are still parsed with the default libxml2 options (no `XML_PARSE_NOENT`/`DTDLOAD`/`XINCLUDE`/`HUGE`) and checked from those same bytes with `check: true`; pass-through refuses an `XmlDocument`, any DOCTYPE (internal subset, `SYSTEM`, `PUBLIC` or none, string or `Buffer`), and an XML declaration naming a version other than 1.0 or an encoding other than UTF-8, wherever the attribute sits in the declaration (consistency rules: the bytes are parsed as UTF-8 XML 1.0; the vendored Factur-X text names neither), before the PDF is read or marked as used. No vendored rule requires byte identity: §4 p.21 asks archiving transformations to "respect the integrity of content" (was CG-26, interop). The default `xml` field and default embedding are unchanged (backward compatibility); the default path still embeds a DOCTYPE or an XML 1.1 declaration (CG-31) | `pnpm build && pnpm vitest run tests/xml-bytes.test.ts` |
 | `generate()` also looks for an existing invoice (or order, for Order-X) in page-level associated files (a page's `/AF`, §6.2.1 p.25: the file specification "can be found in either the Document dictionary or the Page dictionary"), in annotation `/AF` (PDF 2.0 / PDF/A-3, not vendored: an inference) and in the `/FS` of `/FileAttachment` annotations (ISO 32000-1 §12.5.6.15, not vendored; direct or indirect annotation dictionaries), on every page including under intermediate `/Pages` nodes, with the same content and name rules as the name tree and catalog `/AF` (§6 p.24). The page tree is untrusted: it is walked iteratively without pdf-lib's traversal; each page tree node, annotation, `/AF` and `/Annots` array, file specification and file name string is read once however often it is referenced (a 1000-entry `/AF` shared by an annotation listed 65536 times took ~27 s when re-read; 4000 specifications sharing a 50000-character `/F` took ~8 s; both now run in well under 3–5 s), and a name longer than 1024 bytes is decoded from its first 1024 bytes only (a 300000-character name overflowed pdf-lib's decoder; this also applies to `extract()`); a node reached twice through `/Kids` (a cycle, or a node listed twice, as pdf-lib's `addPage()` of an existing page writes) is rejected as `Malformed page tree`, since pdf-lib's recursive page count in `save()` overflows on a cycle and is exponential on shared nodes (single `/Parent`: ISO 32000-1, not vendored); more than 65536 distinct page tree nodes or annotations, more than 1048576 `/Kids`, `/Annots` and `/AF` entries, or a page tree deeper than 256 levels (pdf-lib overflowed at ~20000) reject the PDF (`could not check it for an existing invoice`; 65536 distinct annotations are accepted). Their files count toward the existing 256-stream limit. A non-invoice attachment there and a file attachment pointing to an external file are still accepted (narrows CG-14) | `pnpm build && pnpm vitest run tests/page-attachments.test.ts` |
+| Plain-CII `EXTENDED-CTC-FR` invoices (XP Z12-012 v1.4, guideline ID `…urn.cpro.gouv.fr:1p0:extended-ctc-fr`) are detected as level `extended-ctc-fr` (flavor `facturx`) and validated by the sequence of the FNFE-MPE release notes p.9: the "uncoupled" UN/CEFACT CII D22B XSD, which "SHALL BE USED" for CII (step 1), the dedicated `EXTENDED-CTC-FR-CII` Schematron (step 2; vendored with the documented `sum()` patch, 91 calls; 327 `fatal` and 446 `warning` asserts), and BR-FR (step 3). All 6 `*_EXTENDED-CTC-FR_CII_*.xml` examples of Annex B pass all three with no error and no warning; a broken BT-112 fails `BR-FREXT-CO-15` and `BR-CO-16`; an unknown element fails the XSD. `generate()` refuses the level before reading the PDF: it is not a HybridConformance value (BR-HYBRID-07). `validateFrCtc` accepts `extended-ctc-fr` and, as before, `extended` for such a document. The dedicated Schematron does not constrain the BT-24 value. Using it resolves the practical side of CG-24 (release notes p.9 say Factur-X EXTENDED can validate the profile; its Schematron rejects the guideline ID, `FX-SCH-A-000636`): with `level: 'extended'` that rejection is unchanged and pinned by a test (was CG-24; narrows CG-18) | `pnpm spec:verify`; `pnpm build && pnpm vitest run tests/extended-ctc-fr.test.ts` |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no test or CI run; manual veraPDF
 runs are recorded in the XMP UTF-8 and Info/XMP consistency rows above and in CG-05), any Order-X
@@ -66,12 +68,11 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | CG-15 | spec, licence | FNFE CTC FR 1.4.0 release notes p.6, p.8 | — | The FNFE CTC FR 1.4.0.04 release contradicts itself on its licence and its applicability dates |
 | CG-16 | spec, provenance | FNFE CTC FR 1.4.0 release notes p.4–6, p.9, p.11 | — | BASIC WL / EN 16931 / EXTENDED validate against Factur-X 1.09.2.fixFR04 taken from the FNFE CTC FR release, not from an official Factur-X 1.09.2 distribution; MINIMUM / BASIC stay on 1.09 FINAL |
 | CG-17 | spec | 1.09 FINAL `_XSLT_*` vs `.sch` | — | The 1.09 FINAL compiled XSLTs (still used for MINIMUM and BASIC) enforce rules absent from their own `.sch` |
-| CG-18 | French CTC, profiles | Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv`; release notes p.9 | interop | `EXTENDED-CTC-FR` CII invoices: level not detected, no XSD / Schematron |
+| CG-18 | French CTC, profiles | Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv` | data-loss | `EXTENDED-CTC-FR` CII invoices are detected and validated, but the models, converter and parser don't know the `EXT-FR-FE-*` fields |
 | CG-19 | French CTC, syntax | release notes p.9-10 (`BR-FR-Flux2-Schematron-UBL`) | interop | UBL 2.1 invoices are not supported |
 | CG-20 | French CTC, lifecycle | release notes p.10 (`BR-FR-CDV-*`); Annex A `annex-a--CDV_FE_-_CDAR.csv` | interop | CDAR lifecycle status messages are not validated |
 | CG-21 | French CTC, e-reporting | Annex A `annex-a--E-REPORTING_-_Flux_10.csv` | interop | Flux 10 e-reporting is not supported (no licence in the release) |
 | CG-22 | French CTC, coverage | release notes p.8-10; Annex A `annex-a--BR-France_CTC.csv`, `annex-a--BR-France-CTC-CPRO.csv` | interop | Annex A BR-FR rules the published Schematron does not implement (incl. `BR-FR-CPRO-*`); release notes contradict each other and the XSLT on coverage |
-| CG-24 | spec, French CTC | FNFE CTC FR 1.4.0 release notes p.9 vs EXTENDED `FX-SCH-A-000636` | — | Release says Factur-X EXTENDED validates `EXTENDED-CTC-FR`; the shipped EXTENDED Schematron rejects its guideline ID (unresolved) |
 | CG-23 | French CTC, upstream | `BR-FR-Flux2-Schematron-CII.xslt` | — | SVRL `test` of 4 BR-FR asserts loses its regex quantifier (`^\d{9}$` reported as `^\d9$`) |
 | CG-27 | spec, ZUGFeRD | §6.3.2 p.29 vs BR-HYBRID-08/13, `codelists--Filename.csv` | — | Spec says ZUGFeRD 2.0 legacy XMP settings are still supported, but its filename `zugferd-invoice.xml` is not an allowed hybrid filename |
 | CG-28 | converter | XSD `xs:decimal`; §7.1.5 p.35 | Fatal (XSD) | Quantities, percentages and rates below 1e-6 are written in exponent notation |
@@ -181,7 +182,10 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   `BR-FR-*` and `EXTENDED-CTC-FR` `.sch` headers say "EUPL version 1.4.0", a version that does not
   exist (the CEN EN16931 files say EUPL 1.2); every PDF page footer says "All rights reserved";
   `Flux10/` has no licence text. The maintainer decided to ship compiled `BR-FR-Flux2` rules on the
-  basis of the Apache-2.0 statement and to ask FNFE upstream for clarification.
+  basis of the Apache-2.0 statement and to ask FNFE upstream for clarification. Tier 3 (CG-18) ships
+  the compiled `EXTENDED-CTC-FR-CII` Schematron of the same release on the same basis (its `.sch`
+  header carries the same "EUPL version 1.4.0" line); that extension is up to the maintainer to
+  confirm. The uncoupled UN/CEFACT CII D22B XSDs it ships carry no licence header.
 - **Dates:** both release notes (p.6) say sending with the FATAL version starts September 1, 2026; the
   headers of the FATAL `BR-FR-*` and `EXTENDED-CTC-FR` `.sch` files say October 1, 2026. The reception
   deadline (no later than October 1) agrees. The PDFs describe 1.4.0 (2026-06-30), the files are fix 04
@@ -294,21 +298,18 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   `diff <(grep -oE '\[(BR|CII|FX)[A-Za-z0-9_-]*\]' "spec/factur-x-1.09/distribution/4. FACTUR-X_1.09_XSD_SCHEMATRON_2026-06-10/0. Factur-X_1.09_MINIMUM/Factur-X_1.09_MINIMUM.sch" | sort -u) <(grep -oE '\[(BR|CII|FX)[A-Za-z0-9_-]*\]' src/lib/xsd/facturx/minimum/FACTUR-X_MINIMUM.xslt | sort -u)`
   (the same with `2. Factur-X_1.09_BASIC` / `basic/FACTUR-X_BASIC.xslt`; for BASIC WL and EN 16931
   use the 1.09 `_XSLT_*` files in `spec/factur-x-1.09/`).
-### CG-18 — `EXTENDED-CTC-FR` CII profile
+### CG-18 — `EXTENDED-CTC-FR` CII profile: French extension fields
 
 - **Spec:** XP Z12-012 v1.4 defines an `EXTENDED-CTC-FR` profile for plain CII (guideline ID
   `urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr`), with French extension
-  fields `EXT-FR-FE-*` (Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv`) and its own Schematron
-  (`spec/fnfe-ctc-fr-1.4.0.04/distribution/CII/EXTENDED-CTC-FR/`). Release notes p.9 say the
-  Factur-X EXTENDED components can validate it, being a superset; the vendored EXTENDED Schematron
-  disagrees (CG-24).
-- **Code:** `getLevel` (`src/lib/xml.ts`) throws `Unknown level: "1p0"` on that guideline ID, so
-  `check()` without an explicit level can't run on it; with `level: 'extended'` it runs, XSD passes
-  and the Factur-X EXTENDED Schematron fails (CG-24). Models, converter and parser don't know the
-  `EXT-FR-FE-*` fields. `validateFrCtc({ level: 'extended' })` does run BR-FR on it.
-- **Evidence:** the 6 `*_EXTENDED-CTC-FR_CII_*.xml` files of Annex B, e.g.
-  `node bin/facturx.mjs check "spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/F202500001/_EXTENDED-CTC-FR/F202500001_INV_20250201_EXTENDED-CTC-FR_CII_Commentee.xml"`
-  prints `Unknown level: "1p0"`. Annex B has CII examples to test a fix against.
+  fields `EXT-FR-FE-*` (Annex A `annex-a--CII_D22B_FX_EXT-CTC-FR.csv`).
+- **Done (Tier 3):** level `extended-ctc-fr` is detected and validated with the "uncoupled" CII D22B
+  XSD and the dedicated `CII/EXTENDED-CTC-FR` Schematron, plus BR-FR; `generate()` refuses it (see
+  Verified).
+- **Still open:** models, converter and parser don't know the `EXT-FR-FE-*` fields, so
+  `xmlToInvoice()` drops them and `invoiceToXml()` can't write them. That is the next PR.
+- **Evidence:** `grep -c 'EXT-FR-FE' spec/afnor-xp-z12-012-1.4/text/annex-a--CII_D22B_FX_EXT-CTC-FR.csv`
+  against `grep -rn 'EXT-FR-FE' src/lib/models` (no match).
 
 ### CG-19 — UBL syntax
 
@@ -367,21 +368,6 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   `test` `matches(normalize-space(.), '^\d9$')`.
 - **Not fixed locally:** vendored assets are not edited by hand. To report upstream (the skeleton should
   escape braces as `{{`/`}}`).
-
-### CG-24 — Release notes vs EXTENDED Schematron on `EXTENDED-CTC-FR` (unresolved)
-
-- **Spec says (1):** FNFE CTC FR 1.4.0 release notes p.9 (`spec/fnfe-ctc-fr-1.4.0.04/text/release-notes-en.txt`):
-  the Factur-X EXTENDED profile, being broader than EXTENDED-CTC-FR, "can be used for the CII's
-  EXTENDED-CTC-FR profile".
-- **Spec says (2):** the same release's Factur-X 1.09.2.fixFR04 EXTENDED Schematron checks BT-24 against
-  code list 1 of `FACTUR-X_EXTENDED_codedb.xml` (assert `FX-SCH-A-000636`), which only allows
-  `…urn:factur-x.eu:1p0:extended` and `…urn:zugferd.de:2p0:extended`, not
-  `…urn.cpro.gouv.fr:1p0:extended-ctc-fr`. Factur-X 1.09 FINAL had the same rule and list.
-- **Code:** follows the vendored Schematron (never edited); `validateFrCtc` maps EXTENDED-CTC-FR to
-  `extended` for BR-FR only, which doesn't read the profile.
-- **Evidence:** `find spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures -name '*_EXTENDED-CTC-FR_CII_*.xml' -exec node bin/facturx.mjs check --level extended --schematron {} \;`
-  → each of the 6 examples fails only `Value of 'ram:ID' is not allowed.` (XSD passes).
-- **Close when:** FNFE clarifies, or the dedicated `CII/EXTENDED-CTC-FR` Schematron is supported (CG-18).
 
 ### CG-27 — ZUGFeRD 2.0 legacy settings vs the hybrid filename code list (unresolved)
 

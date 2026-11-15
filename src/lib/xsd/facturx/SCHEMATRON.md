@@ -9,6 +9,7 @@ FNFE-MPE-supplied 1.09.2.fixFR04 assets (not an official Factur-X distribution) 
 | --- | --- | --- |
 | `minimum`, `basic` | Factur-X **1.09 / ZUGFeRD 2.5 FINAL (2026-06-10)** | `spec/factur-x-1.09/distribution/4. FACTUR-X_1.09_XSD_SCHEMATRON_2026-06-10/<n>. Factur-X_1.09_<LEVEL>/` (XSLT in `_XSLT_<LEVEL>/`) |
 | `basicwl`, `en16931`, `extended` | Factur-X **1.09.2.fixFR04**, FNFE-MPE-supplied, from "Schematrons FR CTC" 1.4.0.04 | `spec/fnfe-ctc-fr-1.4.0.04/distribution/Factur-X_1.09.2.fixFR04/<LEVEL>/` (XSD in `1xsd/`, XSLT in `2xslt/`) |
+| `extended-ctc-fr` | Plain CII, French **EXTENDED-CTC-FR** profile, from "Schematrons FR CTC" 1.4.0.04: the "uncoupled" UN/CEFACT CII D22B XSD (release notes p.9 step 1) and FNFE-MPE's `EXTENDED-CTC-FR-CII` Schematron (step 2). No codedb: the transform loads none. Shipped on the same licence basis as BR-FR (`CONFORMANCE.md` CG-15) | XSD in `spec/fnfe-ctc-fr-1.4.0.04/distribution/CII/1xsd-CII_D22B_uncoupled/`, XSLT in `…/CII/EXTENDED-CTC-FR/2xslt/` |
 
 FNFE-MPE only ships 1.09.2.fixFR04 for the three profiles in scope of the French reform (release
 notes p.9, p.11), so MINIMUM and BASIC stay on 1.09 FINAL. Files keep their upstream names and line

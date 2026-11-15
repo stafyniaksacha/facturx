@@ -87,6 +87,9 @@ export const FACTURX_SCHEMATRON: Map<string, SchematronConfig> = new Map([
   ['basic', { sef: `${dir('basic')}/FACTUR-X_BASIC.sef.json.gz`, codedb: `${dir('basic')}/FACTUR-X_BASIC_codedb.xml`, codedbName: 'FACTUR-X_BASIC_codedb.xml' }],
   ['en16931', { sef: `${dir('en16931')}/FACTUR-X_EN16931.sef.json.gz`, codedb: `${dir('en16931')}/FACTUR-X_EN16931_codedb.xml`, codedbName: 'FACTUR-X_EN16931_codedb.xml' }],
   ['extended', { sef: `${dir('extended')}/FACTUR-X_EXTENDED.sef.json.gz`, codedb: `${dir('extended')}/FACTUR-X_EXTENDED_codedb.xml`, codedbName: 'FACTUR-X_EXTENDED_codedb.xml' }],
+  // FNFE-MPE's dedicated EXTENDED-CTC-FR Schematron for plain CII (release notes p.9, step 2). It
+  // loads no code list database. Rule ids are in a `[ID]` message prefix, as in Factur-X (CG-18, validation part).
+  ['extended-ctc-fr', { sef: `${dir('extended-ctc-fr')}/EXTENDED-CTC-FR-CII.sef.json.gz` }],
 ])
 
 // Per-process cache of prepared stylesheet locations (decompressed SEF + codedb), keyed by SEF path.

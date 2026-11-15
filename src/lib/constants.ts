@@ -9,11 +9,16 @@ export type FACTURX_SCHEMA_TYPE = keyof typeof FACTURX_SCHEMA
 // 1.09.2.fixFR04 as shipped by FNFE-MPE "Schematrons FR CTC 1.4.0.04", which only covers
 // the profiles in scope of the French reform (CONFORMANCE.md CG-16).
 export const FACTURX_SCHEMA = {
-  basic: './xsd/facturx/basic/Factur-X_1.09_BASIC.xsd',
-  basicwl: './xsd/facturx/basicwl/Factur-X_BASICWL.xsd',
-  en16931: './xsd/facturx/en16931/Factur-X_EN16931.xsd',
-  extended: './xsd/facturx/extended/Factur-X_EXTENDED.xsd',
-  minimum: './xsd/facturx/minimum/Factur-X_1.09_MINIMUM.xsd',
+  'basic': './xsd/facturx/basic/Factur-X_1.09_BASIC.xsd',
+  'basicwl': './xsd/facturx/basicwl/Factur-X_BASICWL.xsd',
+  'en16931': './xsd/facturx/en16931/Factur-X_EN16931.xsd',
+  'extended': './xsd/facturx/extended/Factur-X_EXTENDED.xsd',
+  // Plain CII D22B in the French EXTENDED-CTC-FR profile (XP Z12-012 v1.4, guideline ID
+  // `…urn.cpro.gouv.fr:1p0:extended-ctc-fr`): the "uncoupled" UN/CEFACT D22B XSD, which the FNFE-MPE
+  // release says shall be used for CII (release notes p.9, step 1). Not a Factur-X hybrid profile:
+  // it has no fx:ConformanceLevel and generate() refuses it (CG-18, validation part).
+  'extended-ctc-fr': './xsd/facturx/extended-ctc-fr/CrossIndustryInvoice_100pD22B.xsd',
+  'minimum': './xsd/facturx/minimum/Factur-X_1.09_MINIMUM.xsd',
 } as const
 export const FACTURX_CONFORMANCE_LEVEL = {
   basic: 'BASIC',

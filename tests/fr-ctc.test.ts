@@ -168,9 +168,9 @@ describe('check({ frCtc })', () => {
 // sequence of the release notes p.9: XSD, profile Schematron, then BR-FR.
 describe('xP Z12-012 Annex B examples', () => {
   const factureX = listFiles(ANNEX_B, n => n.endsWith('.pdf') || /_FX_CII_.*\.xml$/.test(n))
-  // Plain CII in the EXTENDED-CTC-FR profile: no Factur-X level to detect, and this package has no
-  // EXTENDED-CTC-FR XSD/Schematron (CONFORMANCE.md CG-18). BR-FR applies to it the same way (p.9-10),
-  // so check that step alone.
+  // Plain CII in the EXTENDED-CTC-FR profile: BR-FR applies to it the same way (p.9-10). This checks
+  // that step alone with the pre-CG-18 spelling `level: 'extended'`; the full sequence at level
+  // `extended-ctc-fr` is in tests/extended-ctc-fr.test.ts.
   const ctcFr = listFiles(ANNEX_B, n => /_EXTENDED-CTC-FR_CII_.*\.xml$/.test(n))
 
   it('finds the corpus', () => {
