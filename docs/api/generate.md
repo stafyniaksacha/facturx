@@ -69,8 +69,8 @@ interface PdfMetadata {
   `Buffer` as is), so a hash or signature taken over the issued XML still matches the embedded
   copy. The XML is still parsed, and validated with `check: true`, from those same bytes. It throws
   for an `XmlDocument` (it has no original bytes), for XML with a DOCTYPE (`preserveXmlBytes refuses
-  XML with a DOCTYPE`), and for an XML declaration naming an encoding other than UTF-8. CLI:
-  `--preserveXmlBytes`.
+  XML with a DOCTYPE`), and for an XML declaration naming a version other than 1.0 or an encoding
+  other than UTF-8. CLI: `--preserveXmlBytes`.
 - When `meta` is omitted, the title/author/subject are derived from the invoice XML (the subject
   carries the issue date, BT-2) and the Info, XMP and embedded-file dates are the generation time,
   in UTC. A `meta.date` you pass is used for all of them instead.

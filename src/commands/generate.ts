@@ -51,7 +51,7 @@ export default defineCommand({
     },
     preserveXmlBytes: {
       type: 'boolean',
-      description: 'Embed the XML file byte for byte instead of re-serializing it (UTF-8, no DOCTYPE)',
+      description: 'Embed the XML file byte for byte instead of re-serializing it (XML 1.0, UTF-8, no DOCTYPE)',
       default: false,
     },
   },

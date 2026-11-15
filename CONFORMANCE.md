@@ -45,7 +45,7 @@ open entry is "known", anything else is new.
 | `extract()` reads an EmbeddedFiles name tree with one or two `/Kids` levels (§6.2.2 p.27, §6.4 p.31), in tree order, ignoring `/Limits`. The tree is untrusted: past two `/Kids` levels or 4096 nodes it throws `Unsupported EmbeddedFiles name tree`, and a cycle, a shared kid, a node with both `/Kids` and `/Names` or a non-dictionary kid throw `Malformed EmbeddedFiles name tree` (ISO 32000-1 §7.9.6 Table 36). Decoding the entries is not bounded (CG-29) (reader side of CG-13) | `pnpm build && pnpm vitest run tests/name-tree.test.ts` |
 | Without `meta`, the Info `CreationDate`/`ModDate`, the embedded file's `Params` `CreationDate`/`ModDate` (§6.2 p.25) and the XMP `CreateDate`/`ModifyDate`/`MetadataDate` are the generation time, written in UTC, and identical under `TZ=UTC`, `Europe/Paris` and `Pacific/Kiritimati`; the title and subject keep BT-2 as a calendar date. A `meta.date` the caller passes is used unchanged. No vendored rule defines these dates; the choice follows the reference packet's generation timestamp and is an inference (was CG-25) | `pnpm build && pnpm vitest run tests/pdf-metadata.test.ts -t CG-25` |
 | Info `Producer` equals XMP `pdf:Producer` (the library name and version, instead of pdf-lib's default) and XMP `pdf:Keywords` equals Info `Keywords`, escaped and UTF-8. Characters XML 1.0 cannot carry are dropped from `meta` once, before both are written, so control characters cannot make them differ. This is consistency between the two metadata stores (`AGENTS.md`), not a proven PDF/A requirement: the Factur-X spec says nothing (§6.3 p.28–29), ISO 19005-3 is not vendored, and veraPDF 1.30.4's PDF/A-3B profile has no Info↔XMP equivalence check (the mismatch passed it on 2026-11-15, `2741b28`) (was CG-04) | `pnpm build && pnpm vitest run tests/pdf-metadata.test.ts -t CG-04` |
-| `generate({ preserveXmlBytes: true })` embeds the caller's XML bytes unchanged (a `Buffer` as is, a `string` as UTF-8) and `extract()` returns the attachment's decoded stream in `bytes` (CLI `generate --preserveXmlBytes`, `extract --raw`). Over all 56 official examples, `bytes` equals the `factur-x.xml` stream read independently with pdf-lib, and pass-through `generate()` of those bytes onto the example stripped of its attachments embeds them byte for byte (BOM, `'` declaration, CRLF), where the default still re-serializes. The bytes are still parsed with the default libxml2 options (no `XML_PARSE_NOENT`/`DTDLOAD`/`XINCLUDE`/`HUGE`) and checked from those same bytes with `check: true`; pass-through refuses an `XmlDocument`, any DOCTYPE (internal subset, `SYSTEM`, `PUBLIC` or none, string or `Buffer`) and an XML declaration naming an encoding other than UTF-8 (a consistency rule: the bytes are parsed as UTF-8; the vendored Factur-X text names no encoding), before the PDF is read or marked as used. No vendored rule requires byte identity: §4 p.21 asks archiving transformations to "respect the integrity of content" (was CG-26, interop). The default `xml` field and default embedding are unchanged (backward compatibility) | `pnpm build && pnpm vitest run tests/xml-bytes.test.ts` |
+| `generate({ preserveXmlBytes: true })` embeds the caller's XML bytes unchanged (a `Buffer` as is, a `string` as UTF-8) and `extract()` returns the attachment's decoded stream in `bytes` (CLI `generate --preserveXmlBytes`, `extract --raw`). Over all 56 official examples, `bytes` equals the `factur-x.xml` stream read from the PDF and inflated with node:zlib (not pdf-lib's decoder), and pass-through `generate()` of those bytes onto the example stripped of its attachments embeds them byte for byte (BOM, `'` declaration, CRLF), where the default still re-serializes. The bytes are still parsed with the default libxml2 options (no `XML_PARSE_NOENT`/`DTDLOAD`/`XINCLUDE`/`HUGE`) and checked from those same bytes with `check: true`; pass-through refuses an `XmlDocument`, any DOCTYPE (internal subset, `SYSTEM`, `PUBLIC` or none, string or `Buffer`), and an XML declaration naming a version other than 1.0 or an encoding other than UTF-8, wherever the attribute sits in the declaration (consistency rules: the bytes are parsed as UTF-8 XML 1.0; the vendored Factur-X text names neither), before the PDF is read or marked as used. No vendored rule requires byte identity: §4 p.21 asks archiving transformations to "respect the integrity of content" (was CG-26, interop). The default `xml` field and default embedding are unchanged (backward compatibility); the default path still embeds a DOCTYPE or an XML 1.1 declaration (CG-31) | `pnpm build && pnpm vitest run tests/xml-bytes.test.ts` |
 
 Not verified anywhere yet: PDF/A-3 validity of `generate()` output (no test or CI run; manual veraPDF
 runs are recorded in the XMP UTF-8 and Info/XMP consistency rows above and in CG-05), any Order-X
@@ -76,6 +76,7 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
 | CG-28 | converter | XSD `xs:decimal`; §7.1.5 p.35 | Fatal (XSD) | Quantities, percentages and rates below 1e-6 are written in exponent notation |
 | CG-29 | extraction, security | — | interop | `extract()` decodes every embedded file, with no budget, before matching the file name |
 | CG-30 | XMP | BR-HYBRID-07 | Fatal | A `level` option outside the lower-case keys (`BASIC WL`, `BASICWL`, `MINIMUM`) writes an empty `fx:ConformanceLevel` |
+| CG-31 | embedding, security | AGENTS.md Security | interop | Default `generate()` re-serializes but keeps a DOCTYPE (incl. `SYSTEM`/`PUBLIC` ids) and an XML 1.1 declaration in the embedded invoice |
 
 ### CG-05 — `generate()` does not produce PDF/A-3
 
@@ -431,3 +432,20 @@ BT-193, BT-215, BT-216, BT-X-591; §version history p.7) against the models.
   `'MINIMUM'`) → `<fx:ConformanceLevel></fx:ConformanceLevel>`; `'minimum'` → `MINIMUM`.
 - **Fix direction:** validate `level` against the known levels of the flavor and throw on unknown
   values.
+
+### CG-31 — Default `generate()` keeps a DOCTYPE and an XML 1.1 declaration
+
+- **Rule:** no vendored rule; AGENTS.md "Security" (untrusted XML, metadata injection). CII documents
+  carry no DOCTYPE, and the vendored Factur-X text names no XML version.
+- **Code:** without `preserveXmlBytes`, `generate()` embeds `xml.toString()` (`src/lib/generate.ts`).
+  libxml2's serialization keeps the DOCTYPE (internal subset, `SYSTEM` or `PUBLIC` id) and the
+  `version="1.1"` declaration of the input. The parse used the safe default options, so nothing was
+  loaded or expanded here, but every later reader of the PDF gets the DOCTYPE. An XML 1.1 reader
+  treats NEL and U+2028 as line ends where libxml2 checked the document as 1.0. `preserveXmlBytes`
+  refuses both.
+- **Evidence:** spec review probe (2026-11-15): `generate({ pdf, xml: <EN 16931 example with
+  <!DOCTYPE rsm:CrossIndustryInvoice SYSTEM "file:///etc/passwd"> after the declaration>, check: true })`
+  succeeds, and the embedded `factur-x.xml` still starts with that DOCTYPE; the same with
+  `<?xml version="1.1"?>` embeds `version="1.1"`.
+- **Fix direction:** refuse (or strip, with a documented reason) a DOCTYPE and a non-1.0 version on
+  the default path too. It changes behaviour for callers, so it needs an `upgrading.md` entry.

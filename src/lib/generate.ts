@@ -52,7 +52,8 @@ export async function generate(options: {
    * declaration, quotes and line endings are kept), so a hash or signature taken over the issued
    * XML still matches the embedded copy. A `Buffer` is embedded as is, a `string` as UTF-8. The
    * XML is still parsed (and checked when `check` is set) from those same bytes. Requires a
-   * `string` or `Buffer`, UTF-8 (no other declared encoding) and no DOCTYPE. Defaults to `false`.
+   * `string` or `Buffer`, XML 1.0, UTF-8 (no other declared encoding) and no DOCTYPE. Defaults to
+   * `false`.
    */
   preserveXmlBytes?: boolean
 }): Promise<Uint8Array> {
@@ -188,29 +189,52 @@ export async function generate(options: {
   }
 }
 
-// The encoding pseudo-attribute of an XML declaration, which can only open the document (after an
-// optional BOM).
-const XML_DECLARATION_ENCODING = /^\uFEFF?<\?xml\s[^?]*?\bencoding\s*=\s*(["'])([^"']*)\1/
+/**
+ * The XML declaration of the input, from `<?xml` to its closing `?>`, or undefined when there is
+ * none. A declaration can only open the document (after an optional BOM), and its closing `?>` is
+ * searched for without a length limit: attribute values cannot contain `?>`, and whitespace between
+ * the pseudo-attributes is unbounded.
+ */
+function xmlDeclaration(input: string | Buffer): string | undefined {
+  if (typeof input === 'string') {
+    const text = input.startsWith('\uFEFF') ? input.slice(1) : input
+    if (!/^<\?xml\s/.test(text))
+      return undefined
+    const end = text.indexOf('?>')
+    return end < 0 ? undefined : text.slice(0, end + 2)
+  }
+  const start = input[0] === 0xEF && input[1] === 0xBB && input[2] === 0xBF ? 3 : 0
+  const end = input.indexOf('?>', start, 'latin1')
+  const text = new TextDecoder().decode(input.subarray(start, end < 0 ? start : end + 2))
+  return /^<\?xml\s/.test(text) ? text : undefined
+}
 
 /**
- * The bytes to embed for `preserveXmlBytes` (CG-26): exactly the input, which `xml` was parsed
- * from. Unparsed bytes carry everything libxml2 would otherwise normalize away, so two things are
- * refused:
- * - a DOCTYPE (internal subset, SYSTEM or PUBLIC id): its entities and external references would
- *   reach every later reader of the invoice (AGENTS.md "Security"). The parse itself used the
+ * The bytes to embed for `preserveXmlBytes` (was CG-26): exactly the input, which `xml` was parsed
+ * from. Unparsed bytes carry everything libxml2 would otherwise normalize away, so these are refused:
+ * - a DOCTYPE (internal subset, SYSTEM or PUBLIC id, or bare): its entities and external references
+ *   would reach every later reader of the invoice (AGENTS.md "Security"). The parse itself used the
  *   default options, which neither load the DTD nor substitute entities. CII documents have none;
- * - an encoding other than UTF-8: the input is decoded as UTF-8 here (a string is encoded as
- *   UTF-8), so a different declaration would make other readers see different text than the one
- *   that was checked. This is a consistency rule; the vendored Factur-X text does not name an
- *   encoding.
+ * - an encoding other than UTF-8 in the XML declaration: the input is decoded as UTF-8 here (a
+ *   string is encoded as UTF-8), so a different declaration would make other readers see different
+ *   text than the one that was checked. A consistency rule; the vendored Factur-X text names no
+ *   encoding;
+ * - an XML version other than 1.0: libxml2 parsed it with XML 1.0 rules, while an XML 1.1 reader
+ *   would treat NEL and U+2028 as line ends.
  */
 function passThroughBytes(input: string | Buffer, xml: XmlDocument): Uint8Array {
   if (xml.dtd !== null)
-    throw new Error('preserveXmlBytes refuses XML with a DOCTYPE: remove it, or let generate() re-serialize the XML')
-  const head = typeof input === 'string' ? input.slice(0, 1024) : new TextDecoder().decode(input.subarray(0, 1024))
-  const encoding = XML_DECLARATION_ENCODING.exec(head)?.[2]
-  if (encoding !== undefined && !/^utf-?8$/i.test(encoding))
-    throw new Error(`preserveXmlBytes needs UTF-8 XML, but the XML declaration says encoding="${encoding.slice(0, 40)}"`)
+    throw new Error('preserveXmlBytes refuses XML with a DOCTYPE: remove the DOCTYPE')
+  const declaration = xmlDeclaration(input)
+  if (declaration !== undefined) {
+    const attr = (name: string): string | undefined => new RegExp(`\\s${name}\\s*=\\s*(["'])([^"']*)\\1`).exec(declaration)?.[2]
+    const version = attr('version')
+    if (version !== '1.0')
+      throw new Error(`preserveXmlBytes needs XML 1.0, but the XML declaration says version="${(version ?? '').slice(0, 40)}"`)
+    const encoding = attr('encoding')
+    if (encoding !== undefined && !/^utf-?8$/i.test(encoding))
+      throw new Error(`preserveXmlBytes needs UTF-8 XML, but the XML declaration says encoding="${encoding.slice(0, 40)}"`)
+  }
   return typeof input === 'string' ? new TextEncoder().encode(input) : new Uint8Array(input)
 }
 

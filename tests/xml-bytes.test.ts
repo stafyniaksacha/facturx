@@ -2,14 +2,16 @@ import { Buffer } from 'node:buffer'
 import { readdirSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
+import { inflateSync } from 'node:zlib'
 import { extract, generate } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
-import { decodePDFRawStream, PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRawStream, PDFString } from 'pdf-lib'
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRawStream, PDFString } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
-// CG-26: generate({ preserveXmlBytes: true }) embeds the caller's bytes unchanged and extract()
+// Was CG-26: generate({ preserveXmlBytes: true }) embeds the caller's bytes unchanged and extract()
 // returns the attachment's bytes in `bytes`. The expected bytes are read here straight from the
-// PDF with pdf-lib, never through extract(), so the library is not compared with itself.
+// PDF and inflated with node:zlib, never through extract() or pdf-lib's decoder, so the library is
+// not compared with itself.
 const EXAMPLES_DIR = resolve(import.meta.dirname, '../spec/factur-x-1.09/distribution/5. FACTUR-X 1.09 - Examples')
 
 const examples = readdirSync(EXAMPLES_DIR, { withFileTypes: true, recursive: true })
@@ -18,7 +20,7 @@ const examples = readdirSync(EXAMPLES_DIR, { withFileTypes: true, recursive: tru
   .sort()
   .map(file => ({ file, name: relative(EXAMPLES_DIR, file) }))
 
-/** The decoded stream of the flat EmbeddedFiles entry named `name`. */
+/** The decoded stream of the flat EmbeddedFiles entry named `name` (unfiltered or a single /FlateDecode). */
 function embeddedBytes(pdf: PDFDocument, name: string): Uint8Array {
   const entries = pdf.catalog.lookup(PDFName.of('Names'), PDFDict)
     .lookup(PDFName.of('EmbeddedFiles'), PDFDict)
@@ -29,7 +31,13 @@ function embeddedBytes(pdf: PDFDocument, name: string): Uint8Array {
     const stream = entries.lookup(idx + 1, PDFDict).lookup(PDFName.of('EF'), PDFDict).lookup(PDFName.of('F'))
     if (!(stream instanceof PDFRawStream))
       throw new Error(`${name} has no raw stream`)
-    return decodePDFRawStream(stream).decode()
+    const filter = stream.dict.lookup(PDFName.of('Filter'))
+    if (filter === undefined)
+      return stream.getContents()
+    const single = filter instanceof PDFArray && filter.size() === 1 ? filter.lookup(0) : filter
+    if (single !== PDFName.of('FlateDecode') || stream.dict.has(PDFName.of('DecodeParms')))
+      throw new Error(`${name}: unexpected filter ${filter}`)
+    return new Uint8Array(inflateSync(stream.getContents()))
   }
   throw new Error(`No embedded file named ${name}`)
 }
@@ -114,6 +122,25 @@ describe('byte-exact XML pass-through (CG-26)', () => {
       expect(xml).toContain(`encoding="${encoding}"`)
       const pdf = await plainPdf(await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.pdf')))
       await expect(generate({ pdf, xml, preserveXmlBytes: true })).rejects.toThrow(`preserveXmlBytes needs UTF-8 XML, but the XML declaration says encoding="${encoding}"`)
+    })
+
+    it.each(['ISO-8859-1', 'UTF-16'])('a declared encoding %s in a Buffer', async (encoding) => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace(/^<\?xml[^?]*\?>/, `\uFEFF<?xml version="1.0" encoding="${encoding}"?>`)
+      const pdf = await plainPdf(await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.pdf')))
+      await expect(generate({ pdf, xml: Buffer.from(xml), preserveXmlBytes: true })).rejects.toThrow(`declaration says encoding="${encoding}"`)
+    })
+
+    // The declaration's whitespace is unbounded: the check must not stop at a fixed prefix.
+    it.each(['string', 'Buffer'])('a declared encoding far into a long declaration (%s)', async (kind) => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace(/^<\?xml[^?]*\?>/, `<?xml version="1.0"${' '.repeat(4096)}encoding="ISO-8859-1"?>`)
+      const pdf = await plainPdf(await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.pdf')))
+      await expect(generate({ pdf, xml: kind === 'string' ? xml : Buffer.from(xml), preserveXmlBytes: true, check: true })).rejects.toThrow('declaration says encoding="ISO-8859-1"')
+    })
+
+    it.each(['string', 'Buffer'])('an XML 1.1 declaration (%s)', async (kind) => {
+      const xml = (await readFile(SOURCE_XML, 'utf8')).replace(/^<\?xml[^?]*\?>/, '<?xml version="1.1" encoding="UTF-8"?>')
+      const pdf = await plainPdf(await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.pdf')))
+      await expect(generate({ pdf, xml: kind === 'string' ? xml : Buffer.from(xml), preserveXmlBytes: true })).rejects.toThrow('preserveXmlBytes needs XML 1.0, but the XML declaration says version="1.1"')
     })
 
     it.each(['UTF-8', 'utf-8', 'utf8'])('accepts a declared encoding %s', async (encoding) => {

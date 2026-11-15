@@ -215,7 +215,7 @@ Germany expects `Alternative` for BASIC and above. See
 pass unchanged instead of libxml2's re-serialization, and `extract()` now also returns `bytes`, the
 attachment exactly as embedded (CLI `extract --raw`). A hash or signature taken over the issued XML
 then matches what is in the PDF. The default and the `xml` field are unchanged. `preserveXmlBytes`
-needs a `string` or `Buffer`, UTF-8, with no DOCTYPE. See [`generate()`](/api/generate#behaviour).
+needs a `string` or `Buffer`, XML 1.0, UTF-8, with no DOCTYPE. See [`generate()`](/api/generate#behaviour).
 
 ### New fields on `SchematronError`
 

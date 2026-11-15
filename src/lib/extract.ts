@@ -13,7 +13,7 @@ interface ExtractResult {
   xml: string
   /**
    * The attachment's bytes exactly as embedded in the PDF, decoded from its stream filters only
-   * (CG-26). Use them to verify a hash or signature taken over the issued XML. They parsed as the
+   * (was CG-26). Use them to verify a hash or signature taken over the issued XML. They parsed as the
    * same XML as `xml`.
    */
   bytes: Uint8Array
