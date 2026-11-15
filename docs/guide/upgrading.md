@@ -187,6 +187,19 @@ Order-X `level` is now read like a Factur-X one (case, spaces and underscores ig
 Order-X message whose type code is not `220`, `230` or `231` now throws
 `Cannot generate an Order-X PDF for the message type code …` before reading the PDF.
 
+### `generate()` refuses a DOCTYPE and XML 1.1
+
+`generate()` now throws `generate() refuses XML with a DOCTYPE: remove the DOCTYPE` for an invoice
+with a DOCTYPE (an internal subset, a `SYSTEM` or `PUBLIC` id, or a bare one), and
+`generate() needs XML 1.0, but the XML declaration says version="1.1"` for an XML 1.1 declaration.
+Both are checked whether you pass a `string`, a `Buffer` or an `XmlDocument`, before the PDF is read
+or a `PDFDocument` is marked as used. 0.6.1 embedded them as libxml2 re-serialized them, so every
+later reader of the PDF got the DOCTYPE (a `SYSTEM "file:///etc/passwd"` id included), and an
+XML 1.1 reader would read line ends that were checked as XML 1.0. `preserveXmlBytes: true` already
+refused both.
+
+CII invoices carry no DOCTYPE: remove it, and declare `version="1.0"`.
+
 ## Other behaviour changes
 
 These shipped on `main` after 0.6.1 and are included in the next release.
@@ -375,6 +388,8 @@ left undefined.
       workaround. Then check the new rejection list against your source PDFs.
 - [ ] If you call `generate()` with `flavor: 'zugferd'`, use `facturx` instead.
 - [ ] If you pass `level` to `generate()`, make sure it is the profile the XML declares in BT-24 (a level of another profile, or an unknown one, now throws), or drop it.
+- [ ] If the XML you pass to `generate()` has a DOCTYPE or an XML 1.1 declaration, remove the
+      DOCTYPE and declare `version="1.0"`: both now throw.
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).
 - [ ] If you compare PDF dates with the invoice date, or snapshot `generate()` output, pass `meta.date`
       or expect the generation time.
