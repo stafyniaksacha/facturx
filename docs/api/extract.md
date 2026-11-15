@@ -42,8 +42,9 @@ function extract(options: {
 
 - Scans the PDF attachments for a recognised e-invoice filename (`factur-x.xml`, `xrechnung.xml`,
   `order-x.xml`, or a ZUGFeRD filename) and returns the first match. `xrechnung.xml` (reference
-  profile XRECHNUNG) is reported as flavor `facturx`, but `check()` does not know the
-  XRECHNUNG level yet.
+  profile XRECHNUNG) is reported as flavor `facturx`; with `check: true`, an XRechnung CIUS is
+  validated as EN 16931 (see [`check()`](/api/check#xrechnung)), not against the KoSIT rules, and an
+  XRechnung embedded as `factur-x.xml` throws `Invalid XML` (§7.7: it must be `xrechnung.xml`).
 - Reads the attachment list whether it is a flat name tree or has one or two `/Kids` levels.
   Deeper trees, trees with more than 4096 nodes and corrupt trees throw
   `Unsupported EmbeddedFiles name tree: …` or `Malformed EmbeddedFiles name tree: …`.
