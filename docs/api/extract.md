@@ -50,8 +50,7 @@ function extract(options: {
   actually contains an Order-X file.
 - Does not detect the level. `level` in the result is the option you passed (or `undefined`); call
   [`check()`](/api/check) on the extracted XML to get the detected level.
-- Throws `No attachment found` when no recognised XML is present. This includes PDFs whose
-  attachments sit in a multi-level (`/Kids`) name tree, which is not read yet.
+- Throws `No attachment found` when no recognised XML is present.
 - Throws `Malformed EmbeddedFiles name tree: …` when the PDF's attachment list is corrupt (for
   example a name without a value), instead of an internal `pdf-lib` error.
 - Validation is **off by default**; pass `check: true` to XSD-validate the extracted XML (`Invalid
