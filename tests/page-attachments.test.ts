@@ -155,6 +155,17 @@ describe('existing invoice outside the name tree and catalog /AF (CG-14)', () =>
     await expect(generate({ pdf, xml })).rejects.toThrow('The PDF has more than 1048576 page tree, annotation and /AF entries: could not check it for an existing invoice')
   }, 30000)
 
+  // CodeRabbit review: one array used as the catalog /AF and as a page's /Annots must still be read
+  // as annotations.
+  it('reads an array shared between /AF and /Annots in both roles', async () => {
+    const { pdf, xml, invoiceSpec, pageDict } = await setup()
+    const annot = pdf.context.register(pdf.context.obj({ Type: 'Annot', Subtype: 'FileAttachment', Rect: [0, 0, 10, 10], FS: invoiceSpec('shared.xml') }))
+    const shared = pdf.context.register(pdf.context.obj([annot]))
+    pdf.catalog.set(PDFName.of('AF'), shared)
+    pageDict.set(PDFName.of('Annots'), shared)
+    await expect(generate({ pdf: await save(pdf), xml })).rejects.toThrow('already has an embedded invoice (shared.xml)')
+  })
+
   // Second spec review probe: 4000 file specifications sharing one 50000-character /F and /UF took
   // ~8 s when the string was decoded once per specification.
   it('decodes a shared long file name once', async () => {

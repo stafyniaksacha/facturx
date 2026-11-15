@@ -127,12 +127,15 @@ export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileS
     if (entries > MAX_SCAN_ENTRIES)
       throw new PageScanLimitError(`more than ${MAX_SCAN_ENTRIES} page tree, annotation and /AF entries`)
   }
-  const seenArrays = new Set<PDFArray>()
+  // One visited set per role: an array used both as an /AF and as an /Annots must be read as both
+  // (each read is still charged to the shared budget).
+  const seenAf = new Set<PDFArray>()
+  const seenAnnots = new Set<PDFArray>()
   const addAf = (dict: PDFDict): void => {
     const af = dict.lookup(PDFName.of('AF'))
-    if (!(af instanceof PDFArray) || seenArrays.has(af))
+    if (!(af instanceof PDFArray) || seenAf.has(af))
       return
-    seenArrays.add(af)
+    seenAf.add(af)
     charge(af.size())
     for (let idx = 0; idx < af.size(); idx++)
       add(af.lookup(idx))
@@ -151,8 +154,8 @@ export function embeddedFileSpecs(pdfDoc: PDFDocument): { names: string[], fileS
     addAf(node)
 
     const annots = node.lookup(PDFName.of('Annots'))
-    if (annots instanceof PDFArray && !seenArrays.has(annots)) {
-      seenArrays.add(annots)
+    if (annots instanceof PDFArray && !seenAnnots.has(annots)) {
+      seenAnnots.add(annots)
       charge(annots.size())
       for (let idx = 0; idx < annots.size(); idx++) {
         const annot = annots.lookup(idx)
