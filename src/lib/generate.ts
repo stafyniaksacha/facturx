@@ -92,6 +92,9 @@ export async function generate(options: {
       // Thrown before the PDF is read or marked as used (was CG-09).
       throw new Error('Cannot generate the "zugferd" flavor: ZUGFeRD 1.0 and the legacy ZUGFeRD 2.0 hybrid (zugferd-invoice.xml) are extraction only. A ZUGFeRD 2.x invoice is a Factur-X CrossIndustryInvoice: generate it with flavor "facturx"')
     }
+    // getFlavor() now recognizes UBL, which is not a Factur-X syntax (CII D22B only): never embed it.
+    if (flavor === 'ubl' || getFlavor(xml) === 'ubl')
+      throw new Error('Cannot generate a Factur-X PDF from a UBL document: Factur-X embeds CII D22B XML (a UBL invoice cannot be attached as factur-x.xml)')
     // The root decides what the file is: an explicit flavor cannot embed an invoice as order-x.xml
     // or an order as factur-x.xml (BR-HYBRID-06/07).
     const isOrder = xml.root?.name === 'SCRDMCCBDACIOMessageStructure'

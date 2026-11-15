@@ -1,19 +1,26 @@
-import type { XmlElement } from 'libxml2-wasm'
 import type { Buffer } from 'node:buffer'
 import type { BaseInfo } from '../types'
 import type {
   DOC_TYPE_KEY,
 } from './constants'
 import { parse } from 'date-fns'
-import { XmlDocument } from 'libxml2-wasm'
+import { XmlDocument, XmlElement } from 'libxml2-wasm'
 import {
   EXTENDED_CTC_FR_GUIDELINE_ID,
   FACTURX_SCHEMA,
   ORDERX_SCHEMA,
+  UBL_CBC_NS,
+  UBL_CREDITNOTE_NS,
+  UBL_EN16931_CUSTOMIZATION_ID,
+  UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID,
+  UBL_INVOICE_NS,
 } from './constants'
 import { resolveXml } from './resolve'
 
 export function getLevel(xmlDoc: XmlDocument): string {
+  if (getFlavorOrUndefined(xmlDoc) === 'ubl')
+    return getUblLevel(xmlDoc)
+
   // Match by local name: namespace prefixes are not significant (Namespaces in XML 1.0 §3), and an
   // invoice may bind the CII/Order-X/ZUGFeRD namespaces to prefixes other than rsm:/ram:. The root
   // element was already identified by getFlavor().
@@ -76,8 +83,45 @@ export function declaresExtendedCtcFr(xml: XmlDocument): boolean {
   }
 }
 
+/**
+ * Level of a UBL 2.1 Invoice/CreditNote from its `cbc:CustomizationID` (BT-24): `en16931` for the
+ * core ID or a CIUS (`urn:cen.eu:en16931:2017#compliant#…`), `extended-ctc-fr` for exactly its
+ * XP Z12-012 Annex A ID. The error never quotes anything but the ID, which is not personal data.
+ */
+export function getUblLevel(xmlDoc: XmlDocument): 'en16931' | 'extended-ctc-fr' {
+  // Direct child of the root only: a nested cbc:CustomizationID is not BT-24.
+  let el: XmlElement | undefined
+  for (let node = xmlDoc.root?.firstChild ?? null; node; node = node.next) {
+    if (node instanceof XmlElement && node.name === 'CustomizationID' && node.namespaceUri === UBL_CBC_NS) {
+      el = node
+      break
+    }
+  }
+  if (!el)
+    throw new Error('No cbc:CustomizationID found in the UBL document: cannot determine its level, pass the `level` option')
+  // BT-24 is an xs:normalizedString: surrounding whitespace is not significant here.
+  const id = el.content.trim()
+  if (id === UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID)
+    return 'extended-ctc-fr'
+  if (id === UBL_EN16931_CUSTOMIZATION_ID || id.startsWith(`${UBL_EN16931_CUSTOMIZATION_ID}#compliant#`))
+    return 'en16931'
+  throw new Error(`Unknown UBL CustomizationID: "${id}". Expected "${UBL_EN16931_CUSTOMIZATION_ID}", a CIUS "${UBL_EN16931_CUSTOMIZATION_ID}#compliant#…" or "${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}"; pass the \`level\` option to override`)
+}
+
+function getFlavorOrUndefined(fileDoc: XmlDocument): string | undefined {
+  try {
+    return getFlavor(fileDoc)
+  }
+  catch {
+    return undefined
+  }
+}
+
 export function getFlavor(fileDoc: XmlDocument): string {
   const tag = fileDoc.root?.name
+  const ns = fileDoc.root?.namespaceUri
+  if ((tag === 'Invoice' && ns === UBL_INVOICE_NS) || (tag === 'CreditNote' && ns === UBL_CREDITNOTE_NS))
+    return 'ubl'
   switch (tag) {
     case 'SCRDMCCBDACIOMessageStructure':
       return 'orderx'
@@ -86,7 +130,7 @@ export function getFlavor(fileDoc: XmlDocument): string {
     case 'CrossIndustryDocument':
       return 'zugferd'
   }
-  throw new Error(`XML not recognized as Factur-X, Order-X or ZUGFeRD`)
+  throw new Error(`XML not recognized as Factur-X, Order-X or ZUGFeRD (or UBL 2.1 Invoice/CreditNote)`)
 }
 
 export async function extractBaseInfo(xml: string | Buffer | XmlDocument): Promise<BaseInfo> {

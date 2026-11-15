@@ -1,11 +1,12 @@
 import type { Buffer } from 'node:buffer'
+import type { UBL_ROOT } from './constants'
 import type { SchematronError, SchematronResult } from './schematron'
 import { XmlDocument, XmlValidateError, XsdValidator } from 'libxml2-wasm'
-import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
+import { EXTENDED_CTC_FR_GUIDELINE_ID, UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID } from './constants'
 import { assertFrCtcApplicable, validateFrCtc } from './fr-ctc'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
-import { declaresExtendedCtcFr, getFlavor, getLevel } from './xml'
+import { declaresExtendedCtcFr, getFlavor, getLevel, getUblLevel } from './xml'
 import { getXsd } from './xsd'
 
 // XPath dynamic errors caused by the document's values (XPath and XQuery Functions and Operators 3.1
@@ -58,6 +59,14 @@ export async function check(options: {
     // nor the dedicated Schematron (BT-24 non-empty) checks the guideline ID.
     if (options.level === 'extended-ctc-fr' && flavor === 'facturx' && !declaresExtendedCtcFr(xml))
       throw new Error(`level "extended-ctc-fr" does not match the document: its guideline ID (BT-24) must be ${EXTENDED_CTC_FR_GUIDELINE_ID}`)
+    if (flavor === 'ubl') {
+      // The root picks the XSD, so an explicit flavor cannot be applied to a non-UBL document.
+      if (getFlavor(xml) !== 'ubl')
+        throw new Error(`The XML root element "${xml.root?.name}" does not match the "ubl" flavor`)
+      // Same for an explicit `extended-ctc-fr`: both UBL levels share one XSD, which ignores the ID.
+      if (options.level === 'extended-ctc-fr' && getUblLevel(xml) !== 'extended-ctc-fr')
+        throw new Error(`level "extended-ctc-fr" does not match the document: its CustomizationID (BT-24) must be ${UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID}`)
+    }
     // Fail before any validation work when the French rules can't apply.
     if (options.frCtc)
       assertFrCtcApplicable(flavor, level)
@@ -68,7 +77,9 @@ export async function check(options: {
     throw error
   }
 
-  const xsd = await getXsd(flavor, level)
+  // UBL has one XSD per root element (Invoice, CreditNote): getFlavor() already checked the namespace.
+  const ublRoot = flavor === 'ubl' ? (xml.root?.name as UBL_ROOT | undefined) : undefined
+  const xsd = await getXsd(flavor, level, true, ublRoot)
   const validator = XsdValidator.fromDoc(xsd)
 
   let xsdValid = false

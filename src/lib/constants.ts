@@ -24,6 +24,21 @@ export const FACTURX_SCHEMA = {
 // EXTENDED-CTC-FR profile. Matched exactly, since its dedicated Schematron does not check BT-24.
 export const EXTENDED_CTC_FR_GUIDELINE_ID = 'urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr'
 
+// UBL 2.1 (OASIS) document namespaces, and the EN 16931 UBL syntax binding's CustomizationID (BT-24)
+// values: `en16931` is the core ID (CIUS IDs start with it plus `#compliant#`); EXTENDED-CTC-FR is
+// matched exactly (XP Z12-012 Annex A).
+export const UBL_INVOICE_NS = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2'
+export const UBL_CREDITNOTE_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2'
+export const UBL_CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2'
+export const UBL_EN16931_CUSTOMIZATION_ID = 'urn:cen.eu:en16931:2017'
+export const UBL_EXTENDED_CTC_FR_CUSTOMIZATION_ID = 'urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr'
+export const UBL_LEVELS = ['en16931', 'extended-ctc-fr'] as const
+export type UBL_ROOT = 'Invoice' | 'CreditNote'
+export const UBL_SCHEMA = {
+  Invoice: './xsd/ubl/maindoc/UBL-Invoice-2.1.xsd',
+  CreditNote: './xsd/ubl/maindoc/UBL-CreditNote-2.1.xsd',
+} as const
+
 export const FACTURX_CONFORMANCE_LEVEL = {
   basic: 'BASIC',
   basicwl: 'BASIC WL',
