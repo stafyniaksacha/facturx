@@ -8,7 +8,7 @@ import { PDFName } from 'pdf-lib'
 const XMP_PACKET_ID = 'W5M0MpCehiHzreSzNTczkc9d'
 
 export function setPDFA3BMetadata(
-  { date, title, subject, author, keywords, producer, creator, filename, conformanceLevel }: XmpMetadata,
+  { date, title, subject, author, keywords, producer, creator, filename, documentType = 'INVOICE', conformanceLevel }: XmpMetadata,
   pdf: PDFDocument,
 ): void {
   const metadataXML = `
@@ -63,25 +63,25 @@ export function setPDFA3BMetadata(
                       <pdfaProperty:name>DocumentFileName</pdfaProperty:name>
                       <pdfaProperty:valueType>Text</pdfaProperty:valueType>
                       <pdfaProperty:category>external</pdfaProperty:category>
-                      <pdfaProperty:description>name of the embedded XML invoice file</pdfaProperty:description>
+                      <pdfaProperty:description>The name of the embedded XML document</pdfaProperty:description>
                     </rdf:li>
                     <rdf:li rdf:parseType="Resource">
                       <pdfaProperty:name>DocumentType</pdfaProperty:name>
                       <pdfaProperty:valueType>Text</pdfaProperty:valueType>
                       <pdfaProperty:category>external</pdfaProperty:category>
-                      <pdfaProperty:description>INVOICE</pdfaProperty:description>
+                      <pdfaProperty:description>The type of the hybrid document in capital letters, e.g. INVOICE or ORDER</pdfaProperty:description>
                     </rdf:li>
                     <rdf:li rdf:parseType="Resource">
                       <pdfaProperty:name>Version</pdfaProperty:name>
                       <pdfaProperty:valueType>Text</pdfaProperty:valueType>
                       <pdfaProperty:category>external</pdfaProperty:category>
-                      <pdfaProperty:description>The actual version of the Factur-X XML schema</pdfaProperty:description>
+                      <pdfaProperty:description>The actual version of the standard applying to the embedded XML document</pdfaProperty:description>
                     </rdf:li>
                     <rdf:li rdf:parseType="Resource">
                       <pdfaProperty:name>ConformanceLevel</pdfaProperty:name>
                       <pdfaProperty:valueType>Text</pdfaProperty:valueType>
                       <pdfaProperty:category>external</pdfaProperty:category>
-                      <pdfaProperty:description>The conformance level of the embedded Factur-X data</pdfaProperty:description>
+                      <pdfaProperty:description>The conformance level of the embedded XML document</pdfaProperty:description>
                     </rdf:li>
                   </rdf:Seq>
                 </pdfaSchema:property>
@@ -90,7 +90,7 @@ export function setPDFA3BMetadata(
           </pdfaExtension:schemas>
         </rdf:Description>
         <rdf:Description xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" rdf:about="">
-          <fx:DocumentType>INVOICE</fx:DocumentType>
+          <fx:DocumentType>${xmlEscape(documentType)}</fx:DocumentType>
           <fx:DocumentFileName>${xmlEscape(filename)}</fx:DocumentFileName>
           <fx:Version>1.0</fx:Version>
           <fx:ConformanceLevel>${xmlEscape(conformanceLevel)}</fx:ConformanceLevel>

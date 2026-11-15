@@ -165,6 +165,16 @@ A Factur-X level is also read more leniently: case, surrounding spaces, inner sp
 ignored, so the spellings of the hybrid code list (`BASIC WL`, `EN 16931`, `MINIMUM`) now work.
 They used to give the same empty conformance level.
 
+### `generate()` writes Order-X hybrid metadata
+
+For Order-X, `generate()` now writes `fx:DocumentType` from the message type code (`ORDER`,
+`ORDER_CHANGE`, `ORDER_RESPONSE`) and `fx:ConformanceLevel` from the level (`BASIC`, `COMFORT`,
+`EXTENDED`). 0.6.1 wrote `INVOICE` and an empty level, which break BR-HYBRID-06/07 (Fatal). An
+Order-X `level` is now read like a Factur-X one (case, spaces and underscores ignored) and throws
+`Unknown level "<level>" for the orderx flavor: …` when it is not `basic`, `comfort` or `extended`. An
+Order-X message whose type code is not `220`, `230` or `231` now throws
+`Cannot generate an Order-X PDF for the message type code …` before reading the PDF.
+
 ## Other behaviour changes
 
 These shipped on `main` after 0.6.1 and are included in the next release.

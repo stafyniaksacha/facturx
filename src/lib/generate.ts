@@ -21,7 +21,7 @@ import {
 import pkg from '../../package.json' with { type: 'json' }
 
 import { check } from './check'
-import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
+import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_CONFORMANCE_LEVEL, ORDERX_DOCUMENT_TYPE, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
 import { decodeName, embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
@@ -34,11 +34,12 @@ import { setPDFA3BMetadata, stripXmlInvalidChars } from './xmp'
 const generated = new WeakSet<PDFDocument>()
 
 /**
- * The levels `generate()` writes a HybridConformance value for (BR-HYBRID-07), per flavor. Order-X
- * is absent until its fx:ConformanceLevel is written (CG-08), so it keeps its previous behaviour.
+ * The levels `generate()` writes a HybridConformance value for (BR-HYBRID-07), per flavor: the keys
+ * of the conformance maps it reads, so a level passes only if it has a value.
  */
 const GENERATE_LEVELS: Record<string, readonly string[]> = {
   facturx: Object.keys(FACTURX_CONFORMANCE_LEVEL),
+  orderx: Object.keys(ORDERX_CONFORMANCE_LEVEL),
 }
 
 export async function generate(options: {
@@ -93,9 +94,8 @@ export async function generate(options: {
     if ((flavor === 'orderx') !== isOrder)
       throw new Error(`The XML root element "${xml.root?.name}" does not match the "${flavor}" flavor`)
     // A blank `level` means "not given", as `''` always did.
-    // Only the flavors generate() writes a conformance level for get the lenient spelling and the
-    // check below: normalizing an Order-X level would let `BASIC` through to an empty
-    // fx:ConformanceLevel, where it used to fail the XSD lookup (Order-X metadata is CG-08).
+    // Only the flavors generate() writes a conformance level for (GENERATE_LEVELS) get the lenient
+    // spelling and the check below.
     const level = options.level?.trim()
       ? (Object.hasOwn(GENERATE_LEVELS, flavor) ? normalizeLevel(options.level) : options.level)
       : getLevel(xml)
@@ -109,6 +109,9 @@ export async function generate(options: {
     // fx:ConformanceLevel SHALL be a HybridConformance value (BR-HYBRID-07, Fatal): a level with no
     // value for this flavor used to write an empty one (was CG-30). Thrown before the PDF is read.
     assertKnownLevel(flavor, level)
+    // fx:DocumentType SHALL be a HybridDocumentType value (BR-HYBRID-06, Fatal): an order is not an
+    // INVOICE (was CG-08). Thrown before the PDF is read.
+    const documentType = flavor === 'orderx' ? orderDocumentType(xml) : 'INVOICE'
 
     if (options.check === true) {
       const result = await check({
@@ -155,6 +158,7 @@ export async function generate(options: {
       case 'orderx':
         filename = ORDERX_FILENAME
         description = 'Order-X XML file'
+        conformanceLevel = ORDERX_CONFORMANCE_LEVEL[level as keyof typeof ORDERX_CONFORMANCE_LEVEL] || ''
         break
       default:
         throw new Error(`Unknown schema flavor: "${options.flavor}"`)
@@ -203,6 +207,7 @@ export async function generate(options: {
     setPDFA3BMetadata({
       ...meta,
       filename,
+      documentType,
       conformanceLevel,
       producer: creator,
       creator,
@@ -288,9 +293,21 @@ function normalizeLevel(value: string): string {
 function assertKnownLevel(flavor: string, level: string): void {
   // Own properties only: `flavor` is caller input, and `constructor` or `toString` are inherited.
   const known = Object.hasOwn(GENERATE_LEVELS, flavor) ? GENERATE_LEVELS[flavor] : undefined
-  // A flavor without an entry (Order-X, or an unknown one reported by the switch below) is not checked.
+  // An unknown flavor has no entry: the switch on the flavor below reports it.
   if (known && !known.includes(level))
     throw new Error(`Unknown level "${level}" for the ${flavor} flavor: expected one of ${known.join(', ')}`)
+}
+
+/**
+ * `fx:DocumentType` of an Order-X message from its type code (`ExchangedDocument/TypeCode`, UNTDID
+ * 1001): `220` order, `230` order change, `231` order response (`text/codelists--HybridDocument.csv`).
+ */
+function orderDocumentType(xml: XmlDocument): string {
+  const node = xml.get(`/*/*[local-name()='ExchangedDocument']/*[local-name()='TypeCode']`)
+  const code = node?.content.trim() ?? ''
+  if (!Object.hasOwn(ORDERX_DOCUMENT_TYPE, code))
+    throw new Error(`Cannot generate an Order-X PDF for the message type code "${code}": expected 220 (order), 230 (order change) or 231 (order response)`)
+  return ORDERX_DOCUMENT_TYPE[code as unknown as keyof typeof ORDERX_DOCUMENT_TYPE]
 }
 
 /**

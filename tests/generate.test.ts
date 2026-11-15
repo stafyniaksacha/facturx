@@ -49,7 +49,7 @@ const XMP_NS = {
 
 // Parses the /Metadata stream of a generated PDF and returns the texts of the properties the
 // tests look at. Parsing fails on malformed XMP, which is what CG-03 produced.
-function readXmp(pdf: PDFDocument): { title: string[], creator: string[], description: string[], producer: string[], conformanceLevel: string[] } {
+function readXmp(pdf: PDFDocument): { title: string[], creator: string[], description: string[], producer: string[], documentType: string[], conformanceLevel: string[] } {
   const doc = XmlDocument.fromString(xmpPacket(pdf))
   try {
     const texts = (xpath: string): string[] => doc.find(xpath, XMP_NS).map(node => node.content)
@@ -58,6 +58,7 @@ function readXmp(pdf: PDFDocument): { title: string[], creator: string[], descri
       creator: texts('//dc:creator/rdf:Seq/rdf:li'),
       description: texts('//dc:description/rdf:Alt/rdf:li'),
       producer: texts('//pdf:Producer'),
+      documentType: texts('//fx:DocumentType'),
       conformanceLevel: texts('//fx:ConformanceLevel'),
     }
   }
@@ -832,13 +833,6 @@ describe('generate', () => {
       expect(readXmp(output).conformanceLevel).toEqual(['EN 16931'])
     })
 
-    it('leaves an Order-X level as given, so an upper-case one cannot reach an empty fx:ConformanceLevel', async () => {
-      const order = await readFile(resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml'), 'utf8')
-      const pdf = await PDFDocument.create()
-      pdf.addPage()
-      await expect(generate({ pdf, xml: order, level: 'BASIC', check: true })).rejects.toThrow('Unknown Order-X level: "BASIC"')
-    })
-
     it.each(['constructor', 'toString', '__proto__'])('reports an inherited property name as flavor %j as an unknown flavor', async (flavor) => {
       const xml = await readFile(SOURCE_XML, 'utf8')
       await expect(generate({ pdf: await sourcePdf(), xml, flavor, level: 'en16931' })).rejects.toThrow(`Unknown schema flavor: "${flavor}"`)
@@ -847,6 +841,58 @@ describe('generate', () => {
     it('still refuses EXTENDED-CTC-FR, whatever its spelling', async () => {
       const xml = await readFile(SOURCE_XML, 'utf8')
       await expect(generate({ pdf: await sourcePdf(), xml, level: 'EXTENDED-CTC-FR' })).rejects.toThrow('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile')
+    })
+  })
+
+  describe('order-X hybrid metadata (BR-HYBRID-06/07, CG-08)', () => {
+    const ORDER_XML = resolve(import.meta.dirname, '../examples/ORDER-X_EX11_ORDER_PICK-UP-BASIC.xml')
+
+    async function orderPdf(xml: string, level?: string): Promise<PDFDocument> {
+      const pdf = await PDFDocument.create()
+      pdf.addPage()
+      return PDFDocument.load(await generate({ pdf, xml, level }))
+    }
+
+    it('writes ORDER and the Order-X level detected from the guideline ID', async () => {
+      const output = await orderPdf(await readFile(ORDER_XML, 'utf8'))
+      const xmp = readXmp(output)
+      expect(xmp.documentType).toEqual(['ORDER'])
+      expect(xmp.conformanceLevel).toEqual(['BASIC'])
+      expect((await extract({ pdf: Buffer.from(await output.save()) })).filename).toBe('order-x.xml')
+    })
+
+    it.each([
+      ['230', 'ORDER_CHANGE'],
+      ['231', 'ORDER_RESPONSE'],
+    ])('writes the document type of message type code %s as %s', async (code, expected) => {
+      const xml = (await readFile(ORDER_XML, 'utf8')).replace('<ram:TypeCode>220</ram:TypeCode>', `<ram:TypeCode>${code}</ram:TypeCode>`)
+      expect(readXmp(await orderPdf(xml)).documentType).toEqual([expected])
+    })
+
+    it.each([
+      ['comfort', 'COMFORT'],
+      ['EXTENDED', 'EXTENDED'],
+      [' Basic ', 'BASIC'],
+    ])('writes an explicit Order-X level %j as %j', async (level, expected) => {
+      expect(readXmp(await orderPdf(await readFile(ORDER_XML, 'utf8'), level)).conformanceLevel).toEqual([expected])
+    })
+
+    it('rejects a Factur-X-only level and an unknown message type code before touching the PDF', async () => {
+      const order = await readFile(ORDER_XML, 'utf8')
+      const pdf = await PDFDocument.create()
+      pdf.addPage()
+
+      await expect(generate({ pdf, xml: order, level: 'en16931' })).rejects.toThrow('Unknown level "en16931" for the orderx flavor: expected one of basic, comfort, extended')
+      await expect(generate({ pdf, xml: order.replace('<ram:TypeCode>220</ram:TypeCode>', '<ram:TypeCode>380</ram:TypeCode>') }))
+        .rejects
+        .toThrow('Cannot generate an Order-X PDF for the message type code "380"')
+      // Not marked as used.
+      await expect(generate({ pdf, xml: order })).resolves.toBeInstanceOf(Uint8Array)
+    })
+
+    it('still writes INVOICE for a Factur-X invoice', async () => {
+      const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml: await readFile(SOURCE_XML, 'utf8') }))
+      expect(readXmp(output).documentType).toEqual(['INVOICE'])
     })
   })
 })

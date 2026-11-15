@@ -24,5 +24,10 @@ export interface XmpMetadata extends PdfMetadata {
    */
   documentId?: string
   filename: string
+  /**
+   * `fx:DocumentType`, a HybridDocumentType value (BR-HYBRID-06): `INVOICE` for Factur-X, `ORDER`,
+   * `ORDER_CHANGE` or `ORDER_RESPONSE` for Order-X. Defaults to `INVOICE`.
+   */
+  documentType?: string
   conformanceLevel: string
 }
