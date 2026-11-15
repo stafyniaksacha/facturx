@@ -201,7 +201,7 @@ describe('en 16931 model: mandatory terms of the header groups', () => {
   const cases: [string, RegExp, (i: Invoice) => void][] = [
     ['BT-25 empty in a BG-3', /BT-25.*BR-55/, (i) => { i.precedingInvoiceReferences = [new EN16931.PrecedingInvoiceReference({ reference: '' })] }],
     ['BT-122 empty in a BG-24', /BT-122.*BR-52/, (i) => { i.additionalDocuments = [new EN16931.AdditionalSupportingDocument({ reference: '' })] }],
-    ['BT-22 missing in a BG-1', /BT-22/, (i) => { i.notes = [new EN16931.InvoiceNote({ subjectCode: 'AAI' })] }],
+    ['BT-22 missing in a BG-1', /BT-22/, (i) => { i.notes = [new EN16931.InvoiceNote({ subjectCode: 'AAI', note: '' })] }],
     ['BG-14 without BT-73 or BT-74', /BG-14.*BR-CO-19/, (i) => { i.invoicingPeriod = new EN16931.InvoicingPeriod({}) }],
     ['BT-18 empty', /BT-18/, (i) => { i.invoicedObjectIdentifiers = [new EN16931.Identifier({ value: '' })] }],
     ['BT-17 empty', /BT-17/, (i) => { i.tenderOrLotReference = '' }],
@@ -217,7 +217,7 @@ describe('en 16931 model: mandatory terms of the header groups', () => {
     const invoice = await enInvoice()
     invoice.invoicingPeriod = new EN16931.InvoicingPeriod({ endDate: '2026-01-31' })
     expect(() => toCii(invoice, { level: 'en16931' })).not.toThrow()
-    invoice.notes = [new EN16931.InvoiceNote({ subjectCode: 'SECRET-CODE' })]
+    invoice.notes = [new EN16931.InvoiceNote({ subjectCode: 'SECRET-CODE', note: '' })]
     expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^(?:(?!SECRET-CODE).)*$/)
   })
 
@@ -228,11 +228,134 @@ describe('en 16931 model: mandatory terms of the header groups', () => {
   })
 })
 
+describe('en 16931 model: mandatory terms of credit transfers, attachments and line notes', () => {
+  const transfer = (fields: ConstructorParameters<typeof EN16931.CreditTransfer>[0]) => new EN16931.PaymentInstructions({ paymentMeansTypeCode: '58', creditTransfers: [new EN16931.CreditTransfer(fields)] })
+
+  it.each(['basic', 'en16931', 'extended', 'extended-ctc-fr'] as const)('throws on a credit transfer without BT-84 at %s (BR-50), never quoting content', async (level) => {
+    const invoice = await enInvoice()
+    invoice.paymentInstructions = transfer({ paymentAccountName: 'SECRET-NAME', paymentServiceProviderIdentifier: 'SECRET-BIC' })
+    expect(() => toCii(invoice, { level })).toThrow(/^toCii: BT-84 \(payment account identifier\).*BR-50(?:(?!SECRET).)*$/)
+    invoice.paymentInstructions = transfer({ paymentAccountIdentifier: '' })
+    expect(() => toCii(invoice, { level })).toThrow(/BT-84/)
+  })
+
+  it('accepts an IBAN or a national account number (BT-84-0) as BT-84', async () => {
+    const invoice = await enInvoice()
+    invoice.paymentInstructions = transfer({ nationalAccountNumber: '12345-67' })
+    expect(() => toCii(invoice, { level: 'en16931' })).not.toThrow()
+    invoice.paymentInstructions = transfer({ paymentAccountIdentifier: 'FR7612345678901234567890123' })
+    expect(() => toCii(invoice, { level: 'en16931' })).not.toThrow()
+  })
+
+  it('throws on an attached document without MIME code (BT-125-1) or filename (BT-125-2)', async () => {
+    const invoice = await enInvoice()
+    const attach = (mimeCode: string, filename: string) => [new EN16931.AdditionalSupportingDocument({ reference: 'D-1', attachedDocument: new EN16931.AttachedDocument({ content: 'JVBERi0=', mimeCode, filename }) })]
+    invoice.additionalDocuments = attach('', 'SECRET.pdf')
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^toCii: BT-125-1(?:(?!SECRET).)*$/)
+    invoice.additionalDocuments = attach('application/pdf', '')
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^toCii: BT-125-2/)
+    invoice.additionalDocuments = attach('application/pdf', 'd.pdf')
+    expect(() => toCii(invoice, { level: 'en16931' })).not.toThrow()
+  })
+
+  it('throws on an empty line note (BT-127) as on an empty invoice note (BT-22)', async () => {
+    const invoice = await enInvoice()
+    invoice.lines[0]!.notes = [new EN16931.LineNote({ note: '' })]
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^toCii: BT-127 \(invoice line note\) is mandatory and empty/)
+    invoice.lines[0]!.notes = []
+    invoice.notes = [new EN16931.InvoiceNote({ note: '' })]
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^toCii: BT-22 \(invoice note\) is mandatory and empty/)
+  })
+
+  it('reads a note without text as \'\' (fromCii stays tolerant)', async () => {
+    const cii = await corpus('3.EN16931', 'F20260025')
+    cii.exchangedDocument.includedNote = [{ subjectCode: { value: 'AAI' } } as never]
+    expect(fromCii(cii).invoice.notes).toEqual([new EN16931.InvoiceNote({ subjectCode: 'AAI', note: '' })])
+  })
+})
+
+describe('en 16931 model: a plain-object invoice', () => {
+  // A plain object with the optional repeatable groups left out, at every level they occur (BG-20 / BG-21
+  // stay: leaving them out changes the totals; tests/en16931-settlement.test.ts covers them).
+  async function plain(): Promise<Invoice> {
+    const { notes, precedingInvoiceReferences, invoicedObjectIdentifiers, additionalDocuments, seller, buyer, lines, ...rest } = await enInvoice()
+    const { identifiers: _s, ...plainSeller } = seller
+    const { identifiers: _b, ...plainBuyer } = buyer
+    return {
+      ...rest,
+      seller: plainSeller,
+      buyer: plainBuyer,
+      lines: lines.map(({ notes, objectIdentifiers, allowances, charges, precedingInvoiceReferences, item, ...line }) => {
+        const { attributes, classifications, ...plainItem } = item
+        return { ...line, item: plainItem }
+      }),
+    } as unknown as Invoice
+  }
+
+  it('reads the optional repeatable groups it leaves out as empty and writes a valid document', async () => {
+    const invoice = await plain()
+    const before = JSON.stringify(invoice)
+    const xml = (await invoiceToXml(toCii(invoice, { level: 'en16931' }))).toString()
+    expect(JSON.stringify(invoice)).toBe(before)
+    const result = await check({ xml, schematron: true })
+    expect(result.errors).toEqual([])
+    expect(result.schematronErrors).toEqual([])
+    expect(result.valid).toBe(true)
+  })
+
+  it('names the term for a group that is not an array, and the mandatory BG-23 and BG-25, never a TypeError', async () => {
+    const message = (invoice: object): string => {
+      try {
+        toCii(invoice as Invoice, { level: 'en16931' })
+      }
+      catch (error) {
+        expect(error).not.toBeInstanceOf(TypeError)
+        return (error as Error).message
+      }
+      return ''
+    }
+    const invoice = await plain()
+    expect(message({ ...invoice, notes: 'n' })).toBe('toCii: BG-1 (invoice notes) must be an array')
+    expect(message({ ...invoice, seller: { ...invoice.seller, identifiers: {} } })).toMatch(/^toCii: BT-29 .* must be an array/)
+    expect(message({ ...invoice, paymentInstructions: { paymentMeansTypeCode: '58', creditTransfers: 'x' } })).toMatch(/^toCii: BG-17 .* must be an array/)
+    expect(message({ ...invoice, lines: [{ ...invoice.lines[0], notes: 1 }] })).toMatch(/^toCii: BT-127 .* must be an array/)
+    expect(message({ ...invoice, lines: undefined })).toMatch(/^toCii: BG-25/)
+    expect(message({ ...invoice, vatBreakdown: undefined })).toMatch(/^toCii: BG-23/)
+  })
+})
+
+describe('en 16931 model: BT-11-0 default name', () => {
+  it('reads the default project name toCii() writes as absent and writes it back (CII stays lossless)', async () => {
+    const cii = await corpus('3.EN16931', 'F20260025')
+    const agreement = cii.supplyChainTradeTransaction.applicableHeaderTradeAgreement
+    agreement.specifiedProcuringProject = { id: { value: 'PRJ-1' }, name: { value: 'Project reference' } } as never
+    const { invoice, dropped } = fromCii(cii)
+    expect(invoice.projectReference).toBe('PRJ-1')
+    expect(invoice.projectName).toBeUndefined()
+    expect(dropped).toEqual([])
+    expect(toCii(invoice, { level: 'en16931' }).supplyChainTradeTransaction.applicableHeaderTradeAgreement.specifiedProcuringProject?.name.value).toBe('Project reference')
+  })
+
+  it('keeps any other name, the "Project Reference" spelling of CG-49 included', async () => {
+    const cii = await corpus('3.EN16931', 'F20260025')
+    cii.supplyChainTradeTransaction.applicableHeaderTradeAgreement.specifiedProcuringProject = { id: { value: 'PRJ-1' }, name: { value: 'Project Reference' } } as never
+    expect(fromCii(cii).invoice.projectName).toBe('Project Reference')
+  })
+})
+
 describe('en 16931 model: an Amount has at most 2 decimals', () => {
   it('throws, naming BT-110, on a VAT total with 3 decimals', async () => {
     const invoice = await enInvoice()
     invoice.totals.invoiceTotalVatAmount = 20.125
     expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/BT-110.*2 decimals/)
+  })
+
+  it('names a lone BT-111 by its currency, not its position', async () => {
+    const invoice = await enInvoice()
+    invoice.vatAccountingCurrencyCode = 'USD'
+    invoice.totals.invoiceTotalVatAmount = undefined
+    invoice.totals.invoiceTotalVatAmountInAccountingCurrency = 22.125
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^toCii: BT-111 \(invoice total VAT amount in accounting currency\) has more than 2 decimals/)
   })
 
   it('names the line amount, the document allowance and the VAT breakdown', async () => {

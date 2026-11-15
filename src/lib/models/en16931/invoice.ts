@@ -26,7 +26,7 @@ import type {
  * @bg BG-1
  */
 export class InvoiceNote {
-  constructor({ subjectCode, note }: { subjectCode?: string, note?: string }) {
+  constructor({ subjectCode, note }: { subjectCode?: string, note: string }) {
     this.subjectCode = subjectCode
     this.note = note
   }
@@ -37,10 +37,11 @@ export class InvoiceNote {
    */
   subjectCode?: string
   /**
-   * Invoice note. Mandatory in EN 16931, optional in EXTENDED-CTC-FR.
+   * Invoice note: the mandatory term of the group (`toCii()` throws when it is empty). `fromCii()`
+   * reads `''` for a note without text, as the CII parser does.
    * @bt BT-22
    */
-  note?: string
+  note: string
 }
 
 /**

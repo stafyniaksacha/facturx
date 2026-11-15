@@ -3,7 +3,9 @@
  * write with `invoiceToXml(toCii(invoice, { level }))`, read with `fromCii(await xmlToInvoice(xml))`.
  */
 
+import type { Identifier } from '../../models/en16931/common'
 import type { En16931Level } from '../../models/en16931/level'
+import type { InvoiceLine } from '../../models/en16931/lines'
 import type { CrossIndustryInvoiceType } from '../../models/facturx/crossIndustryInvoice'
 import { Invoice } from '../../models/en16931/invoice'
 import { levelFromGuidelineId } from '../../xml'
@@ -77,6 +79,72 @@ const MANDATORY: readonly [string, string, (invoice: Invoice) => string][] = [
   ['BT-5', 'invoice currency code', i => i.currencyCode],
 ]
 
+// An optional repeatable group (0..n) of an invoice built as a plain object may be left out: it reads
+// as empty. Anything else in its place is refused, naming the term. The mandatory ones (BG-23, BG-25)
+// are not defaulted: their own checks name them.
+function list<T>(value: T[] | undefined, id: string, term: string): T[] {
+  if (value === undefined || value === null)
+    return []
+  if (!Array.isArray(value))
+    throw new Error(`toCii: ${id} (${term}) must be an array`)
+  return value
+}
+
+function withIdentifiers<T extends { identifiers?: Identifier[] }>(party: T | undefined, id: string, term: string): T | undefined {
+  return party && typeof party === 'object' ? { ...party, identifiers: list(party.identifiers, id, term) } : party
+}
+
+// A shallow copy of the invoice where every optional repeatable group the checks and writers iterate is
+// an array, so a plain-object invoice gets the same named errors as a class instance, never a TypeError.
+// Copies, never mutates the caller's objects.
+function withArrays(invoice: Invoice): Invoice {
+  const payment = invoice.paymentInstructions
+  return {
+    ...invoice,
+    invoicedObjectIdentifiers: list(invoice.invoicedObjectIdentifiers, 'BT-18', 'invoiced object identifiers'),
+    notes: list(invoice.notes, 'BG-1', 'invoice notes'),
+    precedingInvoiceReferences: list(invoice.precedingInvoiceReferences, 'BG-3', 'preceding invoice references'),
+    additionalDocuments: list(invoice.additionalDocuments, 'BG-24', 'additional supporting documents'),
+    allowances: list(invoice.allowances, 'BG-20', 'document level allowances'),
+    charges: list(invoice.charges, 'BG-21', 'document level charges'),
+    seller: withIdentifiers(invoice.seller, 'BT-29', 'seller identifiers')!,
+    buyer: withIdentifiers(invoice.buyer, 'BT-46', 'buyer identifiers')!,
+    payee: withIdentifiers(invoice.payee, 'BT-60', 'payee identifiers'),
+    buyerAgent: withIdentifiers(invoice.buyerAgent, 'EXT-FR-FE-06', 'buyer agent identifiers'),
+    payer: withIdentifiers(invoice.payer, 'EXT-FR-FE-46', 'payer identifiers'),
+    sellerAgent: withIdentifiers(invoice.sellerAgent, 'EXT-FR-FE-69', 'seller agent identifiers'),
+    invoicee: withIdentifiers(invoice.invoicee, 'EXT-FR-FE-92', 'invoicee identifiers'),
+    billingParty: withIdentifiers(invoice.billingParty, 'EXT-FR-FE-115', 'billing party identifiers'),
+    paymentInstructions: payment && typeof payment === 'object'
+      ? { ...payment, creditTransfers: list(payment.creditTransfers, 'BG-17', 'credit transfers') }
+      : payment,
+    // BG-25 is mandatory: left as it is for `assertLinesComplete()` to name when it is not an array.
+    lines: Array.isArray(invoice.lines) ? invoice.lines.map(withLineArrays) : invoice.lines,
+  } as Invoice
+}
+
+function withLineArrays(line: InvoiceLine): InvoiceLine {
+  if (!line || typeof line !== 'object')
+    return line
+  return {
+    ...line,
+    notes: list(line.notes, 'BT-127', 'invoice line notes'),
+    objectIdentifiers: list(line.objectIdentifiers, 'BT-128', 'invoice line object identifiers'),
+    allowances: list(line.allowances, 'BG-27', 'invoice line allowances'),
+    charges: list(line.charges, 'BG-28', 'invoice line charges'),
+    precedingInvoiceReferences: list(line.precedingInvoiceReferences, 'EXT-FR-FE-BG-06', 'preceding invoice references of the line'),
+    item: line.item && typeof line.item === 'object'
+      ? {
+          ...line.item,
+          attributes: list(line.item.attributes, 'BG-32', 'item attributes'),
+          classifications: list(line.item.classifications, 'BT-158', 'item classification identifiers'),
+        }
+      : line.item,
+    deliverTo: withIdentifiers(line.deliverTo, 'EXT-FR-FE-146', 'deliver to identifiers of the line'),
+    seller: withIdentifiers(line.seller, 'EXT-FR-FE-166', 'line seller identifiers'),
+  } as InvoiceLine
+}
+
 // The Amount decimals rule runs on what is written (`fromCii()` stays tolerant).
 function checked(cii: CrossIndustryInvoiceType): CrossIndustryInvoiceType {
   assertAmountDecimals(cii)
@@ -85,18 +153,25 @@ function checked(cii: CrossIndustryInvoiceType): CrossIndustryInvoiceType {
 
 /**
  * Write an EN 16931 invoice as a CII model at `level`, for `invoiceToXml()`. Throws, naming the
- * business term, when a mandatory term (BT-1, BT-2, BT-3, BT-5) is empty, when the invoice holds a
- * value `level` cannot carry (an `EXT-FR-FE-*` field below `extended`, a term Factur-X BASIC lacks
- * at `basic`), when BT-24 is set to anything but the exact identifier of `level`, or when a date is
- * not a valid ISO `YYYY-MM-DD` date, or when BT-11-0 is set without BT-11, or when a mandatory term of
- * a header group (BT-25, BT-122, BG-14, BT-22) is empty, or when the buyer or payee holds more identifiers
- * than the level carries (BT-46, BT-60), or when an *Amount* has more than two decimals (spec §7.1.5).
- * Never quotes invoice content.
+ * business term (never quoting invoice content), when:
+ * - a mandatory term is empty: BT-1, BT-2, BT-3, BT-5, the mandatory terms of the groups the invoice
+ *   holds (BT-22 and BT-127 in each note, BT-25, BT-122, BT-125-1 / BT-125-2 with a BT-125, BT-84 or
+ *   BT-84-0 in each credit transfer, BT-73 or BT-74 in a BG-14 ...), or a mandatory group (BG-4, BG-7,
+ *   BG-22, BG-23, BG-25);
+ * - an optional repeatable group of a plain-object invoice is neither absent nor an array (absent
+ *   reads as empty);
+ * - the invoice holds a value `level` cannot carry (an `EXT-FR-FE-*` field below `extended`, a term
+ *   Factur-X BASIC lacks at `basic`), or more buyer or payee identifiers than it carries (BT-46, BT-60);
+ * - BT-24 is set to anything but the exact identifier of `level`;
+ * - a date is not a valid ISO `YYYY-MM-DD` date;
+ * - BT-11-0 is set without BT-11;
+ * - an *Amount* has more than two decimals (spec §7.1.5).
  */
-export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInvoiceType {
+export function toCii(source: Invoice, options: ToCiiOptions): CrossIndustryInvoiceType {
   const level = options?.level
   if (!isEn16931Level(level))
     throw new Error(`toCii: options.level must be one of ${LEVEL_LIST}`)
+  const invoice = withArrays(source)
   for (const [id, term, get] of MANDATORY) {
     const value = get(invoice)
     if (value === undefined || value === '')

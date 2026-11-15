@@ -424,10 +424,11 @@ describe('en 16931 model: settlement level gates and mandatory terms', () => {
     }
     return ''
   }
-  it('names BG-20, BG-21 and BG-23 for a plain-object invoice lacking them, not a TypeError', () => {
+  it('reads absent optional BG-20 / BG-21 of a plain-object invoice as empty, names a non-array and a missing BG-23, never a TypeError', () => {
     const plain = { ...base, allowances: [], charges: [] } as unknown as Invoice
-    expect(message({ ...plain, allowances: undefined } as never, 'en16931')).toMatch(/BG-20/)
-    expect(message({ ...plain, charges: undefined } as never, 'en16931')).toMatch(/BG-21/)
+    expect(message({ ...plain, allowances: undefined, charges: undefined } as never, 'en16931')).toBe('')
+    expect(message({ ...plain, allowances: 'x' } as never, 'en16931')).toMatch(/BG-20 .* must be an array/)
+    expect(message({ ...plain, charges: {} } as never, 'en16931')).toMatch(/BG-21 .* must be an array/)
     expect(message({ ...plain, vatBreakdown: undefined } as never, 'en16931')).toMatch(/BG-23/)
   })
 
@@ -436,8 +437,8 @@ describe('en 16931 model: settlement level gates and mandatory terms', () => {
   it.each([
     ['basic', 'BT-82', { paymentInstructions: instructions({ paymentMeansText: 'SECRET-TEXT' }) }],
     ['basic', 'BG-18', { paymentInstructions: instructions({ card: new EN16931.PaymentCard({ primaryAccountNumber: 'SECRET-PAN' }) }) }],
-    ['basic', 'BT-85', { paymentInstructions: instructions({ creditTransfers: [new EN16931.CreditTransfer({ paymentAccountName: 'SECRET-NAME' })] }) }],
-    ['basic', 'BT-86', { paymentInstructions: instructions({ creditTransfers: [new EN16931.CreditTransfer({ paymentServiceProviderIdentifier: 'SECRET-BIC' })] }) }],
+    ['basic', 'BT-85', { paymentInstructions: instructions({ creditTransfers: [new EN16931.CreditTransfer({ paymentAccountIdentifier: 'FR7612345678901234567890123', paymentAccountName: 'SECRET-NAME' })] }) }],
+    ['basic', 'BT-86', { paymentInstructions: instructions({ creditTransfers: [new EN16931.CreditTransfer({ paymentAccountIdentifier: 'FR7612345678901234567890123', paymentServiceProviderIdentifier: 'SECRET-BIC' })] }) }],
     ['basic', 'BT-114', { totals: new EN16931.DocumentTotals({ ...TOTALS(), roundingAmount: 0.01 }) }],
     ['en16931', 'EXT-FR-FE-187', { allowances: [new EN16931.DocumentAllowance({ amount: 1, vatCategoryCode: 'E', vatExemptionReason: 'SECRET-REASON' })] }],
     ['en16931', 'EXT-FR-FE-188', { allowances: [new EN16931.DocumentAllowance({ amount: 1, vatCategoryCode: 'E', vatExemptionReasonCode: 'SECRET-CODE' })] }],

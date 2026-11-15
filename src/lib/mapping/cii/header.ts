@@ -111,7 +111,9 @@ export function headerFromCii(cii: CrossIndustryInvoiceType): HeaderInit {
     paymentDueDate: isoFromCii(settlement?.specifiedTradePaymentTerms?.[0]?.dueDateDateTime),
     buyerReference: agreement?.buyerReference?.value,
     projectReference: agreement?.specifiedProcuringProject?.id?.value,
-    projectName: agreement?.specifiedProcuringProject?.name?.value,
+    // The default name `toCii()` writes when BT-11-0 is absent reads back as absent, so a model built
+    // without a project name round-trips unchanged; CII stays lossless, the writer re-emits the default.
+    projectName: agreement?.specifiedProcuringProject?.name?.value === DEFAULT_PROJECT_NAME ? undefined : agreement?.specifiedProcuringProject?.name?.value,
     contractReference: agreement?.contractReferencedDocument?.issuerAssignedID?.value,
     contractCodeType: agreement?.contractReferencedDocument?.referenceTypeCode?.value,
     contractDate: isoFromCii(agreement?.contractReferencedDocument?.formattedIssueDateTime),
@@ -131,8 +133,8 @@ export function headerFromCii(cii: CrossIndustryInvoiceType): HeaderInit {
     specificationIdentifier: context?.guidelineSpecifiedDocumentContextParameter?.id?.value,
     notes: (document?.includedNote ?? []).map(n => new InvoiceNote({
       subjectCode: n.subjectCode?.value,
-      // The parser stands in an empty text for a missing Content: not a value.
-      note: n.content?.value === '' ? undefined : n.content?.value,
+      // BT-22 is the mandatory term of BG-1: '' when the document lacks it (the parser reads the same).
+      note: n.content?.value ?? '',
     })),
     precedingInvoiceReferences: (settlement?.invoiceReferencedDocument ?? []).map(r => new PrecedingInvoiceReference({
       reference: r.issuerAssignedID?.value ?? '',
@@ -224,7 +226,7 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
       issueDateTime: ciiDateTime(invoice.issueDate === '' ? undefined : invoice.issueDate, 'BT-2')!,
       languageID: [],
       includedNote: invoice.notes.map(n => new ram.NoteType({
-        content: new udt.TextType({ value: n.note ?? '' }),
+        content: new udt.TextType({ value: n.note }),
         subjectCode: ciiCode(n.subjectCode),
       })),
     }),
@@ -284,7 +286,8 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
 
 /**
  * Throws, naming the business term and rule, when a mandatory term of a header group the invoice holds
- * is missing or empty: BT-25 in each BG-3 (BR-55), BT-122 in each BG-24 (BR-52), BT-17 and BT-18 when set
+ * is missing or empty: BT-25 in each BG-3 (BR-55), BT-122 in each BG-24 (BR-52), BT-125-1 and BT-125-2
+ * with a BT-125, BT-17 and BT-18 when set
  * (BR-52 also reads the empty `ram:IssuerAssignedID` of their type-code 50 / 130 documents), BT-73 or
  * BT-74 in a BG-14 (BR-CO-19), BT-22 in each BG-1. Never quotes invoice content; `buildCii` stays
  * tolerant, so `fromCii()` can still read such a document.
@@ -298,6 +301,11 @@ export function assertHeaderComplete(invoice: Invoice): void {
   for (const document of invoice.additionalDocuments ?? []) {
     if (empty(document.reference))
       throw new Error('toCii: BT-122 (supporting document reference) is mandatory and empty in each BG-24 (BR-52)')
+    // CII makes `@mimeCode` and `@filename` mandatory on `ram:AttachmentBinaryObject` (matrix BT-125-1, BT-125-2).
+    if (document.attachedDocument && empty(document.attachedDocument.mimeCode))
+      throw new Error('toCii: BT-125-1 (attached document MIME code) is mandatory and empty when BT-125 (attached document) is set')
+    if (document.attachedDocument && empty(document.attachedDocument.filename))
+      throw new Error('toCii: BT-125-2 (attached document filename) is mandatory and empty when BT-125 (attached document) is set')
   }
   if (invoice.tenderOrLotReference === '')
     throw new Error('toCii: BT-17 (tender or lot reference) is set but empty (BR-52)')

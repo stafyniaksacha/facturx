@@ -5,7 +5,9 @@
  * "One data-loss contract"). The terms come from the Factur-X 1.09 field matrices
  * (`spec/factur-x-1.09/text/fields--Factur-X_CII_D22B_<PROFILE>.csv`): a term missing from the BASIC
  * matrix needs EN 16931; an `EXT-FR-FE-*` field needs EXTENDED or EXTENDED-CTC-FR (Factur-X EXTENDED
- * is a superset of EXTENDED-CTC-FR, FNFE-MPE CTC FR 1.4.0.04 release notes p.9).
+ * is presented as a superset of EXTENDED-CTC-FR, FNFE-MPE CTC FR 1.4.0.04 release notes p.9, with
+ * exceptions: several BT-46 / BT-60 private identifiers are EXTENDED-CTC-FR only, see
+ * `assertPartyIdentifierCounts`).
  */
 
 import type { Invoice } from '../../models/en16931/invoice'

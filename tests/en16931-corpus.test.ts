@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { check, extract, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
+// `diffPaths` is the internal helper behind `dropped` (not exported): the tests compare in both directions with it.
 import { diffPaths } from '../src/lib/mapping/cii/dropped'
 import { FIRST_ENTRY_ONLY, spreadVatPoint } from './fixtures/vat-point'
 
@@ -57,6 +58,7 @@ const lossless = docs.filter(d => d.level !== 'extended')
 const facturxExtended = docs.filter(d => d.level === 'extended')
 
 const checkLevel = (level: Level): string => level
+const agreementOf = (cii: Awaited<ReturnType<typeof xmlToInvoice>>) => cii.supplyChainTradeTransaction.applicableHeaderTradeAgreement
 
 /** Normalised absolute XPath of a Factur-X matrix cell: indices and whitespace out. */
 const norm = (xpath: string): string => xpath.replace(/\s+/g, '').replace(/\[\d+\]/g, '')
@@ -162,38 +164,82 @@ describe('en 16931 model: corpus', () => {
     // corpus tests compare: `toCii()` leaves optional repeating groups `undefined` where the parser
     // reads `[]`, which is no data).
     const again = await xmlToInvoice((await invoiceToXml(toCii(invoice, { level }))).toString())
+    expect(diffPaths(again, expected)).toEqual([])
     expect(again).toEqual(expected)
+    // The BT-11-0 default `toCii()` writes reads back as no project name (and is written again above).
+    if (agreementOf(cii).specifiedProcuringProject?.name.value === 'Project reference')
+      expect(invoice.projectName).toBeUndefined()
   })
 
-  it.each(facturxExtended)('$name: dropped holds only true BT-X content', async ({ name, xml, level }) => {
+  it.each(facturxExtended)('$name: dropped holds only true BT-X content, nothing else changes either way', async ({ name, xml, level }) => {
     const cii = await xmlToInvoice(xml)
     const { invoice, dropped } = fromCii(cii)
     expect(dropped.flatMap(notBtX)).toEqual([])
-    // Nothing else changes: the rest of the CII model comes back the same, so the only values of the
-    // source missing after the trip are the dropped ones (deep equality when nothing is dropped).
+    // Nothing else changes: the values of the source missing after the trip are exactly the dropped
+    // ones, and the trip adds or changes no value (the reverse diff); deep equality when nothing is
+    // dropped, which is the case for every official Factur-X EXTENDED example.
     const expected = FIRST_ENTRY_ONLY.test(name) ? spreadVatPoint(cii) : cii
     const again = await xmlToInvoice((await invoiceToXml(toCii(invoice, { level }))).toString())
     expect(diffPaths(expected, again)).toEqual(dropped)
+    expect(diffPaths(again, expected)).toEqual([])
     if (!dropped.length)
       expect(again).toEqual(expected)
   })
 
-  it('reports Factur-X-only content in dropped and the checker accepts it as BT-X', async () => {
-    // The official examples carry no BT-X content, so inject some: a line status code (BT-X-7) and a
-    // test indicator (BT-X-1) on a Factur-X EXTENDED document.
-    const source = facturxExtended.find(d => d.name.includes('4.EXTENDED'))!
-    const xml = source.xml
-      .replace('</ram:AssociatedDocumentLineDocument>', '<ram:LineStatusCode>NEW</ram:LineStatusCode></ram:AssociatedDocumentLineDocument>')
+  it('reports exactly the injected Factur-X-only content in dropped, and the checker accepts it as BT-X', async () => {
+    // The official examples carry no BT-X content, so inject some kinds into the F20260023 Factur-X
+    // EXTENDED document: a test indicator (BT-X-1), a line status code (BT-X-7), a header party extra
+    // (seller role code, BT-X-543), a charge on the gross price (BT-X-302-02 / BT-X-302), and a
+    // sequence number (BT-X-265) on a document charge moved before the allowances, so the writer
+    // reorders the group and pairing goes by value first.
+    const source = facturxExtended.find(d => d.name.includes('4.EXTENDED') && d.name.includes('F20260023'))!
+    const settlementAt = source.xml.indexOf('<ram:ApplicableHeaderTradeSettlement>')
+    const header = source.xml.slice(settlementAt)
+    const blocks = [...header.matchAll(/<ram:SpecifiedTradeAllowanceCharge>[\s\S]*?<\/ram:SpecifiedTradeAllowanceCharge>/g)].map(m => m[0])
+    const firstCharge = blocks.findIndex(b => /<udt:Indicator>true</.test(b))
+    expect(firstCharge).toBeGreaterThan(0)
+    const moved = blocks[firstCharge + 1]!
+    const numbered = moved.replace('</ram:ChargeIndicator>', '</ram:ChargeIndicator><ram:SequenceNumeric>7</ram:SequenceNumeric>')
+    const reordered = header.replace(moved, '').replace(blocks[0]!, numbered + blocks[0]!)
+    const xml = (source.xml.slice(0, settlementAt) + reordered)
       .replace('<ram:GuidelineSpecifiedDocumentContextParameter>', '<ram:TestIndicator><udt:Indicator>false</udt:Indicator></ram:TestIndicator><ram:GuidelineSpecifiedDocumentContextParameter>')
-    expect(xml).not.toBe(source.xml)
+      .replace('</ram:AssociatedDocumentLineDocument>', '<ram:LineStatusCode>NEW</ram:LineStatusCode></ram:AssociatedDocumentLineDocument>')
+      .replace(/(<ram:SellerTradeParty>[\s\S]*?<\/ram:Name>)/, '$1<ram:RoleCode>DL</ram:RoleCode>')
+      .replace(/(<ram:GrossPriceProductTradePrice>[\s\S]*?<\/ram:AppliedTradeAllowanceCharge>)/, '$1<ram:AppliedTradeAllowanceCharge><ram:ChargeIndicator><udt:Indicator>true</udt:Indicator></ram:ChargeIndicator><ram:ActualAmount>1.50</ram:ActualAmount></ram:AppliedTradeAllowanceCharge>')
     const cii = await xmlToInvoice(xml)
+    // Each injection reached the CII model.
+    const lines = cii.supplyChainTradeTransaction.includedSupplyChainTradeLineItem!
+    const grossLine = lines.findIndex(l => l.specifiedLineTradeAgreement?.grossPriceProductTradePrice)
+    expect(cii.exchangedDocumentContext.testIndicator?.indicator).toBe(false)
+    expect(lines[0]!.associatedDocumentLineDocument.lineStatusCode?.value).toBe('NEW')
+    expect(agreementOf(cii).sellerTradeParty.roleCode?.value).toBe('DL')
+    expect(lines[grossLine]!.specifiedLineTradeAgreement!.grossPriceProductTradePrice!.appliedTradeAllowanceCharge).toHaveLength(2)
+    const allowanceCharges = cii.supplyChainTradeTransaction.applicableHeaderTradeSettlement.specifiedTradeAllowanceCharge!
+    expect(allowanceCharges[0]!.chargeIndicator.indicator).toBe(true)
+    expect(allowanceCharges[0]!.sequenceNumeric?.value).toBe(7)
+
     const { invoice, dropped } = fromCii(cii)
-    expect(dropped.length).toBeGreaterThan(0)
-    // Everything else comes back: the values missing after the trip are exactly the dropped ones.
+    const TRANSACTION = '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction'
+    const gross = `${TRANSACTION}/ram:IncludedSupplyChainTradeLineItem[${grossLine + 1}]/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge[2]`
+    expect([...dropped].sort()).toEqual([
+      '/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:TestIndicator/udt:Indicator',
+      `${TRANSACTION}/ram:IncludedSupplyChainTradeLineItem[1]/ram:AssociatedDocumentLineDocument/ram:LineStatusCode`,
+      `${gross}/ram:ChargeIndicator/udt:Indicator`,
+      `${gross}/ram:ActualAmount`,
+      `${TRANSACTION}/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:RoleCode`,
+      `${TRANSACTION}/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge[1]/ram:SequenceNumeric`,
+    ].sort())
+    // Everything else comes back: the values missing after the trip are exactly the dropped ones, and
+    // nothing is added or changed on write (BT-7 / BT-8 spread on every VAT entry is the one normalisation).
+    const expected = FIRST_ENTRY_ONLY.test(source.name) ? spreadVatPoint(cii) : cii
     const again = await xmlToInvoice((await invoiceToXml(toCii(invoice, { level: source.level }))).toString())
-    expect(diffPaths(cii, again)).toEqual(dropped)
-    expect(dropped.some(p => p.endsWith('/ram:LineStatusCode'))).toBe(true)
-    expect(dropped.flatMap(notBtX)).toEqual([])
+    expect(diffPaths(expected, again)).toEqual(dropped)
+    expect(diffPaths(again, expected)).toEqual([])
+    // The gross price charge shares its XPath with the BT-147 discount (the matrix tells them apart by the
+    // ChargeIndicator value, `true` for BT-X-302-02), which the XPath classifier can't see: check it apart.
+    expect(dropped.filter(p => !p.startsWith(gross)).flatMap(notBtX)).toEqual([])
+    expect(matrixRows.some(r => r.id === 'BT-X-302' && r.xpath === norm(`${gross}/ram:ActualAmount`))).toBe(true)
+    expect(matrixRows.some(r => r.id === 'BT-X-302-02' && r.xpath === norm(`${gross}/ram:ChargeIndicator/udt:Indicator`))).toBe(true)
     // The classifier is not vacuous: a path with an EXT-FR-FE id, an unknown path and a ruled-out id are told apart.
     expect(notBtX('/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID')).not.toEqual([])
     expect(notBtX('/rsm:CrossIndustryInvoice/rsm:Nonsense')).not.toEqual([])

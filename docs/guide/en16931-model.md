@@ -32,7 +32,16 @@ Conventions:
 - A repeatable term is an array and a mandatory term a required property. Where EN 16931 and
   EXTENDED-CTC-FR disagree on the cardinality, the model takes the **wider** (BT-60, for instance, is an array).
 - Optional terms are `undefined` when absent. The model never invents a value; `toCii()` writes the
-  Factur-X default `Project reference` for BT-11-0 when BT-11 is set without a name (CG-49).
+  Factur-X default `Project reference` for BT-11-0 when BT-11 is set without a name (CG-49), and
+  `fromCii()` reads exactly that default back as no name (`projectName` `undefined`), so the CII written
+  again is the same. Any other name, `Project Reference` included, is kept.
+- The text of a note (BT-22 in BG-1, BT-127 on a line) is the mandatory term of its group, so it is a
+  required `string`. `fromCii()` reads `''` for a note without text, as the CII parser does, and `toCii()`
+  refuses an empty one.
+- An invoice can be a plain object instead of class instances. An optional repeatable group left out
+  (`notes`, `precedingInvoiceReferences`, a party's `identifiers`, a line's `notes` ...) reads as empty;
+  anything other than an array in its place, or a missing mandatory group (BG-23, BG-25), is an error
+  naming the term.
 
 ## Scope
 
@@ -83,9 +92,10 @@ specification identifier) and which terms may be present.
 - BT-24 (`specificationIdentifier`) is set to anything but the exact identifier of the level (another level's
   id, an Order-X id or a CIUS identifier would make the document claim a profile it was not checked against).
   Leave it unset, or set it to `''`, to get the identifier of the level;
-- a mandatory term of a header group is empty: BT-25 in a preceding invoice reference (BR-55), BT-122 in a supporting
-  document (BR-52), BT-22 in a note, BT-17 or BT-18 set but empty, a BG-14 invoicing period with neither BT-73
-  nor BT-74 (BR-CO-19);
+- a mandatory term of a group is empty: BT-25 in a preceding invoice reference (BR-55), BT-122 in a supporting
+  document (BR-52), BT-125-1 (MIME code) and BT-125-2 (filename) of an attached document, BT-22 in a note,
+  BT-127 in a line note, BT-84 in a credit transfer (BR-50: an IBAN, or a national account number, BT-84-0),
+  BT-17 or BT-18 set but empty, a BG-14 invoicing period with neither BT-73 nor BT-74 (BR-CO-19);
 - the buyer (BT-46, BT-46-0) or the payee (BT-60, BT-60-0) holds more identifiers than the level carries:
   one private identifier below `extended-ctc-fr`, one global identifier (with a scheme) at `basic` and `en16931`;
 - an *Amount* has more than two decimals (spec §7.1.5, BR-DEC): the XML writer would round it to cents, so
@@ -95,6 +105,14 @@ specification identifier) and which terms may be present.
 
 This is the same rule for every writer of the model: a value the caller put in the invoice and the target
 cannot carry is an error, because dropping it would be silent data loss.
+
+### Writing to other syntaxes
+
+The model holds the terms of EN 16931 and of the French extension, and not every syntax has a place for
+each of them. A term that a target syntax can't carry makes that syntax's writer throw, naming it, and
+the caller clears it before writing: for instance a contact department name (BT-41-0, BT-56-0), a project
+name other than the CII default (BT-11-0), or a BT-24 that is the identifier of another syntax. Only the
+CII writer (`toCii()`) exists today; a UBL writer is planned for a later release.
 
 ## Reading: `fromCii(cii)`
 
@@ -113,8 +131,11 @@ allowances and charges, VAT totals) are first paired with an exactly equal eleme
 because the writer orders some of them differently from the source; the elements left over are then
 compared by position, so a lost element is reported, not a kept one that resembles it. A path carries the
 element's position in the source document. The comparison takes time linear in the size of the document,
-so a large untrusted document can't make it blow up. It is empty for the official examples of Factur-X 1.09 and of XP Z12-012 annex B; it holds only
-`BT-X-*` content (and the excluded rows above) on Factur-X EXTENDED documents.
+so a large untrusted document can't make it blow up.
+
+`dropped` is empty for the official examples of Factur-X 1.09 and of XP Z12-012 annex B (none carries
+content outside the model); on a Factur-X EXTENDED document it holds the `BT-X-*` content (and the
+excluded rows above).
 
 `fromCii()` throws for MINIMUM and BASIC WL.
 
@@ -142,8 +163,14 @@ the CII model, so neither `fromCii()` nor `dropped` can see it.
 
 On every official example (the Factur-X 1.09 corpus at BASIC, EN 16931 and EXTENDED, and the annex B
 Factur-X documents, EN 16931, EXTENDED and EXTENDED-CTC-FR) the mapping `fromCii` → `toCii` → `invoiceToXml`
-passes the XSD and the profile Schematron at the document's level; at BASIC, EN 16931 and EXTENDED-CTC-FR
-nothing is dropped and the CII model read back equals the original, and every in-scope id has a property:
+passes the XSD and the profile Schematron at the document's level, and the CII model read back from the
+written XML is compared with the original in both directions: no value is lost beyond `dropped`, and no value
+is added or changed on write. None of these examples carries content the model has no place for, so
+`dropped` is empty for all of them, the Factur-X EXTENDED ones included, and the CII model read back equals
+the original. `dropped` itself is proven on a Factur-X EXTENDED example with Factur-X-only content
+injected (a test indicator, a line status code, a seller role code, a charge on a gross price, and a
+sequence number on a document charge the writer reorders): it holds exactly those paths, and nothing else
+changes. Every in-scope id has a property:
 
 ```bash
 pnpm build && pnpm vitest run tests/en16931-corpus.test.ts tests/en16931-coverage.test.ts

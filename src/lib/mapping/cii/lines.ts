@@ -203,8 +203,8 @@ function lineFromCii(entry: ram.SupplyChainTradeLineItemType): InvoiceLine {
   return new InvoiceLine({
     identifier: doc?.lineID?.value ?? '',
     notes: (doc?.includedNote ?? []).map(n => new LineNote({
-      // The parser stands in an empty text for a missing Content: not a value.
-      note: n.content?.value === '' ? undefined : n.content?.value,
+      // BT-127 is the mandatory term of the line note: '' when the document lacks it (the parser reads the same).
+      note: n.content?.value ?? '',
       subjectCode: n.subjectCode?.value,
     })),
     parentLineIdentifier: doc?.parentLineID?.value,
@@ -375,7 +375,7 @@ function lineToCii(line: InvoiceLine, invoice: Invoice): ram.SupplyChainTradeLin
       parentLineID: ciiId(line.parentLineIdentifier),
       lineStatusReasonCode: ciiCode(line.statusReasonCode),
       includedNote: line.notes.map(n => new ram.NoteType({
-        content: new udt.TextType({ value: n.note ?? '' }),
+        content: new udt.TextType({ value: n.note }),
         subjectCode: ciiCode(n.subjectCode),
       })),
     }),
@@ -456,8 +456,13 @@ export function assertLinesComplete(invoice: Invoice, level: En16931Level): void
     needs.push(['EXT-FR-FE-191-1', 'unit code of the number of units in a parent line unit', 'EXT-FR-FE-191', 'number of units in a parent line unit', line.unitsInParentLineUnitCode !== undefined && line.unitsInParentLine === undefined])
     finite.push(['BT-129', 'invoiced quantity', line.invoicedQuantity], ['EXT-FR-FE-191', 'number of units in a parent line unit', line.unitsInParentLine], ['EXT-FR-FE-181', 'line total VAT amount', line.vatAmount], ['EXT-FR-FE-182', 'line total VAT amount in accounting currency', line.vatAmountInAccountingCurrency], ['EXT-FR-FE-184', 'line grand total amount', line.grandTotalAmount])
 
-    for (const note of line.notes)
-      needs.push(['EXT-FR-FE-183', 'invoice line note subject code', 'BT-127', 'invoice line note', note.subjectCode !== undefined && note.note === undefined])
+    // BT-127 is mandatory in each line note, as BT-22 in each BG-1; a subject code alone names the term it needs.
+    for (const note of line.notes) {
+      if (note.subjectCode !== undefined && empty(note.note))
+        needs.push(['EXT-FR-FE-183', 'invoice line note subject code', 'BT-127', 'invoice line note', true])
+      else
+        mandatory.push(['BT-127', 'invoice line note', note.note])
+    }
 
     const { price, vat, item } = line
     if (!price && !extended)

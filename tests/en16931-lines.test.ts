@@ -498,7 +498,7 @@ describe('en 16931 model: line terms', () => {
     expect((await check({ xml, level: 'en16931' })).errors.length).toBeGreaterThan(0)
   })
 
-  it('throws on a line period without a date (BR-CO-20) in toCii, and writes it from buildCii input without failing', () => {
+  it('throws on a line period without a date (BR-CO-20) in toCii, naming the term', () => {
     const text = (() => {
       try {
         toCii(new EN16931.Invoice(base([MINIMAL_LINE({ period: new EN16931.LinePeriod({}) })])), { level: 'en16931' })
@@ -763,7 +763,7 @@ describe('en 16931 model: line level gates and mandatory terms', () => {
   })
 
   it('throws on a note subject code without its note, a non-ISO date and a non-finite optional number, naming the term', () => {
-    expect(message(withLine({ notes: [new EN16931.LineNote({ subjectCode: 'AAI' })] }), 'extended')).toMatch(/EXT-FR-FE-183/)
+    expect(message(withLine({ notes: [new EN16931.LineNote({ note: '', subjectCode: 'AAI' })] }), 'extended')).toMatch(/EXT-FR-FE-183/)
     expect(message(withLine({ period: new EN16931.LinePeriod({ startDate: '20250101' }) }), 'en16931')).toMatch(/BT-134/)
     expect(message(withLine({ period: new EN16931.LinePeriod({ endDate: '2025-02-30' }) }), 'en16931')).toMatch(/BT-135/)
     expect(message(withLine({ actualDelivery: new EN16931.LineActualDelivery({ actualDeliveryDate: '2025-13-01' }) }), 'extended')).toMatch(/EXT-FR-FE-158/)

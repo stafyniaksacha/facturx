@@ -345,8 +345,9 @@ const empty = (value: number | string | undefined): boolean => value === undefin
 
 /**
  * Throws, naming the business term, when a mandatory term of a settlement group is missing, empty or
- * not a finite number, when an optional amount is not finite, or when a term needs another one (BT-111
- * needs BT-6; BT-105 and BT-177 share one CII element). Never quotes invoice content.
+ * not a finite number, when an optional amount is not finite, when a credit transfer has no account
+ * (BT-84 or BT-84-0, BR-50), or when a term needs another one (BT-111 needs BT-6; BT-105 and BT-177
+ * share one CII element). Never quotes invoice content.
  */
 export function assertSettlementComplete(invoice: Invoice): void {
   const { totals, paymentInstructions: payment, vatCurrencyExchange: exchange } = invoice
@@ -415,5 +416,11 @@ export function assertSettlementComplete(invoice: Invoice): void {
   for (const charge of invoice.charges) {
     if (charge.reasonCode !== undefined && charge.nonVatTaxCode !== undefined)
       throw new Error('toCii: BT-105 (document level charge reason code) and BT-177 (document level non-VAT tax code) share one CII element: set only one')
+  }
+  // BR-50: each credit transfer carries its account. CII writes BT-84 as `ram:IBANID` or, for a
+  // non-SEPA account, `ram:ProprietaryID` (BT-84-0): either one satisfies it.
+  for (const transfer of payment?.creditTransfers ?? []) {
+    if (empty(transfer.paymentAccountIdentifier) && empty(transfer.nationalAccountNumber))
+      throw new Error('toCii: BT-84 (payment account identifier) is mandatory and empty in each BG-17; set an IBAN or a national account number (BT-84-0) (BR-50)')
   }
 }

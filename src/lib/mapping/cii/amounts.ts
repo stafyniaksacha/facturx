@@ -36,15 +36,16 @@ type Node = Record<string, unknown>
 const isNode = (value: unknown): value is Node => typeof value === 'object' && value !== null
 
 // The business term of an amount, from where it sits in the CII model; a generic name when unknown.
-function termOf(keys: string[], parent: Node | undefined): string {
+function termOf(keys: string[], parent: Node | undefined, amount: AmountType, invoiceCurrency: string | undefined): string {
   const named = keys.filter(k => !/^\d+$/.test(k))
   const key = named.at(-1)!
-  const index = /^\d+$/.test(keys.at(-1)!) ? keys.at(-1) : undefined
   const owner = named.at(-2)
   const inLine = keys.includes('includedSupplyChainTradeLineItem')
   if (owner === 'specifiedTradeSettlementHeaderMonetarySummation') {
+    // Told apart by `@currencyID`, as `fromCii()` reads them (matrix BT-110-0, BT-111-0), not by position:
+    // a BT-111 written without BT-110 is the only TaxTotalAmount.
     if (key === 'taxTotalAmount')
-      return index === '1' ? 'BT-111 (invoice total VAT amount in accounting currency)' : 'BT-110 (invoice total VAT amount)'
+      return amount.currencyID === undefined || amount.currencyID === invoiceCurrency ? 'BT-110 (invoice total VAT amount)' : 'BT-111 (invoice total VAT amount in accounting currency)'
     const term = SUMMATION[key]
     if (term)
       return `${term[0]} (${term[1]})`
@@ -65,25 +66,25 @@ function termOf(keys: string[], parent: Node | undefined): string {
   return `an Amount (CII element ${key})`
 }
 
-function walk(value: unknown, keys: string[], parent: Node | undefined): void {
+function walk(value: unknown, keys: string[], parent: Node | undefined, invoiceCurrency: string | undefined): void {
   if (value instanceof TradePriceType)
     return
   if (value instanceof AmountType) {
     if (hasMoreThanTwoDecimals(value.value))
-      throw new Error(`toCii: ${termOf(keys, parent)} has more than 2 decimals; an Amount is limited to 2 (spec §7.1.5, BR-DEC), round it first`)
+      throw new Error(`toCii: ${termOf(keys, parent, value, invoiceCurrency)} has more than 2 decimals; an Amount is limited to 2 (spec §7.1.5, BR-DEC), round it first`)
     return
   }
   if (Array.isArray(value)) {
-    value.forEach((item, i) => walk(item, [...keys, String(i)], parent))
+    value.forEach((item, i) => walk(item, [...keys, String(i)], parent, invoiceCurrency))
     return
   }
   if (isNode(value)) {
     for (const [key, child] of Object.entries(value))
-      walk(child, [...keys, key], value)
+      walk(child, [...keys, key], value, invoiceCurrency)
   }
 }
 
 /** Throws, naming the term, when an Amount of the CII model written by `toCii()` has more than two decimals. */
 export function assertAmountDecimals(cii: CrossIndustryInvoiceType): void {
-  walk(cii, [], undefined)
+  walk(cii, [], undefined, cii.supplyChainTradeTransaction?.applicableHeaderTradeSettlement?.invoiceCurrencyCode?.value)
 }
