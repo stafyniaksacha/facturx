@@ -122,15 +122,17 @@ describe('generate() Info / XMP consistency (CG-04)', () => {
   })
 
   it('with keywords that need escaping and are not ASCII', async () => {
-    const keywords = ['Société', 'Dupont & Fils', '<SARL>', '€']
+    const keywords = ['Société', 'Dupont & Fils', '<SARL>', '€', 'x\u0001y']
     const bytes = await generate({
       pdf: await blankPdf(),
       xml: getEN16931XML(),
       meta: { author: 'a', title: 't', subject: 's', keywords, date: new Date() },
     })
     const pdf = await PDFDocument.load(bytes, { updateMetadata: false })
-    expect(pdf.getKeywords()).toBe(keywords.join(' '))
-    expect(xmpTexts(pdf, '//pdf:Keywords')).toEqual([keywords.join(' ')])
+    // A control character XML 1.0 cannot carry is dropped from both, so they still agree.
+    const expected = 'Société Dupont & Fils <SARL> € xy'
+    expect(pdf.getKeywords()).toBe(expected)
+    expect(xmpTexts(pdf, '//pdf:Keywords')).toEqual([expected])
   })
 
   it('overrides the Producer of a PDFDocument pdf-lib already stamped', async () => {
