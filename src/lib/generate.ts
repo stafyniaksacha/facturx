@@ -21,7 +21,7 @@ import {
 import pkg from '../../package.json' with { type: 'json' }
 
 import { check } from './check'
-import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
+import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ORDERX_SCHEMA, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
 import { decodeName, embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
@@ -84,7 +84,8 @@ export async function generate(options: {
     const isOrder = xml.root?.name === 'SCRDMCCBDACIOMessageStructure'
     if ((flavor === 'orderx') !== isOrder)
       throw new Error(`The XML root element "${xml.root?.name}" does not match the "${flavor}" flavor`)
-    const level = options.level || getLevel(xml)
+    // A blank `level` means "not given", as `''` always did.
+    const level = options.level?.trim() ? normalizeLevel(options.level) : getLevel(xml)
     if (level === 'extended-ctc-fr' || declaresExtendedCtcFr(xml)) {
       // A plain CII profile of XP Z12-012, not a HybridConformance value (BR-HYBRID-07,
       // codelists--HybridConformance.csv): no fx:ConformanceLevel can describe it, and an explicit
@@ -92,6 +93,9 @@ export async function generate(options: {
       // the PDF is read or marked as used.
       throw new Error('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile: it is a plain CII profile with no Factur-X conformance level. Use a Factur-X profile (e.g. extended)')
     }
+    // fx:ConformanceLevel SHALL be a HybridConformance value (BR-HYBRID-07, Fatal): a level with no
+    // value for this flavor used to write an empty one (was CG-30). Thrown before the PDF is read.
+    assertKnownLevel(flavor, level)
 
     if (options.check === true) {
       const result = await check({
@@ -257,6 +261,28 @@ const AF_RELATIONSHIPS: Record<string, AFRelationship> = {
   Data: AFRelationship.Data,
   Alternative: AFRelationship.Alternative,
   Source: AFRelationship.Source,
+}
+
+/**
+ * The `level` option in the form of the level keys (`basicwl`, `en16931`, …): case, surrounding
+ * whitespace, inner spaces and underscores are ignored, so the HybridConformance spelling
+ * (`BASIC WL`, `EN 16931`, `MINIMUM`) is accepted too (CG-30).
+ */
+function normalizeLevel(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s_]+/g, '')
+}
+
+/** The levels `generate()` can write a HybridConformance value for (BR-HYBRID-07), per flavor. */
+const GENERATE_LEVELS: Record<string, readonly string[]> = {
+  facturx: Object.keys(FACTURX_CONFORMANCE_LEVEL),
+  orderx: Object.keys(ORDERX_SCHEMA),
+}
+
+function assertKnownLevel(flavor: string, level: string): void {
+  const known = GENERATE_LEVELS[flavor]
+  // An unknown flavor is reported by the switch on the flavor below.
+  if (known && !known.includes(level))
+    throw new Error(`Unknown level "${level}" for the ${flavor} flavor: expected one of ${known.join(', ')}`)
 }
 
 /**
