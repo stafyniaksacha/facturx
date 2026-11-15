@@ -293,24 +293,33 @@ describe('en 16931 model: mandatory terms of credit transfers, attachments and l
   })
 
   // Factur-X EXTENDED: BR-FXEXT-01 / -02 want the text (or the coded text BT-X-5 / BT-X-9, outside the model)
-  // with a subject code; a note with neither is valid against its XSD and Schematron.
-  it('at extended, refuses a subject code without text (BR-FXEXT-01 / -02) and writes a note with neither without ram:Content', async () => {
+  // with a subject code.
+  it('at extended, refuses a subject code without text (BR-FXEXT-01 / -02)', async () => {
     const header = await enInvoice()
     header.notes = [new EN16931.InvoiceNote({ subjectCode: 'AAI' })]
     expect(() => toCii(header, { level: 'extended' })).toThrow(/^toCii: BT-21 .*BT-22.*BR-FXEXT-01/)
+    const line = await enInvoice()
+    line.lines[0]!.notes = [new EN16931.LineNote({ subjectCode: 'AAI' })]
+    expect(() => toCii(line, { level: 'extended' })).toThrow(/^toCii: EXT-FR-FE-183 .*BT-127.*BR-FXEXT-02/)
+  })
+
+  // A note with neither text nor subject code carries nothing and would write an empty `ram:IncludedNote`
+  // (PEPPOL-EN16931-R008).
+  it.each(['extended', 'extended-ctc-fr'] as const)('at %s, refuses a note with neither text nor subject code, never quoting content', async (level) => {
+    for (const fields of [{}, { note: '' }, { note: ' \t\r\n' }]) {
+      const header = await enInvoice()
+      header.notes = [new EN16931.InvoiceNote(fields)]
+      expect(() => toCii(header, { level })).toThrow(/^toCii: BG-1 \(invoice note\) needs BT-22 .*BT-21/)
+      const line = await enInvoice()
+      line.lines[0]!.notes = [new EN16931.LineNote(fields)]
+      expect(() => toCii(line, { level })).toThrow(/^toCii: an invoice line note needs BT-127 .*EXT-FR-FE-183/)
+    }
+  })
+
+  it('at extended-ctc-fr, a note with only a subject code still writes', async () => {
     const invoice = await enInvoice()
-    invoice.notes = [new EN16931.InvoiceNote({}), new EN16931.InvoiceNote({ note: 'kept' })]
-    invoice.lines[0]!.notes = [new EN16931.LineNote({})]
-    const xml = (await invoiceToXml(toCii(invoice, { level: 'extended' }))).toString()
-    expect(xml.match(/<ram:IncludedNote>\s*<\/ram:IncludedNote>|<ram:IncludedNote\/>/g)).toHaveLength(2)
-    const result = await check({ xml, schematron: true })
-    expect(result.level).toBe('extended')
-    expect(result.errors).toEqual([])
-    expect(result.schematronErrors).toEqual([])
-    expect(result.valid).toBe(true)
-    const back = fromCii(await xmlToInvoice(xml))
-    expect(back.dropped).toEqual([])
-    expect(back.invoice.notes[0]).toEqual(new EN16931.InvoiceNote({}))
+    invoice.notes = [new EN16931.InvoiceNote({ subjectCode: 'AAI' })]
+    expect(() => toCii(invoice, { level: 'extended-ctc-fr' })).not.toThrow()
   })
 
   it('reads a note without text as undefined (fromCii stays tolerant)', async () => {
@@ -451,5 +460,40 @@ describe('en 16931 model: an Amount has at most 2 decimals', () => {
     price.grossPrice = price.netPrice + 0.12345
     price.priceDiscount = 0.12345
     expect(() => toCii(invoice, { level: 'en16931' })).not.toThrow()
+  })
+})
+
+describe('en 16931 model: whitespace-only mandatory values count as empty', () => {
+  // The Schematron tests presence with normalize-space(x) != '': space, tab, CR and LF only.
+  const blank = ' \t\n'
+  const cases: [string, RegExp, (i: Invoice) => void][] = [
+    ['BT-1', /^toCii: BT-1 .*mandatory and empty/, (i) => { i.number = blank }],
+    ['a party name (BT-27)', /^toCii: BT-27 .*mandatory and empty/, (i) => { i.seller.name = blank }],
+    ['a line term (BT-126)', /^toCii: BT-126 .*mandatory and empty/, (i) => { i.lines[0]!.identifier = blank }],
+    ['BT-84 in a credit transfer', /^toCii: BT-84 .*BR-50/, (i) => { i.paymentInstructions = new EN16931.PaymentInstructions({ paymentMeansTypeCode: '58', creditTransfers: [new EN16931.CreditTransfer({ paymentAccountIdentifier: blank })] }) }],
+    ['BT-22 at en16931', /^toCii: BT-22 .*mandatory and empty/, (i) => { i.notes = [new EN16931.InvoiceNote({ note: blank })] }],
+  ]
+
+  it.each(cases)('throws for %s', async (_name, message, mutate) => {
+    const invoice = await enInvoice()
+    mutate(invoice)
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(message)
+  })
+
+  it('does not treat a no-break space as empty, and writes it untouched', async () => {
+    const invoice = await enInvoice()
+    invoice.number = '\u00A0'
+    expect(() => toCii(invoice, { level: 'en16931' })).not.toThrow()
+    expect(toCii(invoice, { level: 'en16931' }).exchangedDocument.id.value).toBe('\u00A0')
+  })
+})
+
+describe('en 16931 model: BR-50 and the payment means type code (CG-58)', () => {
+  // The vendored Schematron fires BR-50 only for TypeCode 30 or 58; toCii follows the rule text and
+  // refuses any BG-17 without BT-84 / BT-84-0. Pinned so a change of either side is deliberate.
+  it('refuses a credit transfer without BT-84 whatever the payment means type code', async () => {
+    const invoice = await enInvoice()
+    invoice.paymentInstructions = new EN16931.PaymentInstructions({ paymentMeansTypeCode: '42', creditTransfers: [new EN16931.CreditTransfer({ paymentAccountName: 'n', paymentServiceProviderIdentifier: 'BICXXXXX' })] })
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^toCii: BT-84 .*BR-50/)
   })
 })

@@ -20,7 +20,7 @@ import * as qdt from '../../models/facturx/qualifiedTypes'
 import * as ram from '../../models/facturx/reusableTypes'
 import * as udt from '../../models/facturx/unqualifiedTypes'
 import { isSet } from './levels'
-import { ciiDateTime, ciiId, ciiText, isoFromCii, unmapped } from './values'
+import { ciiDateTime, ciiId, ciiText, isBlank, isoFromCii, unmapped } from './values'
 
 /** What the six roles that are neither seller nor buyer have in common (internal: each exported class declares its own properties). */
 type ExtraParty = Payee | BuyerAgent | Payer | SellerAgent | Invoicee | BillingParty
@@ -395,7 +395,7 @@ export function assertPartiesComplete(invoice: Invoice): void {
     ...(deliveryTerms ? [['EXT-FR-FE-185', 'delivery type code', deliveryTerms.deliveryTypeCode] as Check] : []),
   ]
   for (const [id, term, value] of checks) {
-    if (value === undefined || value === '')
+    if (isBlank(value))
       throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
   }
   // The department name of a contact is a term of the seller and buyer only (BT-41-0, BT-56-0): the other
@@ -421,7 +421,7 @@ export function assertPartiesComplete(invoice: Invoice): void {
     ...schemeChecks('EXT-FR-FE-122', 'billing party electronic address scheme', invoice.billingParty?.electronicAddress ? [invoice.billingParty.electronicAddress] : []),
   ]
   for (const [id, term, value] of schemes) {
-    if (value === undefined || value === '')
+    if (isBlank(value))
       throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
   }
 }

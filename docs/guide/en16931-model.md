@@ -38,7 +38,8 @@ Conventions:
 - The text of a note (BT-22 in BG-1, BT-127 on a line) is optional in the model: EN 16931 makes BT-22
   mandatory, the EXTENDED XSD and annex A EXTENDED-CTC-FR do not. `fromCii()` reads `undefined` for a note
   without text. `toCii()` refuses a note without text at `basic` and `en16931`; at `extended` and
-  `extended-ctc-fr` it writes the note without `ram:Content`, except that Factur-X EXTENDED wants the text
+  `extended-ctc-fr` it writes the note without `ram:Content` when it has a subject code, and refuses a note
+  with neither text nor subject code (it would write an empty `ram:IncludedNote`), except that Factur-X EXTENDED wants the text
   with a subject code (BR-FXEXT-01 / -02, CG-57), so a subject code alone needs `extended-ctc-fr`.
 - An invoice can be a plain object instead of class instances. The TypeScript types still require the
   array properties, but at runtime (plain JavaScript, data from JSON) `toCii()` guards them: an optional
@@ -86,7 +87,8 @@ specification identifier) and which terms may be present.
 
 `toCii()` is strict. It **throws, naming the business term** (and never quoting the invoice's content) when:
 
-- a mandatory term is empty or missing: BT-1, BT-2, BT-3, BT-5, the seller (BG-4) and buyer (BG-7) with their
+- a mandatory term is empty or missing (a string of only XML whitespace, that is space, tab, CR or LF, counts
+  as empty, as `normalize-space()` does in the Schematron; a no-break space does not): BT-1, BT-2, BT-3, BT-5, the seller (BG-4) and buyer (BG-7) with their
   names, postal addresses and country codes, the totals, the VAT breakdown, the lines and their mandatory
   terms. Below `extended`, a line needs its price (BG-29), quantity (BT-129) and VAT (BG-30);
 - the invoice holds a term the level cannot carry: a term missing from the Factur-X BASIC matrix needs
@@ -98,7 +100,9 @@ specification identifier) and which terms may be present.
 - a mandatory term of a group is empty: BT-25 in a preceding invoice reference (BR-55), BT-122 in a supporting
   document (BR-52), BT-125-1 (MIME code) and BT-125-2 (filename) of an attached document, BT-22 in a note and
   BT-127 in a line note at `basic` and `en16931` (at `extended`, with a subject code: BR-FXEXT-01 / -02), BT-84
-  in a credit transfer (BR-50: an IBAN, or a national account number, BT-84-0),
+  in a credit transfer (BR-50: an IBAN, or a national account number, BT-84-0; stricter than the vendored
+  Schematron, which checks it only for payment means 30 and 58, CG-58), a note (BG-1 or a line note) with
+  neither text nor subject code at `extended` and `extended-ctc-fr`,
   BT-17 or BT-18 set but empty, a BG-14 invoicing period with neither BT-73 nor BT-74 (BR-CO-19);
 - the buyer (BT-46, BT-46-0) or the payee (BT-60, BT-60-0) holds more identifiers than the level carries:
   one private identifier below `extended-ctc-fr`, one global identifier (with a scheme) at `basic` and `en16931`;

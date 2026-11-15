@@ -175,6 +175,8 @@ describe('en 16931 model: corpus', () => {
     const cii = await xmlToInvoice(xml)
     const { invoice, dropped } = fromCii(cii)
     expect(dropped.flatMap(notBtX)).toEqual([])
+    // The official EXTENDED examples carry no BT-X content (docs/guide/en16931-model.md).
+    expect(dropped).toEqual([])
     // Nothing else changes: the values of the source missing after the trip are exactly the dropped
     // ones, and the trip adds or changes no value (the reverse diff); deep equality when nothing is
     // dropped, which is the case for every official Factur-X EXTENDED example.

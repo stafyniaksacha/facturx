@@ -105,6 +105,7 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 | CG-55 | models, spec | EXTENDED matrix BT-X-565 (EXTENDED-CTC-FR column `X`) vs Annex A | interop | BT-X-565 (line delivery terms, trade location name) is in the EXTENDED-CTC-FR profile of the matrix but has no `EXT-FR-FE` id, so the EN 16931 model has no place for it; it is reported in `dropped` |
 | CG-56 | parser | `src/lib/parsers/facturx.ts` | data-loss | `xmlToInvoice()` reads a missing mandatory amount (BT-92 / BT-99, BT-109, BT-112, BT-115, BT-167) as `0`, so neither the CII model nor `fromCii()` can tell it from a real zero (pre-existing) |
 | CG-57 | models, spec | `fields--Business_Rules.csv` BR-FXEXT-01 / -02 (Factur-X EXTENDED Schematron) vs annex A EXTENDED-CTC-FR BT-22 / BT-127 `0..1` | interop | At Factur-X EXTENDED a note subject code needs the text or the coded text (BT-X-5 / BT-X-9), which the model does not hold: a note with a subject code and only a coded text reads into the model, and `toCii()` refuses to write it back at `extended` |
+| CG-58 | models, spec | `fields--Business_Rules.csv` BR-50 vs the vendored Schematron context (`TypeCode` 30 or 58) | interop | BR-50 reads "BT-84 shall be present if BG-16 is provided"; the Schematron checks it only under payment means TypeCode 30 / 58. A document with another TypeCode whose `PayeePartyCreditorFinancialAccount` holds only BT-85 / BT-86 reads with `fromCii()`, and `toCii()` refuses to write it back (BR-50) |
 | CG-34 | French CTC, lifecycle, upstream | Annex A `annex-a--BR-FR-CDV_pour_factures.csv`, `annex-a--Tableau_des_motifs_de_STATUTS.csv` vs `BR-FR-CDV-Schematron-CDAR` | interop | The published BR-FR-CDV Schematron cannot fail on several Annex A rules, and some of its code lists differ from Annex A |
 | CG-36 | spec | §version history p.7–8 vs the EXTENDED field matrix | — | The 1.09 version history contradicts the field matrix on several new fields (unresolved) |
 | CG-37 | parser, models | EXTENDED XSD `NoteType/Content` `minOccurs="0"` | data-loss | A note without `Content` (BT-22 / BT-127) comes back with an empty `Content` element |
@@ -847,7 +848,9 @@ paths and the code supports both, so nothing here is picked.
   BT-127); the EXTENDED-CTC-FR Schematron has no such rule.
 - **Model:** `InvoiceNote.note` and `LineNote.note` are optional (the wider cardinality). `toCii()` refuses a
   note without text at `basic` and `en16931`, refuses a subject code without text at `extended`
-  (BR-FXEXT-01 / -02), and otherwise writes a note without text without `ram:Content`. The coded texts
+  (BR-FXEXT-01 / -02), refuses a note with neither text nor subject code at both extended levels (it would
+  write an empty `ram:IncludedNote`, PEPPOL-EN16931-R008), and otherwise writes a note without text without
+  `ram:Content`. The coded texts
   BT-X-5 / BT-X-9 are true `BT-X` fields outside the model (reported in `dropped`).
 - **Effect:** a Factur-X EXTENDED note holding a subject code and only a coded text reads into the model with
   no text (the coded text in `dropped`), and `toCii()` refuses to write it back at `extended`. No official
@@ -856,3 +859,23 @@ paths and the code supports both, so nothing here is picked.
 - **Evidence:** `grep -n 'BR-FXEXT-01\|BR-FXEXT-02' spec/factur-x-1.09/text/fields--Business_Rules.csv`;
   `grep -n ',BT-22,\|,BT-127,\|EXT-FR-FE-183' spec/afnor-xp-z12-012-1.4/text/annex-a--CII_D22B_FX_EXT-CTC-FR.csv`;
   `pnpm build && pnpm vitest run tests/en16931-strict.test.ts -t "note"`.
+
+### CG-58 — BR-50 in `toCii()` vs the vendored Schematron's payment means context (unresolved)
+
+- **Spec:** BR-50 (`spec/factur-x-1.09/text/fields--Business_Rules.csv`): "A Payment account identifier (BT-84)
+  shall be present if Credit transfer (BG-16) information is provided in the Invoice." The matrices give
+  BT-84 `1..1` in BG-17. The vendored Schematrons (BASIC WL, BASIC, EN 16931, EXTENDED and EXTENDED-CTC-FR
+  alike) fire BR-50 only in the context
+  `//ram:SpecifiedTradeSettlementPaymentMeans[ram:TypeCode='30' or ram:TypeCode='58']/ram:PayeePartyCreditorFinancialAccount`
+  (e.g. `src/lib/xsd/facturx/en16931/FACTUR-X_EN16931.xslt` l.3372). Under any other payment means type code
+  the Schematron accepts a bank account block without BT-84; the rule text and the matrix do not.
+- **Model:** `toCii()` follows the rule text: every BG-17 needs BT-84 or BT-84-0 (`settlement.ts`), whatever
+  `paymentMeansTypeCode` is. The code is not weakened to match the Schematron.
+- **Effect:** a document with payment means TypeCode other than 30 / 58 whose
+  `PayeePartyCreditorFinancialAccount` has only BT-85 / BT-86 reads with `fromCii()`, but `toCii()` refuses to
+  write it back (BR-50). No official example does this.
+- **Status:** unresolved (spec contradiction between the rule text and the executable Schematron).
+- **Close when:** the spec text or the Schematron context change, or the controller decides to align.
+- **Evidence:** `grep -n "BR-50" spec/factur-x-1.09/text/fields--Business_Rules.csv`;
+  `grep -n "BR-50\]" -B12 src/lib/xsd/facturx/en16931/FACTUR-X_EN16931.xslt | grep fired-rule`;
+  `pnpm build && pnpm vitest run tests/en16931-strict.test.ts -t "CG-58"`.

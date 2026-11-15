@@ -9,6 +9,17 @@
 import * as qdt from '../../models/facturx/qualifiedTypes'
 import * as udt from '../../models/facturx/unqualifiedTypes'
 
+const XML_BLANK = /^[ \t\r\n]*$/
+
+/**
+ * Whether a mandatory value counts as absent for `toCii()`: undefined, or a string with nothing but XML
+ * whitespace (space, tab, CR, LF). The Schematron tests presence with `normalize-space(x) != ''`, which
+ * strips exactly those four; `String.prototype.trim` strips more (a no-break space is content to XML).
+ */
+export function isBlank(value: string | undefined): boolean {
+  return value === undefined || XML_BLANK.test(value)
+}
+
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 const CII_102 = /^(\d{4})(\d{2})(\d{2})$/
 

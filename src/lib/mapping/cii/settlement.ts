@@ -28,7 +28,7 @@ import * as qdt from '../../models/facturx/qualifiedTypes'
 import * as ram from '../../models/facturx/reusableTypes'
 import * as udt from '../../models/facturx/unqualifiedTypes'
 import { isSet } from './levels'
-import { ciiCode, ciiDateTime, ciiId, ciiText, isoFromCii, unmapped } from './values'
+import { ciiCode, ciiDateTime, ciiId, ciiText, isBlank, isoFromCii, unmapped } from './values'
 
 /** The settlement properties of `Invoice`, as its constructor takes them. */
 type SettlementKeys = 'paymentInstructions' | 'paymentTerms' | 'allowances' | 'charges' | 'totals' | 'vatBreakdown' | 'vatCurrencyExchange'
@@ -341,7 +341,7 @@ export function settlementToCii(invoice: Invoice, vatPoint: (invoice: Invoice) =
 
 type Check = [id: string, term: string, value: number | string | undefined, mandatory: boolean]
 
-const empty = (value: number | string | undefined): boolean => value === undefined || value === '' || (typeof value === 'number' && !Number.isFinite(value))
+const empty = (value: number | string | undefined): boolean => typeof value === 'number' ? !Number.isFinite(value) : isBlank(value)
 
 /**
  * Throws, naming the business term, when a mandatory term of a settlement group is missing, empty or
@@ -418,7 +418,8 @@ export function assertSettlementComplete(invoice: Invoice): void {
       throw new Error('toCii: BT-105 (document level charge reason code) and BT-177 (document level non-VAT tax code) share one CII element: set only one')
   }
   // BR-50: each credit transfer carries its account. CII writes BT-84 as `ram:IBANID` or, for a
-  // non-SEPA account, `ram:ProprietaryID` (BT-84-0): either one satisfies it.
+  // non-SEPA account, `ram:ProprietaryID` (BT-84-0): either one satisfies it. Stricter than the vendored
+  // Schematron, which fires BR-50 only for payment means TypeCode 30 or 58: kept on the rule text (CG-58).
   for (const transfer of payment?.creditTransfers ?? []) {
     if (empty(transfer.paymentAccountIdentifier) && empty(transfer.nationalAccountNumber))
       throw new Error('toCii: BT-84 (payment account identifier) is mandatory and empty in each BG-17; set an IBAN or a national account number (BT-84-0) (BR-50)')

@@ -46,7 +46,7 @@ import {
   sellerOrderFromCii,
   sellerOrderToCii,
 } from './line-extensions'
-import { BT8_FROM_CII, BT8_TO_CII, ciiCode, ciiDateTime, ciiId, ciiText, isoFromCii, noteContent } from './values'
+import { BT8_FROM_CII, BT8_TO_CII, ciiCode, ciiDateTime, ciiId, ciiText, isBlank, isoFromCii, noteContent } from './values'
 
 /** The lines property of `Invoice`, as its constructor takes it. */
 export type LinesInit = Pick<ConstructorParameters<typeof Invoice>[0], 'lines'>
@@ -427,7 +427,7 @@ export function linesToCii(invoice: Invoice): ram.SupplyChainTradeLineItemType[]
 
 type Check = [id: string, term: string, value: number | string | undefined]
 
-const empty = (value: number | string | undefined): boolean => value === undefined || value === '' || (typeof value === 'number' && !Number.isFinite(value))
+const empty = (value: number | string | undefined): boolean => typeof value === 'number' ? !Number.isFinite(value) : isBlank(value)
 
 /**
  * Throws, naming the business term, when a mandatory term of a line is missing, empty or not a finite
@@ -464,6 +464,12 @@ export function assertLinesComplete(invoice: Invoice, level: En16931Level): void
     }
     // Factur-X EXTENDED: a subject code needs the text or the coded text BT-X-9 (BR-FXEXT-02), which the model
     // does not hold. The EXTENDED-CTC-FR Schematron has no such rule.
+    if (extended) {
+      for (const note of line.notes) {
+        if (empty(note.note) && empty(note.subjectCode))
+          throw new Error('toCii: an invoice line note needs BT-127 (invoice line note) or EXT-FR-FE-183 (invoice line note subject code)')
+      }
+    }
     if (level === 'extended') {
       for (const note of line.notes) {
         if (empty(note.note) && !empty(note.subjectCode))

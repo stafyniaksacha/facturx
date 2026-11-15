@@ -47,6 +47,7 @@ import {
   ciiFormattedDateTime,
   ciiId,
   ciiText,
+  isBlank,
   isoFromCii,
   noteContent,
 } from './values'
@@ -295,7 +296,7 @@ export function headerToCii(invoice: Invoice, level: En16931Level): CrossIndustr
  * tolerant, so `fromCii()` can still read such a document.
  */
 export function assertHeaderComplete(invoice: Invoice, level: En16931Level): void {
-  const empty = (value: string | undefined): boolean => value === undefined || value === ''
+  const empty = isBlank
   for (const reference of invoice.precedingInvoiceReferences ?? []) {
     if (empty(reference.reference))
       throw new Error('toCii: BT-25 (preceding invoice reference) is mandatory and empty in each BG-3 (BR-55)')
@@ -309,7 +310,7 @@ export function assertHeaderComplete(invoice: Invoice, level: En16931Level): voi
     if (document.attachedDocument && empty(document.attachedDocument.filename))
       throw new Error('toCii: BT-125-2 (attached document filename) is mandatory and empty when BT-125 (attached document) is set')
   }
-  if (invoice.tenderOrLotReference === '')
+  if (invoice.tenderOrLotReference !== undefined && empty(invoice.tenderOrLotReference))
     throw new Error('toCii: BT-17 (tender or lot reference) is set but empty (BR-52)')
   for (const object of invoice.invoicedObjectIdentifiers ?? []) {
     if (empty(object.value))
@@ -323,6 +324,14 @@ export function assertHeaderComplete(invoice: Invoice, level: En16931Level): voi
     for (const note of invoice.notes ?? []) {
       if (empty(note.note))
         throw new Error(`toCii: BT-22 (invoice note) is mandatory and empty in each BG-1 at level "${level}"; a note without text needs level "extended" or "extended-ctc-fr"`)
+    }
+  }
+  // A note with neither text nor subject code carries nothing: it would write an empty `ram:IncludedNote`
+  // (PEPPOL-EN16931-R008, empty element).
+  if (level === 'extended' || level === 'extended-ctc-fr') {
+    for (const note of invoice.notes ?? []) {
+      if (empty(note.note) && empty(note.subjectCode))
+        throw new Error('toCii: BG-1 (invoice note) needs BT-22 (invoice note) or BT-21 (invoice note subject code)')
     }
   }
   // Factur-X EXTENDED: a subject code needs the text or the coded text BT-X-5 (BR-FXEXT-01), which the model

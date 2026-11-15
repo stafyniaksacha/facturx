@@ -17,6 +17,7 @@ import { assertLevelCarries, EN16931_LEVELS, GUIDELINE_IDS, isEn16931Level } fro
 import { assertLinesComplete, LINE_GATES, linesFromCii } from './lines'
 import { assertPartiesComplete, assertPartyIdentifierCounts, partiesFromCii, PARTY_GATES } from './parties'
 import { assertSettlementComplete, SETTLEMENT_GATES, settlementFromCii } from './settlement'
+import { isBlank } from './values'
 
 /** What `fromCii()` returns. */
 export interface FromCiiResult {
@@ -171,7 +172,9 @@ function checked(cii: CrossIndustryInvoiceType): CrossIndustryInvoiceType {
  * - a mandatory term is empty: BT-1, BT-2, BT-3, BT-5, the mandatory terms of the groups the invoice
  *   holds (BT-22 and BT-127 in each note at `basic` and `en16931`, or with a subject code at `extended`, BT-25, BT-122, BT-125-1 / BT-125-2 with a BT-125, BT-84 or
  *   BT-84-0 in each credit transfer, BT-73 or BT-74 in a BG-14 ...), or a mandatory group (BG-4, BG-7,
- *   BG-22, BG-23, BG-25);
+ *   BG-22, BG-23, BG-25). A string of only XML whitespace (space, tab, CR, LF) counts as empty; a
+ *   no-break space does not. At `extended` and `extended-ctc-fr` a note (BG-1, or a line note) with neither
+ *   its text (BT-22, BT-127) nor its subject code is refused too;
  * - an optional repeatable group of a plain-object invoice is neither absent nor an array (absent
  *   reads as empty);
  * - the invoice holds a value `level` cannot carry (an `EXT-FR-FE-*` field below `extended`, a term
@@ -188,7 +191,7 @@ export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInv
   const full = withArrays(invoice)
   for (const [id, term, get] of MANDATORY) {
     const value = get(full)
-    if (value === undefined || value === '')
+    if (isBlank(value))
       throw new Error(`toCii: ${id} (${term}) is mandatory and empty`)
   }
   assertHeaderComplete(full, level)
