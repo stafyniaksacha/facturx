@@ -36,8 +36,9 @@ Profiles are increasing supersets of data, from the bare legal minimum to a full
 `extended-ctc-fr` is the French reform's EXTENDED-CTC-FR profile for **plain CII** invoices (XP Z12-012,
 guideline ID `…urn.cpro.gouv.fr:1p0:extended-ctc-fr`), not a Factur-X profile. `check()` detects it and
 validates it with the UN/CEFACT CII D22B XSD and the dedicated EXTENDED-CTC-FR Schematron published by
-FNFE-MPE; `frCtc: true` adds the French rules. It has no conformance label, so `generate()` refuses
-it. Its French extension fields (`EXT-FR-FE-*`) are not in the models yet: `xmlToInvoice()` drops them.
+FNFE-MPE; `frCtc: true` adds the French rules. Only the exact Annex A guideline ID is recognised. It
+has no conformance label, so `generate()` refuses a document that declares it (even with an explicit
+`level`), and `extract({ check: true })` rejects a PDF whose `factur-x.xml` declares it. Its French extension fields (`EXT-FR-FE-*`) are not in the models yet: `xmlToInvoice()` drops them.
 
 The `conformanceLevel` strings above are written into the PDF/A-3 XMP metadata by
 [`generate()`](/api/generate).

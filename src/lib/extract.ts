@@ -89,6 +89,11 @@ export async function extract(options: {
       if (!result.valid) {
         throw new Error('Invalid XML')
       }
+      // A valid plain-CII EXTENDED-CTC-FR document, but no Factur-X profile: a hybrid PDF cannot
+      // declare it (BR-HYBRID-07/15). Before the level existed this threw `Unknown level`.
+      if (result.level === 'extended-ctc-fr') {
+        throw new Error('Invalid XML: the embedded invoice declares EXTENDED-CTC-FR, a plain CII profile that is not a Factur-X profile')
+      }
     }
 
     return {

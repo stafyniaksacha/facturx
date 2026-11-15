@@ -17,8 +17,8 @@ The FNFE-MPE release notes define three validation steps for an invoice:
 
 | Step | What | In this library |
 | --- | --- | --- |
-| 1 | XSD of the profile | `check()` (always) |
-| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`: Factur-X **1.09.2.fixFR04** Schematrons from this release for BASIC WL, EN16931 and EXTENDED |
+| 1 | XSD of the profile | `check()` (always); the "uncoupled" CII D22B XSD for EXTENDED-CTC-FR |
+| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`: Factur-X **1.09.2.fixFR04** Schematrons from this release for BASIC WL, EN16931 and EXTENDED; the dedicated EXTENDED-CTC-FR Schematron for plain CII |
 | 3 | French rules `BR-FR-Flux2` | `frCtc: true` |
 
 `frCtc` runs step 3 only: it neither requires nor implies `schematron`. Pass both to run the whole
@@ -45,7 +45,7 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
 
 ## Scope
 
-- **Factur-X BASIC WL, EN16931 and EXTENDED** only: the three profiles the release selects (the
+- **Factur-X BASIC WL, EN16931 and EXTENDED**, and **plain-CII EXTENDED-CTC-FR**, only: the three Factur-X profiles the release selects (the
   release notes add "BASIC WL for the first year only"; XP Z12-012 Annex A lists guideline
   IDs for these three). The rules themselves read neither the root element nor the profile, so the
   library checks the document: a non-CII document, a MINIMUM or BASIC invoice, or a `level` that

@@ -24,7 +24,8 @@ export async function check(options: {
    * Also run the French CTC business rules (`BR-FR-Flux2`, XP Z12-012 v1.4.0): step 3 of the
    * validation sequence of the FNFE-MPE release notes (p.9), after XSD (step 1) and the profile
    * Schematron (step 2). Independent of `schematron`: pass both for the full sequence.
-   * Factur-X BASIC WL, EN16931 and EXTENDED only; throws for other flavors and levels.
+   * Factur-X BASIC WL, EN16931 and EXTENDED, and plain-CII EXTENDED-CTC-FR, only; throws for other
+   * flavors and levels.
    * Defaults to `false`.
    */
   frCtc?: boolean

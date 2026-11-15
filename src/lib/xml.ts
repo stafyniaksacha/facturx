@@ -7,6 +7,7 @@ import type {
 import { parse } from 'date-fns'
 import { XmlDocument } from 'libxml2-wasm'
 import {
+  EXTENDED_CTC_FR_GUIDELINE_ID,
   FACTURX_SCHEMA,
   ORDERX_SCHEMA,
 } from './constants'
@@ -54,6 +55,10 @@ export function levelFromGuidelineId(id: string | undefined): string {
   }
   if (!possibleValues.has(level)) {
     throw new Error(`Unknown level: "${level}"`)
+  }
+  // Nothing downstream checks BT-24 for this profile, so only its exact Annex A ID selects it.
+  if (level === 'extended-ctc-fr' && value !== EXTENDED_CTC_FR_GUIDELINE_ID) {
+    throw new Error(`Unknown level: "${value}" (EXTENDED-CTC-FR is ${EXTENDED_CTC_FR_GUIDELINE_ID})`)
   }
   return level
 }

@@ -22,7 +22,7 @@ facturx check <xml> [options]
 | `--flavor` | `-f` | string | autodetect | `facturx`, `orderx` or `zugferd`. |
 | `--level` | `-l` | string | autodetect | Schema level (e.g. `en16931`). |
 | `--schematron` | `-s` | boolean | `false` | Also run Schematron (EN 16931 `BR-*`) validation. **Factur-X only.** |
-| `--fr-ctc` | | boolean | `false` | Also run the French e-invoicing rules `BR-FR-Flux2` ([guide](/guide/french-ctc)). **Factur-X BASIC WL, EN16931 and EXTENDED only.** Combine with `--schematron` for the full validation sequence. |
+| `--fr-ctc` | | boolean | `false` | Also run the French e-invoicing rules `BR-FR-Flux2` ([guide](/guide/french-ctc)). **Factur-X BASIC WL, EN16931 and EXTENDED, and plain-CII EXTENDED-CTC-FR, only.** Combine with `--schematron` for the full validation sequence. |
 | `--warnings-as-errors` | `-W` | boolean | `false` | With `--schematron` or `--fr-ctc`, also fail on rules flagged `warning`/`information`. Without it, those are printed as `[Schematron warning]` / `[BR-FR warning]` and don't change the exit code. |
 
 ## Behaviour

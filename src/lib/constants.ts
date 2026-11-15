@@ -20,6 +20,10 @@ export const FACTURX_SCHEMA = {
   'extended-ctc-fr': './xsd/facturx/extended-ctc-fr/CrossIndustryInvoice_100pD22B.xsd',
   'minimum': './xsd/facturx/minimum/Factur-X_1.09_MINIMUM.xsd',
 } as const
+// XP Z12-012 Annex A, BT-24 row (`annex-a--CII_D22B_FX_EXT-CTC-FR.csv`): the only guideline ID of the
+// EXTENDED-CTC-FR profile. Matched exactly, since its dedicated Schematron does not check BT-24.
+export const EXTENDED_CTC_FR_GUIDELINE_ID = 'urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr'
+
 export const FACTURX_CONFORMANCE_LEVEL = {
   basic: 'BASIC',
   basicwl: 'BASIC WL',

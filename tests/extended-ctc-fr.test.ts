@@ -1,7 +1,8 @@
+import { Buffer } from 'node:buffer'
 import { readdirSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
-import { check, generate, validateFrCtc, validateSchematron } from '@stafyniaksacha/facturx'
+import { check, extract, generate, validateFrCtc, validateSchematron } from '@stafyniaksacha/facturx'
 import { PDFDocument } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
@@ -76,7 +77,30 @@ describe('eXTENDED-CTC-FR plain CII profile (CG-18 validation)', () => {
     const xml = await readFile(F1, 'utf8')
     await expect(generate({ pdf, xml })).rejects.toThrow('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile')
     await expect(generate({ pdf, xml, level: 'extended-ctc-fr' })).rejects.toThrow('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile')
+    // An explicit Factur-X level would write fx:ConformanceLevel EXTENDED over this BT-24.
+    await expect(generate({ pdf, xml, level: 'extended' })).rejects.toThrow('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile')
     // The PDFDocument was not marked as used.
     await expect(generate({ pdf, xml: await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_EN16931.xml'), 'utf8') })).resolves.toBeInstanceOf(Uint8Array)
+  })
+
+  // Annex A defines one guideline ID for the profile, and its Schematron does not check BT-24, so
+  // only that exact ID selects the level.
+  it.each([
+    'urn:example:not-a-profile:extended-ctc-fr',
+    'urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr:2026',
+  ])('does not detect the level from %s', async (id) => {
+    const xml = (await readFile(F1, 'utf8')).replace(/urn:cen\.eu:en16931:2017#conformant#urn\.cpro\.gouv\.fr:1p0:extended-ctc-fr(?=<)/, id)
+    expect(xml).toContain(`>${id}<`)
+    await expect(check({ xml, schematron: true, frCtc: true })).rejects.toThrow('Unknown level')
+  })
+
+  it('extract({ check: true }) refuses a factur-x.xml that declares EXTENDED-CTC-FR', async () => {
+    const xml = await readFile(F1, 'utf8')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    await pdf.attach(new TextEncoder().encode(xml), 'factur-x.xml', { mimeType: 'text/xml' })
+    const bytes = Buffer.from(await pdf.save())
+    await expect(extract({ pdf: bytes })).resolves.toMatchObject({ filename: 'factur-x.xml' })
+    await expect(extract({ pdf: bytes, check: true })).rejects.toThrow('declares EXTENDED-CTC-FR, a plain CII profile that is not a Factur-X profile')
   })
 })

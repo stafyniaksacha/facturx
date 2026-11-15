@@ -80,9 +80,10 @@ export async function generate(options: {
       throw new Error('Cannot generate the "zugferd" flavor: ZUGFeRD 1.0 and the legacy ZUGFeRD 2.0 hybrid (zugferd-invoice.xml) are extraction only. A ZUGFeRD 2.x invoice is a Factur-X CrossIndustryInvoice: generate it with flavor "facturx"')
     }
     const level = options.level || getLevel(xml)
-    if (flavor === 'facturx' && level === 'extended-ctc-fr') {
+    if (flavor === 'facturx' && (level === 'extended-ctc-fr' || declaresExtendedCtcFr(xml))) {
       // A plain CII profile of XP Z12-012, not a HybridConformance value (BR-HYBRID-07,
-      // codelists--HybridConformance.csv): no fx:ConformanceLevel can describe it. Thrown before
+      // codelists--HybridConformance.csv): no fx:ConformanceLevel can describe it, and an explicit
+      // `level` would make fx:ConformanceLevel disagree with BT-24 (BR-HYBRID-15). Thrown before
       // the PDF is read or marked as used.
       throw new Error('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile: it is a plain CII profile with no Factur-X conformance level. Use a Factur-X profile (e.g. extended)')
     }
@@ -245,6 +246,16 @@ function passThroughBytes(input: string | Buffer, xml: XmlDocument): Uint8Array 
       throw new Error(`preserveXmlBytes needs UTF-8 XML, but the XML declaration says encoding="${encoding.slice(0, 40)}"`)
   }
   return typeof input === 'string' ? new TextEncoder().encode(input) : new Uint8Array(input)
+}
+
+/** Whether the document's BT-24 is the EXTENDED-CTC-FR guideline ID, whatever `level` says. */
+function declaresExtendedCtcFr(xml: XmlDocument): boolean {
+  try {
+    return getLevel(xml) === 'extended-ctc-fr'
+  }
+  catch {
+    return false
+  }
 }
 
 const AF_RELATIONSHIPS: Record<string, AFRelationship> = {
