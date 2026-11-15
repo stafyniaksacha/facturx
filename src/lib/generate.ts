@@ -286,7 +286,8 @@ function normalizeLevel(value: string): string {
 }
 
 function assertKnownLevel(flavor: string, level: string): void {
-  const known = GENERATE_LEVELS[flavor]
+  // Own properties only: `flavor` is caller input, and `constructor` or `toString` are inherited.
+  const known = Object.hasOwn(GENERATE_LEVELS, flavor) ? GENERATE_LEVELS[flavor] : undefined
   // A flavor without an entry (Order-X, or an unknown one reported by the switch below) is not checked.
   if (known && !known.includes(level))
     throw new Error(`Unknown level "${level}" for the ${flavor} flavor: expected one of ${known.join(', ')}`)

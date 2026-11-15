@@ -839,6 +839,11 @@ describe('generate', () => {
       await expect(generate({ pdf, xml: order, level: 'BASIC', check: true })).rejects.toThrow('Unknown Order-X level: "BASIC"')
     })
 
+    it.each(['constructor', 'toString', '__proto__'])('reports an inherited property name as flavor %j as an unknown flavor', async (flavor) => {
+      const xml = await readFile(SOURCE_XML, 'utf8')
+      await expect(generate({ pdf: await sourcePdf(), xml, flavor, level: 'en16931' })).rejects.toThrow(`Unknown schema flavor: "${flavor}"`)
+    })
+
     it('still refuses EXTENDED-CTC-FR, whatever its spelling', async () => {
       const xml = await readFile(SOURCE_XML, 'utf8')
       await expect(generate({ pdf: await sourcePdf(), xml, level: 'EXTENDED-CTC-FR' })).rejects.toThrow('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile')
