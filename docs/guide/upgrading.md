@@ -147,6 +147,11 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   0.6.1 wrote them without their value.
 - **`check()`, `generate()`, `xmlToInvoice()` and the CLI work on Windows again** ([#26](https://github.com/stafyniaksacha/facturx/pull/26)): XSD imports
   failed to load on drive-letter paths.
+- **The XMP metadata `generate()` writes is well-formed UTF-8** (CG-02, CG-03). Values taken from
+  the invoice or `meta` (seller name, title, subject…) are XML-escaped, so a name with `&` or `<` no
+  longer breaks the XMP and cannot inject XMP properties; characters XML 1.0 cannot carry (control
+  characters) are dropped. Non-ASCII text such as `Société` or `€` is encoded as UTF-8 instead of
+  being truncated to one byte per character.
 - **`invoiceToXml()` no longer rounds unit prices to cents** (CG-01). Item net and gross prices
   (BT-146, BT-148), the price discount or charge (BT-147, BT-X-302) and their base amounts
   (BT-X-35, BT-X-301) are *Unit Price Amount*s, which have no decimal limit (§7.1.5 p.35): `0.3456`
