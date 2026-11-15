@@ -44,6 +44,7 @@ export default defineConfig({
             { text: 'Profiles & flavors', link: '/guide/profiles-and-flavors' },
             { text: 'Validation', link: '/guide/validation' },
             { text: 'French e-invoicing rules (BR-FR)', link: '/guide/french-ctc' },
+            { text: 'Upgrading from 0.6.1', link: '/guide/upgrading' },
           ],
         },
       ],

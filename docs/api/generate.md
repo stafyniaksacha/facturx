@@ -56,8 +56,10 @@ interface PdfMetadata {
 - Keeps the embedded files name tree sorted.
 - Throws `Invalid XML format (<flavor> - <level>)` when `check` is enabled and validation fails, and
   `Unknown schema flavor` for an unrecognised flavor.
-- Throws, before changing anything, when the source PDF cannot take the invoice correctly: see the
-  table below.
+- Throws, before writing the invoice, when the source PDF cannot take the invoice correctly: see the
+  table below. Bytes you pass are never modified. A `PDFDocument` you pass is marked as used before
+  the existing-invoice check, and attachments you queued with `attach()` may already be written into
+  its name tree, so load it again after a rejection.
 
 ### Source PDFs that are rejected
 
