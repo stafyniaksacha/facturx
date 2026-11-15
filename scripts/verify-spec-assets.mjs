@@ -31,7 +31,7 @@
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { gunzipSync } from 'node:zlib'
@@ -188,19 +188,27 @@ function verifyCdar() {
       report(false, 'cdar', file, 'required file missing from src/lib/xsd/cdar/')
   }
   const root = 'CrossDomainAcknowledgementAndResponse_100pD22B.xsd'
-  const pending = [root]
+  const folder = resolve(cdarDir)
+  const pending = [join(folder, root)]
   const reached = new Set()
   while (pending.length) {
     const xsd = pending.pop()
     if (reached.has(xsd))
       continue
     reached.add(xsd)
-    if (!existsSync(join(cdarDir, xsd))) {
-      report(false, 'cdar', xsd, 'imported schema missing from src/lib/xsd/cdar/')
+    const shown = relative(folder, xsd)
+    if (shown.startsWith('..') || isAbsolute(shown)) {
+      report(false, 'cdar', shown, 'schemaLocation resolves outside src/lib/xsd/cdar/')
       continue
     }
-    for (const [, location] of readFileSync(join(cdarDir, xsd), 'utf8').matchAll(/schemaLocation="([^"]+)"/g))
-      pending.push(location)
+    if (!existsSync(xsd)) {
+      report(false, 'cdar', shown, 'imported schema missing from src/lib/xsd/cdar/')
+      continue
+    }
+    // import, include and redefine; single or double quotes, whitespace around `=`. Each location is
+    // resolved against the schema that names it.
+    for (const [, , location] of readFileSync(xsd, 'utf8').matchAll(/\bschemaLocation\s*=\s*(["'])(.*?)\1/g))
+      pending.push(resolve(dirname(xsd), location.trim()))
   }
   report(reached.size > 1, 'cdar', root, `import closure: ${reached.size} schemas`)
   for (const file of readdirSync(cdarDir).sort()) {
@@ -218,6 +226,9 @@ function verifyCdar() {
     report(same(source, join(cdarDir, file)), 'cdar', file)
   }
 
+  // A missing SEF was reported above; skip the checks that read it.
+  if (!existsSync(join(cdarDir, `${name}.sef.json.gz`)))
+    return
   const sef = gunzipSync(readFileSync(join(cdarDir, `${name}.sef.json.gz`))).toString('utf8')
   const leak = [homedir(), repoRoot].find(p => sef.includes(p))
   report(!leak, 'cdar', `${name}.sef.json.gz`, leak ? 'embeds a local path, recompile from a neutral directory' : 'no local path embedded')
