@@ -23,7 +23,7 @@ import pkg from '../../package.json' with { type: 'json' }
 import { check } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
-import { embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
+import { embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
 import { extractBaseInfo, getFlavor, getLevel } from './xml'
@@ -317,7 +317,8 @@ const MAX_INFLATED_BYTES = 128 * 1024 * 1024
 /**
  * §6 p.24: only one invoice XML per document. A second one would sit next to the first, and
  * extract() could return the old one. Best effort, on every embedded file reachable from the name
- * tree or the catalog /AF. The source is rejected when a file:
+ * tree, the catalog or a page /AF (§6.2.1 p.25), an annotation /AF or a file attachment annotation.
+ * The source is rejected when a file:
  * - holds a document of the kind being written, detected by content since other tools name the
  *   file differently: the root element (namespace and name) of an invoice for Factur-X / ZUGFeRD,
  *   of an order for Order-X. Other XML, such as an Order-X purchase order supporting an invoice, is
@@ -331,7 +332,15 @@ function assertNoEmbeddedInvoice(pdf: PDFDocument, filename: string, flavor: str
   const conflicting = flavor === 'orderx' ? ORDER_ROOTS : INVOICE_ROOTS
   const conflictingNames = flavor === 'orderx' ? ORDER_FILENAMES : INVOICE_FILENAMES
   const kind = flavor === 'orderx' ? 'order' : 'invoice'
-  const specs = embeddedFileSpecs(pdf)
+  let specs: ReturnType<typeof embeddedFileSpecs>
+  try {
+    specs = embeddedFileSpecs(pdf)
+  }
+  catch (error) {
+    if (error instanceof PageScanLimitError)
+      throw new Error(`The PDF has ${error.message}: could not check it for an existing ${kind}`)
+    throw error
+  }
 
   // Each distinct stream is read once, and only so many are read and inflated: many file
   // specifications can share one expensive stream.
