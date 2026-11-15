@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { extract, generate, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, extract, generate, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNull, PDFRawStream, PDFString } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
@@ -882,6 +882,15 @@ describe('generate', () => {
       const xml = (await readFile(SOURCE_XML, 'utf8')).replace('urn:cen.eu:en16931:2017', id)
       const output = await PDFDocument.load(await generate({ pdf: await sourcePdf(), xml, level }))
       expect(readXmp(output).conformanceLevel).toEqual([level.toUpperCase()])
+    })
+
+    it('matches the last segment of BT-24 only: check: true (XSD) does not validate BT-24 itself', async () => {
+      // BT-24 is an udt:IDType in the XSD; only the Schematron checks it against the profile's code list.
+      const xml = (await readFile(resolve(import.meta.dirname, '../examples/Facture_FR_MINIMUM.xml'), 'utf8')).replace('urn:factur-x.eu:1p0:minimum', 'urn:example:minimum')
+      const pdf = await PDFDocument.create()
+      pdf.addPage()
+      await expect(generate({ pdf, xml, level: 'minimum', check: true })).resolves.toBeInstanceOf(Uint8Array)
+      expect((await check({ xml, schematron: true })).schematronErrors?.map(e => e.message)).toContain('Value of \'ram:ID\' is not allowed.')
     })
 
     it('still reports an unknown flavor as such, whatever the level', async () => {
