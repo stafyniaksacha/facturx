@@ -17,8 +17,8 @@ The FNFE-MPE release notes define three validation steps for an invoice:
 
 | Step | What | In this library |
 | --- | --- | --- |
-| 1 | XSD of the profile | `check()` (always) |
-| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`: Factur-X **1.09.2.fixFR04** Schematrons from this release for BASIC WL, EN16931 and EXTENDED |
+| 1 | XSD of the profile | `check()` (always); the "uncoupled" CII D22B XSD for EXTENDED-CTC-FR |
+| 2 | Schematron of the profile (EN 16931 `BR-*`, Factur-X rules) | `schematron: true`: Factur-X **1.09.2.fixFR04** Schematrons from this release for BASIC WL, EN16931 and EXTENDED; the dedicated EXTENDED-CTC-FR Schematron for plain CII |
 | 3 | French rules `BR-FR-Flux2` | `frCtc: true` |
 
 `frCtc` runs step 3 only: it neither requires nor implies `schematron`. Pass both to run the whole
@@ -45,23 +45,22 @@ Or call [`validateFrCtc()`](/api/validate-fr-ctc) for step 3 alone.
 
 ## Scope
 
-- **Factur-X BASIC WL, EN16931 and EXTENDED** only: the three profiles the release selects (the
+- **Factur-X BASIC WL, EN16931 and EXTENDED**, and **plain-CII EXTENDED-CTC-FR**, only: the three Factur-X profiles the release selects (the
   release notes add "BASIC WL for the first year only"; XP Z12-012 Annex A lists guideline
   IDs for these three). The rules themselves read neither the root element nor the profile, so the
   library checks the document: a non-CII document, a MINIMUM or BASIC invoice, or a `level` that
   differs from the one the document declares **throws** instead of passing silently. A plain-CII
-  `EXTENDED-CTC-FR` invoice is checked as `extended`: the release notes say the Factur-X
-  EXTENDED components can validate it, but the Factur-X EXTENDED Schematron rejects its guideline ID,
-  so only XSD + BR-FR pass on it. `validateFrCtc()` detects this profile by itself, but
-  `check()` doesn't recognise its guideline ID: pass `level: 'extended'`, e.g.
-  `check({ xml, level: 'extended', frCtc: true })`.
+  `EXTENDED-CTC-FR` invoice is detected as level `extended-ctc-fr`, and
+  `check({ xml, schematron: true, frCtc: true })` runs the release's full sequence on it: the
+  "uncoupled" CII D22B XSD, the dedicated EXTENDED-CTC-FR Schematron, then BR-FR. `level: 'extended'`
+  is still accepted for it, but then the Factur-X EXTENDED Schematron rejects its guideline ID.
 - The rules **the published Schematron implements**: 59 of the `BR-FR-*` rules of XP Z12-012 Annex A
   (`BR-FR-01…32`, `-CO-*`, `-DEC-*`, `-MV-*`, `-BD-*`, with gaps). A pass doesn't mean every Annex A
   rule holds: some depend on external data or aren't published yet, e.g. `BR-FR-CO-01` (no
   post-dating) or the Chorus Pro rules `BR-FR-CPRO-*` (step 4).
 - The **standard ("fatal") variant**: every rule is an error. The `_WARNING` variant was meant for a
   transition window that has closed and is not shipped.
-- Not covered: UBL invoices, the `EXTENDED-CTC-FR` profile's own XSD and Schematron, lifecycle
+- Not covered: UBL invoices, the `EXTENDED-CTC-FR` French extension fields in the models, lifecycle
   statuses (CDAR, `BR-FR-CDV`) and e-reporting (flux 10).
 
 ## Reading BR-FR errors

@@ -26,7 +26,7 @@ import { baseInfo2PdfMetadata } from './metadata'
 import { decodeName, embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
 
 import { resolvePdf, resolveXml } from './resolve'
-import { extractBaseInfo, getFlavor, getLevel } from './xml'
+import { declaresExtendedCtcFr, extractBaseInfo, getFlavor, getLevel } from './xml'
 import { setPDFA3BMetadata, stripXmlInvalidChars } from './xmp'
 
 // PDFDocument objects generate() has already attached an invoice to. pdf-lib only writes the
@@ -79,7 +79,19 @@ export async function generate(options: {
       // Thrown before the PDF is read or marked as used (was CG-09).
       throw new Error('Cannot generate the "zugferd" flavor: ZUGFeRD 1.0 and the legacy ZUGFeRD 2.0 hybrid (zugferd-invoice.xml) are extraction only. A ZUGFeRD 2.x invoice is a Factur-X CrossIndustryInvoice: generate it with flavor "facturx"')
     }
+    // The root decides what the file is: an explicit flavor cannot embed an invoice as order-x.xml
+    // or an order as factur-x.xml (BR-HYBRID-06/07).
+    const isOrder = xml.root?.name === 'SCRDMCCBDACIOMessageStructure'
+    if ((flavor === 'orderx') !== isOrder)
+      throw new Error(`The XML root element "${xml.root?.name}" does not match the "${flavor}" flavor`)
     const level = options.level || getLevel(xml)
+    if (level === 'extended-ctc-fr' || declaresExtendedCtcFr(xml)) {
+      // A plain CII profile of XP Z12-012, not a HybridConformance value (BR-HYBRID-07,
+      // codelists--HybridConformance.csv): no fx:ConformanceLevel can describe it, and an explicit
+      // `level` would make fx:ConformanceLevel disagree with BT-24 (BR-HYBRID-15). Thrown before
+      // the PDF is read or marked as used.
+      throw new Error('Cannot generate a Factur-X PDF for the EXTENDED-CTC-FR profile: it is a plain CII profile with no Factur-X conformance level. Use a Factur-X profile (e.g. extended)')
+    }
 
     if (options.check === true) {
       const result = await check({

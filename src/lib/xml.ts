@@ -7,6 +7,7 @@ import type {
 import { parse } from 'date-fns'
 import { XmlDocument } from 'libxml2-wasm'
 import {
+  EXTENDED_CTC_FR_GUIDELINE_ID,
   FACTURX_SCHEMA,
   ORDERX_SCHEMA,
 } from './constants'
@@ -55,7 +56,24 @@ export function levelFromGuidelineId(id: string | undefined): string {
   if (!possibleValues.has(level)) {
     throw new Error(`Unknown level: "${level}"`)
   }
+  // Nothing downstream checks BT-24 for this profile, so only its exact Annex A ID selects it.
+  if (level === 'extended-ctc-fr' && value !== EXTENDED_CTC_FR_GUIDELINE_ID) {
+    throw new Error(`Unknown level: "${value}" (EXTENDED-CTC-FR is ${EXTENDED_CTC_FR_GUIDELINE_ID})`)
+  }
   return level
+}
+
+/**
+ * Whether the document's BT-24 is the EXTENDED-CTC-FR guideline ID (exact Annex A value), whatever
+ * level a caller passes. False when BT-24 is missing or names no known level.
+ */
+export function declaresExtendedCtcFr(xml: XmlDocument): boolean {
+  try {
+    return getLevel(xml) === 'extended-ctc-fr'
+  }
+  catch {
+    return false
+  }
 }
 
 export function getFlavor(fileDoc: XmlDocument): string {

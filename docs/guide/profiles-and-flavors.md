@@ -9,7 +9,7 @@ omit them.
 
 | Flavor | Levels | Validation | Embedded filename |
 | --- | --- | --- | --- |
-| `facturx` | `minimum`, `basicwl`, `basic`, `en16931`, `extended` | XSD **+ Schematron** | `factur-x.xml` (`xrechnung.xml` is extracted as `facturx` too) |
+| `facturx` | `minimum`, `basicwl`, `basic`, `en16931`, `extended`; `extended-ctc-fr` (plain CII, validation only) | XSD **+ Schematron** | `factur-x.xml` (`xrechnung.xml` is extracted as `facturx` too) |
 | `orderx` | `basic`, `comfort`, `extended` | XSD | `order-x.xml` |
 | `zugferd` | — | extraction only | `zugferd-invoice.xml`, `ZUGFeRD-invoice.xml` |
 
@@ -32,6 +32,14 @@ Profiles are increasing supersets of data, from the bare legal minimum to a full
 | `basic` | `BASIC` | BASIC WL **plus** invoice line items. |
 | `en16931` | `EN 16931` | The full EN 16931 "COMFORT" core model — covers the vast majority of B2B invoices. |
 | `extended` | `EXTENDED` | A superset of EN 16931 with additional cross-industry fields. |
+
+`extended-ctc-fr` is the French reform's EXTENDED-CTC-FR profile for **plain CII** invoices (XP Z12-012,
+guideline ID `…urn.cpro.gouv.fr:1p0:extended-ctc-fr`), not a Factur-X profile. `check()` detects it and
+always validates it with the UN/CEFACT CII D22B XSD. The dedicated EXTENDED-CTC-FR Schematron published
+by FNFE-MPE runs only with `schematron: true`; `frCtc: true` adds the French rules but does not turn the
+Schematron on, so pass both for the full sequence. Only the exact Annex A guideline ID is recognised, also when you pass `level: 'extended-ctc-fr'`. It
+has no conformance label, so `generate()` refuses a document that declares it (even with an explicit
+`level`), and `extract({ check: true })` rejects a PDF whose `factur-x.xml` declares it. Its French extension fields (`EXT-FR-FE-*`) are not in the models yet: `xmlToInvoice()` drops them.
 
 The `conformanceLevel` strings above are written into the PDF/A-3 XMP metadata by
 [`generate()`](/api/generate).

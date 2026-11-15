@@ -79,7 +79,9 @@ interface PdfMetadata {
   modified file. A PDF without an `/ID` gets a new one.
 - Keeps the embedded files name tree sorted.
 - Throws `Invalid XML format (<flavor> - <level>)` when `check` is enabled and validation fails, and
-  `Unknown schema flavor` for an unrecognised flavor.
+  `Unknown schema flavor` for an unrecognised flavor. An explicit `flavor` that contradicts the XML
+  root element (an invoice as `orderx`, an order as `facturx`) throws `The XML root element … does not
+  match the … flavor`.
 - Throws `Cannot generate the "zugferd" flavor: …` for `flavor: 'zugferd'` or a ZUGFeRD 1.0
   (`CrossIndustryDocument`) XML, whatever the flavor option, before reading the PDF. The `zugferd-invoice.xml` filename and the
   `zf:` XMP schema are the deprecated ZUGFeRD 2.0 legacy settings, and the filename is

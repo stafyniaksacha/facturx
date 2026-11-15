@@ -39,6 +39,7 @@ const withSef = process.argv.includes('--sef')
 
 const FX109 = 'spec/factur-x-1.09/distribution/4. FACTUR-X_1.09_XSD_SCHEMATRON_2026-06-10'
 const FR04 = 'spec/fnfe-ctc-fr-1.4.0.04/distribution/Factur-X_1.09.2.fixFR04'
+const FRCII = 'spec/fnfe-ctc-fr-1.4.0.04/distribution/CII'
 
 /**
  * Where each vendored folder comes from. To vendor another asset set, add one entry.
@@ -58,6 +59,9 @@ const SOURCES = [
   { folder: 'basicwl', spec: 'Factur-X 1.09.2.fixFR04 (FNFE-MPE FR CTC 1.4.0.04)', xsd: `${FR04}/BASICWL/1xsd`, xslt: `${FR04}/BASICWL/2xslt` },
   { folder: 'en16931', spec: 'Factur-X 1.09.2.fixFR04 (FNFE-MPE FR CTC 1.4.0.04)', xsd: `${FR04}/EN16931/1xsd`, xslt: `${FR04}/EN16931/2xslt` },
   { folder: 'extended', spec: 'Factur-X 1.09.2.fixFR04 (FNFE-MPE FR CTC 1.4.0.04)', xsd: `${FR04}/EXTENDED/1xsd`, xslt: `${FR04}/EXTENDED/2xslt` },
+  // Plain CII in the EXTENDED-CTC-FR profile: the "uncoupled" UN/CEFACT D22B XSD (step 1) and FNFE-MPE's
+  // dedicated Schematron (step 2), release notes p.9.
+  { folder: 'extended-ctc-fr', spec: 'CII D22B uncoupled + EXTENDED-CTC-FR (FNFE-MPE FR CTC 1.4.0.04)', xsd: `${FRCII}/1xsd-CII_D22B_uncoupled`, xslt: `${FRCII}/EXTENDED-CTC-FR/2xslt` },
 ]
 
 const work = mkdtempSync(join(tmpdir(), 'facturx-verify-'))

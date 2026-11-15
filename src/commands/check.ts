@@ -29,7 +29,7 @@ export default defineCommand({
     },
     'level': {
       type: 'string',
-      description: 'Schema level, autodetect by default (orderx: basic, extended, comfort) (facturx: basic, basicwl, en16931, extended, minimum)',
+      description: 'Schema level, autodetect by default (orderx: basic, extended, comfort) (facturx: basic, basicwl, en16931, extended, minimum, extended-ctc-fr)',
       alias: 'l',
     },
     'schematron': {
@@ -40,7 +40,7 @@ export default defineCommand({
     },
     'fr-ctc': {
       type: 'boolean',
-      description: 'Also run the French CTC business rules BR-FR-Flux2 (XP Z12-012 v1.4.0; Factur-X BASIC WL, EN16931, EXTENDED). Combine with --schematron for the full validation sequence',
+      description: 'Also run the French CTC business rules BR-FR-Flux2 (XP Z12-012 v1.4.0; Factur-X BASIC WL, EN16931, EXTENDED; CII EXTENDED-CTC-FR). Combine with --schematron for the full validation sequence',
       default: false,
     },
     'warnings-as-errors': {

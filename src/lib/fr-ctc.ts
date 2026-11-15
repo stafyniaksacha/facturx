@@ -23,10 +23,11 @@ export const FR_CTC_SCHEMATRON: SchematronConfig = {
 
 /**
  * Factur-X profiles the FNFE-MPE release selects for the reform: BASIC WL (for the first year only),
- * EN16931 and EXTENDED (release notes p.9, p.11; XP Z12-012 Annex A, BT-24 guideline IDs). The release
+ * EN16931 and EXTENDED (release notes p.9, p.11; XP Z12-012 Annex A, BT-24 guideline IDs), plus the
+ * plain-CII EXTENDED-CTC-FR profile, to which the same BR-FR transform applies (p.10). The release
  * ships no MINIMUM or BASIC components.
  */
-export const FR_CTC_LEVELS: ReadonlySet<string> = new Set(['basicwl', 'en16931', 'extended'])
+export const FR_CTC_LEVELS: ReadonlySet<string> = new Set(['basicwl', 'en16931', 'extended', 'extended-ctc-fr'])
 
 // The SVRL @id of a BR-FR assert is the rule plus a qualifier: `BR-FR-01_BT-1`, `BR-FR-05_BT-22_PMT`,
 // `BR-FR-CO-10_BT-29-2`, `BR-FR-32-LEGALID`, `BR-FR-MV-14-EXT-FR-FE-136`. The rule is the leading
@@ -54,12 +55,13 @@ function toRule(error: SchematronError): SchematronError {
  * amounts): treat them as personal data, don't log them where invoice contents would not be allowed.
  *
  * @throws when the document is not a CII invoice, when its declared profile (or `level`) is not one of
- *   `basicwl`, `en16931`, `extended`, or when `level` differs from the declared profile.
+ *   `basicwl`, `en16931`, `extended`, `extended-ctc-fr`, or when `level` differs from the declared
+ *   profile (`extended` is accepted for an EXTENDED-CTC-FR document).
  */
 export async function validateFrCtc(options: {
   xml: string | Buffer
   /**
-   * Profile of the invoice: `basicwl`, `en16931` or `extended`. Defaults to the profile declared in the
+   * Profile of the invoice: `basicwl`, `en16931`, `extended` or `extended-ctc-fr`. Defaults to the profile declared in the
    * document (BT-24); when given, it must match it.
    */
   level?: string
@@ -69,7 +71,10 @@ export async function validateFrCtc(options: {
 }): Promise<SchematronResult> {
   assertFrCtcApplicable(options.flavor ?? 'facturx', options.level ?? 'en16931')
   const declared = await declaredLevel(options.xml)
-  if (options.level && options.level !== declared) {
+  // `extended` stays accepted for an EXTENDED-CTC-FR document: it was the only way to name it before
+  // the profile had its own level (backward compatibility).
+  const sameProfile = options.level === declared || (options.level === 'extended' && declared === 'extended-ctc-fr')
+  if (options.level && !sameProfile) {
     throw new Error(`French CTC rules (BR-FR): level "${options.level}" does not match the profile declared by the document ("${declared}")`)
   }
   assertFrCtcApplicable('facturx', declared)
@@ -90,9 +95,8 @@ const RAM_NS = 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInf
  * on an Order-X or UBL document it simply finds nothing to check and passes, so the document is checked
  * here rather than trusting the caller.
  *
- * The plain-CII `EXTENDED-CTC-FR` profile (`…urn.cpro.gouv.fr:1p0:extended-ctc-fr`) maps to `extended`:
- * the release notes (p.9) say the Factur-X EXTENDED components can validate it, although the vendored
- * EXTENDED Schematron rejects its guideline ID (CG-24). BR-FR itself doesn't read the profile.
+ * The plain-CII `EXTENDED-CTC-FR` profile (`…urn.cpro.gouv.fr:1p0:extended-ctc-fr`) is
+ * `extended-ctc-fr`. BR-FR itself doesn't read the profile.
  */
 async function declaredLevel(xml: string | Buffer): Promise<string> {
   const doc = await resolveXml(xml)
@@ -102,8 +106,6 @@ async function declaredLevel(xml: string | Buffer): Promise<string> {
       throw new Error(`French CTC rules (BR-FR) apply to Factur-X / CII D22B invoices only, got root element "${root.name}"`)
     }
     const id = doc.get('/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:GuidelineSpecifiedDocumentContextParameter/ram:ID', { rsm: CII_NS, ram: RAM_NS })?.content.trim()
-    if (id?.endsWith(':extended-ctc-fr'))
-      return 'extended'
     // Parse the ID read above with explicit namespaces: getLevel() resolves `rsm:`/`ram:` through
     // the document's own prefixes and fails on an invoice that binds the CII namespace to another one.
     if (id === undefined)
@@ -124,6 +126,6 @@ export function assertFrCtcApplicable(flavor: string, level: string): void {
     throw new Error(`French CTC rules (BR-FR) apply to Factur-X / CII D22B invoices only, got flavor "${flavor}"`)
   }
   if (!FR_CTC_LEVELS.has(level)) {
-    throw new Error(`French CTC rules (BR-FR) apply to the BASIC WL, EN16931 and EXTENDED profiles only, got level "${level}"`)
+    throw new Error(`French CTC rules (BR-FR) apply to the BASIC WL, EN16931 and EXTENDED profiles only, got level "${level}" (plain-CII EXTENDED-CTC-FR is accepted too)`)
   }
 }

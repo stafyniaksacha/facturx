@@ -1,9 +1,12 @@
-import type { Buffer } from 'node:buffer'
+import { Buffer } from 'node:buffer'
 import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import SaxonJS from 'saxon-js'
+import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
+import { resolveXml } from './resolve'
+import { declaresExtendedCtcFr } from './xml'
 
 /**
  * Schematron (business-rule) validation for Factur-X: 1.09 FINAL for MINIMUM and
@@ -87,6 +90,9 @@ export const FACTURX_SCHEMATRON: Map<string, SchematronConfig> = new Map([
   ['basic', { sef: `${dir('basic')}/FACTUR-X_BASIC.sef.json.gz`, codedb: `${dir('basic')}/FACTUR-X_BASIC_codedb.xml`, codedbName: 'FACTUR-X_BASIC_codedb.xml' }],
   ['en16931', { sef: `${dir('en16931')}/FACTUR-X_EN16931.sef.json.gz`, codedb: `${dir('en16931')}/FACTUR-X_EN16931_codedb.xml`, codedbName: 'FACTUR-X_EN16931_codedb.xml' }],
   ['extended', { sef: `${dir('extended')}/FACTUR-X_EXTENDED.sef.json.gz`, codedb: `${dir('extended')}/FACTUR-X_EXTENDED_codedb.xml`, codedbName: 'FACTUR-X_EXTENDED_codedb.xml' }],
+  // FNFE-MPE's dedicated EXTENDED-CTC-FR Schematron for plain CII (release notes p.9, step 2). It
+  // loads no code list database. Rule ids are in a `[ID]` message prefix, as in Factur-X (CG-18, validation part).
+  ['extended-ctc-fr', { sef: `${dir('extended-ctc-fr')}/EXTENDED-CTC-FR-CII.sef.json.gz` }],
 ])
 
 // Per-process cache of prepared stylesheet locations (decompressed SEF + codedb), keyed by SEF path.
@@ -212,5 +218,50 @@ export async function validateSchematron(options: {
     throw new Error(`No Factur-X Schematron available for level: "${options.level}"`)
   }
 
-  return runSchematron(config, options.xml, { warningsAsErrors: options.warningsAsErrors })
+  // Read once, and copy a Buffer: the precheck awaits, and a caller replacing `options.xml` or
+  // changing the Buffer in place meanwhile must not get the precheck on one document and the
+  // transform on another. Strings are immutable.
+  const xml = typeof options.xml === 'string' ? options.xml : Buffer.from(options.xml)
+  if (options.level === 'extended-ctc-fr') {
+    const finding = await extendedCtcFrPrecheck(xml)
+    if (finding)
+      return { valid: false, errors: [finding], warnings: [] }
+  }
+
+  return runSchematron(config, xml, { warningsAsErrors: options.warningsAsErrors })
+}
+
+/**
+ * The dedicated EXTENDED-CTC-FR Schematron neither checks the BT-24 value (only BR-01, non-empty)
+ * nor survives a repeated BT-24 (`normalize-space()` on a sequence aborts with XPTY0004 and quotes
+ * the values). So, before running it: throw unless BT-24 is the exact Annex A ID, and report a
+ * repeated container or a repeated ID as the CII-SR-009 / CII-SR-010 finding the Schematron would
+ * give (each count must be 1).
+ */
+async function extendedCtcFrPrecheck(xml: string | Buffer): Promise<SchematronError | undefined> {
+  const doc = await resolveXml(xml)
+  try {
+    const count = doc.find(`/*[local-name()='CrossIndustryInvoice']/*[local-name()='ExchangedDocumentContext']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']`).length
+    if (count > 1) {
+      return {
+        message: `[CII-SR-009] - GuidelineSpecifiedDocumentContextParameter must exist exactly once (found ${count})`,
+        id: 'CII-SR-009',
+        severity: 'error',
+      }
+    }
+    const ids = doc.find(`/*[local-name()='CrossIndustryInvoice']/*[local-name()='ExchangedDocumentContext']/*[local-name()='GuidelineSpecifiedDocumentContextParameter']/*[local-name()='ID']`).length
+    if (ids > 1) {
+      return {
+        message: `[CII-SR-010] - ID must exist exactly once (found ${ids})`,
+        id: 'CII-SR-010',
+        severity: 'error',
+      }
+    }
+    if (!declaresExtendedCtcFr(doc))
+      throw new Error(`level "extended-ctc-fr" does not match the document: its guideline ID (BT-24) must be ${EXTENDED_CTC_FR_GUIDELINE_ID}`)
+    return undefined
+  }
+  finally {
+    doc.dispose()
+  }
 }

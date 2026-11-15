@@ -16,7 +16,7 @@ const EXAMPLES_DIR = resolve(import.meta.dirname, '../spec/factur-x-1.09/distrib
 
 const examples = readdirSync(EXAMPLES_DIR, { withFileTypes: true, recursive: true })
   .filter(entry => entry.isFile() && entry.name.toLowerCase().endsWith('.pdf'))
-  .map(entry => join(entry.parentPath, entry.name))
+  .map(entry => join(entry.parentPath ?? (entry as { path?: string }).path ?? '', entry.name))
   .sort()
   .map(file => ({ file, name: relative(EXAMPLES_DIR, file) }))
 

@@ -6,6 +6,7 @@ import { check } from './check'
 import { FACTURX_FILENAME, ORDERX_FILENAME, XRECHNUNG_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { extractAttachments } from './pdf'
 import { resolvePdf, resolveXml } from './resolve'
+import { declaresExtendedCtcFr } from './xml'
 
 interface ExtractResult {
   filename: string
@@ -81,6 +82,10 @@ export async function extract(options: {
 
   try {
     if (options.check === true) {
+      // A plain-CII EXTENDED-CTC-FR document is no Factur-X profile: a hybrid PDF cannot declare it
+      // (BR-HYBRID-07/15). Read from the XML, so an explicit `level` cannot hide it.
+      if (flavor === 'facturx' && declaresExtendedCtcFr(xml))
+        throw new Error('Invalid XML: the embedded invoice declares EXTENDED-CTC-FR, a plain CII profile that is not a Factur-X profile')
       const result = await check({
         xml,
         flavor,
@@ -89,6 +94,10 @@ export async function extract(options: {
       if (!result.valid) {
         throw new Error('Invalid XML')
       }
+      // An explicit `level: 'extended-ctc-fr'` on a document that does not declare it already
+      // threw in check(); this keeps any other route to that level out of a hybrid PDF.
+      if (result.level === 'extended-ctc-fr')
+        throw new Error('Invalid XML: the embedded invoice declares EXTENDED-CTC-FR, a plain CII profile that is not a Factur-X profile')
     }
 
     return {

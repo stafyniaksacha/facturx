@@ -213,6 +213,18 @@ legal advice.
 Germany expects `Alternative` for BASIC and above. See
 [`generate()`](/api/generate#behaviour).
 
+### EXTENDED-CTC-FR (plain CII) validation
+
+`check()` now recognises the guideline ID `…urn.cpro.gouv.fr:1p0:extended-ctc-fr` as level
+`extended-ctc-fr` (it used to throw `Unknown level: "1p0"`) and validates it with the UN/CEFACT CII
+D22B "uncoupled" XSD and the FNFE-MPE EXTENDED-CTC-FR Schematron (`schematron: true`), plus BR-FR with
+`frCtc: true`. Only that exact guideline ID is recognised. `validateFrCtc()` accepts
+`level: 'extended-ctc-fr'`; `level: 'extended'` keeps working for such a document. `generate()` throws
+for a document declaring this profile, even with an explicit `level: 'extended'` (which used to embed
+it as EXTENDED), and `extract({ check: true })` throws for a `factur-x.xml` declaring it (it used to
+throw `Unknown level`): it is not a Factur-X profile. The
+`EXT-FR-FE-*` extension fields are not modelled yet.
+
 ### Byte-exact XML: `preserveXmlBytes` and `extract().bytes`
 
 `generate({ pdf, xml, preserveXmlBytes: true })` (CLI `--preserveXmlBytes`) embeds the XML bytes you

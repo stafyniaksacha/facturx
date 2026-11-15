@@ -23,7 +23,7 @@ function listExamples(dir: string): { file: string, name: string, level: string,
   return readdirSync(dir, { withFileTypes: true, recursive: true })
     .filter(entry => entry.isFile() && (entry.name.endsWith('.pdf') || entry.name.endsWith('_FX_CII_Commentee.xml')))
     .map((entry) => {
-      const file = join(entry.parentPath, entry.name)
+      const file = join(entry.parentPath ?? (entry as { path?: string }).path ?? '', entry.name)
       return { file, name: relative(dir, file), level: levelFromName(entry.name), kind: entry.name.endsWith('.pdf') ? 'pdf' as const : 'xml' as const }
     })
     .sort((a, b) => a.name.localeCompare(b.name))

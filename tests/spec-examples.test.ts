@@ -21,7 +21,7 @@ function listExamples(dir: string): { file: string, name: string, level: string 
   return readdirSync(dir, { withFileTypes: true, recursive: true })
     .filter(entry => entry.isFile() && entry.name.toLowerCase().endsWith('.pdf'))
     .map((entry) => {
-      const file = join(entry.parentPath, entry.name)
+      const file = join(entry.parentPath ?? (entry as { path?: string }).path ?? '', entry.name)
       const folder = Object.keys(LEVEL_BY_FOLDER).find(f => file.includes(`/${f}/`))
       return { file, name: relative(dir, file), level: folder ? LEVEL_BY_FOLDER[folder] : 'unknown' }
     })

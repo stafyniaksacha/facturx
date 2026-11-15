@@ -25,7 +25,7 @@ function validateSchematron(options: {
 | --- | --- | --- | --- |
 | `xml` | `string \| Buffer` | — | **Required.** The invoice XML. |
 | `flavor` | `string` | — | If given, must be `facturx` — any other value throws. |
-| `level` | `string` | — | **Required.** Profile to validate against: `minimum`, `basicwl`, `basic`, `en16931` or `extended`. |
+| `level` | `string` | — | **Required.** Profile to validate against: `minimum`, `basicwl`, `basic`, `en16931`, `extended`, or `extended-ctc-fr` (the FNFE-MPE EXTENDED-CTC-FR Schematron for plain CII; the document's guideline ID must then be the EXTENDED-CTC-FR one, or the call throws). |
 | `warningsAsErrors` | `boolean` | `false` | Also count rules flagged `warning`/`information` as errors (like a compiler's `-Werror`). |
 
 ::: warning Factur-X only
