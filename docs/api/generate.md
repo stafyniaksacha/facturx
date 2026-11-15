@@ -88,7 +88,8 @@ interface PdfMetadata {
   match the … flavor`.
 - Throws `generate() refuses XML with a DOCTYPE: remove the DOCTYPE` for XML with a DOCTYPE
   (internal subset, `SYSTEM` or `PUBLIC` id, or none), and `generate() needs XML 1.0, but the XML
-  declaration says version="…"` for an XML 1.1 declaration, whether the XML is a `string`, a
+  declaration says version="…"` for an XML declaration naming any version other than 1.0 (such as
+  1.1), whether the XML is a `string`, a
   `Buffer` or an `XmlDocument`, before reading the PDF. libxml2's re-serialization would keep both
   in the embedded invoice; CII documents have no DOCTYPE. With `preserveXmlBytes: true` the same
   checks name `preserveXmlBytes` instead.

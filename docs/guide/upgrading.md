@@ -191,7 +191,8 @@ Order-X message whose type code is not `220`, `230` or `231` now throws
 
 `generate()` now throws `generate() refuses XML with a DOCTYPE: remove the DOCTYPE` for an invoice
 with a DOCTYPE (an internal subset, a `SYSTEM` or `PUBLIC` id, or a bare one), and
-`generate() needs XML 1.0, but the XML declaration says version="1.1"` for an XML 1.1 declaration.
+`generate() needs XML 1.0, but the XML declaration says version="1.1"` for an XML 1.1 declaration
+(or any version other than 1.0).
 Both are checked whether you pass a `string`, a `Buffer` or an `XmlDocument`, before the PDF is read
 or a `PDFDocument` is marked as used. 0.6.1 embedded them as libxml2 re-serialized them, so every
 later reader of the PDF got the DOCTYPE (a `SYSTEM "file:///etc/passwd"` id included), and an
