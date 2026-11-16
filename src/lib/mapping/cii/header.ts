@@ -65,7 +65,7 @@ const INVOICED_OBJECT = '130'
  * invoice has no project name: Factur-X 1.09 appendix EN 16931 p.38 and spec p.125 ("Use "Project
  * reference" as default value for Name"; the same row also prints "Project Reference").
  */
-const DEFAULT_PROJECT_NAME = 'Project reference'
+export const DEFAULT_PROJECT_NAME = 'Project reference'
 
 /** Header terms Factur-X BASIC (missing from its matrix) or EN 16931 (EXT-FR-FE) cannot carry. */
 export const HEADER_GATES: readonly TermGate[] = [

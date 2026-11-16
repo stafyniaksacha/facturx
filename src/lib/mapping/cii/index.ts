@@ -87,7 +87,7 @@ function withParserNoteContent(cii: CrossIndustryInvoiceType): CrossIndustryInvo
 }
 
 // Mandatory header terms `fromCii()` stands in `''` for when the document lacks them.
-const MANDATORY: readonly [string, string, (invoice: Invoice) => string][] = [
+export const MANDATORY: readonly [string, string, (invoice: Invoice) => string][] = [
   ['BT-1', 'invoice number', i => i.number],
   ['BT-2', 'invoice issue date', i => i.issueDate],
   ['BT-3', 'invoice type code', i => i.typeCode],
@@ -112,7 +112,7 @@ function withIdentifiers<T extends { identifiers?: Identifier[] }>(party: T | un
 // A shallow copy of the invoice where every optional repeatable group the checks and writers iterate is
 // an array, so a plain-object invoice gets the same named errors as a class instance, never a TypeError.
 // Copies, never mutates the caller's objects.
-function withArrays(invoice: Invoice): Invoice {
+export function withArrays(invoice: Invoice): Invoice {
   const payment = invoice.paymentInstructions
   return {
     ...invoice,

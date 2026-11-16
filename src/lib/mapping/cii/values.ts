@@ -24,7 +24,7 @@ const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 const CII_102 = /^(\d{4})(\d{2})(\d{2})$/
 
 // A real calendar date: 2025-02-30 and 2025-13-01 are not.
-function isCalendarDate(iso: string): boolean {
+export function isCalendarDate(iso: string): boolean {
   const match = ISO_DATE.exec(iso)
   if (!match)
     return false

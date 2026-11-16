@@ -81,7 +81,7 @@ function convertUnitPriceAmount({ value, currencyID }: udt.AmountType, parent: X
  * Every `xs:decimal` the converter writes goes through it: unit prices (was CG-01), quantities,
  * measures, rates, percentages and numerics (was CG-28).
  */
-function formatDecimal(value: number): string {
+export function formatDecimal(value: number): string {
   const text = String(value)
   if (!/e/i.test(text)) {
     return text

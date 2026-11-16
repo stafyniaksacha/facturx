@@ -106,6 +106,15 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 | CG-56 | parser | `src/lib/parsers/facturx.ts` | data-loss | `xmlToInvoice()` reads a missing mandatory amount (BT-92 / BT-99, BT-109, BT-112, BT-115, BT-167) as `0`, so neither the CII model nor `fromCii()` can tell it from a real zero (pre-existing) |
 | CG-57 | models, spec | `fields--Business_Rules.csv` BR-FXEXT-01 / -02 (Factur-X EXTENDED Schematron) vs annex A EXTENDED-CTC-FR BT-22 / BT-127 `0..1` | interop | At Factur-X EXTENDED a note subject code needs the text or the coded text (BT-X-5 / BT-X-9), which the model does not hold: a note with a subject code and only a coded text reads into the model, and `toCii()` refuses to write it back at `extended` |
 | CG-58 | models, spec | `fields--Business_Rules.csv` BR-50 vs the vendored Schematron context (`TypeCode` 30 or 58) | interop | BR-50 reads "BT-84 shall be present if BG-16 is provided"; the Schematron checks it only under payment means TypeCode 30 / 58. A document with another TypeCode whose `PayeePartyCreditorFinancialAccount` holds only BT-85 / BT-86 reads with `fromCii()`, and `toCii()` refuses to write it back (BR-50) |
+| CG-59 | models, UBL, spec | Factur-X CII sub-terms BT-11-0, BT-41-0, BT-56-0 vs the UBL 2.1 XSD and annex A UBL | data-loss (refused) | The project name and the seller / buyer contact department names have no UBL element and no annex A UBL row; `invoiceToUbl()` throws on them, and the 12 annex B UBL examples silently leave out the department names all their CII twins carry |
+| CG-60 | models, UBL, spec | EXT-FR-FE-184 and a second EXT-FR-FE-146 vs annex A UBL EXT-CTC-FR | data-loss (refused) | The line grand total (EXT-FR-FE-184) has an annex A CII row but no UBL row or element, and UBL `cac:DeliveryLocation` holds one identifier where the model holds several; `invoiceToUbl()` throws; annex B UC10, UC11, UC13 UBL drop the grand total |
+| CG-61 | models, UBL, spec | UBL `cac:CardAccount/cbc:NetworkID` (XSD `minOccurs="1"`, annex A BT-87-1 `1..1`) vs EN 16931 BG-18 | data-loss (refused) | UBL needs a card network id that EN 16931 and the model do not have, so `invoiceToUbl()` throws on BG-18; annex B UC10 UBL invents `4` and writes a different primary account number than its CII twin |
+| CG-62 | UBL, spec | BT-148 / BT-149-1 / BT-150-1 vs UBL `cac:Price` (one `cbc:BaseQuantity`; `cac:AllowanceCharge/cbc:Amount` `1..1`) | interop | A gross price without discount is written with a zero discount, as annex B does, so a UBL reader cannot tell "no discount" from "discount 0"; a gross price base quantity that differs from BT-149 is refused |
+| CG-63 | French CTC, UBL/CII, upstream | `BR-FR-Flux2-Schematron-UBL` vs `-CII` BR-FR-CO-10 | interop | The UBL BR-FR-CO-10 wants a `@schemeID` on every seller `cac:PartyIdentification/cbc:ID` and deliver-to `cbc:ID`; the CII rule checks `ram:GlobalID` only. A schemeless BT-29 / BT-71 passes BR-FR in CII and fails it in UBL; annex B F202500001 UBL drops both values its CII twin carries |
+| CG-64 | models, UBL | BT-84-0 (Factur-X `ProprietaryID`) vs UBL `cac:PayeeFinancialAccount/cbc:ID` | interop | UBL has one account id: `invoiceToUbl()` writes BT-84-0 there when BT-84 is absent (P3) and refuses both, so a UBL round trip turns a national account number into BT-84; no annex B twin uses `ProprietaryID` |
+| CG-65 | UBL, spec | XSD-mandatory identifiers (`OrderReference/cbc:ID`, `DocumentReference/cbc:ID`, `LineReference/cbc:LineID`, `OrderLineReference/cbc:LineID`) vs annex A `0..1` | interop | Annex A makes BT-13 optional yet nests BT-14 and EXT-FR-FE-197 under `cac:OrderReference`, whose `cbc:ID` the XSD requires (likewise EXT-FR-FE-01 / -198 / -199, -135 / -144 / -145 / -200, the line despatch and receipt references): `invoiceToUbl()` refuses those terms without the identifier |
+| CG-66 | UBL, spec | EN 16931 BT-110 `0..1` vs UBL `cac:TaxTotal/cbc:TaxAmount` `1..1` holding BG-23 | interop | UBL keeps the VAT breakdown inside the `cac:TaxTotal` whose amount is BT-110, so `invoiceToUbl()` throws when BT-110 is missing (it never computes it) |
+| CG-67 | spec, UBL | annex A `annex-a--Flux_2_UBL_EXT-CTC-FR.csv` XPath and cardinality cells | docs | Typos and gaps in the UBL rows (attribute `@Name` for `@name`, unprefixed or misspelt steps, EXT-FR-FE-BG-12 / -164-00 `0..0` though annex B uses them, no `cbc:ID` value for the line status reference); the writer follows the XSD, the Schematrons and annex B |
 | CG-34 | French CTC, lifecycle, upstream | Annex A `annex-a--BR-FR-CDV_pour_factures.csv`, `annex-a--Tableau_des_motifs_de_STATUTS.csv` vs `BR-FR-CDV-Schematron-CDAR` | interop | The published BR-FR-CDV Schematron cannot fail on several Annex A rules, and some of its code lists differ from Annex A |
 | CG-36 | spec | §version history p.7–8 vs the EXTENDED field matrix | — | The 1.09 version history contradicts the field matrix on several new fields (unresolved) |
 | CG-37 | parser, models | EXTENDED XSD `NoteType/Content` `minOccurs="0"` | data-loss | A note without `Content` (BT-22 / BT-127) comes back with an empty `Content` element |
@@ -880,3 +889,110 @@ paths and the code supports both, so nothing here is picked.
 - **Evidence:** `grep -n "BR-50" spec/factur-x-1.09/text/fields--Business_Rules.csv`;
   `grep -n "BR-50\]" -B12 src/lib/xsd/facturx/en16931/FACTUR-X_EN16931.xslt | grep fired-rule`;
   `pnpm build && pnpm vitest run tests/en16931-strict.test.ts -t "CG-58"`.
+
+### CG-59 — BT-11-0, BT-41-0, BT-56-0 have no UBL element (model limit, annex B drops them)
+
+- **Spec:** the Factur-X matrices give BT-11-0 (`ram:SpecifiedProcuringProject/ram:Name`), BT-41-0 and BT-56-0
+  (`ram:DefinedTradeContact/ram:DepartmentName`); annex A CII EXT-CTC-FR has a row for each. The UBL 2.1 XSD has
+  no project name in `ProjectReferenceType` (`ID`, `UUID`, `IssueDate`, `WorkPhaseReference`) and no department in
+  `ContactType` (`ID`, `Name`, `Telephone`, `Telefax`, `ElectronicMail`, `Note`, `OtherCommunication`); neither
+  annex A UBL file has a row for the three ids.
+- **Annex B:** every CII twin of the 12 UBL examples carries a seller and / or buyer `ram:DepartmentName`
+  (`DEP ADV`, `DEP COMPTAFOUR`); none of the UBL examples carries the value anywhere.
+- **Writer:** `invoiceToUbl()` throws, naming the term, on BT-41-0, BT-56-0 and on a BT-11-0 other than the CII
+  default `Project reference` (CG-49), rather than dropping them. The writer tests strip them from the model read
+  from the CII twin, and check that the twin holds exactly those terms and that each alone makes the writer throw.
+- **Close when:** the binding gives these terms a UBL place, or the model drops them.
+- **Evidence:** `grep -c ',BT-41-0,\|,BT-56-0,\|,BT-11-0,' spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv`
+  (0); `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "department|no-place"`.
+
+### CG-60 — EXT-FR-FE-184 and several EXT-FR-FE-146 have no UBL place (model limit, annex B drops them)
+
+- **Spec:** annex A CII EXT-CTC-FR binds EXT-FR-FE-184 (line grand total, `ram:GrandTotalAmount` of the line);
+  annex A UBL EXT-CTC-FR has no EXT-FR-FE-184 row and `InvoiceLineType` has no element for it. The UBL
+  `cac:InvoiceLine/cac:Delivery/cac:DeliveryLocation` holds one `cbc:ID` (EXT-FR-FE-146 `0..1`); the model holds
+  the CII `ShipToTradeParty/GlobalID` list (`0..n`).
+- **Annex B:** UC10, UC11 and UC13 carry EXT-FR-FE-184 in CII and not in UBL.
+- **Writer:** `invoiceToUbl()` throws on EXT-FR-FE-184 (at both levels, before the level gate, so the message
+  stays right at `en16931`) and on more than one EXT-FR-FE-146 of a line.
+- **Evidence:** `grep -c ',EXT-FR-FE-184,' spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv` (0);
+  `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "no-place"`.
+
+### CG-61 — UBL requires a card network id EN 16931 does not have (model limit, annex B UC10 invents it)
+
+- **Spec:** `CardAccountType` in `src/lib/xsd/ubl/common/UBL-CommonAggregateComponents-2.1.xsd` (l.3122) has
+  `cbc:NetworkID minOccurs="1"`; annex A UBL lists BT-87-1 `1..1` ("Mandatory element. Use card Network
+  identifier."). EN 16931 BG-18 has BT-87 and BT-88 only; the model has no network id.
+- **Annex B:** UC10 CII carries the card `4970xx0265`; the UBL twin writes `cbc:PrimaryAccountNumberID` `0265`
+  and `cbc:NetworkID` `4`, a value the CII twin does not have.
+- **Writer:** `invoiceToUbl()` throws on BG-18 naming BT-87-1, instead of inventing a network id. A card payment
+  cannot be written in UBL until the model holds BT-87-1.
+- **Close when:** the model gets a BT-87-1 property (the UBL reader would fill it, the CII writer would refuse
+  it), or the binding drops the requirement.
+- **Evidence:** `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "card"`.
+
+### CG-62 — Gross price and base quantities in UBL `cac:Price` (interop)
+
+- **Spec:** UBL `PriceType` has one `cbc:BaseQuantity` (BT-149 / BT-150) and the gross price BT-148 in
+  `cac:AllowanceCharge/cbc:BaseAmount`, whose `cbc:Amount` (BT-147) is `1..1` (XSD and annex A). CII has a base
+  quantity per price (Factur-X BT-149-1 / BT-150-1 for the gross one) and a gross price without discount.
+- **Annex B:** every UBL example writes a gross price without discount as `cbc:Amount` `0.0000`; in every CII
+  twin BT-149-1 / BT-150-1 equal BT-149 / BT-150.
+- **Writer:** follows annex B (zero discount), writes BT-149-1 / BT-150-1 only when they equal BT-149 / BT-150
+  (then nothing is lost) and throws otherwise. A UBL reader reads `0` as BT-147 = 0.
+- **Evidence:** `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "sub-cent|cannot carry"`.
+
+### CG-63 — BR-FR-CO-10 is stricter in UBL than in CII (upstream)
+
+- **Rule:** BR-FR-CO-10 in `src/lib/xsd/ubl/fr-ctc/BR-FR-Flux2-Schematron-UBL.xslt` asserts
+  `empty(cac:PartyIdentification/cbc:ID[not(@schemeID)])` on the seller and `empty(cbc:ID[not(@schemeID)])` on
+  `cac:DeliveryLocation`; the CII variant checks `ram:GlobalID` only, so a CII private `ram:ID` (BT-29, BT-71
+  without scheme) passes.
+- **Annex B:** F202500001 (EN16931 and EXTENDED-CTC-FR) CII carries `PRIVATE_123` (BT-29) and
+  `PRIVATE_ID_DELIVERY` (BT-71); the UBL twins carry neither.
+- **Writer:** writes them (the EN 16931 UBL binding allows an identifier without scheme); BR-FR reports exactly
+  `BR-FR-CO-10_BT-29-1` and `BR-FR-CO-10_BT-71-1`. The writer does not drop or refuse them: that is a French CTC
+  rule, not a syntax limit.
+- **Evidence:** `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "BR-FR-CO-10"`.
+
+### CG-64 — BT-84-0 shares the UBL account id with BT-84 (interop)
+
+- **Spec:** the Factur-X matrices split the account into `ram:IBANID` (BT-84) and `ram:ProprietaryID`
+  (BT-84-0, "use IBANID when appropriate, otherwise use ProprietaryID"); EN 16931 BT-84 is any account
+  identifier and UBL `cac:PayeeFinancialAccount` has one `cbc:ID`. Annex A UBL has no BT-84-0 row.
+- **Writer:** writes BT-84, or BT-84-0 when BT-84 is absent, into `cbc:ID` (controller ruling P3); throws when
+  both are set. A UBL reader fills BT-84, so CII `ProprietaryID` → UBL → CII comes back as `IBANID`. No annex B
+  twin uses `ProprietaryID`.
+- **Evidence:** `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "BT-84-0"`.
+
+### CG-65 — Annex A makes optional identifiers the UBL XSD requires (interop)
+
+- **Spec:** annex A UBL gives BT-13 `0..1` yet binds BT-14 and EXT-FR-FE-197 to `cac:OrderReference/cbc:SalesOrderID`
+  and `/cbc:IssueDate`, while `OrderReferenceType/cbc:ID` is `1..1` in the XSD. Same for EXT-FR-FE-198 under
+  `cac:DespatchDocumentReference` (BT-16), EXT-FR-FE-01 / -199 under `cac:ContractDocumentReference` (BT-12), the
+  line EXT-FR-FE-135 / -145 under `cac:OrderLineReference` (`cbc:LineID` = BT-132), EXT-FR-FE-144 / -200 under its
+  `cac:OrderReference` (EXT-FR-FE-135), and the line despatch / receipt references (`cbc:LineID` EXT-FR-FE-141 /
+  -143). No vendored Schematron gives a placeholder value (no `NA` convention).
+- **Writer:** throws, naming both terms, when one of them is set without the identifier of the element it sits in.
+- **Evidence:** `python3 -I` a CSV reader over `annex-a--Flux_2_UBL_EXT-CTC-FR.csv` rows BT-13 / BT-14 (column 2 id,
+  column 7 cardinality, column 9 XPath); `grep -n 'name="OrderReferenceType"' -A4 src/lib/xsd/ubl/common/UBL-CommonAggregateComponents-2.1.xsd`;
+  `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "cannot carry"`.
+
+### CG-66 — BT-110 is needed to carry BG-23 in UBL (interop)
+
+- **Spec:** EN 16931 BT-110 is `0..1`; UBL holds the VAT breakdown (BG-23) in `cac:TaxTotal/cac:TaxSubtotal`,
+  and `TaxTotalType/cbc:TaxAmount` (BT-110) is `1..1`.
+- **Writer:** throws when BT-110 is missing; it does not compute it from BG-23. Every annex B example has it.
+- **Evidence:** `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "cannot carry"`.
+
+### CG-67 — Typos and gaps in the annex A UBL rows (docs)
+
+- **Annex A** (`annex-a--Flux_2_UBL_EXT-CTC-FR.csv`, column 9): BT-82 `/@Name` (the UBL attribute is `name`,
+  as annex B writes); unprefixed steps `/PartyLegalEntity` (EXT-FR-FE-66-00), `/DeliveryLocation`
+  (EXT-FR-FE-186-00), `/TaxCategory` (BT-173 … BT-176), `/Price /AllowanceCharge` (EXT-FR-FE-195 / -196),
+  `/OrderLineReference /OrderReference` (EXT-FR-FE-200); `cac:AgentPartyLegalEntity` (EXT-FR-FE-89-00, the element
+  is `cac:PartyLegalEntity`); EXT-FR-FE-BG-12 and EXT-FR-FE-164-00 cardinality `0..0` although annex B UC10 … UC13
+  use `cac:ManufacturerParty` and its `cac:PartyLegalEntity`; the line status reference (EXT-FR-FE-163-000) has no
+  id and no value for its `cbc:ID`, which annex B and `EXTENDED-CTC-FR-UBL` (`$invoiceID`) set to BT-1.
+- **Writer:** follows the XSD element names, the Schematrons and annex B.
+- **Evidence:** the CSV reader of CG-65 over those ids; `grep -c 'cac:AgentPartyLegalEntity' spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv`.
