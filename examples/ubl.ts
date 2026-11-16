@@ -23,5 +23,6 @@ finally {
 const result = await check({ xml: ubl, schematron: true })
 const back = await xmlToEn16931(ubl)
 
-console.log(read.syntax, read.dropped.length, dropped, result.flavor, result.valid, back.syntax, back.invoice.number === invoice.number)
+// `back.dropped` is empty: the UBL read back holds nothing the model cannot (the round trip drops nothing).
+console.log(read.syntax, read.dropped.length, dropped, result.flavor, result.valid, back.syntax, back.invoice.number === invoice.number, back.dropped.length)
 // #endregion main

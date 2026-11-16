@@ -44,19 +44,19 @@ function minimal(): Invoice {
 const party = { identifiers: [], name: 'P', contact: { point: 'M. X', departmentName: 'D' } }
 
 /** Each value the helper removes: the term, the path it reports, how to set it, the level it is written at. */
-const REMOVABLE: { term: string, path: string, level: 'en16931' | 'extended-ctc-fr', set: (i: Invoice) => void }[] = [
-  { term: 'BT-24', path: '.specificationIdentifier', level: 'en16931', set: (i) => { i.specificationIdentifier = 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic' } },
-  { term: 'BT-11-0', path: '.projectName', level: 'en16931', set: i => Object.assign(i, { projectReference: 'PRJ', projectName: 'Name' }) },
-  { term: 'BT-41-0', path: '.seller.contact.departmentName', level: 'en16931', set: (i) => { i.seller.contact = { point: 'A', departmentName: 'D' } } },
-  { term: 'BT-56-0', path: '.buyer.contact.departmentName', level: 'en16931', set: (i) => { i.buyer.contact = { point: 'A', departmentName: 'D' } } },
-  { term: 'department name', path: '.sellerAgent.contact.departmentName', level: 'extended-ctc-fr', set: (i) => { i.sellerAgent = structuredClone(party) } },
-  { term: 'department name', path: '.billingParty.contact.departmentName', level: 'extended-ctc-fr', set: (i) => { i.billingParty = structuredClone(party) } },
-  { term: 'department name', path: '.buyerAgent.contact.departmentName', level: 'extended-ctc-fr', set: (i) => { i.buyerAgent = structuredClone(party) } },
-  { term: 'department name', path: '.invoicee.contact.departmentName', level: 'extended-ctc-fr', set: (i) => { i.invoicee = structuredClone(party) } },
-  { term: 'department name', path: '.payee.contact.departmentName', level: 'extended-ctc-fr', set: (i) => { i.payee = { identifiers: [], name: 'PAYEE', contact: { departmentName: 'D' } } } },
-  { term: 'BG-18', path: '.paymentInstructions.card', level: 'en16931', set: (i) => { i.paymentInstructions = { paymentMeansTypeCode: '48', creditTransfers: [], card: { primaryAccountNumber: '1234' } } } },
-  { term: 'department name', path: '.payer.contact.departmentName', level: 'extended-ctc-fr', set: i => Object.assign(i, { paymentInstructions: { paymentMeansTypeCode: '59', creditTransfers: [], directDebit: { mandateReference: 'M' } }, payer: structuredClone(party) }) },
-  { term: 'EXT-FR-FE-184', path: '.lines.0.grandTotalAmount', level: 'extended-ctc-fr', set: (i) => { i.lines[0].grandTotalAmount = 120 } },
+const REMOVABLE: { term: string, path: string, level: 'en16931' | 'extended-ctc-fr', refused: RegExp, set: (i: Invoice) => void }[] = [
+  { term: 'BT-24', path: '.specificationIdentifier', level: 'en16931', refused: /BT-24/, set: (i) => { i.specificationIdentifier = 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic' } },
+  { term: 'BT-11-0', path: '.projectName', level: 'en16931', refused: /BT-11-0/, set: i => Object.assign(i, { projectReference: 'PRJ', projectName: 'Name' }) },
+  { term: 'BT-41-0', path: '.seller.contact.departmentName', level: 'en16931', refused: /BT-41-0/, set: (i) => { i.seller.contact = { point: 'A', departmentName: 'D' } } },
+  { term: 'BT-56-0', path: '.buyer.contact.departmentName', level: 'en16931', refused: /BT-56-0/, set: (i) => { i.buyer.contact = { point: 'A', departmentName: 'D' } } },
+  { term: 'department name', path: '.sellerAgent.contact.departmentName', level: 'extended-ctc-fr', refused: /department name/, set: (i) => { i.sellerAgent = structuredClone(party) } },
+  { term: 'department name', path: '.billingParty.contact.departmentName', level: 'extended-ctc-fr', refused: /department name/, set: (i) => { i.billingParty = structuredClone(party) } },
+  { term: 'department name', path: '.buyerAgent.contact.departmentName', level: 'extended-ctc-fr', refused: /department name/, set: (i) => { i.buyerAgent = structuredClone(party) } },
+  { term: 'department name', path: '.invoicee.contact.departmentName', level: 'extended-ctc-fr', refused: /department name/, set: (i) => { i.invoicee = structuredClone(party) } },
+  { term: 'department name', path: '.payee.contact.departmentName', level: 'extended-ctc-fr', refused: /department name/, set: (i) => { i.payee = { identifiers: [], name: 'PAYEE', contact: { departmentName: 'D' } } } },
+  { term: 'BG-18', path: '.paymentInstructions.card', level: 'en16931', refused: /BG-18/, set: (i) => { i.paymentInstructions = { paymentMeansTypeCode: '48', creditTransfers: [], card: { primaryAccountNumber: '1234' } } } },
+  { term: 'department name', path: '.payer.contact.departmentName', level: 'extended-ctc-fr', refused: /department name/, set: i => Object.assign(i, { paymentInstructions: { paymentMeansTypeCode: '59', creditTransfers: [], directDebit: { mandateReference: 'M' } }, payer: structuredClone(party) }) },
+  { term: 'EXT-FR-FE-184', path: '.lines.0.grandTotalAmount', level: 'extended-ctc-fr', refused: /EXT-FR-FE-184/, set: (i) => { i.lines[0].grandTotalAmount = 120 } },
 ]
 
 async function written(invoice: Invoice, level: 'en16931' | 'extended-ctc-fr'): Promise<string> {
@@ -74,10 +74,10 @@ describe('dropUblUncarried', () => {
     expect(Subpath.dropUblUncarried).toBe(dropUblUncarried)
   })
 
-  it.each(REMOVABLE)('$term ($path): refused by invoiceToUbl, removed and reported, then written', async ({ path, level, set }) => {
+  it.each(REMOVABLE)('$term ($path): refused by invoiceToUbl, removed and reported, then written', async ({ path, level, refused, set }) => {
     const invoice = minimal()
     set(invoice)
-    await expect(invoiceToUbl(invoice, { level })).rejects.toThrow()
+    await expect(invoiceToUbl(invoice, { level })).rejects.toThrow(refused)
     const before = structuredClone(invoice)
     const result = dropUblUncarried(invoice, { level })
     expect(result.dropped).toEqual([path])
@@ -137,6 +137,11 @@ describe('dropUblUncarried', () => {
     const { invoice: stripped, dropped } = dropUblUncarried(invoice, { level: 'en16931' })
     expect(dropped).toEqual(['.lines.0.grandTotalAmount'])
     await expect(invoiceToUbl(stripped, { level: 'en16931' })).rejects.toThrow(/EXT-FR-FE-178/)
+  })
+
+  it('throws a named error for an invoice that is not an object', () => {
+    for (const bad of [undefined, null, 'INV-1', 42, []])
+      expect(() => dropUblUncarried(bad as unknown as Invoice, { level: 'en16931' })).toThrow(/^dropUblUncarried: invoice must be an EN 16931 invoice object$/)
   })
 
   it('throws for a level without a UBL binding', () => {

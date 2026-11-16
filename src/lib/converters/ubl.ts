@@ -1009,13 +1009,15 @@ export interface DropUblUncarriedResult {
   /** A deep copy of the invoice without the values UBL has no place for (class prototypes kept). */
   invoice: Invoice
   /**
-   * Model paths (`.seller.contact.departmentName`, `.lines.0.grandTotalAmount`) of each value removed or reset, in
-   * UBL document order. Paths only, never the values. Empty when nothing was removed.
+   * Model paths (`.seller.contact.departmentName`, `.lines.0.grandTotalAmount`) of each value removed, plus
+   * `.specificationIdentifier` when BT-24 was reset, in UBL document order. Paths only, never the values. Empty when
+   * nothing was changed.
    */
   dropped: string[]
 }
 
-// A deep copy that keeps each object's prototype, so model class instances stay instances.
+// A deep copy that keeps each object's prototype, so model class instances stay instances. No cycle guard: the
+// model is a tree (plain data, no back references).
 function deepCopy<T>(value: T): T {
   if (Array.isArray(value))
     return value.map(deepCopy) as T
@@ -1029,27 +1031,34 @@ function deepCopy<T>(value: T): T {
 }
 
 /**
- * Remove from a copy of `invoice` the values `invoiceToUbl()` refuses because UBL 2.1 has **no place** for them, and
- * report each one, so a CII invoice (Factur-X, EXTENDED-CTC-FR) can be written as UBL without silent loss:
- * - `BT-24` (specification identifier) that is set and is not the `cbc:CustomizationID` of `options.level`: reset to
- *   that identifier (a Factur-X or CIUS id would make the document claim a profile it was not checked against);
- * - `BT-11-0` (project name) other than the Factur-X default `Project reference` (CG-59; the default is kept and not
- *   reported, the writer leaves it out);
- * - `BT-41-0` / `BT-56-0` (seller / buyer contact department name, CG-59), and the department name of the payee,
- *   agent, invoicee, billing party and payer contacts (no EN 16931 term; the CII side refuses it too);
- * - `BG-18` (payment card information, CG-61: UBL needs the network id BT-87-1, which EN 16931 does not have);
- * - `EXT-FR-FE-184` (line grand total amount, CG-60) on every line.
+ * Prepare a copy of `invoice` for `invoiceToUbl()`, so a CII invoice (Factur-X, EXTENDED-CTC-FR) can be written as UBL
+ * without silent loss. Each change is reported in `dropped`:
+ * - reset: `BT-24` (specification identifier) that is set and is not the `cbc:CustomizationID` of `options.level` is
+ *   set to that identifier (UBL has a place for BT-24; a Factur-X or CIUS id would make the document claim a profile
+ *   it was not checked against);
+ * - removed, because UBL 2.1 has no place for them: `BT-11-0` (project name) other than the Factur-X default
+ *   `Project reference` (CG-59; the default is kept and not reported, the writer leaves it out), `BT-41-0` / `BT-56-0`
+ *   (seller / buyer contact department name, CG-59), `BG-18` (payment card information, CG-61: UBL needs the network
+ *   id BT-87-1, which EN 16931 does not have), `EXT-FR-FE-184` (line grand total amount, CG-60) on every line;
+ * - removed, because they are not an EN 16931 term (the writer refuses them through the party check it shares with
+ *   `toCii()`): the department name of the seller agent, billing party, buyer agent, invoicee, payee and payer contacts.
+ *
+ * The output is proven against the UBL 2.1 XSD and the level Schematron only (including a BT-24 reset to
+ * `extended-ctc-fr`), not against the French BR-FR rules, which the writer does not gate: run
+ * `check({ xml, schematron: true, frCtc: true })` on what `invoiceToUbl()` writes from it.
  *
  * Nothing else is removed: an EXTENDED-CTC-FR term at `en16931` (choose the level), a term missing the sibling its UBL
  * element needs (CG-65, CG-68, CG-69), BR-DEC Amount decimals or a bad date still make `invoiceToUbl()` throw. Pure and
- * synchronous: `invoice` (classes or plain objects) is never modified. Throws for a level other than `en16931` /
- * `extended-ctc-fr`. Never quotes invoice content. Look at `dropped`: each path is a value the UBL document will not
+ * synchronous: `invoice` (classes or plain objects) is never modified. Throws for an `invoice` that is not an object and
+ * for a level other than `en16931` / `extended-ctc-fr`. Never quotes invoice content. Look at `dropped`: each path is a value the UBL document will not
  * hold.
  */
 export function dropUblUncarried(invoice: Invoice, options: { level: UblLevel }): DropUblUncarriedResult {
   const level = options?.level
   if (!(UBL_LEVELS as readonly string[]).includes(level))
     throw new Error(`dropUblUncarried: options.level must be one of ${LEVEL_LIST}`)
+  if (invoice === null || typeof invoice !== 'object' || Array.isArray(invoice))
+    throw new Error('dropUblUncarried: invoice must be an EN 16931 invoice object')
   const copy = deepCopy(invoice)
   const dropped: string[] = []
   const specification = copy.specificationIdentifier
