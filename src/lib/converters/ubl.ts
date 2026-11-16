@@ -9,10 +9,11 @@
  *
  * Elements are written in the `xs:sequence` order of `UBL-Invoice-2.1.xsd` / `UBL-CreditNote-2.1.xsd`
  * and `UBL-CommonAggregateComponents-2.1.xsd`. A value the target cannot carry makes the writer throw,
- * naming the business term and never quoting invoice content (design, "One data-loss contract").
+ * naming the business term and never quoting invoice content: dropping it would lose data silently.
  */
 
 import type { XmlElement } from 'libxml2-wasm'
+import type { UBL_ROOT } from '../constants'
 import type { BillingParty, BuyerAgent, Invoicee, Payer, SellerAgent } from '../models/en16931/additional-parties'
 import type { Contact, Identifier, PostalAddress } from '../models/en16931/common'
 import type { Invoice } from '../models/en16931/invoice'
@@ -36,8 +37,11 @@ export type UblLevel = typeof UBL_LEVELS[number]
 export interface InvoiceToUblOptions {
   /** The profile to write: decides BT-24 (`cbc:CustomizationID`) and which terms may be present. */
   level: UblLevel
-  /** The root element; by default `CreditNote` for a BT-3 of `UBL_CREDIT_NOTE_TYPE_CODES`, else `Invoice`. */
-  root?: 'Invoice' | 'CreditNote'
+  /**
+   * The root element; by default `CreditNote` for a BT-3 of `UBL_CREDIT_NOTE_TYPE_CODES`, else `Invoice`. BT-3
+   * must be in the BR-CL-01 list of the root asked for (`UBL_INVOICE_TYPE_CODES`, `UBL_CREDIT_NOTE_TYPE_CODES`).
+   */
+  root?: UBL_ROOT
 }
 
 /**
@@ -46,6 +50,19 @@ export interface InvoiceToUblOptions {
  * credit note lists of BR-CL-01; it is written as a credit note.
  */
 export const UBL_CREDIT_NOTE_TYPE_CODES: ReadonlySet<string> = new Set(['81', '83', '261', '262', '296', '308', '381', '396', '420', '458', '502', '503', '532'])
+
+/**
+ * BT-3 codes BR-CL-01 allows in `cbc:InvoiceTypeCode`, identical in `EN16931-UBL-validation` (l.15088) and
+ * `EXTENDED-CTC-FR-UBL`.
+ */
+export const UBL_INVOICE_TYPE_CODES: ReadonlySet<string> = new Set('71 80 81 82 84 102 130 202 203 204 211 218 219 295 325 326 331 380 382 383 384 385 386 387 388 389 390 393 394 395 456 457 471 472 473 500 501 527 553 575 623 633 751 780 817 870 875 876 877 935'.split(' '))
+
+/**
+ * How a note is read back from UBL `cbc:Note` (annex A BT-21: "Use #subject code#"): a leading `#code#`, the code
+ * non-empty and without `#`, is the subject code (BT-21 / EXT-FR-FE-183), the rest the text (BT-22 / BT-127).
+ * The writer refuses the notes this would read back differently.
+ */
+export const UBL_NOTE_PATTERN = /^#([^#]+)#([\s\S]*)$/
 
 const PREFIX = 'invoiceToUbl'
 const CUSTOMIZATION_IDS: Record<UblLevel, string> = {
@@ -78,8 +95,9 @@ function reprefixed(check: () => void): void {
     check()
   }
   catch (error) {
+    // A UBL level list has no "extended": point at the only UBL level that carries more.
     if (error instanceof Error && error.message.startsWith('toCii: '))
-      fail(error.message.slice('toCii: '.length))
+      fail(error.message.slice('toCii: '.length).replaceAll('level "extended" or "extended-ctc-fr"', 'level "extended-ctc-fr"'))
     throw error
   }
 }
@@ -90,8 +108,10 @@ function reprefixed(check: () => void): void {
 
 const lineSome = (invoice: Invoice, test: (line: InvoiceLine) => boolean): boolean => invoice.lines.some(test)
 
-// Terms with no UBL place at any level: the XSD has no element for them, no Schematron gives them one,
-// and annex A has no UBL row (CONFORMANCE.md CG-59 ... CG-62).
+// Terms UBL cannot carry at any level: no element in the XSD, no Schematron place and no annex A UBL row
+// (BT-11-0, BT-41-0, BT-56-0, EXT-FR-FE-184: CG-59, CG-60), more values than the UBL element holds
+// (EXT-FR-FE-146, BT-149-1 / BT-150-1: CG-60, CG-62), or a group whose UBL element needs a sibling the model
+// lacks (BG-18 needs BT-87-1: CG-61; BG-23 needs BT-110: CG-66).
 function assertUblPlaces(invoice: Invoice): void {
   if (invoice.projectName !== undefined && invoice.projectName !== DEFAULT_PROJECT_NAME)
     fail('BT-11-0 (project name) has no UBL element (`cac:ProjectReference` holds only BT-11); clear it')
@@ -128,14 +148,17 @@ function assertLevelCarries(invoice: Invoice, level: UblLevel): void {
   }
 }
 
-// Cardinalities `EN16931-UBL-validation` restricts and `EXTENDED-CTC-FR-UBL` does not (UBL-SR-04, -16, -20).
+// Cardinalities `EN16931-UBL-validation` restricts and `EXTENDED-CTC-FR-UBL` does not: UBL-SR-04 (BT-18),
+// UBL-SR-16 (BT-46), UBL-SR-20 (BT-60); and UBL-SR-29 (one `SEPA` identifier, BT-90) at both levels.
 function assertUblCounts(invoice: Invoice, level: UblLevel): void {
   if (level === 'en16931') {
     if (invoice.invoicedObjectIdentifiers.length > 1)
       fail('BT-18 (invoiced object identifier) is carried once at level "en16931" (UBL-SR-04); several need level "extended-ctc-fr"')
     if (invoice.buyer.identifiers.length > 1)
       fail('BT-46 (buyer identifier) is carried once at level "en16931" (UBL-SR-16); several need level "extended-ctc-fr"')
-    if ((invoice.payee?.identifiers ?? []).filter(i => i.schemeId !== undefined).length > 1)
+    // UBL-SR-20 counts `cbc:ID[upper-case(@schemeID) != 'SEPA']`: a schemeless ID counts too (`upper-case(())`
+    // is ''); only the BT-90 the writer adds is left out.
+    if ((invoice.payee?.identifiers ?? []).length > 1)
       fail('BT-60 (payee identifier) is carried once at level "en16931" (UBL-SR-20); several need level "extended-ctc-fr"')
   }
   // `@schemeID="SEPA"` marks BT-90 (UBL-SR-29): a party identifier with that scheme would read back as BT-90.
@@ -200,11 +223,76 @@ function assertSharedElements(invoice: Invoice): void {
   }
 }
 
-function assertCarriers(invoice: Invoice, root: 'Invoice' | 'CreditNote'): void {
+function assertCarriers(invoice: Invoice, root: UBL_ROOT): void {
   if (invoice.payer && !invoice.paymentInstructions)
     fail('EXT-FR-FE-BG-02 (payer) needs BG-16 (payment instructions): UBL writes it in `cac:PaymentMeans/cac:PaymentMandate`')
   if (root === 'CreditNote' && invoice.paymentDueDate !== undefined && !invoice.paymentInstructions)
     fail('BT-9 (payment due date) needs BG-16 (payment instructions) in a CreditNote: UBL writes it in `cac:PaymentMeans/cbc:PaymentDueDate`')
+}
+
+function assertRoot(invoice: Invoice, root: UBL_ROOT): void {
+  const codes = root === 'CreditNote' ? UBL_CREDIT_NOTE_TYPE_CODES : UBL_INVOICE_TYPE_CODES
+  if (!codes.has(invoice.typeCode))
+    fail(`BT-3 (invoice type code) is not a ${root} type code of BR-CL-01; write it with the other root`)
+}
+
+// Line rules of the UBL Schematrons the shared CII checks do not know.
+function assertUblLines(invoice: Invoice, level: UblLevel): void {
+  for (const line of invoice.lines) {
+    // UBL has EXT-FR-FE-180 in the line `cac:InvoicePeriod`, which BR-CO-20 (both UBL Schematrons) wants with a
+    // start or end date (CG-68).
+    if (line.vat?.vatPointDateCode !== undefined && line.period?.startDate === undefined && line.period?.endDate === undefined)
+      fail('EXT-FR-FE-180 (line value added tax point date code) needs BT-134 or BT-135 (invoice line period) in UBL: it sits in `cac:InvoicePeriod` (BR-CO-20)')
+    // EXTENDED-CTC-FR-UBL BR-FREXT-26 ([BR-26]), BR-FREXT-22 and UBL-SR-50: a line whose subtype EXT-FR-FE-163 is
+    // `DETAIL` or not specified needs its net price, quantity and one VAT category (CG-69). Below
+    // extended-ctc-fr the shared checks already require them.
+    if (level === 'extended-ctc-fr' && (line.statusReasonCode === undefined || line.statusReasonCode === 'DETAIL')) {
+      if (!line.price)
+        fail('BG-29 (price details) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (BR-26)')
+      if (line.invoicedQuantity === undefined)
+        fail('BT-129 (invoiced quantity) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (BR-FREXT-22)')
+      if (!line.vat)
+        fail('BG-30 (line VAT information) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (UBL-SR-50)')
+    }
+  }
+}
+
+// A note is written `#subject#text` or `text`; refuse what `UBL_NOTE_PATTERN` would read back differently.
+function assertNote(subjectCode: string | undefined, content: string | undefined, ids: [string, string]): void {
+  if (subjectCode !== undefined && (subjectCode === '' || subjectCode.includes('#')))
+    fail(`${ids[0]} is written \`#code#\` in UBL \`cbc:Note\`: it cannot be empty or contain "#"`)
+  if (subjectCode === undefined && content !== undefined && UBL_NOTE_PATTERN.test(content))
+    fail(`${ids[1]} starts with "#...#", which UBL reads back as ${ids[0]}; set ${ids[0]} or change the text`)
+}
+
+function assertNotes(invoice: Invoice): void {
+  for (const n of invoice.notes)
+    assertNote(n.subjectCode, n.note, ['BT-21 (invoice note subject code)', 'BT-22 (invoice note)'])
+  for (const line of invoice.lines) {
+    for (const n of line.notes)
+      assertNote(n.subjectCode, n.note, ['EXT-FR-FE-183 (invoice line note subject code)', 'BT-127 (invoice line note)'])
+  }
+}
+
+// The shared line checks of `toCii()` hold rules of the CII binding that UBL does not have. They run on a copy
+// where those inputs are made acceptable to them, so UBL follows its own binding:
+// - a second preceding invoice reference of the line: UBL repeats `cac:BillingReference` (annex A EXT-FR-FE-BG-06
+//   `0..2`, counted by `assertUblNesting()`);
+// - BT-147 without BT-148: CII holds the discount inside the gross price, UBL's `cbc:BaseAmount` is optional
+//   (annex A BT-148 `0..1`);
+// - EXT-FR-FE-166-1 (line seller identifier scheme): `@schemeID` is optional in UBL and no vendored UBL rule
+//   requires it. EXT-FR-FE-148 (line deliver-to identifier scheme) stays required: the UBL BR-FR-CO-10
+//   (`BR-FR-CO-10_EXT-FR-FE-146-1`, `empty(cbc:ID[not(@schemeID)])` on the line `cac:DeliveryLocation`) wants it.
+function ciiOnlyRulesLifted(line: InvoiceLine): InvoiceLine {
+  if (!line || typeof line !== 'object')
+    return line
+  const price = line.price
+  return {
+    ...line,
+    precedingInvoiceReferences: line.precedingInvoiceReferences.slice(0, 1),
+    price: price && typeof price === 'object' && price.priceDiscount !== undefined && price.grossPrice === undefined ? { ...price, grossPrice: 0 } : price,
+    seller: line.seller && typeof line.seller === 'object' ? { ...line.seller, identifiers: line.seller.identifiers.map(i => ({ ...i, schemeId: i?.schemeId ?? 'UBL' })) } : line.seller,
+  }
 }
 
 function assertSpecification(invoice: Invoice, level: UblLevel): void {
@@ -440,7 +528,7 @@ function parties(root: XmlElement, invoice: Invoice): void {
 // Header
 // ---------------------------------------------------------------------------
 
-function period(parent: XmlElement, start: string | undefined, end: string | undefined, descriptionCode: string | undefined, terms: [string, string, string]): void {
+function period(parent: XmlElement, start: string | undefined, end: string | undefined, descriptionCode: string | undefined, terms: [string, string]): void {
   if (start === undefined && end === undefined && descriptionCode === undefined)
     return
   const element = parent.addElement('cac:InvoicePeriod')
@@ -513,9 +601,10 @@ function deliveryTerms(parent: XmlElement, value: { deliveryTypeCode: string, lo
     element.addElement('cac:DeliveryLocation').addElement('cbc:Name').addText(value.locationName)
 }
 
-// P4 / UBL-SR-44 ... -55: one `cac:PaymentMeans` per credit transfer (one when there is none), each with BT-81
-// and BT-83; BT-82 (`@name`, UBL-SR-46), the credit note's BT-9 (UBL-SR-45) and the mandate (UBL-SR-55) occur
-// once in the document, so they go in the first.
+// One `cac:PaymentMeans` per credit transfer (UBL has one `cac:PayeeFinancialAccount` per payment means), one
+// when there is none, each with BT-81 and BT-83 (UBL-SR-47 / -44 accept them repeated with one value). BT-82
+// (`@name`, UBL-SR-46), the payment mandate BG-19 (UBL-SR-55) and the credit note's BT-9 (UBL-SR-45) may occur
+// once in the document: they go in the first.
 function paymentMeans(root: XmlElement, invoice: Invoice, creditNote: boolean): void {
   const instructions: PaymentInstructions | undefined = invoice.paymentInstructions
   if (!instructions)
@@ -533,7 +622,8 @@ function paymentMeans(root: XmlElement, invoice: Invoice, creditNote: boolean): 
     text(element, 'cbc:PaymentID', instructions.remittanceInformation)
     if (transfer) {
       const account = element.addElement('cac:PayeeFinancialAccount')
-      // P3: UBL has one account `cbc:ID` for BT-84 and the national account number BT-84-0.
+      // UBL has one account `cbc:ID`: BT-84, else the national account number BT-84-0 (EN 16931 BT-84 is any
+      // account identifier; CII alone splits IBANID / ProprietaryID). Both set is refused (CG-64).
       text(account, 'cbc:ID', transfer.paymentAccountIdentifier ?? transfer.nationalAccountNumber)
       text(account, 'cbc:Name', transfer.paymentAccountName)
       if (transfer.paymentServiceProviderIdentifier !== undefined)
@@ -715,14 +805,16 @@ function price(parent: XmlElement, line: InvoiceLine, currency: string): void {
   unitPrice(element, 'cbc:PriceAmount', value.netPrice, currency, 'BT-146 (item net price)')
   quantity(element, 'cbc:BaseQuantity', value.priceBaseQuantity, value.priceBaseQuantityUnitCode, 'BT-149 (item price base quantity)')
   // BT-148 sits in the price allowance, whose amount BT-147 is mandatory: a gross price without discount
-  // is written with a zero discount, as annex B does (CG-62).
-  if (value.grossPrice !== undefined) {
+  // is written with a zero discount, as annex B does (CG-62). A discount without gross price has no
+  // `cbc:BaseAmount` (optional in UBL, annex A BT-148 `0..1`).
+  if (value.grossPrice !== undefined || value.priceDiscount !== undefined) {
     const discount = element.addElement('cac:AllowanceCharge')
     discount.addElement('cbc:ChargeIndicator').addText('false')
     text(discount, 'cbc:AllowanceChargeReasonCode', value.priceDiscountReasonCode)
     text(discount, 'cbc:AllowanceChargeReason', value.priceDiscountReason)
     unitPrice(discount, 'cbc:Amount', value.priceDiscount ?? 0, currency, 'BT-147 (item price discount)')
-    unitPrice(discount, 'cbc:BaseAmount', value.grossPrice, currency, 'BT-148 (item gross price)')
+    if (value.grossPrice !== undefined)
+      unitPrice(discount, 'cbc:BaseAmount', value.grossPrice, currency, 'BT-148 (item gross price)')
   }
 }
 
@@ -805,7 +897,7 @@ function invoiceLine(root: XmlElement, line: InvoiceLine, invoice: Invoice, cred
   quantity(element, creditNote ? 'cbc:CreditedQuantity' : 'cbc:InvoicedQuantity', line.invoicedQuantity, line.invoicedQuantityUnitCode, 'BT-129 (invoiced quantity)')
   amount(element, 'cbc:LineExtensionAmount', line.netAmount, currency, 'BT-131 (invoice line net amount)')
   text(element, 'cbc:AccountingCost', line.buyerAccountingReference)
-  period(element, line.period?.startDate, line.period?.endDate, line.vat?.vatPointDateCode, ['BT-134 (invoice line period start date)', 'BT-135 (invoice line period end date)', ''])
+  period(element, line.period?.startDate, line.period?.endDate, line.vat?.vatPointDateCode, ['BT-134 (invoice line period start date)', 'BT-135 (invoice line period end date)'])
   lineReferences(element, line, invoice)
   lineDelivery(element, line)
   // `InvoiceLineType` has AllowanceCharge before TaxTotal, `CreditNoteLineType` the reverse.
@@ -848,7 +940,7 @@ function header(root: XmlElement, invoice: Invoice, level: UblLevel, creditNote:
   text(root, 'cbc:TaxCurrencyCode', invoice.vatAccountingCurrencyCode)
   text(root, 'cbc:AccountingCost', invoice.buyerAccountingReference)
   text(root, 'cbc:BuyerReference', invoice.buyerReference)
-  period(root, invoice.invoicingPeriod?.startDate, invoice.invoicingPeriod?.endDate, invoice.valueAddedTaxPointDateCode, ['BT-73 (invoicing period start date)', 'BT-74 (invoicing period end date)', ''])
+  period(root, invoice.invoicingPeriod?.startDate, invoice.invoicingPeriod?.endDate, invoice.valueAddedTaxPointDateCode, ['BT-73 (invoicing period start date)', 'BT-74 (invoicing period end date)'])
   if (invoice.purchaseOrderReference !== undefined) {
     const order = root.addElement('cac:OrderReference')
     order.addElement('cbc:ID').addText(invoice.purchaseOrderReference)
@@ -875,9 +967,9 @@ function header(root: XmlElement, invoice: Invoice, level: UblLevel, creditNote:
 }
 
 /**
- * Write an EN 16931 invoice as UBL 2.1 at `level` (`en16931` or `extended-ctc-fr`): a `CreditNote` when
- * BT-3 is a credit note code of BR-CL-01 (`UBL_CREDIT_NOTE_TYPE_CODES`) or `options.root` says so, an
- * `Invoice` otherwise. The caller owns the returned document: serialise it with `.toString()`, then
+ * Write an EN 16931 invoice as UBL 2.1 at `level` (`en16931` or `extended-ctc-fr`): the root `options.root`
+ * names, else a `CreditNote` when BT-3 is a credit note code of BR-CL-01 (`UBL_CREDIT_NOTE_TYPE_CODES`) and an
+ * `Invoice` otherwise. BT-3 must be in the BR-CL-01 list of that root (`81` is in both). The caller owns the returned document: serialise it with `.toString()`, then
  * `dispose()` it.
  *
  * Throws, naming the business term (never quoting invoice content), for everything `toCii()` refuses that
@@ -887,12 +979,15 @@ function header(root: XmlElement, invoice: Invoice, level: UblLevel, creditNote:
  *   BT-149 / BT-150;
  * - BT-110 is missing (UBL holds BG-23 in the `cac:TaxTotal` whose amount it is);
  * - an `EXT-FR-FE` term, or more than one BT-18, BT-46 or BT-60, is written at `en16931` (UBL-CR-*,
- *   UBL-SR-04, -16, -20);
+ *   UBL-SR-04, -16, -20; a hint naming a CII-only level is rewritten to `"extended-ctc-fr"`);
  * - a term needs the identifier of the UBL element it sits in (BT-14 without BT-13, EXT-FR-FE-144 without
  *   EXT-FR-FE-135 ...), or two terms share one UBL element (BT-84 and BT-84-0, BT-105 and BT-177, BT-145
  *   and BT-193);
  * - BT-9 of a credit note, or the payer, has no `cac:PaymentMeans` to sit in;
- * - BT-24 is set to anything but the `cbc:CustomizationID` of `level`.
+ * - BT-24 is set to anything but the `cbc:CustomizationID` of `level`;
+ * - EXT-FR-FE-180 is set without a line period (BR-CO-20), or, at `extended-ctc-fr`, a line whose EXT-FR-FE-163 is
+ *   `DETAIL` or unset lacks BG-29, BT-129 or BG-30 (BR-26, BR-FREXT-22, UBL-SR-50);
+ * - a note would read back differently from `#subject#text` (`UBL_NOTE_PATTERN`).
  */
 export async function invoiceToUbl(invoice: Invoice, options: InvoiceToUblOptions): Promise<XmlDocument> {
   const level = options?.level
@@ -915,16 +1010,17 @@ export async function invoiceToUbl(invoice: Invoice, options: InvoiceToUblOption
     assertPartiesComplete(full)
     assertSettlementComplete(full)
   })
-  // The line checks of `toCii()` refuse a second preceding invoice reference of a line, which UBL carries
-  // (annex A EXT-FR-FE-BG-06 `0..2`): checked with the first only, the count is `assertUblNesting()`'s.
-  reprefixed(() => assertLinesComplete({ ...full, lines: Array.isArray(full.lines) ? full.lines.map(l => l && typeof l === 'object' ? { ...l, precedingInvoiceReferences: l.precedingInvoiceReferences.slice(0, 1) } : l) : full.lines } as Invoice, level))
+  reprefixed(() => assertLinesComplete({ ...full, lines: Array.isArray(full.lines) ? full.lines.map(ciiOnlyRulesLifted) : full.lines } as Invoice, level))
   const root = options.root ?? (UBL_CREDIT_NOTE_TYPE_CODES.has(full.typeCode) ? 'CreditNote' : 'Invoice')
   assertCarriers(full, root)
+  assertRoot(full, root)
   assertUblPlaces(full)
   assertLevelCarries(full, level)
   assertUblCounts(full, level)
   assertUblNesting(full)
   assertSpecification(full, level)
+  assertUblLines(full, level)
+  assertNotes(full)
 
   const creditNote = root === 'CreditNote'
   const doc = XmlDocument.fromString(`<?xml version="1.0" encoding="UTF-8"?>

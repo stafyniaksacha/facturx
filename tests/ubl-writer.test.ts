@@ -1,7 +1,7 @@
 import type { Invoice } from '@stafyniaksacha/facturx/en16931'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { check, fromCii, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
 import { invoiceToUbl, UBL_CREDIT_NOTE_TYPE_CODES } from '../src/lib/converters/ubl'
@@ -217,6 +217,8 @@ describe('invoiceToUbl: every EXTENDED-CTC-FR place', () => {
     line.item.attributes.push({ name: 'POIDS', typeCode: 'AAB', valueQuantity: 1.5, valueQuantityUnitCode: 'KGM' })
     line.price!.priceDiscountReason = 'PROMO'
     line.price!.priceDiscountReasonCode = '95'
+    // EXT-FR-FE-166-1 is optional in UBL: one identifier without scheme.
+    line.seller = { identifiers: [{ value: '100000009', schemeId: '0002' }, { value: 'SELLER-LOCAL' }], name: 'LE VENDEUR', tradingName: 'VENDEUR', legalRegistrationIdentifier: { value: '100000009', schemeId: '0002' }, electronicAddress: { value: '100000009', schemeId: '0225' }, vatIdentifier: 'FR88100000009', taxRegistrationIdentifier: 'TAXREG-1', address }
     return invoice
   }
 
@@ -249,6 +251,8 @@ describe('invoiceToUbl: every EXTENDED-CTC-FR place', () => {
     expect(texts(xml, `${line}/cac:TaxTotal/cbc:TaxAmount`)).toEqual(['4.20', '4.62'])
     expect(texts(xml, `${line}/cac:DeliveryTerms/cbc:ID`)).toEqual(['FCA'])
     expect(texts(xml, `${line}/cac:Item/cbc:PackQuantity`)).toEqual(['1'])
+    expect(texts(xml, `${line}/cac:Item/cac:ManufacturerParty/cac:PartyIdentification/cbc:ID`)).toEqual(['100000009', 'SELLER-LOCAL'])
+    expect(texts(xml, `${line}/cac:Item/cac:ManufacturerParty/cac:PartyTaxScheme/cac:TaxScheme/cbc:ID`)).toEqual(['VAT', 'LOC'])
   })
 
   it('refuses the same invoice at en16931, naming the first EXTENDED-CTC-FR term', async () => {
@@ -299,8 +303,15 @@ describe('invoiceToUbl: root and type code', () => {
 
   it('writes a 380 as Invoice, and lets options.root override', async () => {
     expect(rootName(await written(minimal({}), { level: 'en16931' }))).toBe('Invoice')
-    expect(rootName(await written(minimal({}), { level: 'en16931', root: 'CreditNote' }))).toBe('CreditNote')
-    expect(rootName(await written(minimal({ typeCode: '381' }), { level: 'en16931', root: 'Invoice' }))).toBe('Invoice')
+    // 81 is in both BR-CL-01 lists: either root.
+    expect(rootName(await written(minimal({ typeCode: '81' }), { level: 'en16931' }))).toBe('CreditNote')
+    expect(rootName(await written(minimal({ typeCode: '81' }), { level: 'en16931', root: 'Invoice' }))).toBe('Invoice')
+    expect(rootName(await written(minimal({ typeCode: '381' }), { level: 'en16931', root: 'CreditNote' }))).toBe('CreditNote')
+  })
+
+  it('refuses an options.root whose BR-CL-01 list lacks BT-3', async () => {
+    await expect(invoiceToUbl(minimal({}), { level: 'en16931', root: 'CreditNote' })).rejects.toThrow(/^invoiceToUbl: BT-3 \(invoice type code\) is not a CreditNote type code of BR-CL-01/)
+    await expect(invoiceToUbl(minimal({ typeCode: '381' }), { level: 'en16931', root: 'Invoice' })).rejects.toThrow(/^invoiceToUbl: BT-3 \(invoice type code\) is not a Invoice type code of BR-CL-01/)
   })
 
   it('writes BT-11 of a CreditNote as an additional document of type 50 (UBL-SR-43)', async () => {
@@ -345,7 +356,7 @@ describe('invoiceToUbl: values', () => {
     expect((await check({ xml })).valid).toBe(true)
   })
 
-  it('writes BT-84-0 in the account cbc:ID when BT-84 is absent, and refuses both (P3)', async () => {
+  it('writes BT-84-0 in the account cbc:ID when BT-84 is absent, and refuses both (CG-64)', async () => {
     const invoice = minimal({})
     invoice.paymentInstructions = { paymentMeansTypeCode: '30', creditTransfers: [{ nationalAccountNumber: 'NAT-123' }] }
     expect(texts(await written(invoice, { level: 'en16931' }), '//cac:PayeeFinancialAccount/cbc:ID')).toEqual(['NAT-123'])
@@ -353,7 +364,7 @@ describe('invoiceToUbl: values', () => {
     await expect(invoiceToUbl(invoice, { level: 'en16931' })).rejects.toThrow('BT-84-0')
   })
 
-  it('writes one cac:PaymentMeans per credit transfer, BT-82 and the mandate in the first only (P4, UBL-SR-46/-55)', async () => {
+  it('writes one cac:PaymentMeans per credit transfer, BT-82 and the mandate in the first only (UBL-SR-46/-55)', async () => {
     const invoice = minimal({})
     invoice.paymentInstructions = {
       paymentMeansTypeCode: '30',
@@ -404,6 +415,122 @@ describe('invoiceToUbl: refusals', () => {
       mutate(invoice)
       await expect(invoiceToUbl(invoice, { level: 'en16931' }), label).rejects.toThrow(error)
     }
+  })
+
+  it('refuses BG-18 (card): UBL needs BT-87-1, which the model lacks (CG-61)', async () => {
+    const invoice = minimal({})
+    invoice.paymentInstructions = { paymentMeansTypeCode: '48', creditTransfers: [], card: { primaryAccountNumber: '1234' } }
+    await expect(invoiceToUbl(invoice, { level: 'en16931' })).rejects.toThrow(/^invoiceToUbl: BG-18 .* BT-87-1/)
+  })
+
+  it('refuses a second EXT-FR-FE-146 on a line (CG-60)', async () => {
+    const invoice = minimal({})
+    invoice.lines[0].deliverTo = { identifiers: [{ value: 'A', schemeId: '0088' }, { value: 'B', schemeId: '0088' }] }
+    await expect(invoiceToUbl(invoice, { level: 'extended-ctc-fr' })).rejects.toThrow(/^invoiceToUbl: EXT-FR-FE-146 /)
+  })
+
+  const NESTING: [string, (i: Invoice) => void][] = [
+    ['BT-14', i => Object.assign(i, { salesOrderReference: 'SO' })],
+    ['EXT-FR-FE-197', i => Object.assign(i, { orderDate: '2025-01-01' })],
+    ['EXT-FR-FE-198', i => Object.assign(i, { despatchAdviceDate: '2025-01-01' })],
+    ['EXT-FR-FE-01', i => Object.assign(i, { contractCodeType: 'CT' })],
+    ['EXT-FR-FE-199', i => Object.assign(i, { contractDate: '2025-01-01' })],
+    ['EXT-FR-FE-135', i => Object.assign(i.lines[0], { purchaseOrderReference: 'PO' })],
+    ['EXT-FR-FE-145', i => Object.assign(i.lines[0], { sellerOrderReference: { orderLineReference: '1' } })],
+    ['EXT-FR-FE-144', i => Object.assign(i.lines[0], { purchaseOrderLineReference: '1', sellerOrderReference: { orderReference: 'SO' } })],
+    ['EXT-FR-FE-200', i => Object.assign(i.lines[0], { purchaseOrderLineReference: '1', purchaseOrderDate: '2025-01-01' })],
+    ['EXT-FR-FE-BG-07', i => Object.assign(i.lines[0], { despatchAdviceReference: { reference: 'D' } })],
+    ['EXT-FR-FE-201', i => Object.assign(i.lines[0], { despatchAdviceReference: { lineReference: '1', issueDate: '2025-01-01' } })],
+    ['EXT-FR-FE-BG-08', i => Object.assign(i.lines[0], { receivingAdviceReference: { reference: 'R' } })],
+  ]
+  it.each(NESTING)('refuses %s without the identifier of the UBL element it sits in (CG-65)', async (id, mutate) => {
+    const invoice = minimal({})
+    mutate(invoice)
+    await expect(invoiceToUbl(invoice, { level: 'extended-ctc-fr' })).rejects.toThrow(new RegExp(`^invoiceToUbl: ${id} \\(.*\\) needs `))
+  })
+
+  it('refuses EXT-FR-FE-180 without a line period: BR-CO-20 (CG-68)', async () => {
+    const invoice = minimal({})
+    invoice.lines[0].vat!.vatPointDateCode = '3'
+    await expect(invoiceToUbl(invoice, { level: 'extended-ctc-fr' })).rejects.toThrow(/^invoiceToUbl: EXT-FR-FE-180 .*\(BR-CO-20\)$/)
+    invoice.lines[0].period = { startDate: '2025-01-01' }
+    expect(texts(await written(invoice, { level: 'extended-ctc-fr' }), '//cac:InvoiceLine/cac:InvoicePeriod/cbc:DescriptionCode')).toEqual(['3'])
+  })
+
+  it.each([
+    ['BG-29', (i: Invoice) => { i.lines[0].price = undefined }, 'BR-26'],
+    ['BT-129', (i: Invoice) => Object.assign(i.lines[0], { invoicedQuantity: undefined, invoicedQuantityUnitCode: undefined }), 'BR-FREXT-22'],
+    ['BG-30', (i: Invoice) => { i.lines[0].vat = undefined }, 'UBL-SR-50'],
+  ] as const)('refuses a DETAIL or unset-subtype line without %s at extended-ctc-fr (CG-69)', async (id, mutate, rule) => {
+    const invoice = minimal({})
+    mutate(invoice)
+    await expect(invoiceToUbl(invoice, { level: 'extended-ctc-fr' })).rejects.toThrow(new RegExp(`^invoiceToUbl: ${id} .*\\(${rule}\\)$`))
+    invoice.lines[0].statusReasonCode = 'DETAIL'
+    await expect(invoiceToUbl(invoice, { level: 'extended-ctc-fr' })).rejects.toThrow(id)
+    invoice.lines[0].statusReasonCode = 'INFORMATION'
+    expect(rootName(await written(invoice, { level: 'extended-ctc-fr' }))).toBe('Invoice')
+  })
+
+  it('cG-69 open item: toCii() at extended-ctc-fr writes a line without BG-29 that its BR-26 refuses', async () => {
+    const twin = TWINS.find(t => t.name === 'UC1' && t.level === 'extended-ctc-fr')!
+    const invoice = await fromTwin(twin)
+    invoice.lines[0].price = undefined
+    const doc = await invoiceToXml(toCii(invoice, { level: 'extended-ctc-fr' }))
+    try {
+      const result = await check({ xml: doc.toString(), schematron: true })
+      expect((result.schematronErrors ?? []).map(e => e.id ?? ruleId(e))).toContain('BR-FREXT-BR-26')
+    }
+    finally {
+      doc.dispose()
+    }
+  })
+
+  it.each([
+    ['BT-22', (i: Invoice) => { i.notes = [{ note: '#AAI#text' }] }],
+    ['BT-21', (i: Invoice) => { i.notes = [{ subjectCode: 'A#B', note: 'text' }] }],
+    ['BT-21', (i: Invoice) => { i.notes = [{ subjectCode: '', note: 'text' }] }],
+    ['BT-127', (i: Invoice) => { i.lines[0].notes = [{ note: '#AAI#' }] }],
+    ['EXT-FR-FE-183', (i: Invoice) => { i.lines[0].notes = [{ subjectCode: '#', note: 'text' }] }],
+  ] as const)('refuses a note that UBL would read back differently (%s)', async (id, mutate) => {
+    const invoice = minimal({})
+    mutate(invoice)
+    await expect(invoiceToUbl(invoice, { level: 'extended-ctc-fr' })).rejects.toThrow(new RegExp(`^invoiceToUbl: ${id} `))
+  })
+
+  it('writes notes that read back as written', async () => {
+    const invoice = minimal({})
+    invoice.notes = [{ subjectCode: 'AAI', note: '#a#b' }, { note: '#no closing' }, { note: 'plain' }]
+    expect(texts(await written(invoice, { level: 'en16931' }), '/*/cbc:Note')).toEqual(['#AAI##a#b', '#no closing', 'plain'])
+  })
+
+  it('names "extended-ctc-fr", never "extended", in a reprefixed level hint', async () => {
+    const invoice = minimal({})
+    invoice.lines[0].notes = [{ note: 'a' }, { note: 'b' }]
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow('several need level "extended" or "extended-ctc-fr"')
+    await expect(invoiceToUbl(invoice, { level: 'en16931' })).rejects.toThrow(/^invoiceToUbl: BT-127 \(invoice line note\) is carried once at level "en16931"; several need level "extended-ctc-fr"$/)
+  })
+
+  it('refuses two payee identifiers at en16931, a schemeless one included (UBL-SR-20)', async () => {
+    const invoice = minimal({})
+    invoice.payee = { identifiers: [{ value: 'LOCAL' }, { value: '300000007', schemeId: '0002' }], name: 'PAYEE' }
+    await expect(invoiceToUbl(invoice, { level: 'en16931' })).rejects.toThrow(/^invoiceToUbl: BT-60 .*UBL-SR-20/)
+  })
+
+  it('writes BT-147 without BT-148 (no cbc:BaseAmount), refuses a schemeless EXT-FR-FE-148 (BR-FR-CO-10)', async () => {
+    const invoice = minimal({})
+    invoice.lines[0].price!.priceDiscount = 5
+    invoice.lines[0].price!.netPrice = 95
+    const xml = await written(invoice, { level: 'en16931' })
+    expect(texts(xml, '//cac:Price/cac:AllowanceCharge/cbc:Amount')).toEqual(['5'])
+    expect(texts(xml, '//cac:Price/cac:AllowanceCharge/cbc:BaseAmount')).toEqual([])
+    const result = await check({ xml, schematron: true })
+    expect(result.errors).toEqual([])
+    expect(result.schematronErrors).toEqual([])
+    // toCii() keeps refusing it: CII holds the discount inside the gross price.
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^toCii: BT-148/)
+    const deliver = minimal({})
+    deliver.lines[0].deliverTo = { identifiers: [{ value: 'SITE' }] }
+    await expect(invoiceToUbl(deliver, { level: 'extended-ctc-fr' })).rejects.toThrow(/^invoiceToUbl: EXT-FR-FE-148 /)
   })
 
   it('throws on BT-9 of a credit note without payment means, and on an unknown level', async () => {
