@@ -1004,6 +1004,93 @@ function header(ctx: BuildContext, root: XmlElement, invoice: Invoice, level: Ub
     root.addElement('cac:ProjectReference').addElement('cbc:ID').addText(invoice.projectReference)
 }
 
+/** What `dropUblUncarried()` returns. */
+export interface DropUblUncarriedResult {
+  /** A deep copy of the invoice without the values UBL has no place for (class prototypes kept). */
+  invoice: Invoice
+  /**
+   * Model paths (`.seller.contact.departmentName`, `.lines.0.grandTotalAmount`) of each value removed or reset, in
+   * UBL document order. Paths only, never the values. Empty when nothing was removed.
+   */
+  dropped: string[]
+}
+
+// A deep copy that keeps each object's prototype, so model class instances stay instances.
+function deepCopy<T>(value: T): T {
+  if (Array.isArray(value))
+    return value.map(deepCopy) as T
+  if (value !== null && typeof value === 'object') {
+    const out = Object.create(Object.getPrototypeOf(value)) as Record<string, unknown>
+    for (const [key, entry] of Object.entries(value))
+      out[key] = deepCopy(entry)
+    return out as T
+  }
+  return value
+}
+
+/**
+ * Remove from a copy of `invoice` the values `invoiceToUbl()` refuses because UBL 2.1 has **no place** for them, and
+ * report each one, so a CII invoice (Factur-X, EXTENDED-CTC-FR) can be written as UBL without silent loss:
+ * - `BT-24` (specification identifier) that is set and is not the `cbc:CustomizationID` of `options.level`: reset to
+ *   that identifier (a Factur-X or CIUS id would make the document claim a profile it was not checked against);
+ * - `BT-11-0` (project name) other than the Factur-X default `Project reference` (CG-59; the default is kept and not
+ *   reported, the writer leaves it out);
+ * - `BT-41-0` / `BT-56-0` (seller / buyer contact department name, CG-59), and the department name of the payee,
+ *   agent, invoicee, billing party and payer contacts (no EN 16931 term; the CII side refuses it too);
+ * - `BG-18` (payment card information, CG-61: UBL needs the network id BT-87-1, which EN 16931 does not have);
+ * - `EXT-FR-FE-184` (line grand total amount, CG-60) on every line.
+ *
+ * Nothing else is removed: an EXTENDED-CTC-FR term at `en16931` (choose the level), a term missing the sibling its UBL
+ * element needs (CG-65, CG-68, CG-69), BR-DEC Amount decimals or a bad date still make `invoiceToUbl()` throw. Pure and
+ * synchronous: `invoice` (classes or plain objects) is never modified. Throws for a level other than `en16931` /
+ * `extended-ctc-fr`. Never quotes invoice content. Look at `dropped`: each path is a value the UBL document will not
+ * hold.
+ */
+export function dropUblUncarried(invoice: Invoice, options: { level: UblLevel }): DropUblUncarriedResult {
+  const level = options?.level
+  if (!(UBL_LEVELS as readonly string[]).includes(level))
+    throw new Error(`dropUblUncarried: options.level must be one of ${LEVEL_LIST}`)
+  const copy = deepCopy(invoice)
+  const dropped: string[] = []
+  const specification = copy.specificationIdentifier
+  if (specification !== undefined && specification !== '' && specification !== CUSTOMIZATION_IDS[level]) {
+    copy.specificationIdentifier = CUSTOMIZATION_IDS[level]
+    dropped.push('.specificationIdentifier')
+  }
+  if (copy.projectName !== undefined && copy.projectName !== DEFAULT_PROJECT_NAME) {
+    copy.projectName = undefined
+    dropped.push('.projectName')
+  }
+  // UBL order: supplier party (its agent and service provider), customer party (likewise), payee, payment means
+  // (card, then the mandate's payer), lines.
+  const parties = ['seller', 'sellerAgent', 'billingParty', 'buyer', 'buyerAgent', 'invoicee', 'payee', 'payer'] as const
+  for (const role of parties.slice(0, 7)) {
+    const contact = (copy[role] as { contact?: Contact } | undefined)?.contact
+    if (contact?.departmentName !== undefined) {
+      contact.departmentName = undefined
+      dropped.push(`.${role}.contact.departmentName`)
+    }
+  }
+  if (copy.paymentInstructions?.card !== undefined) {
+    copy.paymentInstructions.card = undefined
+    dropped.push('.paymentInstructions.card')
+  }
+  const payerContact = copy.payer?.contact
+  if (payerContact?.departmentName !== undefined) {
+    payerContact.departmentName = undefined
+    dropped.push(`.${parties[7]}.contact.departmentName`)
+  }
+  if (Array.isArray(copy.lines)) {
+    copy.lines.forEach((line, index) => {
+      if (line?.grandTotalAmount !== undefined) {
+        line.grandTotalAmount = undefined
+        dropped.push(`.lines.${index}.grandTotalAmount`)
+      }
+    })
+  }
+  return { invoice: copy, dropped }
+}
+
 /**
  * Write an EN 16931 invoice as UBL 2.1 at `level` (`en16931` or `extended-ctc-fr`): the root `options.root`
  * names, else a `CreditNote` when BT-3 is a credit note code of BR-CL-01 (see `InvoiceToUblOptions.root`) and an

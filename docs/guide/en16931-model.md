@@ -194,8 +194,26 @@ Order-X, ZUGFeRD 1.0, CDAR and anything else throw, and so does a document with 
 
 <<< ../../examples/ubl.ts#main{ts}
 
-A CII invoice read from Factur-X often holds what UBL refuses (contact department names, a Factur-X BT-24 when the
-level differs): clear the term the error names, then write again.
+#### Converting CII to UBL: `dropUblUncarried()`
+
+A CII invoice read from Factur-X often holds values UBL has no place for, which `invoiceToUbl()` refuses. The example
+above passes them through `dropUblUncarried(invoice, { level })` first. It is a separate, explicit call: it returns a
+deep copy without those values (the input is never modified) and `dropped`, the model path of each one, so you can
+see what the UBL document will not hold. It removes only these:
+
+- BT-24 (specification identifier) when it is set and is not the UBL id of `level`: reset to that id;
+- BT-11-0 (project name) other than the Factur-X default `Project reference` (CG-59);
+- BT-41-0 / BT-56-0 (seller / buyer contact department name, CG-59), and the department name of the payee, agent,
+  invoicee, billing party and payer contacts (no EN 16931 term);
+- BG-18 (payment card, CG-61);
+- EXT-FR-FE-184 (line grand total, CG-60), on every line.
+
+Anything else `invoiceToUbl()` refuses still throws: an EXTENDED-CTC-FR term at `en16931` (choose
+`extended-ctc-fr`), a term without the identifier its UBL element needs, an *Amount* with more than two decimals. On
+every official CII invoice the model reads (64 documents: the Factur-X 1.09 BASIC, EN 16931 and EXTENDED examples and
+the annex B Factur-X documents), `dropUblUncarried()` then `invoiceToUbl()` gives UBL that passes the UBL 2.1 XSD and
+the level Schematron, at `en16931` for BASIC / EN 16931 sources and `extended-ctc-fr` for EXTENDED and
+EXTENDED-CTC-FR sources (BR-FR, which the writer does not gate, is not part of that proof).
 
 The per-syntax functions:
 

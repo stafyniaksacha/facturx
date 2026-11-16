@@ -1,7 +1,7 @@
 import { validateCdar } from './lib/cdar'
 import { check } from './lib/check'
 import { invoiceToXml } from './lib/converters/facturx'
-import { invoiceToUbl } from './lib/converters/ubl'
+import { dropUblUncarried, invoiceToUbl } from './lib/converters/ubl'
 import { en16931ToXml, xmlToEn16931 } from './lib/en16931'
 import { extract } from './lib/extract'
 import { validateFrCtc } from './lib/fr-ctc'
@@ -15,6 +15,7 @@ import { validateSchematron } from './lib/schematron'
 
 export {
   check,
+  dropUblUncarried,
   EN16931,
   en16931ToXml,
   extract,
@@ -33,7 +34,7 @@ export {
 }
 
 export type { CdarResult } from './lib/cdar'
-export type { InvoiceToUblOptions, UblLevel } from './lib/converters/ubl'
+export type { DropUblUncarriedResult, InvoiceToUblOptions, UblLevel } from './lib/converters/ubl'
 export type { En16931Syntax, En16931ToCiiOptions, En16931ToUblOptions, En16931ToXmlOptions, XmlToEn16931Result } from './lib/en16931'
 export type { FromCiiResult, ToCiiOptions } from './lib/mapping/cii'
 export type { En16931Level } from './lib/models/en16931/level'

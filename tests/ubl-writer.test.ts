@@ -2,7 +2,7 @@ import type { Invoice } from '@stafyniaksacha/facturx/en16931'
 import type { XmlElement } from 'libxml2-wasm'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { check, fromCii, invoiceToUbl, invoiceToXml, toCii, ublToInvoice, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, dropUblUncarried, fromCii, invoiceToUbl, invoiceToXml, toCii, ublToInvoice, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
 // Not public (kept internal): the BR-CL-01 credit note list the root choice uses.
@@ -79,7 +79,16 @@ function without(invoice: Invoice, terms: NoPlace[], privateIds = false): Invoic
   return copy
 }
 
-const twinInvoice = async (twin: Twin): Promise<Invoice> => without(await fromTwin(twin), twin.noPlace, twin.privateIds)
+// The model terms `dropUblUncarried()` reports, by the path it reports (each line's grand total is one term).
+function termOf(path: string): NoPlace {
+  const terms: [RegExp, NoPlace][] = [[/^\.seller\.contact\.departmentName$/, 'BT-41-0'], [/^\.buyer\.contact\.departmentName$/, 'BT-56-0'], [/^\.lines\.\d+\.grandTotalAmount$/, 'EXT-FR-FE-184'], [/^\.paymentInstructions\.card$/, 'BG-18']]
+  return terms.find(([pattern]) => pattern.test(path))?.[1] ?? (path as NoPlace)
+}
+
+/** The CII twin's model, stripped by `dropUblUncarried()` (and of the CG-63 private identifiers when asked). */
+async function twinInvoice(twin: Twin): Promise<Invoice> {
+  return without(dropUblUncarried(await fromTwin(twin), { level: twin.level }).invoice, [], twin.privateIds)
+}
 
 async function written(invoice: Invoice, options: Parameters<typeof invoiceToUbl>[1]): Promise<string> {
   const doc = await invoiceToUbl(invoice, options)
@@ -121,6 +130,8 @@ describe('invoiceToUbl: annex B twins', () => {
     const invoice = await fromTwin(twin)
     const present = (Object.keys(NO_PLACE) as NoPlace[]).filter(term => NO_PLACE[term].present(invoice))
     expect(present.sort()).toEqual([...twin.noPlace].sort())
+    // `dropUblUncarried()` removes exactly these terms.
+    expect([...new Set(dropUblUncarried(invoice, { level: twin.level }).dropped.map(termOf))].sort()).toEqual([...twin.noPlace].sort())
     // Each of them alone makes the writer throw, naming it.
     for (const term of twin.noPlace)
       await expect(invoiceToUbl(without(invoice, twin.noPlace.filter(t => t !== term)), { level: twin.level })).rejects.toThrow(term)

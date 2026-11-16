@@ -1,59 +1,26 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import type { CorpusDoc, CorpusLevel } from './fixtures/en16931-corpus'
+import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { check, extract, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { describe, expect, it } from 'vitest'
 // `diffPaths` is the internal helper behind `dropped` (not exported): the tests compare in both directions with it.
 import { diffPaths } from '../src/lib/mapping/cii/dropped'
+import { loadEn16931Corpus } from './fixtures/en16931-corpus'
 import { FIRST_ENTRY_ONLY, spreadVatPoint } from './fixtures/vat-point'
 
 /**
- * Corpus proof of the EN 16931 model ⇄ CII mapping (design, PR ② "Proof"), on every official example:
- * the Factur-X 1.09 corpus at BASIC, EN 16931 and EXTENDED, and the XP Z12-012 v1.4 annex B Factur-X
- * examples (hybrid PDFs and commented CII XML, EN 16931, EXTENDED and EXTENDED-CTC-FR).
- * MINIMUM and BASIC WL are not EN 16931 invoices: `fromCii()` rejects them, so their folders are
+ * Corpus proof of the EN 16931 model ⇄ CII mapping (design, PR ② "Proof"), on every official example
+ * (`loadEn16931Corpus()`: the Factur-X 1.09 corpus at BASIC, EN 16931 and EXTENDED, and the XP Z12-012 v1.4 annex B
+ * Factur-X examples). MINIMUM and BASIC WL are not EN 16931 invoices: `fromCii()` rejects them, so their folders are
  * skipped on purpose (tests/en16931-model.test.ts covers the rejection).
  */
 
-const CORPUS_DIR = resolve(import.meta.dirname, '../spec/factur-x-1.09/distribution/5. FACTUR-X 1.09 - Examples/_Factur-X_1.08-Exemples_CS')
-const ANNEX_B_DIR = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
 const FX = resolve(import.meta.dirname, '../spec/factur-x-1.09/text')
 
-type Level = 'basic' | 'en16931' | 'extended' | 'extended-ctc-fr'
-interface Doc { name: string, level: Level, xml: string }
+type Level = CorpusLevel
+type Doc = CorpusDoc
 
-async function corpusDocs(folder: string, level: Level): Promise<Doc[]> {
-  const dir = join(CORPUS_DIR, folder)
-  const files = readdirSync(dir).filter(f => f.endsWith('.pdf')).sort()
-  return Promise.all(files.map(async (f) => {
-    const { xml } = await extract({ pdf: await readFile(join(dir, f)) })
-    return { name: `corpus ${folder}/${f}`, level, xml }
-  }))
-}
-
-// Level by file name: the F202500001 folder holds the EXTENDED Factur-X document under an `_EXTENDED-CTC-FR` directory.
-function annexLevel(name: string): Level {
-  return name.includes('EXTENDED-CTC-FR') ? 'extended-ctc-fr' : name.includes('EXTENDED') ? 'extended' : 'en16931'
-}
-
-async function annexDocs(): Promise<Doc[]> {
-  const files = readdirSync(ANNEX_B_DIR, { withFileTypes: true, recursive: true })
-    .filter(e => e.isFile() && ((/_CII_Commentee\.xml$/.test(e.name)) || (e.name.endsWith('.pdf'))))
-    .map(e => join(e.parentPath ?? (e as { path?: string }).path ?? '', e.name))
-    .sort()
-  return Promise.all(files.map(async (file) => {
-    const name = file.split('/').pop()!
-    const xml = name.endsWith('.pdf') ? (await extract({ pdf: await readFile(file) })).xml : await readFile(file, 'utf8')
-    return { name: `annex B ${name}`, level: annexLevel(name), xml }
-  }))
-}
-
-const docs: Doc[] = [
-  ...await corpusDocs('2.BASIC', 'basic'),
-  ...await corpusDocs('3.EN16931', 'en16931'),
-  ...await corpusDocs('4.EXTENDED', 'extended'),
-  ...await annexDocs(),
-]
+const docs: Doc[] = await loadEn16931Corpus()
 const lossless = docs.filter(d => d.level !== 'extended')
 const facturxExtended = docs.filter(d => d.level === 'extended')
 

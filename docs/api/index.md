@@ -44,6 +44,7 @@ import { AmountType, CrossIndustryInvoiceType, IDType /* … */ } from '@stafyni
 | [`EN16931`](/guide/en16931-model) | namespace | The syntax-neutral EN 16931 model classes (also flat in `@stafyniaksacha/facturx/en16931`). |
 | [`toCii(invoice, { level })` / `fromCii(cii)`](/guide/en16931-model) | functions | EN 16931 model ⇄ CII model. |
 | [`invoiceToUbl(invoice, { level })` / `ublToInvoice(xml)`](/guide/en16931-model#ubl-invoicetoubl-and-ubltoinvoice) | `() => Promise<XmlDocument>` / `() => Promise<{ invoice, dropped }>` | EN 16931 model ⇄ UBL 2.1 XML (XML only, not embeddable in a PDF). |
+| [`dropUblUncarried(invoice, { level })`](/guide/en16931-model#converting-cii-to-ubl-dropubluncarried) | `() => { invoice, dropped }` | Copy of an EN 16931 invoice without the values UBL has no place for, each reported in `dropped`. |
 | [`en16931ToXml(invoice, { syntax, level })` / `xmlToEn16931(xml)`](/guide/en16931-model#cii-and-ubl-en16931toxml-and-xmltoen16931) | `() => Promise<XmlDocument>` / `() => Promise<{ invoice, dropped, syntax }>` | Write CII or UBL; read either, choosing the reader from the root element. |
 
 ## Typical flows

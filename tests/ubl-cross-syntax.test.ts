@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer'
 import { execFileSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { en16931ToXml, fromCii, invoiceToUbl, invoiceToXml, toCii, ublToInvoice, xmlToEn16931, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { dropUblUncarried, en16931ToXml, fromCii, invoiceToUbl, invoiceToXml, toCii, ublToInvoice, xmlToEn16931, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
 import { getBasicWLFacturXModel } from './fixtures/model-basicwl'
@@ -207,12 +207,16 @@ describe('cross-syntax: CII → model → UBL → model', () => {
     const read = await xmlToEn16931(await readTwin(twin.cii))
     expect(read.syntax).toBe('cii')
     expect(read.dropped).toEqual([])
-    const { invoice } = read
     // Listed, never skipped: each value UBL cannot carry is refused, naming the term, before it is cleared.
+    const probe = structuredClone(read.invoice)
     for (const refusal of twin.refused) {
-      await expect(en16931ToXml(invoice, { syntax: 'ubl', level: twin.level })).rejects.toThrow(refusal.term)
-      refusal.clear(invoice)
+      await expect(en16931ToXml(probe, { syntax: 'ubl', level: twin.level })).rejects.toThrow(refusal.term)
+      refusal.clear(probe)
     }
+    // `dropUblUncarried()` removes exactly those values, and reports them.
+    const { invoice, dropped } = dropUblUncarried(read.invoice, { level: twin.level })
+    expect(dropped.length).toBeGreaterThan(0)
+    expect(invoice).toEqual(probe)
     const doc = await en16931ToXml(invoice, { syntax: 'ubl', level: twin.level })
     let xml: string
     try {
