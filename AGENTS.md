@@ -56,7 +56,7 @@ pnpm docs             # VitePress dev server; regenerates docs/api/models/ from 
 
 | Path | Role |
 | --- | --- |
-| `src/index.ts` | Public API: `check`, `extract`, `generate`, `invoiceToXml`, `xmlToInvoice`, `validateSchematron`, `validateFrCtc`, `validateCdar`, `Models`. Subpath exports `./models`, `./cli` |
+| `src/index.ts` | Public API: `check`, `extract`, `generate`, `invoiceToXml`, `xmlToInvoice`, `validateSchematron`, `validateFrCtc`, `validateCdar`, `Models`, and the EN 16931 model: `EN16931`, `fromCii`, `toCii`, `invoiceToUbl`, `ublToInvoice`, `en16931ToXml`, `xmlToEn16931`. Subpath exports `./models`, `./cli`, `./en16931` |
 | `src/lib/check.ts`, `xsd.ts` | XSD validation via libxml2-wasm `XsdValidator`; schemas cached per flavor/level. `xsd.ts` registers `fileInputProvider` (`input-provider.ts`, which also handles Windows drive paths and `file:` URLs) at import time so XSD imports resolve, which gives libxml2 process-wide filesystem access |
 | `src/lib/schematron.ts` | Business rules: gunzips the SEF next to its `codedb.xml` in a temp dir, runs SaxonJS, parses SVRL; `runSchematron` is shared with `fr-ctc.ts` |
 | `src/lib/cdar.ts` | French lifecycle status messages (CDAR D22B), validate-only: the uncoupled CDAR XSD, then the vendored `BR-FR-CDV` SEF from `src/lib/xsd/cdar/` |

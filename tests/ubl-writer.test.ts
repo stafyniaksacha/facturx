@@ -2,7 +2,7 @@ import type { Invoice } from '@stafyniaksacha/facturx/en16931'
 import type { XmlElement } from 'libxml2-wasm'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { check, fromCii, invoiceToUbl, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, fromCii, invoiceToUbl, invoiceToXml, toCii, ublToInvoice, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
 // Not public (kept internal): the BR-CL-01 credit note list the root choice uses.
@@ -340,6 +340,29 @@ describe('invoiceToUbl: values', () => {
     expect(texts(await written(minimal({ netPrice: 0.0000001, quantity: 1234567.123456 }), { level: 'en16931' }), '//cbc:PriceAmount | //cbc:InvoicedQuantity')).toEqual(['1234567.123456', '0.0000001'])
   })
 
+  it('keeps a sub-cent price discount (BT-147) and a line allowance (BG-27) next to sub-cent unit prices, read back equal', async () => {
+    const invoice = minimal({ netPrice: 12.3456, quantity: 10 })
+    const line = invoice.lines[0]
+    line.price = { netPrice: 12.3456, grossPrice: 12.3468, priceDiscount: 0.0012, priceBaseQuantity: 1, priceBaseQuantityUnitCode: 'C62' }
+    // 10 × 12.3456 = 123.456, rounded to 123.46, less a 3.46 line allowance.
+    line.allowances = [{ amount: 3.46, baseAmount: 123.46, percentage: 2.8025, reason: 'Remise', reasonCode: '95' }]
+    line.netAmount = 120
+    invoice.totals = { sumOfInvoiceLineNetAmount: 120, invoiceTotalAmountWithoutVat: 120, invoiceTotalVatAmount: 24, invoiceTotalAmountWithVat: 144, amountDueForPayment: 144 }
+    invoice.vatBreakdown = [{ categoryTaxableAmount: 120, categoryTaxAmount: 24, categoryCode: 'S', categoryRate: 20 }]
+    invoice.paymentTerms = 'Net 30'
+    const xml = await written(invoice, { level: 'en16931' })
+    expect(texts(xml, '//cac:Price/cbc:PriceAmount')).toEqual(['12.3456'])
+    expect(texts(xml, '//cac:Price/cac:AllowanceCharge/cbc:Amount')).toEqual(['0.0012'])
+    expect(texts(xml, '//cac:Price/cac:AllowanceCharge/cbc:BaseAmount')).toEqual(['12.3468'])
+    expect(texts(xml, '//cac:InvoiceLine/cac:AllowanceCharge/cbc:Amount')).toEqual(['3.46'])
+    const result = await check({ xml, schematron: true })
+    expect(result.errors).toEqual([])
+    expect(result.schematronErrors).toEqual([])
+    const { invoice: back, dropped } = await ublToInvoice(xml)
+    expect(dropped).toEqual([])
+    expect(JSON.parse(JSON.stringify(back))).toEqual(JSON.parse(JSON.stringify({ ...invoice, specificationIdentifier: 'urn:cen.eu:en16931:2017' })))
+  })
+
   it('escapes XML-special and non-ASCII text', async () => {
     const name = 'Société & Fils <SARL> €'
     const meansText = 'Virement "SEPA" & <instant>'
@@ -518,7 +541,7 @@ describe('invoiceToUbl: refusals', () => {
     await expect(invoiceToUbl(invoice, { level: 'en16931' })).rejects.toThrow(/^invoiceToUbl: BT-60 .*UBL-SR-20/)
   })
 
-  it('writes BT-147 without BT-148 (no cbc:BaseAmount), refuses a schemeless EXT-FR-FE-148 (BR-FR-CO-10)', async () => {
+  it('writes BT-147 without BT-148 (no cbc:BaseAmount)', async () => {
     const invoice = minimal({})
     invoice.lines[0].price!.priceDiscount = 5
     invoice.lines[0].price!.netPrice = 95
@@ -530,9 +553,22 @@ describe('invoiceToUbl: refusals', () => {
     expect(result.schematronErrors).toEqual([])
     // toCii() keeps refusing it: CII holds the discount inside the gross price.
     expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/^toCii: BT-148/)
-    const deliver = minimal({})
+  })
+
+  it('writes a schemeless EXT-FR-FE-148: BR-FR is not a writer gate, only BR-FR-CO-10 reports it (CG-63)', async () => {
+    // BR-CO-25 (EXTENDED-CTC-FR-UBL) wants BT-9 or BT-20 with an amount due.
+    const plain = minimal({ paymentDueDate: '2025-03-01' })
+    const deliver = minimal({ paymentDueDate: '2025-03-01' })
     deliver.lines[0].deliverTo = { identifiers: [{ value: 'SITE' }] }
-    await expect(invoiceToUbl(deliver, { level: 'extended-ctc-fr' })).rejects.toThrow(/^invoiceToUbl: EXT-FR-FE-148 /)
+    const xml = await written(deliver, { level: 'extended-ctc-fr' })
+    expect(texts(xml, '//cac:InvoiceLine/cac:Delivery/cac:DeliveryLocation/cbc:ID')).toEqual(['SITE'])
+    expect(texts(xml, '//cac:InvoiceLine/cac:Delivery/cac:DeliveryLocation/cbc:ID/@schemeID')).toEqual([])
+    const [before, after] = await Promise.all([plain, deliver].map(async i => check({ xml: await written(i, { level: 'extended-ctc-fr' }), schematron: true, frCtc: true })))
+    expect(after.errors).toEqual([])
+    expect(after.schematronErrors).toEqual([])
+    const ids = (r: typeof after): string[] => (r.frCtcErrors ?? []).map(e => e.assertId ?? e.id ?? ruleId(e))
+    const added = ids(after).filter(id => !ids(before).includes(id))
+    expect(added).toEqual(['BR-FR-CO-10_EXT-FR-FE-146-1'])
   })
 
   it('throws on BT-9 of a credit note without payment means, and on an unknown level', async () => {

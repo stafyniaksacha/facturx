@@ -25,7 +25,7 @@ import { Item, ItemAttribute, ItemClassification, LineVat, PriceDetails } from '
 import { InvoiceLine, LineAllowance, LineCharge, LineNote, LinePeriod } from '../models/en16931/lines'
 import { Buyer, Delivery, DeliveryTerms, Seller, SellerTaxRepresentative } from '../models/en16931/parties'
 import { CreditTransfer, DirectDebit, DocumentAllowance, DocumentCharge, DocumentTotals, PaymentCard, PaymentInstructions, VatBreakdown, VatCurrencyExchange } from '../models/en16931/settlement'
-import { getUblDeclaredLevel, isUblDocument } from '../xml'
+import { getUblDeclaredLevel, hasDoctype, isUblDocument } from '../xml'
 import { ublDiffPaths } from './ubl-dropped'
 
 /** What `ublToInvoice()` returns. */
@@ -83,6 +83,15 @@ interface UblTaxCategory {
 
 const VAT = 'VAT'
 const SEPA = 'SEPA'
+
+/**
+ * Whether a `cac:PartyTaxScheme` is the VAT one: both UBL Schematrons test `normalize-space(upper-case(cbc:ID)) = 'VAT'`
+ * on `cac:PartyTaxScheme` (the BT-31 / BT-63 / BT-48 contexts), so `vat` or ` VAT ` is VAT too.
+ */
+function isVatScheme(scheme: El): boolean {
+  return (text(scheme, 'cac:TaxScheme/cbc:ID') ?? '').replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '').toUpperCase() === VAT
+}
+
 const INVOICED_OBJECT = '130'
 const PROJECT_REFERENCE = '50'
 const NON_VAT_TAX_LIST = '5153'
@@ -185,9 +194,9 @@ function party(node: El): UblParty {
     identifiers: all(node, 'cac:PartyIdentification/cbc:ID').map(id => new Identifier({ value: id.content, schemeId: attr(id, 'schemeID') })),
     tradingName: text(node, 'cac:PartyName/cbc:Name'),
     address: address(first(node, 'cac:PostalAddress')),
-    vatIdentifier: text(schemes.find(s => text(s, 'cac:TaxScheme/cbc:ID') === VAT), 'cbc:CompanyID'),
+    vatIdentifier: text(schemes.find(isVatScheme), 'cbc:CompanyID'),
     // BT-32: the writer's scheme is `LOC` (annex A BT-32-2); any non-VAT tax scheme is a tax registration.
-    taxRegistrationIdentifier: text(schemes.find(s => text(s, 'cac:TaxScheme/cbc:ID') !== VAT), 'cbc:CompanyID'),
+    taxRegistrationIdentifier: text(schemes.find(s => !isVatScheme(s)), 'cbc:CompanyID'),
     registrationName: text(legal, 'cbc:RegistrationName'),
     legalRegistrationIdentifier: identifier(legal, 'cbc:CompanyID'),
     legalForm: text(legal, 'cbc:CompanyLegalForm'),
@@ -361,7 +370,7 @@ function parties(root: El): Pick<InvoiceFields, 'seller' | 'buyer' | 'payee' | '
       ? new SellerTaxRepresentative({
           name: text(representativeNode, 'cac:PartyName/cbc:Name') ?? '',
           address: address(first(representativeNode, 'cac:PostalAddress')) ?? new PostalAddress({ countryCode: '' }),
-          vatIdentifier: text(all(representativeNode, 'cac:PartyTaxScheme').find(t => text(t, 'cac:TaxScheme/cbc:ID') === VAT), 'cbc:CompanyID') ?? '',
+          vatIdentifier: text(all(representativeNode, 'cac:PartyTaxScheme').find(isVatScheme), 'cbc:CompanyID') ?? '',
         })
       : undefined,
     sellerAgent: extraParty(first(sellerNode, 'cac:AgentParty'), SellerAgent),
@@ -534,15 +543,20 @@ function price(node: El | undefined): PriceDetails | undefined {
   const discount = all(node, 'cac:AllowanceCharge').find(a => !isTrue(a, 'cbc:ChargeIndicator'))
   const grossPrice = decimal(discount, 'cbc:BaseAmount')
   const priceDiscount = decimal(discount, 'cbc:Amount')
+  const priceDiscountReason = text(discount, 'cbc:AllowanceChargeReason')
+  const priceDiscountReasonCode = text(discount, 'cbc:AllowanceChargeReasonCode')
+  // A gross price without discount is written with a bare zero discount (annex B, CG-62): read back as no discount.
+  // A zero discount with a reason (EXT-FR-FE-195) or reason code (EXT-FR-FE-196) is kept, so the reason is not left
+  // without its discount (which `invoiceToUbl()` would refuse).
+  const bareZero = priceDiscount === 0 && grossPrice !== undefined && priceDiscountReason === undefined && priceDiscountReasonCode === undefined
   return new PriceDetails({
     netPrice: required(node, 'cbc:PriceAmount'),
     priceBaseQuantity,
     priceBaseQuantityUnitCode,
     grossPrice,
-    // A gross price without discount is written with a zero discount (annex B, CG-62): read back as no discount.
-    priceDiscount: priceDiscount === 0 && grossPrice !== undefined ? undefined : priceDiscount,
-    priceDiscountReason: text(discount, 'cbc:AllowanceChargeReason'),
-    priceDiscountReasonCode: text(discount, 'cbc:AllowanceChargeReasonCode'),
+    priceDiscount: bareZero ? undefined : priceDiscount,
+    priceDiscountReason,
+    priceDiscountReasonCode,
   })
 }
 
@@ -691,22 +705,6 @@ function read(root: El, rootName: UBL_ROOT, level: UblLevel): Invoice {
   })
 }
 
-// libxml2 keeps the DTD as a sibling of the root element; libxml2-wasm does not export its class, so it is
-// recognised by name (its constructor is named explicitly in libxml2-wasm, so this survives minification).
-function hasDoctype(doc: XmlDocument): boolean {
-  const root = doc.root
-  if (!root)
-    return false
-  for (const step of ['prev', 'next'] as const) {
-    // Typed `XmlTreeNode`, though the DTD node is not one at runtime.
-    for (let node: object | null = root[step]; node; node = (node as Record<typeof step, object | null>)[step]) {
-      if (node.constructor.name === 'XmlDocumentTypeNode')
-        return true
-    }
-  }
-  return false
-}
-
 /**
  * Read a UBL 2.1 `Invoice` or `CreditNote` into the EN 16931 model: the inverse of `invoiceToUbl()`. Accepts the
  * documents whose `cbc:CustomizationID` (BT-24) names EN 16931 (or a CIUS of it) or EXTENDED-CTC-FR, the levels
@@ -715,7 +713,8 @@ function hasDoctype(doc: XmlDocument): boolean {
  *
  * An `XmlDocument` passed in stays the caller's (never disposed). Throws for a document that has a DOCTYPE (UBL
  * never uses one; an entity could hide or replace content the reader would then miss), that is not a UBL 2.1
- * Invoice or CreditNote, or whose BT-24 is missing or names another specification. Errors never quote the document.
+ * Invoice or CreditNote, or whose BT-24 is missing or names another specification. Errors never quote text content;
+ * a malformed input passes libxml2's parse error through, which can name elements.
  */
 export async function ublToInvoice(xml: string | Buffer | XmlDocument): Promise<UblToInvoiceResult> {
   const owned = !(xml instanceof XmlDocument)

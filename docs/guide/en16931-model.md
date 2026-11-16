@@ -6,7 +6,7 @@ elements of one XML syntax, so the same object can be written to, and read from,
 Two syntaxes are mapped: **CII** (Factur-X and plain-CII EXTENDED-CTC-FR), through `toCii()` and `fromCii()`, and
 **UBL 2.1** (`Invoice` and `CreditNote`), through `invoiceToUbl()` and `ublToInvoice()`. `en16931ToXml()` and
 `xmlToEn16931()` pick the syntax for you, so converting between CII and UBL is one read and one write
-([CII and UBL](#cii-and-ubl)).
+([CII and UBL](#cii-and-ubl-en16931toxml-and-xmltoen16931)).
 
 The CII classes ([`Models`](/api/models)) stay the CII API, and `invoiceToXml()` stays the only code that
 writes CII XML: `toCii()` produces a CII model, and you serialize that as before.
@@ -172,6 +172,33 @@ the CII model, so neither `fromCii()` nor `dropped` can see it.
 
 ## UBL: `invoiceToUbl()` and `ublToInvoice()`
 
+UBL is **XML only**. A Factur-X PDF carries CII, so a UBL invoice cannot be embedded in one: `generate()` refuses it
+and `extract({ check: true })` refuses a UBL attachment. `check()` validates UBL documents
+([UBL invoices](/guide/validation#ubl-invoices)).
+
+### CII and UBL: `en16931ToXml()` and `xmlToEn16931()`
+
+```ts
+function en16931ToXml(invoice: Invoice, options:
+  | { syntax: 'cii', level: En16931Level }
+  | { syntax: 'ubl', level: 'en16931' | 'extended-ctc-fr', root?: 'Invoice' | 'CreditNote' }): Promise<XmlDocument>
+function xmlToEn16931(xml: string | Buffer | XmlDocument): Promise<{ invoice: Invoice, dropped: string[], syntax: 'cii' | 'ubl' }>
+```
+
+`en16931ToXml()` is `invoiceToXml(toCii(invoice, { level }))` for `cii` and `invoiceToUbl(invoice, { level, root })`
+for `ubl`, which accepts `en16931` and `extended-ctc-fr` only (the options type says so; another level also throws
+at runtime, naming the two). `xmlToEn16931()` reads the root element: a Factur-X / EXTENDED-CTC-FR CII invoice goes
+through `fromCii(await xmlToInvoice(xml))` (MINIMUM and BASIC WL still throw), a UBL invoice through `ublToInvoice()`;
+Order-X, ZUGFeRD 1.0, CDAR and anything else throw, and so does a document with a DOCTYPE, in either syntax. An
+`XmlDocument` you pass is never disposed. Converting a CII invoice to UBL:
+
+<<< ../../examples/ubl.ts#main{ts}
+
+A CII invoice read from Factur-X often holds what UBL refuses (contact department names, a Factur-X BT-24 when the
+level differs): clear the term the error names, then write again.
+
+The per-syntax functions:
+
 ```ts
 import { invoiceToUbl, ublToInvoice } from '@stafyniaksacha/facturx'
 
@@ -181,10 +208,6 @@ doc.dispose()
 
 const { invoice: read, dropped } = await ublToInvoice(xml) // string, Buffer or XmlDocument
 ```
-
-UBL is **XML only**. A Factur-X PDF carries CII, so a UBL invoice cannot be embedded in one: `generate()` refuses it
-and `extract({ check: true })` refuses a UBL attachment. `check()` validates UBL documents
-([UBL invoices](/guide/validation#ubl-invoices)).
 
 ### Writing: `invoiceToUbl(invoice, { level, root? })`
 
@@ -203,8 +226,13 @@ and `extract({ check: true })` refuses a UBL attachment. `check()` validates UBL
   (a national account number) is written in `cac:PayeeFinancialAccount/cbc:ID` when BT-84 is absent (CG-64).
 
 The writer runs every check of `toCii()` that is not specific to CII (mandatory terms, BR-DEC Amount decimals, dates,
-the plain-object guards ...) and the `EXT-FR-FE` level gate. It also **throws, naming the term** (never quoting
-invoice content), on what UBL cannot carry or would read back differently:
+the plain-object guards ...) and the `EXT-FR-FE` level gate. It gates what the UBL 2.1 XSD and the level Schematron
+(EN16931-UBL, EXTENDED-CTC-FR-UBL) would reject, **not** the opt-in French rules (BR-FR): validate its output with
+`check({ xml, schematron: true, frCtc: true })`. In particular a schemeless identifier is written as given (BT-29,
+BT-46, BT-60, BT-71, and the line deliver-to identifier EXT-FR-FE-146 without its scheme EXT-FR-FE-148): CII and the
+UBL level Schematrons accept it, but the UBL BR-FR-CO-10 wants a `@schemeID` on each of them and rejects it (CG-63).
+It also **throws, naming the term** (never quoting invoice content), on what UBL cannot carry or would read back
+differently:
 
 | Refused | Why | Register |
 | --- | --- | --- |
@@ -220,6 +248,10 @@ invoice content), on what UBL cannot carry or would read back differently:
 | BT-24 other than the `cbc:CustomizationID` of `level` (a Factur-X id, a CIUS id) | the document would claim a profile it was not checked against; clear it (`undefined`) to get the level's id | |
 | BT-84 and BT-84-0 together, BT-105 and BT-177, BT-145 and BT-193 | two terms in one UBL element | CG-64 (BT-84) |
 | a note that would read back differently (see below) | `cbc:Note` holds the subject code | CG-70 |
+| a BT-29 or BT-60 identifier with the scheme `SEPA` | UBL marks BT-90 (bank assigned creditor id) with that scheme (UBL-SR-29); it would read back as BT-90 | |
+| the payer (EXT-FR-FE-BG-02), or the BT-9 of a `CreditNote`, without BG-16 (payment instructions) | UBL writes them in `cac:PaymentMeans` | |
+| EXT-FR-FE-BG-06 (preceding invoice reference of the line) more than twice | annex A `0..2` | |
+| an EXT-FR-FE-136 (line preceding invoice reference) that is blank, or equal to BT-1 | UBL keeps the BT-1 reference for the line status (EXT-FR-FE-163) | |
 
 **Notes.** UBL has no element for a note subject code: it is written at the start of `cbc:Note` as `#code#text`, the
 French convention of annex A, for BT-21 (invoice note) and, at `extended-ctc-fr`, EXT-FR-FE-183 (line note). The
@@ -244,35 +276,20 @@ Two limits of that contract:
 - The write-back used for the difference skips every check of `invoiceToUbl()`. A value the model holds is not in
   `dropped`, even when the level cannot carry it (an EXTENDED-CTC-FR term in an `en16931` document, a card,
   a CIUS BT-24): it stays in the invoice and `invoiceToUbl()` throws on it later. An empty `dropped` does not mean
-  `invoiceToUbl()` accepts the invoice.
+  `invoiceToUbl()` accepts the invoice: a level it cannot carry, a CIUS BT-24 or a card (BG-18) stay in the model
+  and are refused only when written.
 - `dropped` can over-report: a source with a payee may carry BT-90 (SEPA creditor id) on the seller; the model
   keeps it, and the writer puts it with the payee, so the seller-side identifier is listed although its value is
   kept (CG-72). Over-reporting is preferred to a silent loss.
 
 An `XmlDocument` you pass stays yours: `ublToInvoice()` never disposes it.
 
-**Security.** `ublToInvoice()` refuses any document with a DOCTYPE (UBL never uses one, and an entity could hide or
-replace content the reader would then miss). The CII path (`xmlToInvoice()`, hence `fromCii()` and `xmlToEn16931()`
-on CII) does not refuse it yet: an internal entity standing for an element is read around, and `dropped` cannot see
-it (CG-73). Neither path expands external entities.
-
-## CII and UBL
-
-```ts
-function en16931ToXml(invoice: Invoice, options: { syntax: 'cii' | 'ubl', level: En16931Level }): Promise<XmlDocument>
-function xmlToEn16931(xml: string | Buffer | XmlDocument): Promise<{ invoice: Invoice, dropped: string[], syntax: 'cii' | 'ubl' }>
-```
-
-`en16931ToXml()` is `invoiceToXml(toCii(invoice, { level }))` for `cii` and `invoiceToUbl(invoice, { level })` for
-`ubl`, which accepts `en16931` and `extended-ctc-fr` only (another level throws, naming the two). `xmlToEn16931()`
-reads the root element: a Factur-X / EXTENDED-CTC-FR CII invoice goes through `fromCii(await xmlToInvoice(xml))`
-(MINIMUM and BASIC WL still throw), a UBL invoice through `ublToInvoice()`; Order-X, ZUGFeRD 1.0 and anything else
-throw. An `XmlDocument` you pass is never disposed. Converting a CII invoice to UBL:
-
-<<< ../../examples/ubl.ts#main{ts}
-
-A CII invoice read from Factur-X often holds what UBL refuses (contact department names, a Factur-X BT-24 when the
-level differs): clear the term the error names, then write again.
+**Security.** `ublToInvoice()` and `xmlToEn16931()` (both syntaxes) refuse any document with a DOCTYPE: invoices
+never use one, and an entity could hide or replace content the reader would then miss. The check is fail-closed: before
+the root element only comments are accepted, so a processing instruction there is refused too. `xmlToInvoice()` (and so
+`fromCii(await xmlToInvoice(xml))` called directly) does not refuse it yet: an internal entity standing for an element
+is read around, and `dropped` cannot see it (CG-73). No path expands external entities. Errors never quote text
+content; a malformed input passes libxml2's parse error through, which can name elements.
 
 ### What is proven for UBL
 
@@ -282,9 +299,11 @@ level differs): clear the term the error names, then write again.
   passes the three validation steps (UBL 2.1 XSD, the level Schematron, BR-FR) with the source's own warnings.
 - The model read from each annex B UBL document equals the model read from its CII twin, but for a listed set of
   differences between the two publications (`KNOWN_DIFFERENCES` in `tests/ubl-cross-syntax.test.ts`, each a
-  `CONFORMANCE.md` entry: department names, line grand totals, the UC10 card, F202500001 content); and each CII twin
-  converts to UBL and back to the same invoice once the refused terms above are cleared, except that a gross price
-  base quantity (BT-149-1 / BT-150-1) equal to BT-149 / BT-150 reads back absent: UBL holds one base quantity (CG-62).
+  `CONFORMANCE.md` entry: department names, line grand totals, the UC10 card, F202500001 content), after two
+  normalisations of the CII side: a BT-149-1 / BT-150-1 equal to BT-149 / BT-150 is cleared (UBL holds one base
+  quantity, CG-62), and the schemeless BT-29 / BT-71 the F202500001 UBL twins leave out are removed (CG-63).
+- Each CII twin converts to UBL and back to the same invoice once the refused terms above are cleared, except that a
+  gross price base quantity (BT-149-1 / BT-150-1) equal to BT-149 / BT-150 reads back absent (CG-62).
 
 ```bash
 pnpm build && pnpm vitest run tests/ubl-writer.test.ts tests/ubl-reader.test.ts tests/ubl-cross-syntax.test.ts

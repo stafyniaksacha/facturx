@@ -3,11 +3,13 @@ import { Buffer } from 'node:buffer'
 import { execFileSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { en16931ToXml, fromCii, invoiceToXml, toCii, ublToInvoice, xmlToEn16931, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { en16931ToXml, fromCii, invoiceToUbl, invoiceToXml, toCii, ublToInvoice, xmlToEn16931, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
+import { getBasicWLFacturXModel } from './fixtures/model-basicwl'
 import { getMinimumXML, getOrderXBasicXML } from './fixtures/xml'
 
+const CDAR_RECUE = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Cycle de Vie - CDAR/_Cas Nominal/UC1_F202500003_02-CDV-202_Recue.xml')
 const FACTURES = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
 
 type Level = 'en16931' | 'extended-ctc-fr'
@@ -259,7 +261,25 @@ describe('en16931ToXml', () => {
 
   it.each(['basic', 'extended'] as const)('refuses UBL at level %s, naming the UBL levels', async (level) => {
     const { invoice } = await xmlToEn16931(await readTwin(uc1.ubl))
-    await expect(en16931ToXml(invoice, { syntax: 'ubl', level })).rejects.toThrow(/"en16931", "extended-ctc-fr"/)
+    // The options type refuses it at compile time; the runtime check covers JavaScript callers.
+    await expect(en16931ToXml(invoice, { syntax: 'ubl', level: level as 'en16931' })).rejects.toThrow(/"en16931", "extended-ctc-fr"/)
+  })
+
+  it('passes root through to invoiceToUbl (UBL only)', async () => {
+    const { invoice } = await xmlToEn16931(await readTwin(uc1.ubl))
+    for (const root of ['Invoice', 'CreditNote'] as const) {
+      // `81` is in the invoice and the credit note lists of BR-CL-01, so both roots accept it.
+      invoice.typeCode = '81'
+      const [a, b] = [await en16931ToXml(invoice, { syntax: 'ubl', level: 'en16931', root }), await invoiceToUbl(invoice, { level: 'en16931', root })]
+      try {
+        expect(a.root.name).toBe(root)
+        expect(a.toString()).toBe(b.toString())
+      }
+      finally {
+        a.dispose()
+        b.dispose()
+      }
+    }
   })
 
   it('refuses an unknown syntax', async () => {
@@ -313,8 +333,76 @@ describe('xmlToEn16931', () => {
     await expect(xmlToEn16931(getMinimumXML())).rejects.toThrow(/fromCii: a "minimum" document is not an EN 16931 invoice/)
   })
 
-  it('keeps the ublToInvoice() refusal of a DOCTYPE', async () => {
+  it('keeps the fromCii() refusal of BASIC WL (not an EN 16931 invoice)', async () => {
+    const doc = await invoiceToXml(getBasicWLFacturXModel())
+    let xml: string
+    try {
+      xml = doc.toString()
+    }
+    finally {
+      doc.dispose()
+    }
+    await expect(xmlToEn16931(xml)).rejects.toThrow(/fromCii: a "basicwl" document is not an EN 16931 invoice/)
+  })
+
+  it('rejects a CDAR lifecycle message (not an invoice)', async () => {
+    await expect(xmlToEn16931(await readFile(CDAR_RECUE))).rejects.toThrow(/not recognized/)
+  })
+
+  it('refuses a UBL DOCTYPE', async () => {
     const xml = (await readTwin(uc1.ubl)).replace(/^<\?xml[^>]*\?>\s*/, '').replace('<Invoice ', '<!DOCTYPE Invoice>\n<Invoice ')
     await expect(xmlToEn16931(xml)).rejects.toThrow(/DOCTYPE/)
+  })
+
+  it('refuses a CII DOCTYPE whose internal entity hides BT-10, which xmlToInvoice alone misses (CG-73)', async () => {
+    const ram = 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100'
+    const xml = (await readTwin(uc1.cii))
+      .replace(/<ram:BuyerReference>[^<]*<\/ram:BuyerReference>/, '&br;')
+      .replace('<rsm:CrossIndustryInvoice ', `<!DOCTYPE rsm:CrossIndustryInvoice [<!ENTITY br "<ram:BuyerReference xmlns:ram='${ram}'>BR-X</ram:BuyerReference>">]>\n<rsm:CrossIndustryInvoice `)
+    // xmlToInvoice() / fromCii() stay unchanged (CG-73, open): BT-10 is silently missing there.
+    expect(fromCii(await xmlToInvoice(xml)).invoice.buyerReference).toBeUndefined()
+    await expect(xmlToEn16931(xml)).rejects.toThrow(/^xmlToEn16931: the document has a DOCTYPE/)
+    const doc = XmlDocument.fromString(xml)
+    try {
+      await expect(xmlToEn16931(doc)).rejects.toThrow(/DOCTYPE/)
+      expect(doc.root.name).toBe('CrossIndustryInvoice')
+    }
+    finally {
+      doc.dispose()
+    }
+  })
+
+  it('accepts comments around the root, refuses a processing instruction before it (fail-closed DOCTYPE check)', async () => {
+    const ubl = await readTwin(uc1.ubl)
+    expect((await xmlToEn16931(`${ubl.replace('<Invoice ', '<!-- before -->\n<Invoice ')}\n<!-- after --><?after pi?>`)).syntax).toBe('ubl')
+    const pi = ubl.replace('<Invoice ', '<?xml-stylesheet href="x.xsl"?>\n<Invoice ')
+    await expect(xmlToEn16931(pi)).rejects.toThrow(/DOCTYPE/)
+    await expect(ublToInvoice(pi)).rejects.toThrow(/DOCTYPE/)
+  })
+})
+
+describe('bT-24 to level differs between CII and UBL (CG-75, pinned, open)', () => {
+  const uc1 = TWINS.find(t => t.name === 'UC1' && t.level === 'en16931')!
+  const conformant = 'urn:cen.eu:en16931:2017#conformant#urn.example.org_ext'
+  const peppol = 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0'
+  const cii = async (id: string): Promise<string> => (await readTwin(uc1.cii)).replace(/(<ram:GuidelineSpecifiedDocumentContextParameter>\s*<ram:ID>)[^<]*</, `$1${id}<`)
+  const ubl = async (id: string): Promise<string> => (await readTwin(uc1.ubl)).replace(/<cbc:CustomizationID>[^<]*</, `<cbc:CustomizationID>${id}<`)
+
+  it('cII reads the last `:` segments: a #conformant# extension id reads as en16931, a Peppol #compliant# id is refused', async () => {
+    const { invoice } = fromCii(await xmlToInvoice(await cii(conformant)))
+    expect(invoice.specificationIdentifier).toBe(conformant)
+    await expect(xmlToInvoice(await cii(peppol)).then(fromCii)).rejects.toThrow(/BT-24/)
+  })
+
+  it('uBL reads the exact id: a #compliant# CIUS reads as en16931, a #conformant# extension is refused', async () => {
+    expect((await ublToInvoice(await ubl(peppol))).invoice.specificationIdentifier).toBe(peppol)
+    await expect(ublToInvoice(await ubl(conformant))).rejects.toThrow(/BT-24/)
+  })
+
+  it('both writers refuse the foreign BT-24, so nothing is written under it', async () => {
+    const { invoice } = fromCii(await xmlToInvoice(await cii(conformant)))
+    expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/BT-24/)
+    DEPARTMENTS.forEach(r => r.clear(invoice))
+    await expect(invoiceToUbl(invoice, { level: 'en16931' })).rejects.toThrow(/BT-24/)
   })
 })

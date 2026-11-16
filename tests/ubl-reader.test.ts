@@ -190,6 +190,40 @@ describe('ublToInvoice: dropped', () => {
     expect(price.grossPrice).toBeDefined()
     expect(price.priceDiscount).toBeUndefined()
   })
+
+  it('keeps a zero price discount that has a reason (EXT-FR-FE-195), so the model re-writes', async () => {
+    const uc13 = EXAMPLES.find(e => e.name === 'UC13')!
+    const src = await source(uc13)
+    const xml = src.replace(/(<cac:Price>[\s\S]*?<cbc:ChargeIndicator>false<\/cbc:ChargeIndicator>)/, '$1<cbc:AllowanceChargeReason>PROMO</cbc:AllowanceChargeReason>')
+    expect(xml).not.toBe(src)
+    expect((await check({ xml, schematron: true })).valid).toBe(true)
+    const { invoice, dropped } = await ublToInvoice(xml)
+    expect(dropped).toEqual([])
+    const line = invoice.lines.find(l => l.price?.priceDiscountReason !== undefined)!
+    expect(line.price!.priceDiscount).toBe(0)
+    expect(line.price!.priceDiscountReason).toBe('PROMO')
+    const again = await ublToInvoice(await written(invoice, uc13.level, 'Invoice'))
+    expect(again.invoice).toEqual(invoice)
+    expect(again.dropped).toEqual([])
+  })
+
+  it('reads a VAT tax scheme case- and space-insensitively, as the UBL Schematrons do (BT-31, not BT-32)', async () => {
+    const src = await source(uc1)
+    const seller = src.indexOf('<cac:AccountingSupplierParty>')
+    const start = src.indexOf('<cac:PartyTaxScheme>', seller)
+    const end = src.indexOf('</cac:PartyTaxScheme>', start)
+    const block = src.slice(start, end)
+    expect(block).toMatch(/<cac:TaxScheme>\s*<cbc:ID>VAT</)
+    const xml = src.slice(0, start) + block.replace(/(<cac:TaxScheme>\s*<cbc:ID>)VAT</, '$1 vat <') + src.slice(end)
+    const result = await check({ xml, schematron: true })
+    expect(result.valid).toBe(true)
+    const expected = (await ublToInvoice(src)).invoice.seller
+    const { invoice, dropped } = await ublToInvoice(xml)
+    expect(invoice.seller.vatIdentifier).toBe(expected.vatIdentifier)
+    expect(invoice.seller.taxRegistrationIdentifier).toBe(expected.taxRegistrationIdentifier)
+    // The value is kept; the write-back spells the scheme `VAT`, so the source spelling is reported (over-report).
+    expect(dropped).toEqual(['/Invoice/cac:AccountingSupplierParty/cac:Party/cac:PartyTaxScheme/cac:TaxScheme/cbc:ID'])
+  })
 })
 
 describe('ublToInvoice: every place the writer writes', () => {

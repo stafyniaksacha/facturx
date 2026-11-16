@@ -34,7 +34,7 @@ export {
 
 export type { CdarResult } from './lib/cdar'
 export type { InvoiceToUblOptions, UblLevel } from './lib/converters/ubl'
-export type { En16931Syntax, En16931ToXmlOptions, XmlToEn16931Result } from './lib/en16931'
+export type { En16931Syntax, En16931ToCiiOptions, En16931ToUblOptions, En16931ToXmlOptions, XmlToEn16931Result } from './lib/en16931'
 export type { FromCiiResult, ToCiiOptions } from './lib/mapping/cii'
 export type { En16931Level } from './lib/models/en16931/level'
 export type { UblToInvoiceResult } from './lib/parsers/ubl'

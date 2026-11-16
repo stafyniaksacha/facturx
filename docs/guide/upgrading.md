@@ -399,7 +399,9 @@ UBL stays XML only: `generate()` and `extract({ check: true })` still refuse it.
 term, on what UBL has no place for, which a CII invoice often holds: contact department names (BT-41-0, BT-56-0),
 a project name (BT-11-0) other than the Factur-X default, the line grand total (EXT-FR-FE-184), a payment card
 (BG-18, UBL needs a network id), and a BT-24 of another syntax or level (clear it to get the UBL one). Clear the
-named term and write again. `ublToInvoice()` refuses a document with a DOCTYPE. `invoiceToUbl()` and
+named term and write again. For UBL, `en16931ToXml()` also takes `root: 'Invoice' | 'CreditNote'`. `ublToInvoice()`
+and `xmlToEn16931()` (either syntax) refuse a document with a DOCTYPE, or with a processing instruction before the
+root element. `invoiceToUbl()` and
 `ublToInvoice()` are also exported from `@stafyniaksacha/facturx/en16931`. See the
 [EN 16931 model guide](/guide/en16931-model#ubl-invoicetoubl-and-ubltoinvoice).
 

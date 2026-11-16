@@ -4,7 +4,7 @@ import type {
   DOC_TYPE_KEY,
 } from './constants'
 import { parse } from 'date-fns'
-import { XmlDocument, XmlElement } from 'libxml2-wasm'
+import { XmlComment, XmlDocument, XmlElement } from 'libxml2-wasm'
 import {
   EXTENDED_CTC_FR_GUIDELINE_ID,
   FACTURX_SCHEMA,
@@ -152,6 +152,34 @@ export function assertUblLevelMatches(xmlDoc: XmlDocument, level: string): void 
   if (declared === undefined)
     return
   throw new Error(`level "${level}" does not match the document: its CustomizationID (BT-24) declares the EXTENDED-CTC-FR extension`)
+}
+
+/**
+ * Whether a parsed document may carry a DOCTYPE, checked fail-closed on the root element's siblings: before the root
+ * only comments are accepted (a DTD, a processing instruction or any other node type is refused: libxml2-wasm 0.7.2
+ * wraps DTD and PI nodes without `prev` / `next`, so nothing beyond them can be seen); after the root, where XML allows
+ * no DOCTYPE, comments and processing instructions are accepted. A node the wrapper cannot read also counts. Used by
+ * the readers that refuse DTDs, since an internal entity could hide or replace content.
+ */
+export function hasDoctype(doc: XmlDocument): boolean {
+  const root = doc.root
+  if (!root)
+    return false
+  try {
+    for (let node = root.prev; node; node = node.prev) {
+      if (!(node instanceof XmlComment))
+        return true
+    }
+    // Typed `XmlTreeNode`, though a PI node is not one at runtime (no `next`): the walk stops on it.
+    for (let node: object | null = root.next; node; node = (node as { next?: object | null }).next ?? null) {
+      if (!(node instanceof XmlComment) && node.constructor.name !== 'XmlProcessingInstructionNode')
+        return true
+    }
+  }
+  catch {
+    return true
+  }
+  return false
 }
 
 /** Whether the root is a UBL 2.1 Invoice or CreditNote (name and namespace). Never throws. */
