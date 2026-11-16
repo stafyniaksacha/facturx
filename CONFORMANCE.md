@@ -114,11 +114,13 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 | CG-64 | models, UBL | BT-84-0 (Factur-X `ProprietaryID`) vs UBL `cac:PayeeFinancialAccount/cbc:ID` | interop | UBL has one account id: `invoiceToUbl()` writes BT-84-0 there when BT-84 is absent and refuses both; the written UBL no longer says which of the two it was; no annex B twin uses `ProprietaryID` |
 | CG-65 | UBL, spec | XSD-mandatory identifiers (`OrderReference/cbc:ID`, `DocumentReference/cbc:ID`, `LineReference/cbc:LineID`, `OrderLineReference/cbc:LineID`) vs annex A `0..1` | interop | Annex A makes BT-13 optional yet nests BT-14 and EXT-FR-FE-197 under `cac:OrderReference`, whose `cbc:ID` the XSD requires (likewise EXT-FR-FE-01 / -198 / -199, -135 / -144 / -145 / -200, the line despatch and receipt references): `invoiceToUbl()` refuses those terms without the identifier |
 | CG-66 | UBL, spec | EN 16931 BT-110 `0..1` vs UBL `cac:TaxTotal/cbc:TaxAmount` `1..1` holding BG-23 | interop | UBL keeps the VAT breakdown inside the `cac:TaxTotal` whose amount is BT-110, so `invoiceToUbl()` throws when BT-110 is missing (it never computes it) |
-| CG-67 | spec, UBL | annex A `annex-a--Flux_2_UBL_EXT-CTC-FR.csv` XPath and cardinality cells | docs | Typos and gaps in the UBL rows (attribute `@Name` for `@name`, unprefixed or misspelt steps, EXT-FR-FE-BG-12 / -164-00 `0..0` though annex B uses them, no `cbc:ID` value for the line status reference, CreditNote BG-1 `0..1`, CreditNote contract date labelled EXT-FR-FE-01); the writer follows the XSD, the Schematrons and annex B |
+| CG-67 | spec, UBL | annex A `annex-a--Flux_2_UBL_EXT-CTC-FR.csv` XPath and cardinality cells | docs | Typos and gaps in the UBL rows (attribute `@Name` for `@name`, unprefixed or misspelt steps, EXT-FR-FE-BG-12 / -164-00 `0..0` though annex B uses them, no `cbc:ID` value for the line status reference, CreditNote BG-1 `0..1`, CreditNote contract date labelled EXT-FR-FE-01, CreditNote column ids and XPaths of EXT-FR-FE-191, -162, -182, BT-173 … BT-176, EXT-FR-FE-161); the writer follows the XSD, the Schematrons and annex B |
 | CG-68 | UBL, spec | annex A UBL EXT-FR-FE-180 in the line `cac:InvoicePeriod` vs BR-CO-20 (both UBL Schematrons) | interop (refused) | UBL holds the line VAT point date code in the line period, which BR-CO-20 wants with a start or end date; CII holds it in the line `ApplicableTradeTax`. `invoiceToUbl()` refuses EXT-FR-FE-180 without BT-134 / BT-135 |
 | CG-69 | spec, French CTC, models | annex A UBL BG-29 / BT-146 `1..1` vs EXTENDED-CTC-FR BR-26 (UBL `BR-FREXT-26`, CII `BR-FREXT-BR-26`) | Fatal | Annex A makes the line price mandatory, the Schematrons only on a line whose subtype EXT-FR-FE-163 is `DETAIL` or unset (same for BT-129, BG-30). `invoiceToUbl()` refuses such a line without them; `toCii()` at `extended-ctc-fr` does not and writes CII its Schematron refuses (open, fixed outside this PR) |
-| CG-70 | spec, UBL | annex B `F202500001_…EN16931_UBL` line note `#BLU#…` vs annex A UBL EN 16931 (BT-127 plain text; EXT-FR-FE-183 only in EXT-CTC-FR) | interop | The EN 16931 UBL example writes a line note subject code, a term annex A gives only to EXTENDED-CTC-FR UBL and the CII twin does not carry. `ublToInvoice()` reads it as EXT-FR-FE-183 (one note convention at both levels), which `invoiceToUbl()` refuses at `en16931` |
+| CG-70 | spec, UBL | annex A `annex-a--Flux_2_UBL_EN16931_FR.csv` BT-127 row (`0..1`, no EXT-FR-FE-183) vs its BT-21 row usage note ("Uniquement en UBL : entre ## en début de Note de ligne"); annex B `F202500001_…EN16931_UBL` line note `#BLU#…` | interop | Annex A EN 16931 UBL contradicts itself on line note subject codes. Provisional reading: at `en16931` `ublToInvoice()` keeps a line note verbatim as BT-127 and `invoiceToUbl()` writes it back unchanged; the CII twin's BT-127 lacks the `#BLU#` prefix |
 | CG-71 | spec | annex B `F202500001` UBL vs CII twins (BT-158-2, BG-32) | docs | The two renderings of the same invoice differ: the UBL twins add `listVersionID="ATTR2"` to the item classification of line 2, and lack the second item attribute (`CO2(g)` = `30`) the CII twins give line 3 |
+| CG-72 | UBL, spec | BT-90 in annex A: a seller row and a payee row (both UBL CSVs) vs one model term | interop | A source with a payee may carry BT-90 on the seller. `ublToInvoice()` reads it (UBL-SR-29 counts `SEPA` ids document-wide); `invoiceToUbl()` writes BT-90 with the payee, so `dropped` reports the seller-side identifier although the value is kept |
+| CG-73 | security, data integrity, CII | internal DTD entities vs `xmlToInvoice()` / `fromCii()` | data-loss (silent, open) | A CII document whose DOCTYPE declares an entity standing for an element (e.g. `ram:BuyerReference`) loses it: the parser does not expand entities (default options, on purpose) and reads around the reference, and `fromCii()` cannot see it, so `dropped` is empty. `ublToInvoice()` refuses any DOCTYPE; the CII side is fixed outside this PR |
 | CG-34 | French CTC, lifecycle, upstream | Annex A `annex-a--BR-FR-CDV_pour_factures.csv`, `annex-a--Tableau_des_motifs_de_STATUTS.csv` vs `BR-FR-CDV-Schematron-CDAR` | interop | The published BR-FR-CDV Schematron cannot fail on several Annex A rules, and some of its code lists differ from Annex A |
 | CG-36 | spec | §version history p.7–8 vs the EXTENDED field matrix | — | The 1.09 version history contradicts the field matrix on several new fields (unresolved) |
 | CG-37 | parser, models | EXTENDED XSD `NoteType/Content` `minOccurs="0"` | data-loss | A note without `Content` (BT-22 / BT-127) comes back with an empty `Content` element |
@@ -1022,11 +1024,17 @@ paths and the code supports both, so nothing here is picked.
   UBL XSD and EN 16931 allow several (annex B UC5b, a CreditNote, has 6 notes); the CreditNote contract date
   (`cac:ContractDocumentReference/cbc:IssueDate`) is labelled EXT-FR-FE-01, the id of the contract type, instead of
   EXT-FR-FE-199.
+- **CreditNote column (ids in column 49, XPath in column 55; 0-based 48 and 54):** EXT-FR-FE-191 / -191-1 point at
+  `cac:Item/cbc:Description` (Invoice: `cbc:PackQuantity` / `@unitCode`); the line `BillingReferenceLine/cbc:ID`
+  is labelled EXT-FR-FE-163 (Invoice: EXT-FR-FE-162); the line `TaxTotal/cbc:TaxAmount` and its `@currencyID` are
+  labelled BT-110 / BT-110-1 (Invoice: EXT-FR-FE-182 / -182-1); BT-173 … BT-176 are labelled EXT-FR-FE-187 … -190;
+  EXT-FR-FE-161 has `cac:AdditionalItemPropertycbc:ValueQuantity` (no separator).
 - **Writer:** follows the XSD element names, the Schematrons and annex B; it writes every BG-1 in both roots.
 - **Evidence:**
   `python3 -I -c "import csv,sys; [print(r[1],r[6],r[8]) for r in csv.reader(open('spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv',encoding='utf-8')) if len(r)>8 and r[1] in sys.argv[1:]]" BT-82 EXT-FR-FE-89-00 EXT-FR-FE-BG-12 EXT-FR-FE-164-00 EXT-FR-FE-163-000`;
   `python3 -I -c "import csv,sys; R=list(csv.reader(open('spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv',encoding='utf-8'))); h=[i for i,x in enumerate(R[1]) if x=='ID'][1]; [print(r[h],r[h+5],r[h+7]) for r in R[2:] if len(r)>h+7 and r[h+7].endswith(tuple(sys.argv[1:]))]" '/CreditNote  /cbc:Note' 'ContractDocumentReference  /cbc:IssueDate'`;
-  `grep -c '<cbc:Note>#' "spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/Facture et Avoir/UC5b_F202500011_00-CN_20250703_EN16931_UBL_Commentee.xml"` (6).
+  `grep -c '<cbc:Note>#' "spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/Facture et Avoir/UC5b_F202500011_00-CN_20250703_EN16931_UBL_Commentee.xml"` (6);
+  `python3 -I -c "import csv,sys; [print(r[1],'| CN id:',r[48],'| CN XPath:',r[54]) for r in csv.reader(open('spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv',encoding='utf-8')) if len(r)>54 and r[1] in sys.argv[1:]]" EXT-FR-FE-191 EXT-FR-FE-191-1 EXT-FR-FE-162 EXT-FR-FE-182 EXT-FR-FE-182-1 BT-173 BT-174 BT-175 BT-176 EXT-FR-FE-161`.
 
 ### CG-68 — EXT-FR-FE-180 sits in the UBL line period, which BR-CO-20 constrains (interop)
 
@@ -1071,25 +1079,25 @@ paths and the code supports both, so nothing here is picked.
   `grep -n 'name="id">BR-FREXT-BR-26' src/lib/xsd/facturx/extended-ctc-fr/EXTENDED-CTC-FR-CII.xslt`;
   `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "CG-69"` (includes the `toCii()` reproduction).
 
-### CG-70 — Annex B writes a line note subject code in an EN 16931 UBL invoice (interop)
+### CG-70 — Line note subject codes in EN 16931 UBL: annex A contradicts itself (interop, provisional)
 
-- **Spec:** annex A `annex-a--Flux_2_UBL_EN16931_FR.csv` binds BT-127 to `cac:InvoiceLine/cbc:Note` as plain text
-  and has no EXT-FR-FE-183; only `annex-a--Flux_2_UBL_EXT-CTC-FR.csv` adds EXT-FR-FE-183, "Uniquement en UBL : entre
-  ## en début de Note de ligne". Annex B `F202500001_INV_20250201_EN16931_UBL_Commentee.xml` (EN 16931 id) still
-  writes the line note `#BLU#DONT 0,50 EUR de DEEE`, commented as BT-127 "DONT 0,50 EUR de DEEE"; its CII twin has
-  the text without a subject code. The document passes all three validation steps either way: as EN 16931, its
-  BT-127 is the whole text.
-- **Reader:** `ublToInvoice()` reads notes with one convention at both levels (`UBL_NOTE_PATTERN`, the writer's
-  contract), so it reads EXT-FR-FE-183 `BLU` and BT-127 `DONT 0,50 EUR de DEEE`, as annex B means. `invoiceToUbl()`
-  then refuses the invoice at `en16931` (EXT-FR-FE-183 needs `extended-ctc-fr`); reading the text verbatim would
-  not help, since the writer refuses a BT-127 that starts with `#…#` without a subject code. The round-trip test
-  asserts the refusal, then round-trips the invoice with the subject code cleared.
-- **Close when:** annex B drops the subject code from the EN 16931 example, or annex A EN 16931 UBL adopts the
-  convention.
+- **Spec:** annex A `annex-a--Flux_2_UBL_EN16931_FR.csv` binds BT-127 to `cac:InvoiceLine/cbc:Note` (`0..1`) as
+  plain text and has no EXT-FR-FE-183 row; but its BT-21 row (document note subject code) says in its usage note
+  "Uniquement en UBL : entre ## en début de Note de ligne". Only `annex-a--Flux_2_UBL_EXT-CTC-FR.csv` has
+  EXT-FR-FE-183. Annex B `F202500001_INV_20250201_EN16931_UBL_Commentee.xml` (EN 16931 id) writes the line note
+  `#BLU#DONT 0,50 EUR de DEEE`, commented as BT-127 "DONT 0,50 EUR de DEEE"; its CII twin has the text without a
+  subject code. The document passes all three validation steps.
+- **Chosen reading (provisional, controller ruling):** at `en16931` there is no line note subject code, so
+  `ublToInvoice()` keeps a line note verbatim as BT-127 (no `#code#` split): every character stays in a term the
+  level carries. `invoiceToUbl()` at `en16931` does not apply the `#…#` refusal to line notes and writes the text
+  back unchanged. Document notes (BT-21 / BT-22) and `extended-ctc-fr` keep the `#code#` convention.
+- **Effect:** F202500001 EN16931 round-trips at its own level. Its model differs from the CII twin's in that note
+  text (`#BLU#` prefix), declared in the twin comparison test. An `en16931` reader never yields EXT-FR-FE-183.
+- **Close when:** annex A states whether the `##` convention applies to line notes at EN 16931.
 - **Evidence:** `grep -n '#BLU#' 'spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/F202500001/_EN16931/F202500001_INV_20250201_EN16931_UBL_Commentee.xml'`;
   `grep -n -B1 -A1 'DONT 0,50' 'spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/F202500001/_EN16931/F202500001_INV_20250201_CII_EN16931_FX_CII_Commentee.xml'`;
-  `python3 -I -c "import csv,sys; [print(f.split('--')[-1],r[1],r[6],r[8]) for f in sys.argv[1:] for r in csv.reader(open(f,encoding='utf-8')) if len(r)>8 and r[1] in ('BT-127','EXT-FR-FE-183')]" spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EN16931_FR.csv spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv`;
-  `pnpm build && pnpm vitest run tests/ubl-reader.test.ts -t "F202500001 \(en16931\)"`.
+  `python3 -I -c "import csv,sys; [print(f.split('--')[-1],r[1],r[6],r[8],'|',r[14]) for f in sys.argv[1:] for r in csv.reader(open(f,encoding='utf-8')) if len(r)>14 and r[1] in ('BT-21','BT-127','EXT-FR-FE-183')]" spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EN16931_FR.csv spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv`;
+  `pnpm build && pnpm vitest run tests/ubl-reader.test.ts -t "F202500001 \(en16931\)|en16931 line note"`.
 
 ### CG-71 — Annex B F202500001 UBL and CII twins differ in two item details (docs)
 
@@ -1103,3 +1111,31 @@ paths and the code supports both, so nothing here is picked.
   `grep -c '<ram:ApplicableProductCharacteristic>' 'spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/F202500001/_EN16931/F202500001_INV_20250201_CII_EN16931_FX_CII_Commentee.xml'` (3);
   `grep -rn 'ATTR2' 'spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/F202500001'`;
   `pnpm build && pnpm vitest run tests/ubl-reader.test.ts -t "CII twin"`.
+
+### CG-72 — BT-90 has a seller row and a payee row in annex A UBL (interop)
+
+- **Spec:** both annex A UBL CSVs map BT-90 to `cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification/cbc:ID`
+  and to `cac:PayeeParty/cac:PartyIdentification/cbc:ID` (`@schemeID="SEPA"`); UBL-SR-29 allows one `SEPA`
+  identifier in the whole document. The model has one BT-90 (`directDebit.bankAssignedCreditorIdentifier`).
+- **Reader:** takes BT-90 from the payee's identifiers, else from the seller's, also when a payee is present
+  without one (only with a `cac:PaymentMeans` to hold BG-19).
+- **Writer:** writes BT-90 with the payee when there is one, else with the seller.
+- **Effect:** for a source with a payee and BT-90 on the seller, the value is kept but its place is not:
+  `dropped` reports the seller's `cac:PartyIdentification/cbc:ID` and its `@schemeID`. A second read of the
+  written document drops nothing.
+- **Evidence:** `python3 -I -c "import csv,sys; [print(f.split('--')[-1],r[1],r[8]) for f in sys.argv[1:] for r in csv.reader(open(f,encoding='utf-8')) if len(r)>8 and r[1]=='BT-90']" spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EN16931_FR.csv spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv`;
+  `grep -o '\[UBL-SR-29\][^<]*' src/lib/xsd/ubl/en16931/EN16931-UBL-validation.xslt | head -1`;
+  `pnpm build && pnpm vitest run tests/ubl-reader.test.ts -t "BT-90 from the seller"`.
+
+### CG-73 — Internal DTD entities hide CII content from `xmlToInvoice()` / `fromCii()` (security, data integrity, open)
+
+- **Issue:** XML parsing uses the default libxml2 options on purpose (no `XML_PARSE_NOENT`, AGENTS.md), so an
+  internal entity is kept as an unexpanded reference. A document whose DOCTYPE declares an entity standing for an
+  element (`<!ENTITY br "<ram:BuyerReference …>…</ram:BuyerReference>">` used as `&br;`) is read without it:
+  `xmlToInvoice()` finds no `ram:BuyerReference`, and `fromCii()` compares models, so its `dropped` is empty. The
+  value is lost silently. Neither CII nor UBL uses a DOCTYPE.
+- **UBL:** `ublToInvoice()` refuses any document with a DOCTYPE (string, Buffer or caller `XmlDocument`, never
+  disposed) before reading; tests cover an internal entity, an external `SYSTEM` entity and a billion-laughs
+  document.
+- **Open (fixed outside this PR):** the CII parser / `fromCii()`; the test pins today's behaviour.
+- **Evidence:** `pnpm build && pnpm vitest run tests/ubl-reader.test.ts -t "DOCTYPE"`.

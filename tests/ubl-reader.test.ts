@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { check, fromCii, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument, XmlElement } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
-import { invoiceToUbl } from '../src/lib/converters/ubl'
+import { buildUbl, invoiceToUbl } from '../src/lib/converters/ubl'
 import { ublToInvoice } from '../src/lib/parsers/ubl'
 
 const FACTURES = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
@@ -26,16 +26,6 @@ const CARD: Unwritable = {
     i.paymentInstructions!.card = undefined
   },
 }
-// Annex B writes the EXTENDED-CTC-FR line note subject code `#BLU#` in an EN 16931 document (CG-70).
-const LINE_NOTE_SUBJECT: Unwritable = {
-  term: /EXT-FR-FE-183/,
-  cg: 'CG-70',
-  clear: (i) => {
-    for (const note of i.lines.flatMap(l => l.notes))
-      note.subjectCode = undefined
-  },
-}
-
 interface Example {
   name: string
   level: 'en16931' | 'extended-ctc-fr'
@@ -60,10 +50,12 @@ const SELLER_DEP = '.seller.contact.departmentName'
 const BUYER_DEP = '.buyer.contact.departmentName'
 const DEPS = [SELLER_DEP, BUYER_DEP]
 // CG-71: annex B F202500001 twins disagree on two item details.
+// CG-70: at en16931 the UBL line note `#BLU#DONT …` is BT-127 verbatim; the CII twin has the text alone.
+const LINE_NOTE = '.lines.1.notes.0.note'
 const F202500001_CONTENT = { twinOnly: ['.lines.2.item.attributes.1.name', '.lines.2.item.attributes.1.value'], ublOnly: ['.lines.1.item.classifications.0.listVersionId'] }
 
 const EXAMPLES: Example[] = [
-  { name: 'F202500001', level: 'en16931', ubl: 'F202500001/_EN16931/F202500001_INV_20250201_EN16931_UBL_Commentee.xml', cii: 'F202500001/_EN16931/F202500001_INV_20250201_CII_EN16931_FX_CII_Commentee.xml', dropped: [], unwritable: LINE_NOTE_SUBJECT, privateIds: true, twinOnly: [BUYER_DEP, ...F202500001_CONTENT.twinOnly], ublOnly: [...F202500001_CONTENT.ublOnly, '.lines.1.notes.0.subjectCode'] },
+  { name: 'F202500001', level: 'en16931', ubl: 'F202500001/_EN16931/F202500001_INV_20250201_EN16931_UBL_Commentee.xml', cii: 'F202500001/_EN16931/F202500001_INV_20250201_CII_EN16931_FX_CII_Commentee.xml', dropped: [], privateIds: true, twinOnly: [BUYER_DEP, LINE_NOTE, ...F202500001_CONTENT.twinOnly], ublOnly: [LINE_NOTE, ...F202500001_CONTENT.ublOnly] },
   { name: 'UC1', level: 'en16931', ubl: 'F202500003/_EN16931/UC1_F202500003_00-INV_20250701_EN16931_UBL_Commentee.xml', cii: 'F202500003/_EN16931/UC1_F202500003_00-INV_20250701_EN16931_FX_CII_Commentee.xml', dropped: [], twinOnly: DEPS },
   { name: 'UC4', level: 'en16931', ubl: 'Facture et Facture Rectificative/UC4_F202500006_00-INV_20250701_EN16931_UBL_Commentee.xml', cii: 'Facture et Facture Rectificative/UC4_F202500006_00-INV_20250701_EN16931_FX_CII_Commentee.xml', dropped: [], twinOnly: DEPS },
   { name: 'UC4b', level: 'en16931', ubl: 'Facture et Facture Rectificative/UC4b_F202500010_00-INVCORR_20250702_EN16931_UBL_Commentee.xml', cii: 'Facture et Facture Rectificative/UC4b_F202500010_00-INVCORR_20250702_EN16931_FX_CII_Commentee.xml', dropped: [], twinOnly: DEPS },
@@ -366,11 +358,12 @@ describe('ublToInvoice: paths', () => {
     const leaves = Array.from({ length: 2000 }, (_, i) => `<x:b>v${i}</x:b>`).join('')
     const chain = `${'<x:a>'.repeat(depth)}${leaves}${'</x:a>'.repeat(depth)}`
     const xml = (await source(example)).replace('</Invoice>', `<x:root xmlns:x="urn:example">${chain}</x:root></Invoice>`)
+    const x = '{urn:example}'
     const started = performance.now()
     const { dropped } = await ublToInvoice(xml)
     expect(performance.now() - started).toBeLessThan(5000)
     expect(dropped).toHaveLength(2000)
-    expect(dropped[0]).toBe(`/Invoice/x:root${'/x:a'.repeat(depth)}/x:b[1]`)
+    expect(dropped[0]).toBe(`/Invoice/${x}root${`/${x}a`.repeat(depth)}/${x}b[1]`)
   })
 })
 
@@ -446,4 +439,139 @@ describe('ublToInvoice: input', () => {
       }
     }
   }, 120000)
+})
+
+describe('ublToInvoice: DOCTYPE (UBL uses none)', () => {
+  const uc1 = EXAMPLES.find(e => e.name === 'UC1' && e.level === 'en16931')!
+  const withDoctype = async (subset: string, edit: (xml: string) => string = x => x): Promise<string> =>
+    edit((await source(uc1)).replace(/^<\?xml[^>]*\?>\s*/, '')).replace('<Invoice ', `<!DOCTYPE Invoice [${subset}]>\n<Invoice `)
+  const cbc = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2'
+
+  it('refuses an internal entity that would replace an element (BT-10 would be lost silently)', async () => {
+    const xml = await withDoctype(`<!ENTITY br "<cbc:BuyerReference xmlns:cbc='${cbc}'>BR-X</cbc:BuyerReference>">`, x => x.replace(/<cbc:BuyerReference>[^<]*<\/cbc:BuyerReference>/, '&br;'))
+    expect(xml).toContain('&br;')
+    await expect(ublToInvoice(xml)).rejects.toThrow(/DOCTYPE/)
+    await expect(ublToInvoice(xml)).rejects.not.toThrow(/BR-X/)
+  })
+
+  it('refuses an external SYSTEM entity, without reading it', async () => {
+    const xml = await withDoctype('<!ENTITY e SYSTEM "file:///etc/hosts">', x => x.replace(/(<cbc:BuyerReference>)[^<]*</, '$1&e;<'))
+    await expect(ublToInvoice(xml)).rejects.toThrow(/DOCTYPE/)
+  })
+
+  it('refuses a billion-laughs document (or libxml2 rejects it first)', async () => {
+    const lol = ['<!ENTITY l0 "lol">', ...Array.from({ length: 9 }, (_, i) => `<!ENTITY l${i + 1} "${`&l${i};`.repeat(10)}">`)].join('')
+    const xml = await withDoctype(lol, x => x.replace(/(<cbc:BuyerReference>)[^<]*</, '$1&l9;<'))
+    await expect(ublToInvoice(xml)).rejects.toThrow()
+  })
+
+  it('refuses a caller XmlDocument with a DOCTYPE and does not dispose it', async () => {
+    const doc = XmlDocument.fromString(await withDoctype('<!ENTITY t "x">'))
+    try {
+      await expect(ublToInvoice(doc)).rejects.toThrow(/DOCTYPE/)
+      expect(doc.root.name).toBe('Invoice')
+    }
+    finally {
+      doc.dispose()
+    }
+  })
+
+  // Open, fixed outside this PR (CG-73): the CII parser leaves the entity reference unread and `fromCii()` does not
+  // see it, so BT-10 is lost with nothing in `dropped`. Pinned as today's behaviour.
+  it('cII side (CG-73, open): an internal entity hides BT-10 from xmlToInvoice / fromCii', async () => {
+    const ram = 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100'
+    const cii = (await readFile(resolve(FACTURES, uc1.cii), 'utf8')).replace(/^<\?xml[^>]*\?>\s*/, '')
+    expect(cii).toMatch(/<ram:BuyerReference>[^<]*<\/ram:BuyerReference>/)
+    const xml = cii
+      .replace(/<ram:BuyerReference>[^<]*<\/ram:BuyerReference>/, '&br;')
+      .replace('<rsm:CrossIndustryInvoice ', `<!DOCTYPE rsm:CrossIndustryInvoice [<!ENTITY br "<ram:BuyerReference xmlns:ram='${ram}'>BR-X</ram:BuyerReference>">]>\n<rsm:CrossIndustryInvoice `)
+    const { invoice, dropped } = fromCii(await xmlToInvoice(xml))
+    expect(invoice.buyerReference).toBeUndefined()
+    expect(dropped).toEqual([])
+  })
+})
+
+describe('ublToInvoice: fix round 1', () => {
+  const uc1 = EXAMPLES.find(e => e.name === 'UC1' && e.level === 'en16931')!
+
+  it('reads BT-90 from the seller when the payee has none (annex A both rows, UBL-SR-29); the re-write moves it (CG-72)', async () => {
+    const xml = (await source(uc1))
+      .replace(/(<cac:AccountingSupplierParty>\s*<cac:Party>[\s\S]*?)(<cac:PartyIdentification>)/, '$1<cac:PartyIdentification><cbc:ID schemeID="SEPA">FR12ZZZ123456</cbc:ID></cac:PartyIdentification>$2')
+      .replace('</cac:AccountingCustomerParty>', '</cac:AccountingCustomerParty><cac:PayeeParty><cac:PartyName><cbc:Name>PAYEE SAS</cbc:Name></cac:PartyName></cac:PayeeParty>')
+    const result = await check({ xml, schematron: true, frCtc: true })
+    expect(result.valid).toBe(true)
+    expect(result.schematronErrors).toEqual([])
+    expect(result.frCtcErrors).toEqual([])
+    const { invoice, dropped } = await ublToInvoice(xml)
+    expect(invoice.paymentInstructions!.directDebit?.bankAssignedCreditorIdentifier).toBe('FR12ZZZ123456')
+    expect(invoice.seller.identifiers.some(i => i.schemeId === 'SEPA')).toBe(false)
+    // The model keeps BT-90, not where it was: the writer puts it with the payee (annex A), so the seller's
+    // `SEPA` identifier has no counterpart at that place.
+    expect(dropped).toEqual([
+      '/Invoice/cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification[1]/cbc:ID/@schemeID',
+      '/Invoice/cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification[1]/cbc:ID',
+    ])
+    const again = await ublToInvoice(await written(invoice, 'en16931', 'Invoice'))
+    expect(again.invoice).toEqual(invoice)
+    expect(again.dropped).toEqual([])
+  })
+
+  it('keeps an en16931 line note verbatim as BT-127 (no subject code, CG-70); extended-ctc-fr splits it', async () => {
+    const xml = (await source(uc1)).replace(/(<cac:InvoiceLine>\s*<cbc:ID>[^<]*<\/cbc:ID>)/, '$1<cbc:Note>#AAI#urgent</cbc:Note>')
+    const { invoice, dropped } = await ublToInvoice(xml)
+    expect(invoice.lines[0].notes).toEqual([{ note: '#AAI#urgent' }])
+    expect(dropped).toEqual([])
+    const again = await ublToInvoice(await written(invoice, 'en16931', 'Invoice'))
+    expect(again.invoice).toEqual(invoice)
+    // At extended-ctc-fr the same text without a subject code would read back as one: still refused.
+    await expect(invoiceToUbl({ ...invoice, specificationIdentifier: undefined }, { level: 'extended-ctc-fr' })).rejects.toThrow(/EXT-FR-FE-183/)
+    const ext = (await source(EXAMPLES.find(e => e.name === 'UC1' && e.level === 'extended-ctc-fr')!)).replace(/(<cac:InvoiceLine>\s*<cbc:ID>[^<]*<\/cbc:ID>)/, '$1<cbc:Note>#AAI#urgent</cbc:Note>')
+    expect((await ublToInvoice(ext)).invoice.lines[0].notes).toEqual([{ subjectCode: 'AAI', note: 'urgent' }])
+  })
+
+  it('does not report pretty-printing whitespace as a value', async () => {
+    const xml = (await source(uc1)).replace('</cac:AccountingCustomerParty>', '</cac:AccountingCustomerParty>\n  <cac:PayeeParty>\n    <cac:PartyName>\n      <cbc:Name>\n      </cbc:Name>\n    </cac:PartyName>\n  </cac:PayeeParty>')
+    expect((await ublToInvoice(xml)).dropped).toEqual([])
+  })
+
+  it('reports text beside child elements (mixed content) as …/text()', async () => {
+    const xml = (await source(uc1)).replace('<cac:LegalMonetaryTotal>', '<cac:LegalMonetaryTotal>stray text')
+    expect((await ublToInvoice(xml)).dropped).toEqual(['/Invoice/cac:LegalMonetaryTotal/text()'])
+  })
+
+  it('reports an element of another namespace that borrows the cbc prefix by its namespace, apart from UBL siblings', async () => {
+    const xml = (await source(uc1)).replace(/(<cbc:BuyerReference>[^<]*<\/cbc:BuyerReference>)/, '$1<cbc:BuyerReference xmlns:cbc="urn:evil">EVIL</cbc:BuyerReference>')
+    const { invoice, dropped } = await ublToInvoice(xml)
+    expect(invoice.buyerReference).not.toBe('EVIL')
+    expect(dropped).toEqual(['/Invoice/{urn:evil}BuyerReference'])
+  })
+
+  it('resets the lenient write-back after it throws, so invoiceToUbl checks again', async () => {
+    const { invoice } = await ublToInvoice(await source(uc1))
+    expect(() => buildUbl({ ...invoice, lines: null } as unknown as Invoice, 'en16931', 'Invoice', { lenient: true })).toThrow()
+    await expect(invoiceToUbl({ ...invoice, issueDate: '2025-13-45' }, { level: 'en16931' })).rejects.toThrow(/BT-2 .*ISO date/)
+  })
+
+  it('does not dispose a caller XmlDocument when reading it fails', async () => {
+    const doc = XmlDocument.fromString(await readFile(resolve(FACTURES, uc1.cii), 'utf8'))
+    try {
+      await expect(ublToInvoice(doc)).rejects.toThrow(/UBL/)
+      expect(doc.root.name).toBe('CrossIndustryInvoice')
+    }
+    finally {
+      doc.dispose()
+    }
+  })
+
+  it('reads a 5000-line invoice in bounded time', async () => {
+    const xml = await source(uc1)
+    const line = /<cac:InvoiceLine>[\s\S]*?<\/cac:InvoiceLine>/.exec(xml)![0]
+    const lines = Array.from({ length: 5000 }, (_, i) => line.replace(/<cbc:ID>[^<]*<\/cbc:ID>/, `<cbc:ID>${i + 1}</cbc:ID>`)).join('')
+    const big = xml.replace(/<cac:InvoiceLine>[\s\S]*<\/cac:InvoiceLine>/, lines)
+    const started = performance.now()
+    const { invoice, dropped } = await ublToInvoice(big)
+    expect(performance.now() - started).toBeLessThan(30000)
+    expect(invoice.lines).toHaveLength(5000)
+    expect(dropped).toEqual([])
+  }, 60000)
 })

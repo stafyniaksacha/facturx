@@ -14,6 +14,7 @@
 import type { XmlElement as El } from 'libxml2-wasm'
 import type { Buffer } from 'node:buffer'
 import type { UBL_ROOT } from '../constants'
+import type { UblLevel } from '../converters/ubl'
 import { XmlDocument } from 'libxml2-wasm'
 import { buildUbl, UBL_NOTE_PATTERN } from '../converters/ubl'
 import { BillingParty, BuyerAgent, Invoicee, Payee, Payer, SellerAgent } from '../models/en16931/additional-parties'
@@ -35,8 +36,13 @@ export interface UblToInvoiceResult {
    * XPath-like paths (`/Invoice/cac:X/cbc:Y`, `/@attr`; `[n]` only on a name the source repeats under one
    * parent) of every value of the source with no equal counterpart once the invoice is written back as UBL:
    * what the model has no place for (a `cbc:IssueTime`, the card network id, a second `cac:Delivery` ...).
-   * Positions only, never the values. Empty does not mean `invoiceToUbl()` accepts the invoice: it refuses
-   * some values the model holds (a CIUS BT-24, BG-18, CG-61).
+   * Positions only, never the values.
+   *
+   * The write-back used for this difference skips every check of `invoiceToUbl()`: ISO dates, BR-DEC Amount
+   * decimals, what the level carries (an EXTENDED-CTC-FR term in an `en16931` document), the UBL structure rules.
+   * A value the model holds is therefore not in `dropped` even when the level cannot carry it: it stays in the
+   * invoice, and `invoiceToUbl()` throws on it later. Empty `dropped` does not mean `invoiceToUbl()` accepts the
+   * invoice (a CIUS BT-24, BG-18 (CG-61), an EXTENDED-CTC-FR term at `en16931` ...).
    */
   dropped: string[]
 }
@@ -309,7 +315,11 @@ function parties(root: El): Pick<InvoiceFields, 'seller' | 'buyer' | 'payee' | '
   const p = payeeNode ? party(payeeNode) : undefined
   // BT-90 sits in the payee's identifiers when there is a payee, else the seller's (annex A), and only with a
   // `cac:PaymentMeans` to hold BG-19 (`invoiceToUbl()` writes it from the direct debit); else it stays an identifier.
-  const creditorIdentifier = first(root, 'cac:PaymentMeans') ? takeCreditorIdentifier((p ?? s)?.identifiers ?? []) : undefined
+  // With a payee whose identifiers have no `SEPA` one, the seller's is BT-90 too: annex A has both rows, and
+  // UBL-SR-29 counts `SEPA` identifiers document-wide. The writer puts BT-90 with the payee (CG-72).
+  const creditorIdentifier = first(root, 'cac:PaymentMeans')
+    ? takeCreditorIdentifier(p?.identifiers ?? []) ?? takeCreditorIdentifier(s?.identifiers ?? [])
+    : undefined
   return {
     creditorIdentifier,
     seller: new Seller({
@@ -556,7 +566,7 @@ function lineAllowancesCharges(node: El): { allowances: LineAllowance[], charges
   return { allowances, charges }
 }
 
-function line(node: El, invoiceNumber: string, creditNote: boolean, currency: string, accountingCurrency: string | undefined): InvoiceLine {
+function line(node: El, invoiceNumber: string, creditNote: boolean, currency: string, accountingCurrency: string | undefined, level: UblLevel): InvoiceLine {
   const [invoicedQuantity, invoicedQuantityUnitCode] = quantity(node, creditNote ? 'cbc:CreditedQuantity' : 'cbc:InvoicedQuantity')
   const period = first(node, 'cac:InvoicePeriod')
   const startDate = text(period, 'cbc:StartDate')
@@ -606,7 +616,8 @@ function line(node: El, invoiceNumber: string, creditNote: boolean, currency: st
 
   return new InvoiceLine({
     identifier: text(node, 'cbc:ID') ?? '',
-    notes: all(node, 'cbc:Note').map(n => new LineNote(note(n.content))),
+    // EN 16931 has no line note subject code: at `en16931` a leading `#code#` is part of BT-127 (CG-70).
+    notes: all(node, 'cbc:Note').map(n => new LineNote(level === 'en16931' ? { note: n.content === '' ? undefined : n.content } : note(n.content))),
     parentLineIdentifier: text(status, 'cac:BillingReferenceLine/cbc:ID'),
     statusReasonCode: text(status, 'cac:InvoiceDocumentReference/cbc:DocumentStatusCode'),
     objectIdentifiers: all(node, 'cac:DocumentReference').filter(d => text(d, 'cbc:DocumentTypeCode') === INVOICED_OBJECT).map(d => identifier(d, 'cbc:ID') ?? new Identifier({ value: '' })),
@@ -664,7 +675,7 @@ function line(node: El, invoiceNumber: string, creditNote: boolean, currency: st
   })
 }
 
-function read(root: El, rootName: UBL_ROOT): Invoice {
+function read(root: El, rootName: UBL_ROOT, level: UblLevel): Invoice {
   const creditNote = rootName === 'CreditNote'
   const head = header(root, creditNote)
   const { creditorIdentifier, ...partyFields } = parties(root)
@@ -676,8 +687,24 @@ function read(root: El, rootName: UBL_ROOT): Invoice {
     paymentInstructions,
     payer,
     ...settlement(root, head.currencyCode, head.vatAccountingCurrencyCode),
-    lines: all(root, creditNote ? 'cac:CreditNoteLine' : 'cac:InvoiceLine').map(l => line(l, head.number, creditNote, head.currencyCode, head.vatAccountingCurrencyCode)),
+    lines: all(root, creditNote ? 'cac:CreditNoteLine' : 'cac:InvoiceLine').map(l => line(l, head.number, creditNote, head.currencyCode, head.vatAccountingCurrencyCode, level)),
   })
+}
+
+// libxml2 keeps the DTD as a sibling of the root element; libxml2-wasm does not export its class, so it is
+// recognised by name (its constructor is named explicitly in libxml2-wasm, so this survives minification).
+function hasDoctype(doc: XmlDocument): boolean {
+  const root = doc.root
+  if (!root)
+    return false
+  for (const step of ['prev', 'next'] as const) {
+    // Typed `XmlTreeNode`, though the DTD node is not one at runtime.
+    for (let node: object | null = root[step]; node; node = (node as Record<typeof step, object | null>)[step]) {
+      if (node.constructor.name === 'XmlDocumentTypeNode')
+        return true
+    }
+  }
+  return false
 }
 
 /**
@@ -686,21 +713,34 @@ function read(root: El, rootName: UBL_ROOT): Invoice {
  * `invoiceToUbl()` writes. `dropped` lists every source value with no equal counterpart once the invoice is
  * written back as UBL at that level (see `UblToInvoiceResult`), computed by difference like `fromCii()`.
  *
- * An `XmlDocument` passed in stays the caller's (never disposed). Throws for a document that is not a UBL 2.1
+ * An `XmlDocument` passed in stays the caller's (never disposed). Throws for a document that has a DOCTYPE (UBL
+ * never uses one; an entity could hide or replace content the reader would then miss), that is not a UBL 2.1
  * Invoice or CreditNote, or whose BT-24 is missing or names another specification. Errors never quote the document.
  */
 export async function ublToInvoice(xml: string | Buffer | XmlDocument): Promise<UblToInvoiceResult> {
   const owned = !(xml instanceof XmlDocument)
   const doc = xml instanceof XmlDocument ? xml : typeof xml === 'string' ? XmlDocument.fromString(xml) : XmlDocument.fromBuffer(xml)
   try {
+    if (hasDoctype(doc))
+      throw new Error('ublToInvoice: the document has a DOCTYPE; UBL uses none, and its entities could hide or replace content, so it is refused')
     if (!isUblDocument(doc))
       throw new Error('ublToInvoice: not a UBL 2.1 Invoice or CreditNote (root element and namespace)')
     const level = getUblDeclaredLevel(doc)
     if (level === undefined)
       throw new Error('ublToInvoice: cbc:CustomizationID (BT-24) is missing or names no specification this package maps (EN 16931, a CIUS of it without extension, or EXTENDED-CTC-FR)')
     const rootName = doc.root.name as UBL_ROOT
-    const invoice = read(doc.root, rootName)
-    const written = buildUbl(invoice, level, rootName, { lenient: true })
+    const invoice = read(doc.root, rootName, level)
+    // Compared as re-parsed text: the writer's `addElement('cbc:X')` names the element `cbc:X` in the root's
+    // namespace in memory, and only its serialisation carries the UBL namespaces.
+    const built = buildUbl(invoice, level, rootName, { lenient: true })
+    let serialised: string
+    try {
+      serialised = built.toString()
+    }
+    finally {
+      built.dispose()
+    }
+    const written = XmlDocument.fromString(serialised)
     try {
       return { invoice, dropped: ublDiffPaths(doc, written) }
     }

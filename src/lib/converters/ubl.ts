@@ -60,7 +60,8 @@ export const UBL_INVOICE_TYPE_CODES: ReadonlySet<string> = new Set('71 80 81 82 
 /**
  * How a note is read back from UBL `cbc:Note` (annex A BT-21: "Use #subject code#"): a leading `#code#`, the code
  * non-empty and without `#`, is the subject code (BT-21 / EXT-FR-FE-183), the rest the text (BT-22 / BT-127).
- * The writer refuses the notes this would read back differently.
+ * Line notes follow it at `extended-ctc-fr` only: EN 16931 has no line note subject code, so at `en16931` the
+ * whole line note is BT-127 (CG-70). The writer refuses the notes this would read back differently.
  */
 export const UBL_NOTE_PATTERN = /^#([^#]+)#([\s\S]*)$/
 
@@ -265,9 +266,13 @@ function assertNote(subjectCode: string | undefined, content: string | undefined
     fail(`${ids[1]} starts with "#...#", which UBL reads back as ${ids[0]}; set ${ids[0]} or change the text`)
 }
 
-function assertNotes(invoice: Invoice): void {
+function assertNotes(invoice: Invoice, level: UblLevel): void {
   for (const n of invoice.notes)
     assertNote(n.subjectCode, n.note, ['BT-21 (invoice note subject code)', 'BT-22 (invoice note)'])
+  // EN 16931 has no line note subject code: at `en16931` the reader keeps a leading `#code#` in BT-127 (CG-70),
+  // so such a text reads back unchanged. A subject code is refused there by the level gate.
+  if (level === 'en16931')
+    return
   for (const line of invoice.lines) {
     for (const n of line.notes)
       assertNote(n.subjectCode, n.note, ['EXT-FR-FE-183 (invoice line note subject code)', 'BT-127 (invoice line note)'])
@@ -1013,7 +1018,8 @@ function header(root: XmlElement, invoice: Invoice, level: UblLevel, creditNote:
  * - BT-24 is set to anything but the `cbc:CustomizationID` of `level`;
  * - EXT-FR-FE-180 is set without a line period (BR-CO-20), or, at `extended-ctc-fr`, a line whose EXT-FR-FE-163 is
  *   `DETAIL` or unset lacks BG-29, BT-129 or BG-30 (BR-26, BR-FREXT-22, BR-FREXT-CO-04 / UBL-FREXT-SR-48);
- * - a note would read back differently from `#subject#text` (`UBL_NOTE_PATTERN`).
+ * - a note would read back differently from `#subject#text` (`UBL_NOTE_PATTERN`; line notes at `extended-ctc-fr`
+ *   only, CG-70).
  */
 export async function invoiceToUbl(invoice: Invoice, options: InvoiceToUblOptions): Promise<XmlDocument> {
   const level = options?.level
@@ -1046,7 +1052,7 @@ export async function invoiceToUbl(invoice: Invoice, options: InvoiceToUblOption
   assertUblNesting(full)
   assertSpecification(full, level)
   assertUblLines(full, level)
-  assertNotes(full)
+  assertNotes(full, level)
 
   return buildUbl(full, level, root)
 }
