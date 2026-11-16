@@ -730,17 +730,7 @@ export async function ublToInvoice(xml: string | Buffer | XmlDocument): Promise<
       throw new Error('ublToInvoice: cbc:CustomizationID (BT-24) is missing or names no specification this package maps (EN 16931, a CIUS of it without extension, or EXTENDED-CTC-FR)')
     const rootName = doc.root.name as UBL_ROOT
     const invoice = read(doc.root, rootName, level)
-    // Compared as re-parsed text: the writer's `addElement('cbc:X')` names the element `cbc:X` in the root's
-    // namespace in memory, and only its serialisation carries the UBL namespaces.
-    const built = buildUbl(invoice, level, rootName, { lenient: true })
-    let serialised: string
-    try {
-      serialised = built.toString()
-    }
-    finally {
-      built.dispose()
-    }
-    const written = XmlDocument.fromString(serialised)
+    const written = buildUbl(invoice, level, rootName, { lenient: true })
     try {
       return { invoice, dropped: ublDiffPaths(doc, written) }
     }

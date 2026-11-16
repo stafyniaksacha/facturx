@@ -1,4 +1,5 @@
 import type { Invoice } from '@stafyniaksacha/facturx/en16931'
+import type { XmlElement } from 'libxml2-wasm'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { check, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
@@ -583,3 +584,20 @@ function minimal({ typeCode = '380', projectReference, paymentDueDate, netPrice 
     vatBreakdown: [{ categoryTaxableAmount: net, categoryTaxAmount: vat, categoryCode: 'S', categoryRate: 20 }],
   } as Invoice
 }
+
+describe('invoiceToUbl: returned document', () => {
+  it('carries real namespaces: namespace-bound XPath finds cbc:ID and cac:AccountingSupplierParty', async () => {
+    const twin = TWINS.find(t => t.name === 'UC1' && t.level === 'en16931')!
+    const doc = await invoiceToUbl(await twinInvoice(twin), { level: 'en16931' })
+    try {
+      expect(doc.root.namespaceUri).toBe('urn:oasis:names:specification:ubl:schema:xsd:Invoice-2')
+      expect(doc.find('/*/cbc:ID', NS).map(n => n.content)).toEqual(['F202500003'])
+      expect(doc.find('/*/cac:AccountingSupplierParty', NS)).toHaveLength(1)
+      const id = doc.get('/*/cbc:ID', NS) as XmlElement
+      expect([id.name, id.namespaceUri]).toEqual(['ID', NS.cbc])
+    }
+    finally {
+      doc.dispose()
+    }
+  })
+})

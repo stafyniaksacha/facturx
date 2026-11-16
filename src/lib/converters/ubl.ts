@@ -1001,7 +1001,7 @@ function header(root: XmlElement, invoice: Invoice, level: UblLevel, creditNote:
  * Write an EN 16931 invoice as UBL 2.1 at `level` (`en16931` or `extended-ctc-fr`): the root `options.root`
  * names, else a `CreditNote` when BT-3 is a credit note code of BR-CL-01 (`UBL_CREDIT_NOTE_TYPE_CODES`) and an
  * `Invoice` otherwise. BT-3 must be in the BR-CL-01 list of that root (`81` is in both). The caller owns the returned document: serialise it with `.toString()`, then
- * `dispose()` it.
+ * `dispose()` it. Its nodes carry the UBL namespaces (namespace-bound XPath works on it).
  *
  * Throws, naming the business term (never quoting invoice content), for everything `toCii()` refuses that
  * is not CII-specific (mandatory terms, BR-DEC Amount decimals, dates, plain-object arrays ...), and when:
@@ -1064,12 +1064,24 @@ export async function invoiceToUbl(invoice: Invoice, options: InvoiceToUblOption
  */
 export function buildUbl(full: Invoice, level: UblLevel, root: UBL_ROOT, options: { lenient?: boolean } = {}): XmlDocument {
   lenient = options.lenient === true
+  let built: XmlDocument
   try {
-    return build(full, level, root)
+    built = build(full, level, root)
   }
   finally {
     lenient = false
   }
+  // `addElement('cbc:X')` names the element `cbc:X` in the root's namespace in memory; only the serialisation
+  // carries the UBL namespaces. Re-parsed (default options) so the returned nodes are in their real namespaces
+  // and namespace-bound XPath works on them.
+  let serialised: string
+  try {
+    serialised = built.toString()
+  }
+  finally {
+    built.dispose()
+  }
+  return XmlDocument.fromString(serialised)
 }
 
 function build(full: Invoice, level: UblLevel, root: UBL_ROOT): XmlDocument {

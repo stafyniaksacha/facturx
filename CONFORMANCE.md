@@ -121,6 +121,7 @@ covers what `invoiceToXml()` writes, not EXTENDED fields the models lack (see CG
 | CG-71 | spec | annex B `F202500001` UBL vs CII twins (BT-158-2, BG-32) | docs | The two renderings of the same invoice differ: the UBL twins add `listVersionID="ATTR2"` to the item classification of line 2, and lack the second item attribute (`CO2(g)` = `30`) the CII twins give line 3 |
 | CG-72 | UBL, spec | BT-90 in annex A: a seller row and a payee row (both UBL CSVs) vs one model term | interop | A source with a payee may carry BT-90 on the seller. `ublToInvoice()` reads it (UBL-SR-29 counts `SEPA` ids document-wide); `invoiceToUbl()` writes BT-90 with the payee, so `dropped` reports the seller-side identifier although the value is kept |
 | CG-73 | security, data integrity, CII | internal DTD entities vs `xmlToInvoice()` / `fromCii()` | data-loss (silent, open) | A CII document whose DOCTYPE declares an entity standing for an element (e.g. `ram:BuyerReference`) loses it: the parser does not expand entities (default options, on purpose) and reads around the reference, and `fromCii()` cannot see it, so `dropped` is empty. `ublToInvoice()` refuses any DOCTYPE; the CII side is fixed outside this PR |
+| CG-74 | API, CII | `invoiceToXml()` returned `XmlDocument` vs XML namespaces | interop (open) | The children of the returned document are built with `addElement('ram:X')`, which in libxml2-wasm gives an element named `ram:X` with no namespace in memory: namespace-bound XPath on the returned document finds nothing; its serialisation is correct. `invoiceToUbl()` re-parses before returning; the CII writer is fixed outside this PR |
 | CG-34 | French CTC, lifecycle, upstream | Annex A `annex-a--BR-FR-CDV_pour_factures.csv`, `annex-a--Tableau_des_motifs_de_STATUTS.csv` vs `BR-FR-CDV-Schematron-CDAR` | interop | The published BR-FR-CDV Schematron cannot fail on several Annex A rules, and some of its code lists differ from Annex A |
 | CG-36 | spec | §version history p.7–8 vs the EXTENDED field matrix | — | The 1.09 version history contradicts the field matrix on several new fields (unresolved) |
 | CG-37 | parser, models | EXTENDED XSD `NoteType/Content` `minOccurs="0"` | data-loss | A note without `Content` (BT-22 / BT-127) comes back with an empty `Content` element |
@@ -1122,7 +1123,8 @@ paths and the code supports both, so nothing here is picked.
 - **Writer:** writes BT-90 with the payee when there is one, else with the seller.
 - **Effect:** for a source with a payee and BT-90 on the seller, the value is kept but its place is not:
   `dropped` reports the seller's `cac:PartyIdentification/cbc:ID` and its `@schemeID`. A second read of the
-  written document drops nothing.
+  written document drops nothing. This non-empty `dropped` for a kept BT-90 is a deliberate over-report (the writer
+  places BT-90 with the payee), preferred to the risk of a silent loss.
 - **Evidence:** `python3 -I -c "import csv,sys; [print(f.split('--')[-1],r[1],r[8]) for f in sys.argv[1:] for r in csv.reader(open(f,encoding='utf-8')) if len(r)>8 and r[1]=='BT-90']" spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EN16931_FR.csv spec/afnor-xp-z12-012-1.4/text/annex-a--Flux_2_UBL_EXT-CTC-FR.csv`;
   `grep -o '\[UBL-SR-29\][^<]*' src/lib/xsd/ubl/en16931/EN16931-UBL-validation.xslt | head -1`;
   `pnpm build && pnpm vitest run tests/ubl-reader.test.ts -t "BT-90 from the seller"`.
@@ -1139,3 +1141,16 @@ paths and the code supports both, so nothing here is picked.
   document.
 - **Open (fixed outside this PR):** the CII parser / `fromCii()`; the test pins today's behaviour.
 - **Evidence:** `pnpm build && pnpm vitest run tests/ubl-reader.test.ts -t "DOCTYPE"`.
+
+### CG-74 — `invoiceToXml()` returns a document whose children carry no namespace in memory (interop, open)
+
+- **Issue:** `src/lib/converters/facturx.ts` builds every child with `addElement('rsm:X')` / `addElement('ram:X')`.
+  libxml2-wasm then creates an element whose name is `ram:X` and whose namespace is empty (the second argument of
+  `addElement` is the prefix). `toString()` writes the right text, and every caller in the package serialises
+  first, so the written XML is correct; but namespace-bound XPath, or any namespace-aware walk, on the returned
+  `XmlDocument` finds nothing.
+- **UBL:** `invoiceToUbl()` had the same trait (elements named `cbc:X` in the root's namespace). It now serialises
+  and re-parses (default options) before returning; a test runs namespace-bound XPath on its result.
+- **Open (fixed outside this PR):** `invoiceToXml()`; the test pins today's behaviour.
+- **Evidence:** `pnpm build && pnpm vitest run tests/converter.test.ts -t "CG-74"`;
+  `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "real namespaces"`.
