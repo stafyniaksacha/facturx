@@ -1030,20 +1030,30 @@ paths and the code supports both, so nothing here is picked.
 
 ### CG-69 — Line price, quantity and VAT: `1..1` in annex A, conditional in the Schematrons; `toCii()` gap (open)
 
-- **Spec:** annex A UBL gives BG-29 / BT-146 `1..1` (and BT-129, BG-30, CG-54). `EXTENDED-CTC-FR-UBL` requires them
-  only on a line "in the calculation" (`$lineInCalul`: no `cac:BillingReference` whose document is BT-1, or one
-  with `cbc:DocumentStatusCode` `DETAIL`): BR-FREXT-26 (message `[BR-26]`, l.1886, BT-146), BR-FREXT-22 (l.1840,
-  BT-129), UBL-SR-50 (one `cac:ClassifiedTaxCategory`), all fatal. The CII EXTENDED-CTC-FR Schematron has the
-  same condition on the rule text's "DETAIL or not specified": context
+- **Spec:** annex A UBL gives BG-29 / BT-146 `1..1` (and BT-129, BG-30, CG-54). The rule texts of
+  `EXTENDED-CTC-FR-UBL` require them only "if the Subtype of invoice line item (EXT-FR-FE-163) has the value DETAIL
+  or is not specified": BR-FREXT-26 (message `[BR-26]`, l.1886, BT-146), BR-FREXT-22 (l.1845, BT-129),
+  BR-FREXT-CO-04 (l.1905, BT-151) and UBL-FREXT-SR-48 (l.15595, exactly one `cac:ClassifiedTaxCategory`), all
+  fatal. The CII EXTENDED-CTC-FR Schematron applies the rule text as written: context
   `AssociatedDocumentLineDocument[not(ram:LineStatusReasonCode) or ram:LineStatusReasonCode = 'DETAIL']`
   (`src/lib/xsd/facturx/extended-ctc-fr/EXTENDED-CTC-FR-CII.xslt` l.1340) with BR-FREXT-BR-26 (BT-146), the
   `BilledQuantity` assert (l.1376) and the line VAT category assert.
+- **UBL XPath vs rule text (upstream):** the UBL asserts test a `$lineInCalul` variable defined twice, differently.
+  At l.1837 (BR-FREXT-22, -26, -CO-04) it is `not(cac:BillingReference/cac:InvoiceDocumentReference/cbc:ID = $invoiceID)`
+  or that reference's status is `DETAIL`; at l.15587 (UBL-FREXT-SR-48) it is
+  `not(cac:BillingReference/cac:InvoiceDocumentReference/cbc:ID)` (any billing reference) or status `DETAIL`. Both
+  treat a line whose status reference (`cbc:ID` = BT-1) has a parent line but no `cbc:DocumentStatusCode` as out of
+  the calculation, so the UBL Schematron accepts such a line without price, quantity or VAT category, while the rule
+  text and the CII context require them; the l.15587 variant also exempts from UBL-FREXT-SR-48 a line that carries only a
+  preceding invoice reference (EXT-FR-FE-BG-06), with no status reference.
 - **Writer:** at `extended-ctc-fr`, `invoiceToUbl()` refuses a line whose EXT-FR-FE-163 is `DETAIL` or unset
-  without BG-29, BT-129 or BG-30 (the rule text's condition; below that level the shared checks require them
-  always). A parent-line reference without subtype is treated as "not specified", stricter than `$lineInCalul`.
+  without BG-29, BT-129 or BG-30, deliberately following the rule text and the CII context, stricter than the UBL
+  Schematron's XPath (below that level the shared checks require them always).
 - **Open (fixed outside this PR):** `toCii()` at `extended-ctc-fr` accepts such a line (its line checks waive
   BG-29 / BT-129 / BG-30 at both extended levels) and writes CII that its own Schematron refuses with
   BR-FREXT-BR-26.
 - **Evidence:** `grep -n -B10 'name="id">BR-FREXT-26' src/lib/xsd/ubl/extended-ctc-fr/EXTENDED-CTC-FR-UBL.xslt | grep 'test='`;
+  `grep -n 'BR-FREXT-22\|BR-FREXT-CO-04\|UBL-FREXT-SR-48' src/lib/xsd/ubl/extended-ctc-fr/EXTENDED-CTC-FR-UBL.xslt`;
+  `grep -n -A1 'name="lineInCalul"' src/lib/xsd/ubl/extended-ctc-fr/EXTENDED-CTC-FR-UBL.xslt`;
   `grep -n 'name="id">BR-FREXT-BR-26' src/lib/xsd/facturx/extended-ctc-fr/EXTENDED-CTC-FR-CII.xslt`;
   `pnpm build && pnpm vitest run tests/ubl-writer.test.ts -t "CG-69"` (includes the `toCii()` reproduction).

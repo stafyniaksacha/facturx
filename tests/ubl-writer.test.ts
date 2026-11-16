@@ -460,7 +460,7 @@ describe('invoiceToUbl: refusals', () => {
   it.each([
     ['BG-29', (i: Invoice) => { i.lines[0].price = undefined }, 'BR-26'],
     ['BT-129', (i: Invoice) => Object.assign(i.lines[0], { invoicedQuantity: undefined, invoicedQuantityUnitCode: undefined }), 'BR-FREXT-22'],
-    ['BG-30', (i: Invoice) => { i.lines[0].vat = undefined }, 'UBL-SR-50'],
+    ['BG-30', (i: Invoice) => { i.lines[0].vat = undefined }, 'BR-FREXT-CO-04, UBL-FREXT-SR-48'],
   ] as const)('refuses a DETAIL or unset-subtype line without %s at extended-ctc-fr (CG-69)', async (id, mutate, rule) => {
     const invoice = minimal({})
     mutate(invoice)

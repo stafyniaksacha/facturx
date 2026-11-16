@@ -243,7 +243,7 @@ function assertUblLines(invoice: Invoice, level: UblLevel): void {
     // start or end date (CG-68).
     if (line.vat?.vatPointDateCode !== undefined && line.period?.startDate === undefined && line.period?.endDate === undefined)
       fail('EXT-FR-FE-180 (line value added tax point date code) needs BT-134 or BT-135 (invoice line period) in UBL: it sits in `cac:InvoicePeriod` (BR-CO-20)')
-    // EXTENDED-CTC-FR-UBL BR-FREXT-26 ([BR-26]), BR-FREXT-22 and UBL-SR-50: a line whose subtype EXT-FR-FE-163 is
+    // EXTENDED-CTC-FR-UBL BR-FREXT-26 ([BR-26]), BR-FREXT-22, BR-FREXT-CO-04 and UBL-FREXT-SR-48: a line whose subtype EXT-FR-FE-163 is
     // `DETAIL` or not specified needs its net price, quantity and one VAT category (CG-69). Below
     // extended-ctc-fr the shared checks already require them.
     if (level === 'extended-ctc-fr' && (line.statusReasonCode === undefined || line.statusReasonCode === 'DETAIL')) {
@@ -252,7 +252,7 @@ function assertUblLines(invoice: Invoice, level: UblLevel): void {
       if (line.invoicedQuantity === undefined)
         fail('BT-129 (invoiced quantity) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (BR-FREXT-22)')
       if (!line.vat)
-        fail('BG-30 (line VAT information) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (UBL-SR-50)')
+        fail('BG-30 (line VAT information) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (BR-FREXT-CO-04, UBL-FREXT-SR-48)')
     }
   }
 }
@@ -986,7 +986,7 @@ function header(root: XmlElement, invoice: Invoice, level: UblLevel, creditNote:
  * - BT-9 of a credit note, or the payer, has no `cac:PaymentMeans` to sit in;
  * - BT-24 is set to anything but the `cbc:CustomizationID` of `level`;
  * - EXT-FR-FE-180 is set without a line period (BR-CO-20), or, at `extended-ctc-fr`, a line whose EXT-FR-FE-163 is
- *   `DETAIL` or unset lacks BG-29, BT-129 or BG-30 (BR-26, BR-FREXT-22, UBL-SR-50);
+ *   `DETAIL` or unset lacks BG-29, BT-129 or BG-30 (BR-26, BR-FREXT-22, BR-FREXT-CO-04 / UBL-FREXT-SR-48);
  * - a note would read back differently from `#subject#text` (`UBL_NOTE_PATTERN`).
  */
 export async function invoiceToUbl(invoice: Invoice, options: InvoiceToUblOptions): Promise<XmlDocument> {
