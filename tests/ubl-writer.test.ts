@@ -2,10 +2,11 @@ import type { Invoice } from '@stafyniaksacha/facturx/en16931'
 import type { XmlElement } from 'libxml2-wasm'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { check, fromCii, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, fromCii, invoiceToUbl, invoiceToXml, toCii, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
-import { invoiceToUbl, UBL_CREDIT_NOTE_TYPE_CODES } from '../src/lib/converters/ubl'
+// Not public (kept internal): the BR-CL-01 credit note list the root choice uses.
+import { UBL_CREDIT_NOTE_TYPE_CODES } from '../src/lib/converters/ubl'
 
 const FACTURES = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
 const NS = {

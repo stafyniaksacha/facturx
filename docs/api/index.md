@@ -41,6 +41,10 @@ import { AmountType, CrossIndustryInvoiceType, IDType /* … */ } from '@stafyni
 | [`xmlToInvoice(xml)`](/api/parsing) | `() => Promise<CrossIndustryInvoiceType>` | Parse XML into a typed model. |
 | [`invoiceToXml(invoice)`](/api/parsing) | `() => Promise<XmlDocument>` | Serialize a model back to XML. |
 | [`Models`](/api/models) | namespace | All Cross Industry Invoice model classes & types. |
+| [`EN16931`](/guide/en16931-model) | namespace | The syntax-neutral EN 16931 model classes (also flat in `@stafyniaksacha/facturx/en16931`). |
+| [`toCii(invoice, { level })` / `fromCii(cii)`](/guide/en16931-model) | functions | EN 16931 model ⇄ CII model. |
+| [`invoiceToUbl(invoice, { level })` / `ublToInvoice(xml)`](/guide/en16931-model#ubl-invoicetoubl-and-ubltoinvoice) | `() => Promise<XmlDocument>` / `() => Promise<{ invoice, dropped }>` | EN 16931 model ⇄ UBL 2.1 XML (XML only, not embeddable in a PDF). |
+| [`en16931ToXml(invoice, { syntax, level })` / `xmlToEn16931(xml)`](/guide/en16931-model#cii-and-ubl) | `() => Promise<XmlDocument>` / `() => Promise<{ invoice, dropped, syntax }>` | Write CII or UBL; read either, choosing the reader from the root element. |
 
 ## Typical flows
 

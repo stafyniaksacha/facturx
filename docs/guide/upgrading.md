@@ -346,7 +346,7 @@ result.level // 'en16931' | 'extended-ctc-fr', from cbc:CustomizationID
 ```
 
 CIUS rule sets such as Peppol BIS are **not** run, step 4 (Chorus Pro `BR-France-CTC-CPRO`) has no
-published Schematron, and UBL is validation only (see above). Details:
+published Schematron, and UBL cannot be embedded in a PDF (see above); reading and writing it go through the EN 16931 model (below). Details:
 
 - The level comes from `cbc:CustomizationID`: `urn:cen.eu:en16931:2017` and a `#compliant#` CIUS id (with no
   `#conformant#` extension after it) give `en16931`; the exact EXTENDED-CTC-FR id gives `extended-ctc-fr`;
@@ -374,9 +374,34 @@ const out = (await invoiceToXml(toCii(invoice, { level: 'en16931' }))).toString(
 ```
 
 `toCii()` throws, naming the business term, when the invoice cannot be written at the level; `fromCii()` throws
-for MINIMUM and BASIC WL. UBL reading and writing are not part of this release. See the
+for MINIMUM and BASIC WL. UBL reading and writing use the same model (next section). See the
 [EN 16931 model guide](/guide/en16931-model). The classes (without the `EN16931.` prefix), `fromCii()` and `toCii()` are also
 exported from the subpath `@stafyniaksacha/facturx/en16931`.
+
+### UBL 2.1 through the EN 16931 model: `invoiceToUbl()`, `ublToInvoice()`, `en16931ToXml()`, `xmlToEn16931()`
+
+New and additive. `invoiceToUbl(invoice, { level })` writes an EN 16931 invoice as a UBL 2.1 `Invoice` (or a
+`CreditNote` for a BR-CL-01 credit note type code) at `en16931` or `extended-ctc-fr`, and returns an `XmlDocument`
+like `invoiceToXml()`. `ublToInvoice(xml)` reads one back as `{ invoice, dropped }`, with the same `dropped` contract
+as `fromCii()`. `en16931ToXml(invoice, { syntax, level })` and `xmlToEn16931(xml)` choose CII or UBL for you, so a CII
+invoice becomes UBL with one read and one write:
+
+```ts
+import { en16931ToXml, xmlToEn16931 } from '@stafyniaksacha/facturx'
+
+const { invoice, dropped, syntax } = await xmlToEn16931(ciiXml) // or a UBL document
+const doc = await en16931ToXml(invoice, { syntax: 'ubl', level: 'en16931' })
+const ublXml = doc.toString()
+doc.dispose()
+```
+
+UBL stays XML only: `generate()` and `extract({ check: true })` still refuse it. The UBL writer throws, naming the
+term, on what UBL has no place for, which a CII invoice often holds: contact department names (BT-41-0, BT-56-0),
+a project name (BT-11-0) other than the Factur-X default, the line grand total (EXT-FR-FE-184), a payment card
+(BG-18, UBL needs a network id), and a BT-24 of another syntax or level (clear it to get the UBL one). Clear the
+named term and write again. `ublToInvoice()` refuses a document with a DOCTYPE. `invoiceToUbl()` and
+`ublToInvoice()` are also exported from `@stafyniaksacha/facturx/en16931`. See the
+[EN 16931 model guide](/guide/en16931-model#ubl-invoicetoubl-and-ubltoinvoice).
 
 ### `afRelationship` option for `generate()`
 
@@ -452,6 +477,8 @@ left undefined.
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).
 - [ ] If you handle UBL invoices: `check()` now returns `flavor: 'ubl'` instead of throwing, and
       `generate()` / `extract({ check: true })` refuse UBL. Drop any code that relied on the old error.
+- [ ] To read, write or convert UBL invoices, use `ublToInvoice()` / `invoiceToUbl()` or
+      `xmlToEn16931()` / `en16931ToXml()` (optional, additive).
 - [ ] If you compare PDF dates with the invoice date, or snapshot `generate()` output, pass `meta.date`
       or expect the generation time.
 - [ ] Make sure the PDF you pass to `generate()` is already PDF/A-3: it is not converted (the docs

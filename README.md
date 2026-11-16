@@ -14,7 +14,7 @@ Conforms to **Factur-X 1.09 / ZUGFeRD 2.5** (the EN 16931 European e-invoicing s
 - 🧱 **Build** a Cross Industry Invoice model and serialize it to XML — `invoiceToXml`
 - ✅ **Validate** against the Factur-X **XSD** (1.09 for MINIMUM/BASIC, the FNFE-MPE 1.09.2.fixFR04 assets for BASIC WL/EN 16931/EXTENDED), and optionally the **Schematron** EN 16931 `BR-*` business rules and code lists — `check` (`schematron: true`) / `validateSchematron`
 - 🇫🇷 **French e-invoicing rules** `BR-FR-Flux2` (XP Z12-012 v1.4.0) for Factur-X BASIC WL, EN16931 and EXTENDED (and plain-CII EXTENDED-CTC-FR, with its own XSD and Schematron), opt-in — `check` (`frCtc: true`) / `validateFrCtc` / `facturx check --fr-ctc`; lifecycle status messages (CDAR) with `validateCdar` / `facturx check-cdar`
-- 🧩 **EN 16931 model**: a syntax-neutral invoice keyed by business terms (`BT-*`, `BG-*`, and the French `EXT-FR-FE-*` fields), mapped to and from CII for BASIC, EN 16931, EXTENDED and EXTENDED-CTC-FR; it reports in `dropped` what it cannot hold and throws, naming the term, on what a level cannot carry — `EN16931` / `fromCii` / `toCii` (CII only for now, see the [guide](https://stafyniaksacha.github.io/facturx/guide/en16931-model))
+- 🧩 **EN 16931 model**: a syntax-neutral invoice keyed by business terms (`BT-*`, `BG-*`, and the French `EXT-FR-FE-*` fields), mapped to and from CII (BASIC, EN 16931, EXTENDED, EXTENDED-CTC-FR) and UBL 2.1 (EN 16931, EXTENDED-CTC-FR), so it converts between the two; it reports in `dropped` what it cannot hold and throws, naming the term, on what a level or syntax cannot carry — `EN16931` / `fromCii` / `toCii` / `invoiceToUbl` / `ublToInvoice` / `en16931ToXml` / `xmlToEn16931` (see the [guide](https://stafyniaksacha.github.io/facturx/guide/en16931-model))
 - 🗂 All five Factur-X profiles: `minimum`, `basicwl`, `basic`, `en16931`, `extended`
 
 See [Profiles & flavors](https://stafyniaksacha.github.io/facturx/guide/profiles-and-flavors) for the supported flavors, levels and autodetection rules.
@@ -50,7 +50,7 @@ const { xml: extractedXml, flavor } = await extract({ pdf })
 const { valid, errors, level } = await check({ xml: extractedXml })
 ```
 
-`generate` and `check` autodetect the `flavor` and `level` from the XML when not provided. `check` also validates UBL 2.1 invoices (flavor `ubl`, validation only: UBL can't be embedded in a PDF). `extract`
+`generate` and `check` autodetect the `flavor` and `level` from the XML when not provided. `check` also validates UBL 2.1 invoices (flavor `ubl`), which the EN 16931 model reads and writes as XML; UBL can't be embedded in a PDF. `extract`
 reports only the flavor; run `check` on the extracted XML to get its level.
 
 ## Documentation

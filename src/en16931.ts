@@ -1,4 +1,8 @@
+export { invoiceToUbl } from './lib/converters/ubl'
+export type { InvoiceToUblOptions, UblLevel } from './lib/converters/ubl'
 export { fromCii, toCii } from './lib/mapping/cii'
 export type { FromCiiResult, ToCiiOptions } from './lib/mapping/cii'
 export * from './lib/models/en16931'
 export type { En16931Level } from './lib/models/en16931/level'
+export { ublToInvoice } from './lib/parsers/ubl'
+export type { UblToInvoiceResult } from './lib/parsers/ubl'

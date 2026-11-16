@@ -1,11 +1,11 @@
 import type { Invoice } from '@stafyniaksacha/facturx/en16931'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { check, fromCii, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, fromCii, invoiceToUbl, ublToInvoice, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument, XmlElement } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
-import { buildUbl, invoiceToUbl } from '../src/lib/converters/ubl'
-import { ublToInvoice } from '../src/lib/parsers/ubl'
+// Not public: the lenient write-back the reader computes `dropped` with.
+import { buildUbl } from '../src/lib/converters/ubl'
 
 const FACTURES = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures')
 
@@ -34,41 +34,23 @@ interface Example {
   /** What `ublToInvoice()` reports in `dropped` for the source, with the reason. */
   dropped: string[]
   unwritable?: Unwritable
-  /**
-   * Model terms of the CII twin the UBL source does not hold (`fromCii` vs `ublToInvoice`), as paths of the JSON
-   * model, each explained in CONFORMANCE.md. Compared after removing CG-62 (BT-149-1 equal to BT-149, one UBL
-   * `cbc:BaseQuantity`) and CG-63 (schemeless BT-29 / BT-71 the UBL twins leave out) from the CII side.
-   */
-  twinOnly: string[]
-  /** Model terms the UBL source holds that its CII twin does not. */
-  ublOnly?: string[]
-  privateIds?: true
 }
 
-// CG-59: the CII twins carry contact department names UBL has no element for.
-const SELLER_DEP = '.seller.contact.departmentName'
-const BUYER_DEP = '.buyer.contact.departmentName'
-const DEPS = [SELLER_DEP, BUYER_DEP]
-// CG-71: annex B F202500001 twins disagree on two item details.
-// CG-70: at en16931 the UBL line note `#BLU#DONT …` is BT-127 verbatim; the CII twin has the text alone.
-const LINE_NOTE = '.lines.1.notes.0.note'
-const F202500001_CONTENT = { twinOnly: ['.lines.2.item.attributes.1.name', '.lines.2.item.attributes.1.value'], ublOnly: ['.lines.1.item.classifications.0.listVersionId'] }
-
+// The model read from each UBL example is compared with its CII twin's in tests/ubl-cross-syntax.test.ts.
 const EXAMPLES: Example[] = [
-  { name: 'F202500001', level: 'en16931', ubl: 'F202500001/_EN16931/F202500001_INV_20250201_EN16931_UBL_Commentee.xml', cii: 'F202500001/_EN16931/F202500001_INV_20250201_CII_EN16931_FX_CII_Commentee.xml', dropped: [], privateIds: true, twinOnly: [BUYER_DEP, LINE_NOTE, ...F202500001_CONTENT.twinOnly], ublOnly: [LINE_NOTE, ...F202500001_CONTENT.ublOnly] },
-  { name: 'UC1', level: 'en16931', ubl: 'F202500003/_EN16931/UC1_F202500003_00-INV_20250701_EN16931_UBL_Commentee.xml', cii: 'F202500003/_EN16931/UC1_F202500003_00-INV_20250701_EN16931_FX_CII_Commentee.xml', dropped: [], twinOnly: DEPS },
-  { name: 'UC4', level: 'en16931', ubl: 'Facture et Facture Rectificative/UC4_F202500006_00-INV_20250701_EN16931_UBL_Commentee.xml', cii: 'Facture et Facture Rectificative/UC4_F202500006_00-INV_20250701_EN16931_FX_CII_Commentee.xml', dropped: [], twinOnly: DEPS },
-  { name: 'UC4b', level: 'en16931', ubl: 'Facture et Facture Rectificative/UC4b_F202500010_00-INVCORR_20250702_EN16931_UBL_Commentee.xml', cii: 'Facture et Facture Rectificative/UC4b_F202500010_00-INVCORR_20250702_EN16931_FX_CII_Commentee.xml', dropped: [], twinOnly: DEPS },
-  { name: 'UC5', level: 'en16931', ubl: 'Facture et Avoir/UC5_F202500007_00-INV_20250702_EN16931_UBL_Commentee.xml', cii: 'Facture et Avoir/UC5_F202500007_00-INV_20250702_EN16931_FX_CII_Commentee.xml', dropped: [], twinOnly: DEPS },
-  { name: 'UC5b', level: 'en16931', ubl: 'Facture et Avoir/UC5b_F202500011_00-CN_20250703_EN16931_UBL_Commentee.xml', cii: 'Facture et Avoir/UC5b_F202500011_00-CN_20250703_EN16931_FX_CII_Commentee.xml', dropped: [], twinOnly: DEPS },
-  // CG-45: the source K charge lacks the exemption reason its CII twin carries.
-  { name: 'F202500001', level: 'extended-ctc-fr', ubl: 'F202500001/_EXTENDED-CTC-FR/F202500001_INV_20250201_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'F202500001/_EXTENDED-CTC-FR/F202500001_INV_20250201_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: [], privateIds: true, twinOnly: [BUYER_DEP, '.charges.2.vatExemptionReason', '.charges.2.vatExemptionReasonCode', ...F202500001_CONTENT.twinOnly], ublOnly: F202500001_CONTENT.ublOnly },
-  { name: 'UC1', level: 'extended-ctc-fr', ubl: 'F202500003/_EXTENDED/UC1_F202500003_00-INV_20250701_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'F202500003/_EXTENDED/UC1_F202500003_00-INV_20250701_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: [], twinOnly: DEPS },
-  // CG-61: the card network id has no model place; CG-60: line grand totals.
-  { name: 'UC10', level: 'extended-ctc-fr', ubl: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Multi-Vendeur/UC10_F202600004_MULTI-VENDEUR_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Multi-Vendeur/UC10_F202600004_MULTI-VENDEUR_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: ['/Invoice/cac:PaymentMeans/cac:CardAccount/cbc:NetworkID'], unwritable: CARD, twinOnly: [...DEPS, '.paymentInstructions.card.primaryAccountNumber', '.lines.0.grandTotalAmount', '.lines.3.grandTotalAmount'] },
-  { name: 'UC11', level: 'extended-ctc-fr', ubl: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Multi-Vendeur/UC11_F202600022_MULTI-VENDEUR_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Multi-Vendeur/UC11_F202600022_MULTI-VENDEUR_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: [], twinOnly: [...DEPS, '.lines.0.grandTotalAmount', '.lines.4.grandTotalAmount'] },
-  { name: 'UC12', level: 'extended-ctc-fr', ubl: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Sous-ligne/UC12_F202600025_SOUS-LIGNE_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Sous-ligne/UC12_F202600025_SOUS-LIGNE_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: [], twinOnly: DEPS },
-  { name: 'UC13', level: 'extended-ctc-fr', ubl: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Bidirectionnelle/UC13_AUTOF202600035_BIDIRECTIONNELLE_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Bidirectionnelle/UC13_AUTOF202600035_BIDIRECTIONNELLE_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: [], twinOnly: [SELLER_DEP, '.lines.0.grandTotalAmount', '.lines.2.grandTotalAmount'] },
+  { name: 'F202500001', level: 'en16931', ubl: 'F202500001/_EN16931/F202500001_INV_20250201_EN16931_UBL_Commentee.xml', cii: 'F202500001/_EN16931/F202500001_INV_20250201_CII_EN16931_FX_CII_Commentee.xml', dropped: [] },
+  { name: 'UC1', level: 'en16931', ubl: 'F202500003/_EN16931/UC1_F202500003_00-INV_20250701_EN16931_UBL_Commentee.xml', cii: 'F202500003/_EN16931/UC1_F202500003_00-INV_20250701_EN16931_FX_CII_Commentee.xml', dropped: [] },
+  { name: 'UC4', level: 'en16931', ubl: 'Facture et Facture Rectificative/UC4_F202500006_00-INV_20250701_EN16931_UBL_Commentee.xml', cii: 'Facture et Facture Rectificative/UC4_F202500006_00-INV_20250701_EN16931_FX_CII_Commentee.xml', dropped: [] },
+  { name: 'UC4b', level: 'en16931', ubl: 'Facture et Facture Rectificative/UC4b_F202500010_00-INVCORR_20250702_EN16931_UBL_Commentee.xml', cii: 'Facture et Facture Rectificative/UC4b_F202500010_00-INVCORR_20250702_EN16931_FX_CII_Commentee.xml', dropped: [] },
+  { name: 'UC5', level: 'en16931', ubl: 'Facture et Avoir/UC5_F202500007_00-INV_20250702_EN16931_UBL_Commentee.xml', cii: 'Facture et Avoir/UC5_F202500007_00-INV_20250702_EN16931_FX_CII_Commentee.xml', dropped: [] },
+  { name: 'UC5b', level: 'en16931', ubl: 'Facture et Avoir/UC5b_F202500011_00-CN_20250703_EN16931_UBL_Commentee.xml', cii: 'Facture et Avoir/UC5b_F202500011_00-CN_20250703_EN16931_FX_CII_Commentee.xml', dropped: [] },
+  { name: 'F202500001', level: 'extended-ctc-fr', ubl: 'F202500001/_EXTENDED-CTC-FR/F202500001_INV_20250201_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'F202500001/_EXTENDED-CTC-FR/F202500001_INV_20250201_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: [] },
+  { name: 'UC1', level: 'extended-ctc-fr', ubl: 'F202500003/_EXTENDED/UC1_F202500003_00-INV_20250701_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'F202500003/_EXTENDED/UC1_F202500003_00-INV_20250701_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: [] },
+  // CG-61: the card network id has no model place.
+  { name: 'UC10', level: 'extended-ctc-fr', ubl: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Multi-Vendeur/UC10_F202600004_MULTI-VENDEUR_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Multi-Vendeur/UC10_F202600004_MULTI-VENDEUR_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: ['/Invoice/cac:PaymentMeans/cac:CardAccount/cbc:NetworkID'], unwritable: CARD },
+  { name: 'UC11', level: 'extended-ctc-fr', ubl: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Multi-Vendeur/UC11_F202600022_MULTI-VENDEUR_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Multi-Vendeur/UC11_F202600022_MULTI-VENDEUR_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: [] },
+  { name: 'UC12', level: 'extended-ctc-fr', ubl: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Sous-ligne/UC12_F202600025_SOUS-LIGNE_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Sous-ligne/UC12_F202600025_SOUS-LIGNE_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: [] },
+  { name: 'UC13', level: 'extended-ctc-fr', ubl: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Bidirectionnelle/UC13_AUTOF202600035_BIDIRECTIONNELLE_EXTENDED-CTC-FR_UBL_Commentee.xml', cii: 'Facture Sous Ligne - Multi-Vendeur - Bidirectionnelle/_Bidirectionnelle/UC13_AUTOF202600035_BIDIRECTIONNELLE_EXTENDED-CTC-FR_CII_Commentee.xml', dropped: [] },
 ]
 
 const source = (example: Example): Promise<string> => readFile(resolve(FACTURES, example.ubl), 'utf8')
@@ -102,22 +84,6 @@ async function writable(example: Example): Promise<Invoice> {
 }
 
 const ruleId = (finding: { message: string, id?: string }): string => finding.id ?? /^\[([^\]]+)\]/.exec(finding.message)?.[1] ?? finding.message
-
-/** Paths of a JSON model where `a` holds a value `b` does not (undefined and empty arrays are no value). */
-function modelOnly(a: unknown, b: unknown, path = '', out: string[] = []): string[] {
-  if (a === undefined || a === null || (Array.isArray(a) && a.length === 0))
-    return out
-  if (typeof a === 'object') {
-    for (const [key, value] of Object.entries(a as object))
-      modelOnly(value, typeof b === 'object' && b !== null ? (b as Record<string, unknown>)[key] : undefined, `${path}.${key}`, out)
-    return out
-  }
-  if (a !== b)
-    out.push(path)
-  return out
-}
-
-const json = (invoice: Invoice): unknown => JSON.parse(JSON.stringify(invoice))
 
 describe('ublToInvoice: annex B UBL examples', () => {
   it('covers the 12 annex B UBL examples', async () => {
@@ -156,25 +122,6 @@ describe('ublToInvoice: annex B UBL examples', () => {
     // P9 / CG-45: the source K charge lacks its exemption reason; the UBL read from it keeps that warning.
     if (example.name === 'F202500001' && example.level === 'extended-ctc-fr')
       expect((after.schematronWarnings ?? []).map(ruleId)).toContain('BR-FREXT-IC-08rev')
-  })
-
-  it.each(EXAMPLES)('$name ($level): the model read from UBL equals the CII twin\'s but for the registered differences', async (example) => {
-    const { invoice } = await ublToInvoice(await source(example))
-    const twin = fromCii(await xmlToInvoice(await readFile(resolve(FACTURES, example.cii), 'utf8'))).invoice
-    for (const line of twin.lines) {
-      // CG-62: one UBL `cbc:BaseQuantity`; the CII twins repeat BT-149 / BT-150 as BT-149-1 / BT-150-1.
-      if (line.price && line.price.grossPriceBaseQuantity === line.price.priceBaseQuantity) {
-        line.price.grossPriceBaseQuantity = undefined
-        line.price.grossPriceBaseQuantityUnitCode = undefined
-      }
-    }
-    if (example.privateIds) {
-      // CG-63: the UBL twins leave out the schemeless seller and deliver-to identifiers.
-      twin.seller.identifiers = twin.seller.identifiers.filter(i => i.schemeId !== undefined)
-      twin.delivery!.locationIdentifier = undefined
-    }
-    expect(modelOnly(json(twin), json(invoice)).sort()).toEqual([...example.twinOnly].sort())
-    expect(modelOnly(json(invoice), json(twin)).sort()).toEqual([...(example.ublOnly ?? []), ...(example.unwritable === CARD ? ['.paymentInstructions.card.primaryAccountNumber'] : [])].sort())
   })
 })
 

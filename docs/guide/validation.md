@@ -76,6 +76,11 @@ What this does **not** do:
 - UBL is **XML only**: it cannot be embedded in a Factur-X PDF (a hybrid PDF carries CII), so
   [`generate()`](/api/generate) refuses it and `extract({ check: true })` refuses a UBL attachment.
 
+To read a UBL invoice into the syntax-neutral model, write one, or convert between CII and UBL, see
+[UBL 2.1 in the EN 16931 model](/guide/en16931-model#ubl-invoicetoubl-and-ubltoinvoice). `invoiceToUbl()` throws on
+what the level or UBL cannot carry, but it does not run the Schematron: validate what it writes with
+`check({ xml, schematron: true, frCtc: true })` as above.
+
 ## Schematron (business-rule) validation
 
 Since the 1.09 XSDs no longer enumerate code lists, the **Schematron** rules are what enforce valid
