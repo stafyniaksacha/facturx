@@ -283,7 +283,8 @@ level differs): clear the term the error names, then write again.
 - The model read from each annex B UBL document equals the model read from its CII twin, but for a listed set of
   differences between the two publications (`KNOWN_DIFFERENCES` in `tests/ubl-cross-syntax.test.ts`, each a
   `CONFORMANCE.md` entry: department names, line grand totals, the UC10 card, F202500001 content); and each CII twin
-  converts to UBL and back to the same invoice once the refused terms above are cleared.
+  converts to UBL and back to the same invoice once the refused terms above are cleared, except that a gross price
+  base quantity (BT-149-1 / BT-150-1) equal to BT-149 / BT-150 reads back absent: UBL holds one base quantity (CG-62).
 
 ```bash
 pnpm build && pnpm vitest run tests/ubl-writer.test.ts tests/ubl-reader.test.ts tests/ubl-cross-syntax.test.ts
