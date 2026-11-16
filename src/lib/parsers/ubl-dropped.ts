@@ -15,7 +15,9 @@
  *   step carries a 1-based position (`[n]`) only when the source repeats that name under that parent (the CII
  *   difference indexes by model repeatability instead). Positions only, never values.
  *
- * Linear in the size of both documents: each node's canonical key is computed once.
+ * Linear in the size of both documents: each node's key is computed once and interned as a number, so a parent's
+ * key holds its children's numbers, never their key strings (which would grow with the depth, a resource
+ * exhaustion on a deep, wide untrusted document).
  */
 
 import type { XmlDocument } from 'libxml2-wasm'
@@ -41,6 +43,9 @@ interface Node {
   children: Node[]
   key?: string | null
 }
+
+/** Interned keys of one comparison: equal content, equal number. */
+type Interned = Map<string, number>
 
 function qualified(local: string, namespaceUri: string, prefix: string): string {
   const known = PREFIXES[namespaceUri]
@@ -97,8 +102,8 @@ function groups(children: Node[]): Map<string, Node[]> {
   return byName
 }
 
-/** The exact-equality key of a node, `undefined` when it holds no value. Memoised on the node. */
-function key(node: Node): string | undefined {
+/** The exact-equality key of a node (its interned number), `undefined` when it holds no value. Memoised on the node. */
+function key(node: Node, interned: Interned): string | undefined {
   if (node.key !== undefined)
     return node.key ?? undefined
   const parts: string[] = []
@@ -110,16 +115,25 @@ function key(node: Node): string | undefined {
   if (node.text)
     parts.push(`#${JSON.stringify(node.text)}`)
   for (const [name, group] of [...groups(node.children)].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
-    const keys = group.map(child => key(child) ?? 'null')
+    const keys = group.map(child => key(child, interned) ?? 'null')
     if (keys.some(k => k !== 'null'))
       parts.push(`${JSON.stringify(name)}:[${keys.join(',')}]`)
   }
-  const result = parts.length ? `{${parts.join(',')}}` : undefined
+  let result: string | undefined
+  if (parts.length) {
+    const content = `{${parts.join(',')}}`
+    let id = interned.get(content)
+    if (id === undefined) {
+      id = interned.size
+      interned.set(content, id)
+    }
+    result = String(id)
+  }
   node.key = result ?? null
   return result
 }
 
-function walk(a: Node, b: Node | undefined, path: string, out: string[]): void {
+function walk(a: Node, b: Node | undefined, path: string, interned: Interned, out: string[]): void {
   for (const [name, value] of a.attrs) {
     if (value !== '' && b?.attrs.get(name) !== value)
       out.push(`${path}/@${name}`)
@@ -130,9 +144,9 @@ function walk(a: Node, b: Node | undefined, path: string, out: string[]): void {
   for (const [name, group] of groups(a.children)) {
     const others = groupsB.get(name) ?? []
     const indexed = group.length > 1
-    pairElements(group.map(key), others.map(key)).forEach((pair, i) => {
+    pairElements(group.map(n => key(n, interned)), others.map(n => key(n, interned))).forEach((pair, i) => {
       if (pair !== true)
-        walk(group[i], pair === undefined ? undefined : others[pair], `${path}/${name}${indexed ? `[${i + 1}]` : ''}`, out)
+        walk(group[i], pair === undefined ? undefined : others[pair], `${path}/${name}${indexed ? `[${i + 1}]` : ''}`, interned, out)
     })
   }
 }
@@ -144,6 +158,6 @@ function walk(a: Node, b: Node | undefined, path: string, out: string[]): void {
 export function ublDiffPaths(source: XmlDocument, written: XmlDocument): string[] {
   const out: string[] = []
   const a = source.root
-  walk(tree(a, a.name), tree(written.root, written.root.name), `/${a.name}`, out)
+  walk(tree(a, a.name), tree(written.root, written.root.name), `/${a.name}`, new Map(), out)
   return out
 }

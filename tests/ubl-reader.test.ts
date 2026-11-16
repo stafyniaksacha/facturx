@@ -253,6 +253,127 @@ describe('ublToInvoice: dropped', () => {
   })
 })
 
+describe('ublToInvoice: every place the writer writes', () => {
+  // The annex B sources hold none of the agents, invoicee, payer, mandate, BT-90, tax representative, exchange
+  // rate, BT-111, attachments, line references, line delivery, BT-177 / BT-193 or a CreditNote BT-9 / BT-11: the
+  // model read from F202500001 EXTENDED-CTC-FR with all of them added, written by `invoiceToUbl()` and read back.
+  async function populated(withPayee = true): Promise<Invoice> {
+    const { invoice } = await ublToInvoice(await source(EXAMPLES.find(e => e.name === 'F202500001' && e.level === 'extended-ctc-fr')!))
+    const address = { addressLine1: '1 rue A', addressLine2: 'B', addressLine3: 'C', city: 'PARIS', postCode: '75001', countrySubdivision: 'IDF', countryCode: 'FR' }
+    const contact = { point: 'M. X', telephoneNumber: '0102030405', emailAddress: 'x@example.test' }
+    const extra = (siren: string): NonNullable<Invoice['sellerAgent']> => ({ identifiers: [{ value: `${siren}00012`, schemeId: '0009' }], name: `PARTY ${siren}`, roleCode: 'AB', tradingName: `TRADE ${siren}`, legalRegistrationIdentifier: { value: siren, schemeId: '0002' }, electronicAddress: { value: siren, schemeId: '0225' }, vatIdentifier: 'FR88100000009', address, contact })
+    invoice.notes.push({ subjectCode: 'AAI', note: 'Société & Fils <SARL> €' })
+    invoice.orderDate = '2025-01-10'
+    invoice.despatchAdviceReference ??= 'DESADV-H'
+    invoice.despatchAdviceDate = '2025-01-20'
+    invoice.receivingAdviceReference = 'RECADV-H'
+    invoice.tenderOrLotReference = 'LOT-1'
+    invoice.projectReference = 'PROJ-1'
+    invoice.contractReference ??= 'CONTRACT-1'
+    invoice.contractCodeType = 'CT'
+    invoice.contractDate = '2024-12-01'
+    invoice.precedingInvoiceReferences = [{ reference: 'F202400099', issueDate: '2024-12-31', typeCode: '380' }]
+    invoice.additionalDocuments.push({ reference: 'ATT-1', description: 'DOCUMENT_ANNEXE', externalLocation: 'https://example.test/a', attachedDocument: { content: 'JVBERi0xLjQK', mimeCode: 'application/pdf', filename: 'piece.pdf' } })
+    invoice.seller.taxRegistrationIdentifier = 'TAXREG-1'
+    invoice.sellerAgent = extra('100000009')
+    invoice.buyerAgent = extra('200000008')
+    invoice.invoicee = extra('300000007')
+    invoice.billingParty = extra('400000006')
+    invoice.payer = extra('500000005')
+    invoice.sellerTaxRepresentative = { name: 'REPRESENTANT', address, vatIdentifier: 'FR12345678901' }
+    if (withPayee)
+      Object.assign(invoice.payee!, { roleCode: 'PE', electronicAddress: { value: '300000007', schemeId: '0225' }, vatIdentifier: 'FR88100000009', address, contact })
+    else
+      invoice.payee = undefined
+    const payment = invoice.paymentInstructions!
+    payment.creditTransfers.push({ paymentAccountIdentifier: 'FR7630001007941234567890185', paymentAccountName: 'SECOND', paymentServiceProviderIdentifier: 'BICSECOND' })
+    payment.directDebit = { mandateReferenceIdentifier: 'MANDATE-1', bankAssignedCreditorIdentifier: 'FR12ZZZ123456', debitedAccountIdentifier: 'FR7612345678901234567890123' }
+    invoice.deliveryTerms = { deliveryTypeCode: 'EXW', locationName: 'PARIS' }
+    invoice.vatAccountingCurrencyCode = 'USD'
+    invoice.totals.invoiceTotalVatAmountInAccountingCurrency = 9.57
+    invoice.vatCurrencyExchange = { sourceCurrencyCode: 'EUR', targetCurrencyCode: 'USD', exchangeRate: 1.1, exchangeRateDate: '2025-02-01' }
+    const charge = invoice.charges.find(c => c.reason !== undefined)!
+    charge.reasonCode = undefined
+    charge.nonVatTaxCode = 'AAA'
+    const line = invoice.lines[1]
+    line.notes.push({ subjectCode: 'AAI' })
+    line.objectIdentifiers.push({ value: 'OBJ-1', schemeId: 'AAA' })
+    line.unitsInParentLine = 1
+    line.unitsInParentLineUnitCode = 'C62'
+    line.vatAmount = 4.2
+    line.vatAmountInAccountingCurrency = 4.62
+    line.purchaseOrderLineReference = '9'
+    line.purchaseOrderReference = 'PO201925478'
+    line.purchaseOrderDate = '2025-01-10'
+    line.sellerOrderReference = { orderReference: 'SO-1', orderLineReference: '7' }
+    line.despatchAdviceReference = { reference: 'DESADV-1', lineReference: '2', issueDate: '2025-01-20' }
+    line.receivingAdviceReference = { reference: 'RECADV-1', lineReference: '3' }
+    line.precedingInvoiceReferences = [{ reference: 'F202400099', lineReference: '1', typeCode: '380', issueDate: '2024-12-31' }]
+    line.parentLineIdentifier = '1'
+    line.deliverTo = { identifiers: [{ value: '30000000700012', schemeId: '0009' }], name: 'SITE', address }
+    line.actualDelivery = { actualDeliveryDate: '2025-01-31' }
+    line.deliveryTerms = { deliveryTypeCode: 'FCA', locationName: 'LYON' }
+    line.charges[0].nonVatTaxCode = 'AAA'
+    line.item.attributes.push({ name: 'POIDS', typeCode: 'AAB', valueQuantity: 1.5, valueQuantityUnitCode: 'KGM' })
+    line.item.standardIdentifier = { value: '3017620422003', schemeId: '0160' }
+    line.item.buyersIdentifier = 'BUYER-ITEM'
+    line.item.countryOfOrigin = 'FR'
+    line.price!.priceDiscount = 0.5
+    line.price!.priceDiscountReason = 'PROMO'
+    line.price!.priceDiscountReasonCode = '95'
+    line.seller = { identifiers: [{ value: '100000009', schemeId: '0002' }, { value: 'SELLER-LOCAL' }], name: 'LE VENDEUR', tradingName: 'VENDEUR', legalRegistrationIdentifier: { value: '100000009', schemeId: '0002' }, electronicAddress: { value: '100000009', schemeId: '0225' }, vatIdentifier: 'FR88100000009', taxRegistrationIdentifier: 'TAXREG-1', address }
+    return invoice
+  }
+
+  it.each([['Invoice', true], ['CreditNote', true], ['Invoice', false], ['CreditNote', false]] as const)('as %s (payee: %s): model → UBL → model is the identity, nothing dropped', async (root, withPayee) => {
+    const invoice = await populated(withPayee)
+    if (root === 'CreditNote')
+      invoice.typeCode = '381'
+    const xml = await written(invoice, 'extended-ctc-fr', root)
+    expect(rootOf(xml)).toBe(root)
+    const { invoice: read, dropped } = await ublToInvoice(xml)
+    expect(dropped).toEqual([])
+    expect(read).toEqual(invoice)
+    // BT-90 sits with the payee when there is one, else with the seller (annex A).
+    expect(xml.match(/schemeID="SEPA"/g)).toHaveLength(1)
+  })
+
+  it('reads BT-84-0 back as BT-84 (one UBL account id, CG-64) and BT-11 from a CreditNote type 50 document', async () => {
+    const invoice = await populated()
+    invoice.typeCode = '381'
+    invoice.paymentInstructions!.creditTransfers[1] = { nationalAccountNumber: 'LOCAL-ACCOUNT' }
+    const { invoice: read, dropped } = await ublToInvoice(await written(invoice, 'extended-ctc-fr', 'CreditNote'))
+    expect(dropped).toEqual([])
+    expect(read.paymentInstructions!.creditTransfers[1]).toEqual({ paymentAccountIdentifier: 'LOCAL-ACCOUNT' })
+    expect(read.projectReference).toBe('PROJ-1')
+  })
+})
+
+describe('ublToInvoice: paths', () => {
+  it('names elements by namespace, whatever prefixes the source uses', async () => {
+    const example = EXAMPLES.find(e => e.name === 'UC1' && e.level === 'en16931')!
+    const xml = await source(example)
+    const renamed = xml.replaceAll('xmlns:cac=', 'xmlns:a=').replaceAll('xmlns:cbc=', 'xmlns:b=').replaceAll(/<(\/?)cac:/g, '<$1a:').replaceAll(/<(\/?)cbc:/g, '<$1b:').replace('</b:IssueDate>', '</b:IssueDate><b:IssueTime>12:30:00</b:IssueTime>')
+    expect(renamed).not.toContain('<cbc:')
+    const { invoice, dropped } = await ublToInvoice(renamed)
+    expect(invoice).toEqual((await ublToInvoice(xml)).invoice)
+    expect(dropped).toEqual(['/Invoice/cbc:IssueTime'])
+  })
+
+  it('stays linear on a deep, wide element outside the model', async () => {
+    const example = EXAMPLES.find(e => e.name === 'UC1' && e.level === 'en16931')!
+    const depth = 200
+    const leaves = Array.from({ length: 2000 }, (_, i) => `<x:b>v${i}</x:b>`).join('')
+    const chain = `${'<x:a>'.repeat(depth)}${leaves}${'</x:a>'.repeat(depth)}`
+    const xml = (await source(example)).replace('</Invoice>', `<x:root xmlns:x="urn:example">${chain}</x:root></Invoice>`)
+    const started = performance.now()
+    const { dropped } = await ublToInvoice(xml)
+    expect(performance.now() - started).toBeLessThan(5000)
+    expect(dropped).toHaveLength(2000)
+    expect(dropped[0]).toBe(`/Invoice/x:root${'/x:a'.repeat(depth)}/x:b[1]`)
+  })
+})
+
 describe('ublToInvoice: input', () => {
   const uc5b = EXAMPLES.find(e => e.name === 'UC5b')!
 
