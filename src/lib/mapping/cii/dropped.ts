@@ -108,16 +108,27 @@ function canonical(value: unknown): string | undefined | typeof UNMATCHABLE {
 // search was quadratic, a resource exhaustion on untrusted input). Reported paths keep the position
 // of the element in `a`.
 function walkArray(a: unknown[], b: unknown[], path: string, owner: string | undefined, out: string[]): void {
-  const keysA = a.map(canonical)
-  const keysB = b.map(canonical)
-  const paired = Array.from<boolean>({ length: a.length }).fill(false)
-  const used = Array.from<boolean>({ length: b.length }).fill(false)
+  pairElements(a.map(canonical), b.map(canonical)).forEach((pair, i) => {
+    if (pair !== true)
+      walk(a[i], pair === undefined ? undefined : b[pair], `${path}[${i + 1}]`, owner, out)
+  })
+}
+
+/**
+ * The pairing of `walkArray`, shared with the UBL difference (`parsers/ubl-dropped.ts`). A key is a canonical
+ * string (pairs by exact equality), `undefined` (no data: nothing to report) or a symbol (never pairs). For
+ * each element of `a`: `true` when it is paired by equality or has no data, else the index in `b` of the
+ * leftover element to compare it with by position, or `undefined` when none remains.
+ */
+export function pairElements(keysA: readonly (string | undefined | symbol)[], keysB: readonly (string | undefined | symbol)[]): (true | number | undefined)[] {
+  const paired = Array.from<boolean>({ length: keysA.length }).fill(false)
+  const used = Array.from<boolean>({ length: keysB.length }).fill(false)
   // An element of `a` with no data has no leaf to report.
   keysA.forEach((key, i) => {
     if (key === undefined) {
       paired[i] = true
     }
-    else if (key !== UNMATCHABLE && i < b.length && keysB[i] === key) {
+    else if (typeof key === 'string' && i < keysB.length && keysB[i] === key) {
       paired[i] = true
       used[i] = true
     }
@@ -147,12 +158,7 @@ function walkArray(a: unknown[], b: unknown[], path: string, owner: string | und
   })
   const rest = used.flatMap((u, j) => (u ? [] : [j]))
   let k = 0
-  a.forEach((item, i) => {
-    if (paired[i])
-      return
-    const j = rest[k++]
-    walk(item, j === undefined ? undefined : b[j], `${path}[${i + 1}]`, owner, out)
-  })
+  return paired.map(p => (p ? true : rest[k++]))
 }
 
 function walk(a: unknown, b: unknown, path: string, owner: string | undefined, out: string[]): void {

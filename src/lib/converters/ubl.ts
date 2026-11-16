@@ -305,6 +305,17 @@ function assertSpecification(invoice: Invoice, level: UblLevel): void {
 // Value writers
 // ---------------------------------------------------------------------------
 
+// Set only while `buildUbl()` runs for the reader (`ublToInvoice()`), which writes the model it read back to
+// compute `dropped`: an untrusted document may hold a bad date, an Amount with more decimals or a non-number,
+// which the writer refuses but the difference must report, not throw on. The build is synchronous, so the
+// flag cannot leak into another call.
+let lenient = false
+
+/** A number as the lenient build writes it: every digit, `NaN` / `Infinity` as such (the source differs). */
+function lenientNumber(value: number): string {
+  return Number.isFinite(value) ? formatDecimal(value) : String(value)
+}
+
 function text(parent: XmlElement, name: string, value: string | undefined): void {
   if (value !== undefined)
     parent.addElement(name).addText(value)
@@ -322,15 +333,22 @@ function identifier(parent: XmlElement, name: string, value: Identifier | undefi
 function date(parent: XmlElement, name: string, iso: string | undefined, term: string): void {
   if (iso === undefined)
     return
-  if (!isCalendarDate(iso))
+  if (!lenient && !isCalendarDate(iso))
     fail(`${term} must be an ISO date (YYYY-MM-DD)`)
   parent.addElement(name).addText(iso)
 }
 
 /** *Amount* (BR-DEC: at most 2 decimals), with its `@currencyID`. Throws, naming `term`, on more decimals. */
-function amount(parent: XmlElement, name: string, value: number | undefined, currency: string, term: string): void {
+function amount(parent: XmlElement, name: string, value: number | undefined, currency: string | undefined, term: string): void {
   if (value === undefined)
     return
+  if (lenient) {
+    const element = parent.addElement(name)
+    element.addText(lenientNumber(value))
+    if (currency !== undefined)
+      element.setAttr('currencyID', currency)
+    return
+  }
   if (!Number.isFinite(value))
     fail(`${term} must be a finite number`)
   if (hasMoreThanTwoDecimals(value))
@@ -339,33 +357,33 @@ function amount(parent: XmlElement, name: string, value: number | undefined, cur
   const element = parent.addElement(name)
   // `toFixed()` switches to exponent notation from 1e21 up, which `xs:decimal` rejects (CG-28).
   element.addText(/e/i.test(fixed) ? formatDecimal(value) : fixed)
-  element.setAttr('currencyID', currency)
+  element.setAttr('currencyID', currency!)
 }
 
 /** *Unit Price Amount* (BT-146, BT-147, BT-148): every digit kept (no decimals limit, CG-01). */
 function unitPrice(parent: XmlElement, name: string, value: number, currency: string, term: string): void {
-  if (!Number.isFinite(value))
+  if (!lenient && !Number.isFinite(value))
     fail(`${term} must be a finite number`)
   const element = parent.addElement(name)
-  element.addText(formatDecimal(value))
+  element.addText(lenientNumber(value))
   element.setAttr('currencyID', currency)
 }
 
 function decimal(parent: XmlElement, name: string, value: number | undefined, term: string): void {
   if (value === undefined)
     return
-  if (!Number.isFinite(value))
+  if (!lenient && !Number.isFinite(value))
     fail(`${term} must be a finite number`)
-  parent.addElement(name).addText(formatDecimal(value))
+  parent.addElement(name).addText(lenientNumber(value))
 }
 
 function quantity(parent: XmlElement, name: string, value: number | undefined, unitCode: string | undefined, term: string): void {
   if (value === undefined)
     return
-  if (!Number.isFinite(value))
+  if (!lenient && !Number.isFinite(value))
     fail(`${term} must be a finite number`)
   const element = parent.addElement(name)
-  element.addText(formatDecimal(value))
+  element.addText(lenientNumber(value))
   if (unitCode !== undefined)
     element.setAttr('unitCode', unitCode)
 }
@@ -620,6 +638,13 @@ function paymentMeans(root: XmlElement, invoice: Invoice, creditNote: boolean): 
     if (first && creditNote)
       date(element, 'cbc:PaymentDueDate', invoice.paymentDueDate, 'BT-9 (payment due date)')
     text(element, 'cbc:PaymentID', instructions.remittanceInformation)
+    // Reached only by the reader's difference: the writer refuses BG-18 before building (CG-61). Without
+    // BT-87-1 the written `cac:CardAccount` lacks its mandatory `cbc:NetworkID`, which `dropped` then reports.
+    if (first && instructions.card) {
+      const card = element.addElement('cac:CardAccount')
+      text(card, 'cbc:PrimaryAccountNumberID', instructions.card.primaryAccountNumber)
+      text(card, 'cbc:HolderName', instructions.card.holderName)
+    }
     if (transfer) {
       const account = element.addElement('cac:PayeeFinancialAccount')
       // UBL has one account `cbc:ID`: BT-84, else the national account number BT-84-0 (EN 16931 BT-84 is any
@@ -833,7 +858,7 @@ function lineReferences(element: XmlElement, line: InvoiceLine, invoice: Invoice
   const despatch = line.despatchAdviceReference
   if (despatch) {
     const reference = element.addElement('cac:DespatchLineReference')
-    reference.addElement('cbc:LineID').addText(despatch.lineReference!)
+    reference.addElement('cbc:LineID').addText(despatch.lineReference ?? '')
     if (despatch.reference !== undefined) {
       const document = reference.addElement('cac:DocumentReference')
       document.addElement('cbc:ID').addText(despatch.reference)
@@ -843,14 +868,14 @@ function lineReferences(element: XmlElement, line: InvoiceLine, invoice: Invoice
   const receipt = line.receivingAdviceReference
   if (receipt) {
     const reference = element.addElement('cac:ReceiptLineReference')
-    reference.addElement('cbc:LineID').addText(receipt.lineReference!)
+    reference.addElement('cbc:LineID').addText(receipt.lineReference ?? '')
     if (receipt.reference !== undefined)
       reference.addElement('cac:DocumentReference').addElement('cbc:ID').addText(receipt.reference)
   }
   for (const preceding of line.precedingInvoiceReferences) {
     const billing = element.addElement('cac:BillingReference')
     const document = billing.addElement('cac:InvoiceDocumentReference')
-    document.addElement('cbc:ID').addText(preceding.reference!)
+    document.addElement('cbc:ID').addText(preceding.reference ?? '')
     date(document, 'cbc:IssueDate', preceding.issueDate, 'EXT-FR-FE-138 (preceding invoice issue date of the line)')
     text(document, 'cbc:DocumentTypeCode', preceding.typeCode)
     if (preceding.lineReference !== undefined)
@@ -920,7 +945,8 @@ function invoiceLine(root: XmlElement, line: InvoiceLine, invoice: Invoice, cred
 
 function header(root: XmlElement, invoice: Invoice, level: UblLevel, creditNote: boolean): void {
   root.addElement('cbc:UBLVersionID').addText('2.1')
-  root.addElement('cbc:CustomizationID').addText(CUSTOMIZATION_IDS[level])
+  // The checked writer accepts only the level's id (or none); the reader's build keeps what the model holds.
+  root.addElement('cbc:CustomizationID').addText(invoice.specificationIdentifier || CUSTOMIZATION_IDS[level])
   text(root, 'cbc:ProfileID', invoice.businessProcessType)
   root.addElement('cbc:ID').addText(invoice.number)
   date(root, 'cbc:IssueDate', invoice.issueDate, 'BT-2 (invoice issue date)')
@@ -1022,6 +1048,25 @@ export async function invoiceToUbl(invoice: Invoice, options: InvoiceToUblOption
   assertUblLines(full, level)
   assertNotes(full)
 
+  return buildUbl(full, level, root)
+}
+
+/**
+ * The document of an invoice the checks of `invoiceToUbl()` have passed, or, with `options.lenient`, of any
+ * invoice `ublToInvoice()` read (bad dates, Amount decimals and non-numbers written as they are, BT-24 and BG-18
+ * written from the model), to compute its `dropped`. Not exported from the package. The caller owns the result.
+ */
+export function buildUbl(full: Invoice, level: UblLevel, root: UBL_ROOT, options: { lenient?: boolean } = {}): XmlDocument {
+  lenient = options.lenient === true
+  try {
+    return build(full, level, root)
+  }
+  finally {
+    lenient = false
+  }
+}
+
+function build(full: Invoice, level: UblLevel, root: UBL_ROOT): XmlDocument {
   const creditNote = root === 'CreditNote'
   const doc = XmlDocument.fromString(`<?xml version="1.0" encoding="UTF-8"?>
 <${root} xmlns="${creditNote ? UBL_CREDITNOTE_NS : UBL_INVOICE_NS}" xmlns:cac="${CAC}" xmlns:cbc="${UBL_CBC_NS}"/>`)
