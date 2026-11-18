@@ -12,12 +12,13 @@ omit them.
 | `facturx` | `minimum`, `basicwl`, `basic`, `en16931`, `extended`; `extended-ctc-fr` (plain CII, validation only) | XSD **+ Schematron** | `factur-x.xml` (`xrechnung.xml` is extracted as `facturx` too) |
 | `orderx` | `basic`, `comfort`, `extended` | XSD | `order-x.xml` |
 | `zugferd` | — | extraction only; 2.x content validates as `facturx` | `zugferd-invoice.xml`, `ZUGFeRD-invoice.xml` |
-| `ubl` | `en16931`, `extended-ctc-fr` | XSD **+ Schematron** (+ `BR-FR`), validation only | none: UBL cannot be embedded in a PDF |
+| `ubl` | `en16931`, `extended-ctc-fr` | XSD **+ Schematron** (+ `BR-FR`); read and written through the EN 16931 model | none: UBL cannot be embedded in a PDF |
 
 - **`facturx`** — Factur-X / ZUGFeRD 2.x invoices (Cross Industry Invoice). Fully supported:
   generate, extract, parse, build, XSD + Schematron validation.
-- **`ubl`** — UBL 2.1 `Invoice` and `CreditNote`, **validation only**: `check()`, `validateSchematron()`
-  and `validateFrCtc()` accept it, `generate()` refuses it and `extract({ check: true })` refuses it as an
+- **`ubl`** — UBL 2.1 `Invoice` and `CreditNote`, **XML only**: `check()`, `validateSchematron()`
+  and `validateFrCtc()` accept it, the [EN 16931 model](/guide/en16931-model#ubl-invoicetoubl-and-ubltoinvoice)
+  reads and writes it (`ublToInvoice()`, `invoiceToUbl()`), `generate()` refuses it and `extract({ check: true })` refuses it as an
   attachment (a hybrid PDF embeds CII). Detected from the root element in the UBL namespaces; the level
   comes from `cbc:CustomizationID` (`en16931` for `urn:cen.eu:en16931:2017` and `#compliant#` CIUS ids,
   `extended-ctc-fr` for the exact EXTENDED-CTC-FR id). CIUS rules such as Peppol BIS are not run.
