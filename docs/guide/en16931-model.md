@@ -241,8 +241,7 @@ const { invoice: read, dropped } = await ublToInvoice(xml) // string, Buffer or 
   `83`, `261`, `262`, `296`, `308`, `381`, `396`, `420`, `458`, `502`, `503`, `532`), otherwise an `Invoice`.
   `root: 'Invoice' | 'CreditNote'` overrides it, and BT-3 must then be in the BR-CL-01 list of that root.
 - It returns a libxml2-wasm `XmlDocument`, like `invoiceToXml()`: serialise it with `.toString()` and `dispose()` it.
-  Its nodes carry the UBL namespaces, so namespace-bound XPath works on it (the CII writer's document does not yet,
-  CG-74).
+  Its nodes carry the UBL namespaces, so namespace-bound XPath works on it, as on the CII writer's document.
 - Dates are ISO `YYYY-MM-DD`, Amounts carry `currencyID` and have at most two decimals, unit prices and quantities
   are written unrounded without exponent notation, as in CII.
 - Each credit transfer (BG-17) gets its own `cac:PaymentMeans` with the same BT-81 / BT-83. BT-82, the direct debit

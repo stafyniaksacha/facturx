@@ -339,7 +339,9 @@ describe('a note without Content (CG-37)', () => {
 
     const rewritten = (await invoiceToXml(await xmlToInvoice(written))).toString()
     if (CG37_ROUND_TRIP_LOSS) {
-      expect(rewritten).toContain('<ram:IncludedNote><ram:Content></ram:Content><ram:SubjectCode>AAI</ram:SubjectCode></ram:IncludedNote>')
+      // `invoiceToXml()` returns the re-parsed text (was CG-74), where an empty element is written `<ram:Content/>`: the
+      // same element as `<ram:Content></ram:Content>` (XML 1.0 §3.1, empty-element tag).
+      expect(rewritten).toContain('<ram:IncludedNote><ram:Content/><ram:SubjectCode>AAI</ram:SubjectCode></ram:IncludedNote>')
       expect(xmlPaths(rewritten).filter(p => !xmlPaths(written).includes(p))).toEqual([NOTE_CONTENT])
     }
     else {

@@ -19,6 +19,9 @@ import { XmlDocument } from 'libxml2-wasm'
  * EXTENDED schema, which is a superset of all lower profiles. Only fields that
  * are present on the model are emitted, so the same converter produces valid
  * output for MINIMUM through EXTENDED.
+ *
+ * Returns a document parsed from the written text, so its nodes carry the CII namespaces (namespace-bound XPath works
+ * on it); `toString()` gives that text. The caller owns it and disposes it.
  */
 export async function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<XmlDocument> {
   const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
@@ -32,20 +35,24 @@ export async function invoiceToXml(invoice: CrossIndustryInvoiceType): Promise<X
 
   const doc = XmlDocument.fromString(xmlString)
 
+  // `addElement('ram:X')` names the element `ram:X` with no namespace in memory; only the serialisation carries the
+  // CII namespaces. Serialised and re-parsed (default options) so the returned nodes are in their real namespaces and
+  // namespace-bound XPath works on them (was CG-74). The text is unchanged: the same serialisation, read back.
+  let serialised: string
   try {
     const rootElement = doc.root
 
     convertExchangedDocumentContext(invoice.exchangedDocumentContext, rootElement)
     convertExchangedDocument(invoice.exchangedDocument, rootElement)
     convertSupplyChainTradeTransaction(invoice.supplyChainTradeTransaction, rootElement)
+    serialised = doc.toString()
   }
-  catch (error) {
-    // The caller owns the returned document, but only on success
+  finally {
     doc.dispose()
-    throw error
   }
 
-  return doc
+  // The caller owns the returned document.
+  return XmlDocument.fromString(serialised)
 }
 
 // ---------------------------------------------------------------------------

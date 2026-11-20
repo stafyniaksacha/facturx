@@ -244,36 +244,71 @@ describe('facturX XML Converter', () => {
   })
 })
 
-// CG-74 (open, fixed outside the UBL PR): `invoiceToXml()` builds children with `addElement('ram:X')`, which in
-// libxml2-wasm names the element `ram:X` with no namespace in memory; only the serialised text is namespaced.
-// Pinned as today's behaviour: namespace-bound XPath finds nothing on the returned document, but does on its text.
+// CG-74 (closed): `invoiceToXml()` builds children with `addElement('ram:X')`, which in libxml2-wasm names the element
+// `ram:X` with no namespace in memory; it now returns the document re-parsed from that text, so its nodes carry the CII
+// namespaces and `toString()` gives the same text.
 describe('invoiceToXml: namespaces of the returned document (CG-74)', () => {
-  it('in memory the children carry no namespace; the serialisation does', async () => {
-    const { xmlToInvoice } = await import('@stafyniaksacha/facturx')
+  const NS = {
+    rsm: 'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100',
+    ram: 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100',
+  }
+  const UC1 = '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/F202500003/_EN16931/UC1_F202500003_00-INV_20250701_EN16931_FX_CII_Commentee.xml'
+
+  it('carries the CII namespaces in memory: namespace-bound XPath works, and check() reads it in place', async () => {
+    const { check, xmlToInvoice } = await import('@stafyniaksacha/facturx')
     const { XmlDocument } = await import('libxml2-wasm')
     const { readFile } = await import('node:fs/promises')
     const { resolve } = await import('node:path')
-    const NS = {
-      rsm: 'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100',
-      ram: 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100',
-    }
-    const file = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Factures/F202500003/_EN16931/UC1_F202500003_00-INV_20250701_EN16931_FX_CII_Commentee.xml')
-    const doc = await invoiceToXml(await xmlToInvoice(await readFile(file, 'utf8')))
+    const doc = await invoiceToXml(await xmlToInvoice(await readFile(resolve(import.meta.dirname, UC1), 'utf8')))
     try {
       expect(doc.root.namespaceUri).toBe(NS.rsm)
-      expect(doc.find('/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID', NS)).toHaveLength(0)
+      expect(doc.find('/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID', NS)).toHaveLength(1)
       const child = doc.get('/*/*') as unknown as { name: string, namespaceUri: string }
-      expect([child.name, child.namespaceUri]).toEqual(['rsm:ExchangedDocumentContext', ''])
-      const reparsed = XmlDocument.fromString(doc.toString())
+      expect([child.name, child.namespaceUri]).toEqual(['ExchangedDocumentContext', NS.rsm])
+      // The text is the one written: re-parsing it again changes nothing.
+      const again = XmlDocument.fromString(doc.toString())
       try {
-        expect(reparsed.find('/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID', NS)).toHaveLength(1)
+        expect(again.toString()).toBe(doc.toString())
       }
       finally {
-        reparsed.dispose()
+        again.dispose()
       }
+      // The old in-memory shape had no namespaces, so `check()` on the document itself found no BT-24.
+      const result = await check({ xml: doc, schematron: true })
+      expect([result.valid, result.flavor, result.level]).toEqual([true, 'facturx', 'en16931'])
+      expect(doc.root.name).toBe('CrossIndustryInvoice')
     }
     finally {
       doc.dispose()
     }
+  })
+
+  it('round-trips escaping, CR, tab and non-ASCII text through the re-parse', async () => {
+    const { xmlToInvoice } = await import('@stafyniaksacha/facturx')
+    const { readFile } = await import('node:fs/promises')
+    const { resolve } = await import('node:path')
+    const model = await xmlToInvoice(await readFile(resolve(import.meta.dirname, UC1), 'utf8'))
+    const text = 'a & b < c > d " e \' f\r\ng\th é € 𝄞 ]]> &amp;'
+    model.exchangedDocument.includedNote![0].content = new TextType({ value: text })
+    const doc = await invoiceToXml(model)
+    try {
+      expect((await xmlToInvoice(doc.toString())).exchangedDocument.includedNote![0].content.value).toBe(text)
+    }
+    finally {
+      doc.dispose()
+    }
+  })
+
+  // libxml2's default limit (XML_MAX_TEXT_LENGTH, 10 MB per text node) without XML_PARSE_HUGE, which AGENTS.md
+  // forbids for input documents. xmlToInvoice(), check(), generate() and invoiceToUbl() have the same limit (CG-76).
+  it('refuses a text node over 10 MB, as every other parse of the package does (CG-76)', async () => {
+    const { xmlToInvoice } = await import('@stafyniaksacha/facturx')
+    const { readFile } = await import('node:fs/promises')
+    const { resolve } = await import('node:path')
+    const source = await readFile(resolve(import.meta.dirname, UC1), 'utf8')
+    const model = await xmlToInvoice(source)
+    model.exchangedDocument.includedNote![0].content = new TextType({ value: 'A'.repeat(10 * 1024 * 1024 + 1) })
+    await expect(invoiceToXml(model)).rejects.toThrow(/Text node too long/)
+    await expect(xmlToInvoice(source.replace(/<ram:BuyerReference>[^<]*</, `<ram:BuyerReference>${'A'.repeat(10 * 1024 * 1024 + 1)}<`))).rejects.toThrow(/Text node too long/)
   })
 })
