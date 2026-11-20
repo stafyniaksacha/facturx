@@ -14,7 +14,7 @@ import { assertAmountDecimals } from './amounts'
 import { diffPaths } from './dropped'
 import { assertHeaderComplete, HEADER_GATES, headerFromCii, headerToCii } from './header'
 import { assertLevelCarries, EN16931_LEVELS, GUIDELINE_IDS, isEn16931Level } from './levels'
-import { assertLinesComplete, LINE_GATES, linesFromCii } from './lines'
+import { assertDetailLinesComplete, assertLinesComplete, CII_DETAIL_LINE_RULES, LINE_GATES, linesFromCii } from './lines'
 import { assertPartiesComplete, assertPartyIdentifierCounts, partiesFromCii, PARTY_GATES } from './parties'
 import { assertSettlementComplete, SETTLEMENT_GATES, settlementFromCii } from './settlement'
 import { isBlank } from './values'
@@ -182,6 +182,8 @@ function checked(cii: CrossIndustryInvoiceType): CrossIndustryInvoiceType {
  * - BT-24 is set to anything but the exact identifier of `level`;
  * - a date is not a valid ISO `YYYY-MM-DD` date;
  * - BT-11-0 is set without BT-11;
+ * - at `extended` and `extended-ctc-fr`, a line whose EXT-FR-FE-163 is `DETAIL` or unset lacks BG-29, BT-129, BG-30
+ *   or BT-151 (BR-FXEXT-BR-26 / -BR-22 / -CO-04, BR-FREXT-BR-26 / -BR-22 / -CO-04);
  * - an *Amount* has more than two decimals (spec §7.1.5).
  */
 export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInvoiceType {
@@ -199,6 +201,8 @@ export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInv
   assertPartyIdentifierCounts(full, level)
   assertSettlementComplete(full)
   assertLinesComplete(full, level)
+  if (level === 'extended' || level === 'extended-ctc-fr')
+    assertDetailLinesComplete(full, CII_DETAIL_LINE_RULES[level])
   assertLevelCarries(full, level, [...HEADER_GATES, ...PARTY_GATES, ...SETTLEMENT_GATES, ...LINE_GATES])
   // CII has the project name only inside the project reference: writing it alone would lose it.
   if (full.projectName !== undefined && full.projectReference === undefined)

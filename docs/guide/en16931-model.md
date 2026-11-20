@@ -74,7 +74,8 @@ instructions group (BG-16, the first payment means) and one line VAT block (BG-3
 or profiles allow several. What `fromCii()` finds beyond them goes to `dropped`.
 `CONFORMANCE.md` records the details (CG-50, CG-51, CG-52). A preceding invoice reference on a line
 (`EXT-FR-FE-BG-06`) is an array, since the UBL annex allows two, but CII has room for one: `toCii()` throws on a
-second. At the `extended` levels a group or information line (annex B UC10 to UC13) may have no price, quantity or VAT (CG-54).
+second. At the `extended` levels a group or information line (annex B UC10 to UC13) may have no price, quantity or VAT (CG-54);
+a detail line may not (below).
 
 ## Levels: `toCii(invoice, { level })`
 
@@ -93,7 +94,10 @@ specification identifier) and which terms may be present.
 - a mandatory term is empty or missing (a string of only XML whitespace, that is space, tab, CR or LF, counts
   as empty, as `normalize-space()` does in the Schematron; a no-break space does not): BT-1, BT-2, BT-3, BT-5, the seller (BG-4) and buyer (BG-7) with their
   names, postal addresses and country codes, the totals, the VAT breakdown, the lines and their mandatory
-  terms. Below `extended`, a line needs its price (BG-29), quantity (BT-129) and VAT (BG-30);
+  terms. Below `extended`, a line needs its price (BG-29), quantity (BT-129) and VAT (BG-30). At `extended` and
+  `extended-ctc-fr`, so does a line whose subtype EXT-FR-FE-163 is `DETAIL` or unset, with a VAT category code
+  (BT-151): BR-FXEXT-BR-26 / -BR-22 / -CO-04 and BR-FREXT-BR-26 / -BR-22 / -CO-04. A `GROUP` or `INFORMATION`
+  line may go without them;
 - the invoice holds a term the level cannot carry: a term missing from the Factur-X BASIC matrix needs
   `en16931`, and an `EXT-FR-FE-*` field needs `extended` or `extended-ctc-fr`. A BASIC invoice with
   `EXT-FR-FE-12` set is an error, not a silent drop;
@@ -263,7 +267,7 @@ differently:
 | BT-14 without BT-13, EXT-FR-FE-144 without EXT-FR-FE-135 and similar | the UBL element needs its identifier | CG-65 |
 | a missing BT-110 (VAT total) | UBL holds BG-23 in the `cac:TaxTotal` whose amount is BT-110 | CG-66 |
 | EXT-FR-FE-180 without a line period | BR-CO-20 | CG-68 |
-| at `extended-ctc-fr`, a `DETAIL` (or unset EXT-FR-FE-163) line without BG-29, BT-129 or BG-30 | BR-26, BR-FREXT-22, BR-FREXT-CO-04 | CG-69 |
+| at `extended-ctc-fr`, a `DETAIL` (or unset EXT-FR-FE-163) line without BG-29, BT-129, BG-30 or BT-151 (the check `toCii()` shares) | BR-26, BR-FREXT-22, BR-FREXT-CO-04 | CG-69 |
 | an `EXT-FR-FE` term, or more than one BT-18, BT-46 or BT-60, at `en16931` | UBL-CR-*, UBL-SR-04 / -16 / -20 | |
 | BT-24 other than the `cbc:CustomizationID` of `level` (a Factur-X id, a CIUS id) | the document would claim a profile it was not checked against; clear it (`undefined`) to get the level's id | |
 | BT-84 and BT-84-0 together, BT-105 and BT-177, BT-145 and BT-193 | two terms in one UBL element | CG-64 (BT-84) |

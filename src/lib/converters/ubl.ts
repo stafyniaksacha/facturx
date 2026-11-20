@@ -14,6 +14,7 @@
 
 import type { XmlElement } from 'libxml2-wasm'
 import type { UBL_ROOT } from '../constants'
+import type { DetailLineRules } from '../mapping/cii/lines'
 import type { BillingParty, BuyerAgent, Invoicee, Payer, SellerAgent } from '../models/en16931/additional-parties'
 import type { Contact, Identifier, PostalAddress } from '../models/en16931/common'
 import type { Invoice } from '../models/en16931/invoice'
@@ -24,7 +25,7 @@ import { UBL_CBC_NS, UBL_CREDITNOTE_NS, UBL_EN16931_CUSTOMIZATION_ID, UBL_EXTEND
 import { hasMoreThanTwoDecimals } from '../mapping/cii/amounts'
 import { assertHeaderComplete, DEFAULT_PROJECT_NAME, HEADER_GATES } from '../mapping/cii/header'
 import { MANDATORY, withArrays } from '../mapping/cii/index'
-import { assertLinesComplete, LINE_GATES } from '../mapping/cii/lines'
+import { assertDetailLinesComplete, assertLinesComplete, LINE_GATES } from '../mapping/cii/lines'
 import { assertPartiesComplete, PARTY_GATES } from '../mapping/cii/parties'
 import { assertSettlementComplete, SETTLEMENT_GATES } from '../mapping/cii/settlement'
 import { isBlank, isCalendarDate } from '../mapping/cii/values'
@@ -238,6 +239,10 @@ function assertRoot(invoice: Invoice, root: UBL_ROOT): void {
     fail(`BT-3 (invoice type code) is not a ${root} type code of BR-CL-01; write it with the other root`)
 }
 
+// `EXTENDED-CTC-FR-UBL.xslt`: BR-FREXT-26 (message `[BR-26]`, l.1890), BR-FREXT-22 (l.1845), BR-FREXT-CO-04 (l.1905) and
+// UBL-FREXT-SR-48 (l.15595), all fatal. They follow the rule text, stricter than the UBL `$lineInCalul` XPath (CG-69).
+const UBL_DETAIL_LINE_RULES: DetailLineRules = { price: 'BR-26', quantity: 'BR-FREXT-22', vat: 'BR-FREXT-CO-04, UBL-FREXT-SR-48' }
+
 // Line rules of the UBL Schematrons the shared CII checks do not know.
 function assertUblLines(invoice: Invoice, level: UblLevel): void {
   for (const line of invoice.lines) {
@@ -245,18 +250,12 @@ function assertUblLines(invoice: Invoice, level: UblLevel): void {
     // start or end date (CG-68).
     if (line.vat?.vatPointDateCode !== undefined && line.period?.startDate === undefined && line.period?.endDate === undefined)
       fail('EXT-FR-FE-180 (line value added tax point date code) needs BT-134 or BT-135 (invoice line period) in UBL: it sits in `cac:InvoicePeriod` (BR-CO-20)')
-    // EXTENDED-CTC-FR-UBL BR-FREXT-26 ([BR-26]), BR-FREXT-22, BR-FREXT-CO-04 and UBL-FREXT-SR-48: a line whose subtype EXT-FR-FE-163 is
-    // `DETAIL` or not specified needs its net price, quantity and one VAT category (CG-69). Below
-    // extended-ctc-fr the shared checks already require them.
-    if (level === 'extended-ctc-fr' && (line.statusReasonCode === undefined || line.statusReasonCode === 'DETAIL')) {
-      if (!line.price)
-        fail('BG-29 (price details) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (BR-26)')
-      if (line.invoicedQuantity === undefined)
-        fail('BT-129 (invoiced quantity) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (BR-FREXT-22)')
-      if (!line.vat)
-        fail('BG-30 (line VAT information) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (BR-FREXT-CO-04, UBL-FREXT-SR-48)')
-    }
   }
+  // EXTENDED-CTC-FR-UBL BR-FREXT-26 ([BR-26]), BR-FREXT-22, BR-FREXT-CO-04 and UBL-FREXT-SR-48: a line whose subtype
+  // EXT-FR-FE-163 is `DETAIL` or not specified needs its net price, quantity and one VAT category, as in CII (CG-69,
+  // closed). Below extended-ctc-fr the shared checks already require them.
+  if (level === 'extended-ctc-fr')
+    reprefixed(() => assertDetailLinesComplete(invoice, UBL_DETAIL_LINE_RULES))
 }
 
 // A note is written `#subject#text` or `text`; refuse what `UBL_NOTE_PATTERN` would read back differently.
@@ -1120,7 +1119,7 @@ export function dropUblUncarried(invoice: Invoice, options: { level: UblLevel })
  * - BT-9 of a credit note, or the payer, has no `cac:PaymentMeans` to sit in;
  * - BT-24 is set to anything but the `cbc:CustomizationID` of `level`;
  * - EXT-FR-FE-180 is set without a line period (BR-CO-20), or, at `extended-ctc-fr`, a line whose EXT-FR-FE-163 is
- *   `DETAIL` or unset lacks BG-29, BT-129 or BG-30 (BR-26, BR-FREXT-22, BR-FREXT-CO-04 / UBL-FREXT-SR-48);
+ *   `DETAIL` or unset lacks BG-29, BT-129, BG-30 or BT-151 (BR-26, BR-FREXT-22, BR-FREXT-CO-04 / UBL-FREXT-SR-48);
  * - a note would read back differently from `#subject#text` (`UBL_NOTE_PATTERN`; line notes at `extended-ctc-fr`
  *   only, CG-70).
  */

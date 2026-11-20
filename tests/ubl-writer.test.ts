@@ -2,7 +2,7 @@ import type { Invoice } from '@stafyniaksacha/facturx/en16931'
 import type { XmlElement } from 'libxml2-wasm'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { check, dropUblUncarried, fromCii, invoiceToUbl, invoiceToXml, toCii, ublToInvoice, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, dropUblUncarried, fromCii, invoiceToUbl, toCii, ublToInvoice, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
 // Not public (kept internal): the BR-CL-01 credit note list the root choice uses.
@@ -507,18 +507,12 @@ describe('invoiceToUbl: refusals', () => {
     expect(rootName(await written(invoice, { level: 'extended-ctc-fr' }))).toBe('Invoice')
   })
 
-  it('cG-69 open item: toCii() at extended-ctc-fr writes a line without BG-29 that its BR-26 refuses', async () => {
+  it('shares the CG-69 check with toCii(), each citing the rules of its syntax (CG-69, closed)', async () => {
     const twin = TWINS.find(t => t.name === 'UC1' && t.level === 'extended-ctc-fr')!
-    const invoice = await fromTwin(twin)
+    const invoice = without(await fromTwin(twin), twin.noPlace)
     invoice.lines[0].price = undefined
-    const doc = await invoiceToXml(toCii(invoice, { level: 'extended-ctc-fr' }))
-    try {
-      const result = await check({ xml: doc.toString(), schematron: true })
-      expect((result.schematronErrors ?? []).map(e => e.id ?? ruleId(e))).toContain('BR-FREXT-BR-26')
-    }
-    finally {
-      doc.dispose()
-    }
+    expect(() => toCii(invoice, { level: 'extended-ctc-fr' })).toThrow(/^toCii: BG-29 .*\(BR-FREXT-BR-26\)$/)
+    await expect(invoiceToUbl(invoice, { level: 'extended-ctc-fr' })).rejects.toThrow(/^invoiceToUbl: BG-29 .*\(BR-26\)$/)
   })
 
   it.each([

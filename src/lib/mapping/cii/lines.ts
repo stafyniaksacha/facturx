@@ -429,6 +429,50 @@ type Check = [id: string, term: string, value: number | string | undefined]
 
 const empty = (value: number | string | undefined): boolean => typeof value === 'number' ? !Number.isFinite(value) : isBlank(value)
 
+/** The rule ids `assertDetailLinesComplete()` cites, per syntax and level. */
+export interface DetailLineRules {
+  /** The net price (BG-29 / BT-146). */
+  price: string
+  /** The invoiced quantity (BT-129). */
+  quantity: string
+  /** The VAT category (BG-30 / BT-151). */
+  vat: string
+}
+
+/**
+ * The CII rules of the line context `AssociatedDocumentLineDocument[not(ram:LineStatusReasonCode) or
+ * ram:LineStatusReasonCode = 'DETAIL']`: `EXTENDED-CTC-FR-CII.xslt` l.1369 (BR-FREXT-BR-22 l.1380, BR-FREXT-BR-26
+ * l.1428, BR-FREXT-CO-04 l.1444, all `fatal`) and Factur-X `FACTUR-X_EXTENDED.xslt` l.2067 (BR-FXEXT-BR-22 l.2078,
+ * BR-FXEXT-BR-26 l.2123, BR-FXEXT-CO-04 l.2138, unflagged, so errors; CO-04 also wants `TypeCode` VAT, which the
+ * writer adds with BT-151). BASIC and EN 16931 require the three on every line (`assertLinesComplete()`).
+ */
+export const CII_DETAIL_LINE_RULES: Readonly<Record<'extended' | 'extended-ctc-fr', DetailLineRules>> = {
+  'extended': { price: 'BR-FXEXT-BR-26', quantity: 'BR-FXEXT-BR-22', vat: 'BR-FXEXT-CO-04' },
+  'extended-ctc-fr': { price: 'BR-FREXT-BR-26', quantity: 'BR-FREXT-BR-22', vat: 'BR-FREXT-CO-04' },
+}
+
+/**
+ * At the extended levels a line whose subtype EXT-FR-FE-163 is `DETAIL` or not set needs its net price (BG-29),
+ * invoiced quantity (BT-129) and VAT category (BG-30 with BT-151): one check for both writers, each passing the rule
+ * ids of its syntax (CG-69, closed). A `GROUP` or `INFORMATION` line may go without them. Throws with the `toCii:`
+ * prefix, naming the term, never quoting content.
+ */
+export function assertDetailLinesComplete(invoice: Invoice, rules: DetailLineRules): void {
+  for (const line of invoice.lines) {
+    if (line.statusReasonCode !== undefined && line.statusReasonCode !== 'DETAIL')
+      continue
+    const on = 'on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set'
+    if (!line.price)
+      throw new Error(`toCii: BG-29 (price details) is mandatory ${on} (${rules.price})`)
+    if (line.invoicedQuantity === undefined)
+      throw new Error(`toCii: BT-129 (invoiced quantity) is mandatory ${on} (${rules.quantity})`)
+    if (!line.vat)
+      throw new Error(`toCii: BG-30 (line VAT information) is mandatory ${on} (${rules.vat})`)
+    if (empty(line.vat.categoryCode))
+      throw new Error(`toCii: BT-151 (invoiced item VAT category code) is mandatory ${on} (${rules.vat})`)
+  }
+}
+
 /**
  * Throws, naming the business term, when a mandatory term of a line is missing, empty or not a finite
  * number, when an optional number is not finite, or when a term needs another one that CII writes in
