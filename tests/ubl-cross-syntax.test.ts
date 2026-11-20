@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer'
 import { execFileSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { dropUblUncarried, en16931ToXml, fromCii, invoiceToUbl, invoiceToXml, toCii, ublToInvoice, xmlToEn16931, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, dropUblUncarried, en16931ToXml, extract, fromCii, invoiceToUbl, invoiceToXml, toCii, ublToInvoice, xmlToEn16931, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
 import { getBasicWLFacturXModel } from './fixtures/model-basicwl'
@@ -384,28 +384,81 @@ describe('xmlToEn16931', () => {
   })
 })
 
-describe('bT-24 to level differs between CII and UBL (CG-75, pinned, open)', () => {
+describe('bT-24 to level: fromCii reads the exact id (CG-75, closed)', () => {
   const uc1 = TWINS.find(t => t.name === 'UC1' && t.level === 'en16931')!
+  const ext = TWINS.find(t => t.name === 'UC1' && t.level === 'extended-ctc-fr')!
   const conformant = 'urn:cen.eu:en16931:2017#conformant#urn.example.org_ext'
   const peppol = 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0'
-  const cii = async (id: string): Promise<string> => (await readTwin(uc1.cii)).replace(/(<ram:GuidelineSpecifiedDocumentContextParameter>\s*<ram:ID>)[^<]*</, `$1${id}<`)
+  const withId = (xml: string, id: string): string => xml.replace(/(<ram:GuidelineSpecifiedDocumentContextParameter>\s*<ram:ID>)[^<]*</, `$1${id}<`)
+  const cii = async (id: string, twin = uc1): Promise<string> => withId(await readTwin(twin.cii), id)
   const ubl = async (id: string): Promise<string> => (await readTwin(uc1.ubl)).replace(/<cbc:CustomizationID>[^<]*</, `<cbc:CustomizationID>${id}<`)
 
-  it('cII reads the last `:` segments: a #conformant# extension id reads as en16931, a Peppol #compliant# id is refused', async () => {
-    const { invoice } = fromCii(await xmlToInvoice(await cii(conformant)))
-    expect(invoice.specificationIdentifier).toBe(conformant)
-    await expect(xmlToInvoice(await cii(peppol)).then(fromCii)).rejects.toThrow(/BT-24/)
+  it('accepts the identifier of each level, surrounding whitespace aside', async () => {
+    expect(fromCii(await xmlToInvoice(await cii(' urn:cen.eu:en16931:2017\n'))).dropped).toEqual([])
+    expect(fromCii(await xmlToInvoice(await readTwin(ext.cii))).invoice.specificationIdentifier).toBe('urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr')
   })
 
-  it('uBL reads the exact id: a #compliant# CIUS reads as en16931, a #conformant# extension is refused', async () => {
+  // FACTUR-X_BASIC_codedb.xml / FACTUR-X_EXTENDED_codedb.xml code list 1, checked on BT-24 by the Schematron; listed in
+  // the BASIC (p.9) and EXTENDED (p.34-35) appendices as deprecated ZUGFeRD 2.0 ids.
+  it('accepts the deprecated ZUGFeRD 2.0 ids of BASIC and EXTENDED, which the Factur-X Schematrons accept', async () => {
+    const extendedFx = resolve(FACTURES, 'F202500003/_EXTENDED/UC1_F202500003_00-INV_20250701_EXTENDED_FX_CII_Commentee.xml')
+    const zugferd = 'urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended'
+    const xml = withId(await readFile(extendedFx, 'utf8'), zugferd)
+    const result = await check({ xml, schematron: true })
+    expect([result.valid, result.level]).toEqual([true, 'extended'])
+    const { invoice, dropped } = fromCii(await xmlToInvoice(xml))
+    expect([invoice.specificationIdentifier, dropped]).toEqual([zugferd, []])
+    // Read, never written: toCii() writes the Factur-X id.
+    expect(() => toCii(invoice, { level: 'extended' })).toThrow(/BT-24/)
+    const basicPdf = resolve(import.meta.dirname, '../spec/factur-x-1.09/distribution/5. FACTUR-X 1.09 - Examples/_Factur-X_1.08-Exemples_CS/2.BASIC/Facture_F20260023-LE_FOURNISSEUR-POUR-LE_CLIENT_BASIC.pdf')
+    const basicId = 'urn:cen.eu:en16931:2017#compliant#urn:zugferd.de:2p0:basic'
+    const basic = withId((await extract({ pdf: await readFile(basicPdf) })).xml, basicId)
+    expect(basic).toContain(basicId)
+    expect((await check({ xml: basic, schematron: true })).valid).toBe(true)
+    expect(fromCii(await xmlToInvoice(basic)).invoice.specificationIdentifier).toBe(basicId)
+  })
+
+  it.each([
+    ['a #conformant# extension', conformant],
+    ['a Peppol #compliant# CIUS', peppol],
+    // §7.3.1 p.50 spells the BASIC id with `EN16931` in capitals; the BT-24 usage note and the BASIC Schematron's code
+    // list have it in lower case (CG-77).
+    ['the capitalised BASIC id of spec p.50', 'urn:cen.eu:EN16931:2017#compliant#urn:factur-x.eu:1p0:basic'],
+    ['the sample of spec p.75', 'urn:cen.eu:en16931#compliant#factur-x.eu:1p0:basic'],
+    ['an id merely ending in :en16931', 'urn:example.org:en16931'],
+    ['an id ending in :extended-ctc-fr', 'urn:example.org:1p0:extended-ctc-fr'],
+    ['an Order-X id', 'urn:order-x.eu:1p0:basic'],
+  ])('refuses %s, naming BT-24 without quoting it', async (_name, id) => {
+    const error = await xmlToInvoice(await cii(id)).then(fromCii).then(() => undefined, (e: Error) => e)
+    expect(error).toBeInstanceOf(Error)
+    expect(error!.message).toMatch(/^fromCii: BT-24 \(specification identifier\) is not the identifier of a profile this model maps/)
+    expect(error!.message).not.toContain(id)
+    await expect(xmlToEn16931(await cii(id))).rejects.toThrow(/BT-24/)
+  })
+
+  it('uBL still reads a #compliant# CIUS as en16931, which CII refuses (CG-77)', async () => {
     expect((await ublToInvoice(await ubl(peppol))).invoice.specificationIdentifier).toBe(peppol)
     await expect(ublToInvoice(await ubl(conformant))).rejects.toThrow(/BT-24/)
   })
 
-  it('both writers refuse the foreign BT-24, so nothing is written under it', async () => {
-    const { invoice } = fromCii(await xmlToInvoice(await cii(conformant)))
+  it('both writers refuse a foreign BT-24, so nothing is written under it', async () => {
+    const { invoice } = fromCii(await xmlToInvoice(await readTwin(uc1.cii)))
+    invoice.specificationIdentifier = conformant
     expect(() => toCii(invoice, { level: 'en16931' })).toThrow(/BT-24/)
     DEPARTMENTS.forEach(r => r.clear(invoice))
     await expect(invoiceToUbl(invoice, { level: 'en16931' })).rejects.toThrow(/BT-24/)
+  })
+
+  // CG-77 (open): check() and generate() still take the level from the last `:` segment of BT-24 (getLevel), a public
+  // behaviour this change leaves to a release decision. The XSD alone then validates a #conformant# extension id as
+  // EN 16931; the EN 16931 Schematron refuses it (FX-SCH-A-000556, code list 1).
+  it('check() still reads a #conformant# extension id as en16931 (CG-77, pinned)', async () => {
+    const xml = await cii(conformant)
+    const xsdOnly = await check({ xml })
+    expect([xsdOnly.valid, xsdOnly.level]).toEqual([true, 'en16931'])
+    const withRules = await check({ xml, schematron: true })
+    expect(withRules.valid).toBe(false)
+    expect(withRules.schematronErrors!.map(e => e.assertId)).toEqual(['FX-SCH-A-000556'])
+    await expect(xmlToInvoice(xml).then(fromCii)).rejects.toThrow(/BT-24/)
   })
 })

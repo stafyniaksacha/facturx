@@ -132,7 +132,12 @@ writer's list is in [UBL 2.1](#ubl-invoicetoubl-and-ubltoinvoice).
 ## Reading: `fromCii(cii)`
 
 `fromCii()` takes the CII model that `xmlToInvoice()` returns and gives `{ invoice, dropped }`. The level
-comes from BT-24 of the document.
+comes from BT-24 of the document, compared whole (surrounding whitespace aside): one of the four identifiers in the
+table above, or the deprecated ZUGFeRD 2.0 id of BASIC (`urn:cen.eu:en16931:2017#compliant#urn:zugferd.de:2p0:basic`)
+or EXTENDED (`urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended`), which the Factur-X appendices list and
+its Schematrons accept. Any other BT-24 (a `#conformant#` extension, a CIUS such as Peppol BIS, an id that merely ends
+in a level name) throws, naming BT-24 without quoting it. `check()` and `generate()` still read the level from the end
+of BT-24 (CG-77), and the UBL reader accepts a `#compliant#` CIUS as `en16931`.
 
 ```ts
 const { invoice, dropped } = fromCii(await xmlToInvoice(xml))
