@@ -13,6 +13,7 @@ import {
 import * as qdt from '../models/facturx/qualifiedTypes'
 import * as ram from '../models/facturx/reusableTypes'
 import * as udt from '../models/facturx/unqualifiedTypes'
+import { hasDoctype } from '../xml'
 
 type NS = Record<string, string>
 
@@ -26,6 +27,10 @@ const NAMESPACES: NS = {
 /**
  * Parse a Factur-X XML string into a CrossIndustryInvoiceType object.
  * Mirrors the converter: every aggregate emitted by invoiceToXml is read back here.
+ *
+ * Refuses a document with a DOCTYPE (or anything but comments before the root element, `hasDoctype()`): CII uses none,
+ * and an internal entity, which the default parse options keep unexpanded, would hide the content it stands for from
+ * this reader (was CG-73). The error quotes nothing from the document.
  */
 export async function xmlToInvoice(xml: string | Buffer): Promise<CrossIndustryInvoiceType> {
   const doc = typeof xml === 'string'
@@ -38,6 +43,8 @@ export async function xmlToInvoice(xml: string | Buffer): Promise<CrossIndustryI
     if (!root) {
       throw new Error('Invalid XML: no root element')
     }
+    if (hasDoctype(doc))
+      throw new Error('xmlToInvoice: the document has a DOCTYPE (or a processing instruction before the root element); CII uses none, and its entities could hide or replace content, so it is refused')
 
     return new CrossIndustryInvoiceType({
       exchangedDocumentContext: parseExchangedDocumentContext(root),

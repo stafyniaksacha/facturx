@@ -43,7 +43,7 @@ function check(options: {
 | Field | Type | Description |
 | --- | --- | --- |
 | `valid` | `boolean` | `true` only if the XSD and every enabled business-rule layer pass: the Schematron with `schematron: true`, BR-FR with `frCtc: true`. |
-| `errors` | `any[]` | XSD validation errors (empty when structurally valid). |
+| `errors` | `any[]` | XSD validation errors (empty when structurally valid), or the single DOCTYPE entry (below). |
 | `flavor` | `string` | Detected (or supplied) flavor. |
 | `level` | `string` | Detected (or supplied) level. |
 | `schematronValid` | `boolean?` | Schematron result on its own (only when `schematron: true`). |
@@ -54,6 +54,14 @@ function check(options: {
 | `frCtcWarnings` | `SchematronError[]?` | BR-FR rules flagged `warning`/`information` that failed: none with the vendored rules (only when `frCtc: true`). |
 
 `valid` is `true` only if **every** layer that ran passes: the XSD, plus the Schematron with `schematron: true`, plus BR-FR with `frCtc: true`.
+
+A document with a DOCTYPE, or with anything but comments before the root element (a processing instruction there
+included), is not validated: `check()` returns `valid: false` with one entry in `errors`, `The document has a DOCTYPE
+…`, whatever the flavor, and does not throw. `flavor` and `level` are read when they can be (an entity may hide BT-24:
+`level` is then `''`), and with `schematron` or `frCtc` that layer is reported invalid with a single `… was not run: the
+document has a DOCTYPE` entry. No invoice or order uses a DOCTYPE, and an entity it declares is never expanded, so the
+XSD and the readers would not see the content it stands for. `extract({ check: true })` therefore refuses such an
+attachment (`Invalid XML`).
 
 When the XSD fails and a business-rule transform cannot run on the invalid data (for example a
 non-decimal amount), `check()` keeps the XSD errors and reports that layer as invalid with a single

@@ -20,7 +20,10 @@ by [`invoiceToXml`](#invoicetoxml) is read back, so the two are mirror images.
 
 <<< ../../examples/parse.ts#main{ts}
 
-Throws `Invalid XML: no root element` if the input has no document root.
+Throws `Invalid XML: no root element` if the input has no document root, and
+`xmlToInvoice: the document has a DOCTYPE …` for a document with a DOCTYPE, or with anything but comments before
+the root element (a processing instruction there included): CII uses no DOCTYPE, and an internal entity, which is
+never expanded, would hide the content it stands for from the reader. The error quotes nothing from the document.
 
 ## `invoiceToXml()`
 

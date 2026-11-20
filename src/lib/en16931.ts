@@ -74,7 +74,7 @@ export async function en16931ToXml(invoice: Invoice, options: En16931ToXmlOption
  * Read a CII (Factur-X BASIC, EN 16931, EXTENDED, or plain-CII EXTENDED-CTC-FR) or UBL 2.1 invoice into the EN 16931
  * model, choosing the reader from the root element: `fromCii(await xmlToInvoice(xml))` or `ublToInvoice(xml)`.
  * Refuses a document with a DOCTYPE, whatever its syntax (an internal entity could hide or replace content the reader
- * would then miss; `xmlToInvoice()` itself does not refuse it yet, CG-73). Throws what the readers throw (MINIMUM and
+ * would then miss; `xmlToInvoice()` and `ublToInvoice()` refuse it too, was CG-73). Throws what the readers throw (MINIMUM and
  * BASIC WL are not EN 16931 invoices), and for an Order-X, ZUGFeRD 1.0, CDAR or unrecognised document. An
  * `XmlDocument` passed in stays the caller's (never disposed). Errors never quote text content; a malformed input
  * passes libxml2's parse error through, which can name elements.

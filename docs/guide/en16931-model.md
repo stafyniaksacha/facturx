@@ -308,11 +308,11 @@ Two limits of that contract:
 
 An `XmlDocument` you pass stays yours: `ublToInvoice()` never disposes it.
 
-**Security.** `ublToInvoice()` and `xmlToEn16931()` (both syntaxes) refuse any document with a DOCTYPE: invoices
-never use one, and an entity could hide or replace content the reader would then miss. The check is fail-closed: before
-the root element only comments are accepted, so a processing instruction there is refused too. `xmlToInvoice()` (and so
-`fromCii(await xmlToInvoice(xml))` called directly) does not refuse it yet: an internal entity standing for an element
-is read around, and `dropped` cannot see it (CG-73). No path expands external entities. Errors never quote text
+**Security.** `ublToInvoice()`, `xmlToInvoice()` (and so `fromCii(await xmlToInvoice(xml))`) and `xmlToEn16931()`
+refuse any document with a DOCTYPE: invoices never use one, and an entity could hide or replace content the reader would
+then miss. The check is fail-closed: before the root element only comments are accepted, so a processing instruction
+there is refused too. `check()` reports such a document as invalid instead of throwing. No path expands external
+entities. Errors never quote text
 content; a malformed input passes libxml2's parse error through, which can name elements.
 
 ### What is proven for UBL

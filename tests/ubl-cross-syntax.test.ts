@@ -358,13 +358,12 @@ describe('xmlToEn16931', () => {
     await expect(xmlToEn16931(xml)).rejects.toThrow(/DOCTYPE/)
   })
 
-  it('refuses a CII DOCTYPE whose internal entity hides BT-10, which xmlToInvoice alone misses (CG-73)', async () => {
+  it('refuses a CII DOCTYPE whose internal entity hides BT-10, as xmlToInvoice now does (CG-73, closed)', async () => {
     const ram = 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100'
     const xml = (await readTwin(uc1.cii))
       .replace(/<ram:BuyerReference>[^<]*<\/ram:BuyerReference>/, '&br;')
       .replace('<rsm:CrossIndustryInvoice ', `<!DOCTYPE rsm:CrossIndustryInvoice [<!ENTITY br "<ram:BuyerReference xmlns:ram='${ram}'>BR-X</ram:BuyerReference>">]>\n<rsm:CrossIndustryInvoice `)
-    // xmlToInvoice() / fromCii() stay unchanged (CG-73, open): BT-10 is silently missing there.
-    expect(fromCii(await xmlToInvoice(xml)).invoice.buyerReference).toBeUndefined()
+    await expect(xmlToInvoice(xml)).rejects.toThrow(/^xmlToInvoice: the document has a DOCTYPE/)
     await expect(xmlToEn16931(xml)).rejects.toThrow(/^xmlToEn16931: the document has a DOCTYPE/)
     const doc = XmlDocument.fromString(xml)
     try {

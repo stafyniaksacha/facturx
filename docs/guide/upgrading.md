@@ -201,6 +201,17 @@ refused both.
 
 CII invoices carry no DOCTYPE: remove it, and declare `version="1.0"`.
 
+### `xmlToInvoice()` refuses a DOCTYPE; `check()` reports it as invalid
+
+`xmlToInvoice()` now throws `xmlToInvoice: the document has a DOCTYPE …` for a document with a DOCTYPE, or with
+anything but comments before the root element (a processing instruction such as `<?xml-stylesheet?>` there
+included). `check()` does not throw for it: it returns `valid: false` with a single `errors` entry,
+`The document has a DOCTYPE …`, for every flavor (Factur-X, Order-X, ZUGFeRD, UBL), and reports the Schematron and
+BR-FR layers you asked for as not run; `extract({ check: true })` therefore throws `Invalid XML` for such an
+attachment. In 0.6.1 an internal entity standing for an element (`<!ENTITY br "<ram:BuyerReference>…">` used as
+`&br;`) was kept unexpanded, so `xmlToInvoice()` read the invoice without it and `check()` validated a document whose
+readers saw something else. No CII invoice, Order-X order or UBL invoice uses a DOCTYPE: remove it.
+
 ## Other behaviour changes
 
 These shipped on `main` after 0.6.1 and are included in the next release.
@@ -478,7 +489,8 @@ left undefined.
 - [ ] If you call `generate()` with `flavor: 'zugferd'`, use `facturx` instead.
 - [ ] If you pass `level` to `generate()`, make sure it is the profile the XML declares in BT-24 (a level of another profile, or an unknown one, now throws), or drop it.
 - [ ] If the XML you pass to `generate()` has a DOCTYPE or an XML 1.1 declaration, remove the
-      DOCTYPE and declare `version="1.0"`: both now throw.
+      DOCTYPE and declare `version="1.0"`: both now throw. A DOCTYPE (or a processing instruction before the root)
+      also makes `xmlToInvoice()` throw and `check()` return `valid: false`.
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).
 - [ ] If you handle UBL invoices: `check()` now returns `flavor: 'ubl'` instead of throwing, and
       `generate()` / `extract({ check: true })` refuse UBL. Drop any code that relied on the old error.
