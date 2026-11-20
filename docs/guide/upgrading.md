@@ -208,7 +208,8 @@ anything but comments before the root element (a processing instruction such as 
 included). `check()` does not throw for it: it returns `valid: false` with a single `errors` entry,
 `The document has a DOCTYPE …`, for every flavor (Factur-X, Order-X, ZUGFeRD, UBL), and reports the Schematron and
 BR-FR layers you asked for as not run; `extract({ check: true })` therefore throws `Invalid XML` for such an
-attachment. In 0.6.1 an internal entity standing for an element (`<!ENTITY br "<ram:BuyerReference>…">` used as
+attachment, and `generate({ check: true })` throws `Invalid XML format` for XML with a processing instruction before
+the root (a DOCTYPE already made `generate()` throw). In 0.6.1 an internal entity standing for an element (`<!ENTITY br "<ram:BuyerReference>…">` used as
 `&br;`) was kept unexpanded, so `xmlToInvoice()` read the invoice without it and `check()` validated a document whose
 readers saw something else. No CII invoice, Order-X order or UBL invoice uses a DOCTYPE: remove it.
 
@@ -220,8 +221,10 @@ These shipped on `main` after 0.6.1 and are included in the next release.
   memory: namespace-bound XPath (`doc.find('//ram:ID', ns)`) finds them, `check({ xml: doc })` reads the document as it
   is, and a node's `name` is its local name (`ExchangedDocument`, not `rsm:ExchangedDocument`). `toString()` gives the
   same text, except that an element written with an empty value is now `<ram:X/>` instead of `<ram:X></ram:X>`, the
-  same element (XML 1.0 §3.1). A text node over 10 MB (for example a large BT-125 attachment) now throws `Text node
-  too long` there, as `xmlToInvoice()`, `check()` and `generate()` already did for such a document (CG-76).
+  same element (XML 1.0 §3.1), a C0 control character (already replaced by U+FFFD) is written as that character
+  instead of `&#xFFFD;`, and a noncharacter such as U+FFFE, which used to be written into XML no parser accepts, now
+  throws. A text node over 10 MB (for example a large BT-125 attachment) now throws `Text node too long` there, as
+  `xmlToInvoice()`, `check()` and `generate()` already did for such a document (CG-76).
 - **`extract({ check: true })` validates ZUGFeRD attachments** ([#38](https://github.com/stafyniaksacha/facturx/issues/38)). 0.6.1 threw
   `Unknown schema flavor: "zugferd"` for any PDF whose invoice is named `zugferd-invoice.xml` or
   `ZUGFeRD-invoice.xml`, which also broke `facturx extract` (it checks by default). A ZUGFeRD 2.x

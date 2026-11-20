@@ -149,6 +149,17 @@ describe('en 16931 model: lines round trip', () => {
     finally {
       doc.dispose()
     }
+    // A blank EXT-FR-FE-163 is written as an empty `LineStatusReasonCode`, which the context does not select either
+    // (neither absent nor `DETAIL`): the shared check lets it through, and the rule agrees.
+    lines.lines[3].statusReasonCode = ''
+    const blank = await invoiceToXml(toCii(lines, { level }))
+    try {
+      expect(blank.toString()).toMatch(/<ram:LineStatusReasonCode\/>/)
+      expect(await ruleIds(blank.toString())).not.toContain(rule)
+    }
+    finally {
+      blank.dispose()
+    }
   })
 
   it('reads the multi-vendor lines of UC10: line seller, object identifiers, VAT with exemption reason and point date code', async () => {
