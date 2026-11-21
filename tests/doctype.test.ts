@@ -1,10 +1,11 @@
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { check, extract, fromCii, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, extract, fromCii, generate, ublToInvoice, validateCdar, validateFrCtc, validateSchematron, xmlToEn16931, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument } from 'libxml2-wasm'
 import { PDFDocument } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
+import { prologHasDoctype } from '../src/lib/xml'
 import { getOrderXBasicXML } from './fixtures/xml'
 
 // CG-73 (closed): no CII invoice, Order-X order or UBL invoice uses a DOCTYPE, and with the default libxml2 parse
@@ -46,11 +47,55 @@ describe('xmlToInvoice refuses a DOCTYPE (CG-73)', () => {
     }
   })
 
-  it('refuses a processing instruction before the root (fail-closed), accepts comments around it', async () => {
+  // Text input is judged on its raw prolog: XML declaration, whitespace, comments and processing instructions are
+  // skipped, and a `<!DOCTYPE` before the root is refused. A caller's XmlDocument has no text: the fail-closed node
+  // walk applies, which refuses anything but comments before the root.
+  it('accepts a processing instruction and comments before the root of text input, refuses one in a caller XmlDocument', async () => {
     const cii = await source(CII)
-    await expect(xmlToInvoice(`<?xml-stylesheet href="x.xsl"?>\n${cii}`)).rejects.toThrow(DOCTYPE_ERROR)
-    const { invoice } = fromCii(await xmlToInvoice(`<!-- before -->\n${cii}\n<!-- after -->`))
-    expect(invoice.buyerReference).toBeDefined()
+    const pi = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- a -->\n<?xml-stylesheet href="x.xsl"?>\n${cii}\n<!-- after -->`
+    for (const input of [pi, Buffer.from(pi), Buffer.from(`\uFEFF${pi}`)])
+      expect(fromCii(await xmlToInvoice(input)).invoice.buyerReference).toBeDefined()
+    expect((await check({ xml: pi })).valid).toBe(true)
+    expect((await xmlToEn16931(pi)).syntax).toBe('cii')
+    const doc = XmlDocument.fromString(pi)
+    try {
+      expect((await check({ xml: doc })).errors).toEqual([{ message: expect.stringMatching(/^The document has a DOCTYPE/) }])
+      await expect(xmlToEn16931(doc)).rejects.toThrow(/DOCTYPE/)
+      expect(doc.root.name).toBe('CrossIndustryInvoice')
+    }
+    finally {
+      doc.dispose()
+    }
+    const ubl = (await source(UBL)).replace('<Invoice ', '<?xml-stylesheet href="x.xsl"?>\n<Invoice ')
+    expect((await ublToInvoice(ubl)).invoice.number).toBeTruthy()
+    expect((await xmlToEn16931(ubl)).syntax).toBe('ubl')
+    const pdf = await PDFDocument.create()
+    pdf.addPage()
+    expect((await generate({ pdf, xml: pi, check: true })).length).toBeGreaterThan(0)
+  })
+
+  it('refuses a DOCTYPE after comments and processing instructions, and ignores one inside a comment', async () => {
+    const cii = await source(CII)
+    const late = `<?xml version="1.0"?><!-- c --><?pi x?>\n<!DOCTYPE rsm:CrossIndustryInvoice>\n${cii}`
+    await expect(xmlToInvoice(late)).rejects.toThrow(DOCTYPE_ERROR)
+    expect((await check({ xml: late })).valid).toBe(false)
+    expect(fromCii(await xmlToInvoice(`<!-- <!DOCTYPE x [<!ENTITY a "b">]> -->\n${cii}`)).invoice.buyerReference).toBeDefined()
+  })
+
+  // The scanner itself: what it reads, and where it hands over to the fail-closed node walk (`undefined`). No reader
+  // of the package parses UTF-16 (the parse is UTF-8), so those cases are unit-tested here.
+  it('scans an ASCII-compatible prolog, and hands anything else to the node walk', () => {
+    expect(prologHasDoctype('<?xml version="1.0"?>\n<!-- c --><?pi?>\n<rsm:X/>')).toBe(false)
+    expect(prologHasDoctype('\uFEFF<!DOCTYPE x>\n<x/>')).toBe(true)
+    expect(prologHasDoctype('<!ELEMENT x ANY><x/>')).toBe(true)
+    expect(prologHasDoctype(Buffer.from('\uFEFF<?xml version="1.0" encoding="ISO-8859-1"?><?pi?><x/>'))).toBe(false)
+    expect(prologHasDoctype(Buffer.from([0xEF, 0xBB, 0xBF, ...Buffer.from('<!DOCTYPE x><x/>')]))).toBe(true)
+    expect(prologHasDoctype(Buffer.concat([Buffer.from([0xFF, 0xFE]), Buffer.from('<x/>', 'utf16le')]))).toBeUndefined()
+    expect(prologHasDoctype(Buffer.from('<x/>', 'utf16le'))).toBeUndefined()
+    expect(prologHasDoctype('<?xml version="1.0" encoding="UTF-16"?><x/>')).toBeUndefined()
+    expect(prologHasDoctype('<?xml version="1.0" encoding="EBCDIC-CP-US"?><x/>')).toBeUndefined()
+    expect(prologHasDoctype('<!-- unterminated <x/>')).toBeUndefined()
+    expect(prologHasDoctype('junk <x/>')).toBeUndefined()
   })
 })
 
@@ -110,5 +155,37 @@ describe('check reports a DOCTYPE as invalid without throwing (CG-73)', () => {
     await expect(extract({ pdf: Buffer.from(bytes), check: true })).rejects.toThrow('Invalid XML')
     // Without check, extraction is unchanged: the bytes as stored.
     expect((await extract({ pdf: Buffer.from(bytes) })).xml).toContain('<!DOCTYPE')
+  })
+})
+
+// The direct validators run a transform on the text: a used entity makes SaxonJS abort, a declared one would pass
+// unseen. Each reports a DOCTYPE as an invalid result with one error, as `check()` does, and never passes it.
+describe('the direct validators report a DOCTYPE as invalid (CG-73)', () => {
+  const CDAR = resolve(import.meta.dirname, '../spec/afnor-xp-z12-012-1.4/distribution/XP_Z12-012_Annexe_B_EXEMPLES_V1.4/Cycle de Vie - CDAR/_Cas Nominal/UC1_F202500003_02-CDV-202_Recue.xml')
+  const doctypes = (xml: string, root: string): [string, string][] => [
+    ['a declared, unused internal entity', withDoctype(xml, root, '<!ENTITY t "x">')],
+    ['a used internal entity', withDoctype(xml, root, '<!ENTITY t "x">').replace(/(<\/[\w:]+>)/, '&t;$1')],
+    ['a bare DOCTYPE', xml.replace(`<${root} `, `<!DOCTYPE ${root}>\n<${root} `)],
+  ]
+  const MESSAGE = expect.stringMatching(/^The document has a DOCTYPE/)
+
+  it('validateSchematron and validateFrCtc (CII and UBL)', async () => {
+    const cii = await source(CII)
+    const ubl = await source(UBL)
+    for (const [name, xml] of doctypes(cii, 'rsm:CrossIndustryInvoice')) {
+      expect(await validateSchematron({ xml, flavor: 'facturx', level: 'en16931' }), name).toEqual({ valid: false, errors: [{ message: MESSAGE, severity: 'error' }], warnings: [] })
+      expect(await validateFrCtc({ xml }), name).toEqual({ valid: false, errors: [{ message: MESSAGE, severity: 'error' }], warnings: [] })
+    }
+    for (const [name, xml] of doctypes(ubl, 'Invoice')) {
+      expect((await validateSchematron({ xml, level: 'en16931' })).valid, name).toBe(false)
+      expect((await validateFrCtc({ xml })).valid, name).toBe(false)
+    }
+  })
+
+  it('validateCdar', async () => {
+    const cdar = (await source(CDAR)).replace('<rsm:CrossDomainAcknowledgementAndResponse\n', '<rsm:CrossDomainAcknowledgementAndResponse ')
+    expect(cdar).toContain('<rsm:CrossDomainAcknowledgementAndResponse ')
+    for (const [name, xml] of doctypes(cdar, 'rsm:CrossDomainAcknowledgementAndResponse'))
+      expect(await validateCdar({ xml }), name).toEqual({ valid: false, errors: [{ message: MESSAGE }], schematronErrors: [], schematronWarnings: [] })
   })
 })

@@ -6,7 +6,7 @@ import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
 import { assertFrCtcApplicable, validateFrCtc } from './fr-ctc'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
-import { assertUblLevelMatches, declaresExtendedCtcFr, getFlavor, getLevel, hasDoctype, isUblDocument } from './xml'
+import { assertUblLevelMatches, declaresExtendedCtcFr, DOCTYPE_MESSAGE, getFlavor, getLevel, inputHasDoctype, isUblDocument } from './xml'
 import { getXsd } from './xsd'
 
 // XPath dynamic errors caused by the document's values (XPath and XQuery Functions and Operators 3.1
@@ -48,13 +48,31 @@ export async function check(options: {
   frCtcErrors?: SchematronError[]
   frCtcWarnings?: SchematronError[]
 }> {
+  return checkFrom(options, options.xml)
+}
+
+/**
+ * `check()` on `options.xml`, judging a DOCTYPE from `source`: the text that document was parsed from, whose raw
+ * prolog decides (`inputHasDoctype()`), or the same `XmlDocument`, walked fail-closed. For `generate()` and
+ * `extract()`, which parse the text themselves. Not exported from the package.
+ */
+export async function checkFrom(options: Parameters<typeof check>[0], source: string | Uint8Array | XmlDocument): ReturnType<typeof check> {
   const xml = await resolveXml(options.xml)
 
   // Reported, not thrown, before anything reads the document (was CG-73): libxml2 keeps an internal entity unexpanded
   // for the XSD, the Schematron runs on the serialisation, and the readers refuse it, so no step would check what
   // another sees. No invoice, order or CDAR message uses a DOCTYPE. Flavor and level are read best effort: an entity
   // may hide BT-24.
-  if (hasDoctype(xml))
+  let doctype: boolean
+  try {
+    doctype = inputHasDoctype(source, xml)
+  }
+  catch (error) {
+    if (!(options.xml instanceof XmlDocument))
+      xml.dispose()
+    throw error
+  }
+  if (doctype)
     return doctypeResult(xml, options)
 
   let flavor: string
@@ -172,8 +190,6 @@ export async function check(options: {
   result.valid = valid
   return result
 }
-
-const DOCTYPE_MESSAGE = 'The document has a DOCTYPE (or a processing instruction before the root element): invoices and orders use none, and its entities could hide or replace content, so it is not validated'
 
 function bestEffort(read: () => string): string {
   try {

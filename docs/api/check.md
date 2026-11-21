@@ -55,8 +55,8 @@ function check(options: {
 
 `valid` is `true` only if **every** layer that ran passes: the XSD, plus the Schematron with `schematron: true`, plus BR-FR with `frCtc: true`.
 
-A document with a DOCTYPE, or with anything but comments before the root element (a processing instruction there
-included), is not validated: `check()` returns `valid: false` with one entry in `errors`, `The document has a DOCTYPE
+A document with a DOCTYPE is not validated (for text input the raw prolog decides, so comments and processing
+instructions before the root element are fine; for an `XmlDocument` you pass, only comments may precede it): `check()` returns `valid: false` with one entry in `errors`, `The document has a DOCTYPE
 …`, whatever the flavor, and does not throw. `flavor` and `level` are read when they can be (an entity may hide BT-24:
 `level` is then `''`), and with `schematron` or `frCtc` that layer is reported invalid with a single `… was not run: the
 document has a DOCTYPE` entry. No invoice or order uses a DOCTYPE, and an entity it declares is never expanded, so the

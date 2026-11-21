@@ -203,13 +203,11 @@ CII invoices carry no DOCTYPE: remove it, and declare `version="1.0"`.
 
 ### `xmlToInvoice()` refuses a DOCTYPE; `check()` reports it as invalid
 
-`xmlToInvoice()` now throws `xmlToInvoice: the document has a DOCTYPE …` for a document with a DOCTYPE, or with
-anything but comments before the root element (a processing instruction such as `<?xml-stylesheet?>` there
-included). `check()` does not throw for it: it returns `valid: false` with a single `errors` entry,
+`xmlToInvoice()` now throws `xmlToInvoice: the document has a DOCTYPE …` for a document with a DOCTYPE. For text input (a string or Buffer) the raw prolog decides: the XML declaration, whitespace, comments and processing instructions (such as `<?xml-stylesheet?>`) are skipped, and a `<!DOCTYPE` before the root element is refused. For an `XmlDocument` you pass, which has no text, the check is fail-closed: only comments may precede the root element. `check()` does not throw for it: it returns `valid: false` with a single `errors` entry,
 `The document has a DOCTYPE …`, for every flavor (Factur-X, Order-X, ZUGFeRD, UBL), and reports the Schematron and
 BR-FR layers you asked for as not run; `extract({ check: true })` therefore throws `Invalid XML` for such an
-attachment, and `generate({ check: true })` throws `Invalid XML format` for XML with a processing instruction before
-the root (a DOCTYPE already made `generate()` throw). In 0.6.1 an internal entity standing for an element (`<!ENTITY br "<ram:BuyerReference>…">` used as
+attachment. `validateSchematron()`, `validateFrCtc()` and `validateCdar()` return an invalid result with that one
+error too, where 0.6.1 passed a document whose DOCTYPE declared an entity it did not use, and threw on one it used. In 0.6.1 an internal entity standing for an element (`<!ENTITY br "<ram:BuyerReference>…">` used as
 `&br;`) was kept unexpanded, so `xmlToInvoice()` read the invoice without it and `check()` validated a document whose
 readers saw something else. No CII invoice, Order-X order or UBL invoice uses a DOCTYPE: remove it.
 
@@ -419,8 +417,8 @@ named term and write again, or call `dropUblUncarried(invoice, { level })` first
 to the level's id and the other values above removed (plus the department names of the other contacts, which are not
 EN 16931 terms), and lists each change in `dropped`. Its output is proven against the UBL XSD and the level Schematron,
 not BR-FR: run `check({ frCtc: true })` on what you write. For UBL, `en16931ToXml()` also takes `root: 'Invoice' | 'CreditNote'`. `ublToInvoice()`
-and `xmlToEn16931()` (either syntax) refuse a document with a DOCTYPE, or with a processing instruction before the
-root element. `invoiceToUbl()`,
+and `xmlToEn16931()` (either syntax) refuse a document with a DOCTYPE (read from the raw prolog for text input; for a
+caller's `XmlDocument`, anything but comments before the root element). `invoiceToUbl()`,
 `ublToInvoice()` and `dropUblUncarried()` are also exported from `@stafyniaksacha/facturx/en16931`. See the
 [EN 16931 model guide](/guide/en16931-model#ubl-invoicetoubl-and-ubltoinvoice).
 
@@ -494,8 +492,8 @@ left undefined.
 - [ ] If you call `generate()` with `flavor: 'zugferd'`, use `facturx` instead.
 - [ ] If you pass `level` to `generate()`, make sure it is the profile the XML declares in BT-24 (a level of another profile, or an unknown one, now throws), or drop it.
 - [ ] If the XML you pass to `generate()` has a DOCTYPE or an XML 1.1 declaration, remove the
-      DOCTYPE and declare `version="1.0"`: both now throw. A DOCTYPE (or a processing instruction before the root)
-      also makes `xmlToInvoice()` throw and `check()` return `valid: false`.
+      DOCTYPE and declare `version="1.0"`: both now throw. A DOCTYPE also makes `xmlToInvoice()` throw and `check()`
+      and the direct validators return `valid: false`.
 - [ ] For the French reform: add `frCtc: true` (CLI `--fr-ctc`).
 - [ ] If you handle UBL invoices: `check()` now returns `flavor: 'ubl'` instead of throwing, and
       `generate()` / `extract({ check: true })` refuse UBL. Drop any code that relied on the old error.

@@ -36,8 +36,9 @@ if (!valid) {
 ```
 
 `errors` is the list of structural problems reported by the XSD validator (empty when `valid` is
-`true`). A document with a DOCTYPE (or a processing instruction before the root element) is not validated at all:
-`valid` is `false` and `errors` holds one entry naming the cause. No invoice or order uses a DOCTYPE, and the entities
+`true`). A document with a DOCTYPE is not validated at all: `valid` is `false` and `errors` holds one entry naming
+the cause. `validateSchematron()`, `validateFrCtc()` and `validateCdar()` report it the same way, as an invalid
+result. For text input (a string or Buffer) the raw prolog decides: the XML declaration, whitespace, comments and processing instructions (such as `<?xml-stylesheet?>`) are skipped, and a `<!DOCTYPE` before the root element is refused. For an `XmlDocument` you pass, which has no text, the check is fail-closed: only comments may precede the root element. No invoice or order uses a DOCTYPE, and the entities
 it declares are never expanded, so the XSD and the readers would not see the content they stand for.
 
 ## UBL invoices

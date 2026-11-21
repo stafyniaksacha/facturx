@@ -314,8 +314,7 @@ An `XmlDocument` you pass stays yours: `ublToInvoice()` never disposes it.
 
 **Security.** `ublToInvoice()`, `xmlToInvoice()` (and so `fromCii(await xmlToInvoice(xml))`) and `xmlToEn16931()`
 refuse any document with a DOCTYPE: invoices never use one, and an entity could hide or replace content the reader would
-then miss. The check is fail-closed: before the root element only comments are accepted, so a processing instruction
-there is refused too. `check()` reports such a document as invalid instead of throwing. No path expands external
+then miss. For text input (a string or Buffer) the raw prolog decides: the XML declaration, whitespace, comments and processing instructions (such as `<?xml-stylesheet?>`) are skipped, and a `<!DOCTYPE` before the root element is refused. For an `XmlDocument` you pass, which has no text, the check is fail-closed: only comments may precede the root element. `check()` reports such a document as invalid instead of throwing. No path expands external
 entities. Errors never quote text
 content; a malformed input passes libxml2's parse error through, which can name elements.
 

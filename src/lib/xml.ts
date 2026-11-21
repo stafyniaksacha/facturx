@@ -182,6 +182,81 @@ export function hasDoctype(doc: XmlDocument): boolean {
   return false
 }
 
+// Encodings whose bytes for the markup characters (`<`, `?`, `!`, `-`, `>`, letters, whitespace) are ASCII, so the
+// prolog can be scanned byte by byte. Anything else declared (UTF-16, EBCDIC, ...) falls back to the node walk.
+const ASCII_COMPATIBLE = /^(?:utf-?8|us-ascii|ascii|iso[-_]?8859-\d{1,2}|latin-?1|windows-125\d|cp125\d)$/i
+
+/**
+ * Whether text input declares a DOCTYPE before its root element, read from the raw prolog: after an optional UTF-8
+ * BOM, the XML declaration, whitespace, comments and processing instructions are skipped; `<!DOCTYPE` (or any other
+ * `<!` construct) before the root is `true`, the root's `<` is `false`. `undefined` when the text cannot be scanned
+ * that way (a UTF-16 or other non-ASCII-compatible encoding, by BOM, byte pattern or declaration; an unterminated
+ * construct; anything else before the root): callers then use the fail-closed node walk (`hasDoctype()`).
+ */
+export function prologHasDoctype(input: string | Uint8Array): boolean | undefined {
+  let text: string
+  if (typeof input === 'string') {
+    text = input.charCodeAt(0) === 0xFEFF ? input.slice(1) : input
+  }
+  else {
+    const b = input
+    // UTF-16 / UTF-32 BOMs, BOM-less UTF-16 `<?` / `<` and EBCDIC `<?xm`: not ASCII-compatible.
+    if ((b[0] === 0xFE && b[1] === 0xFF) || (b[0] === 0xFF && b[1] === 0xFE) || b[0] === 0x00 || (b[0] === 0x3C && b[1] === 0x00) || (b[0] === 0x4C && b[1] === 0x6F))
+      return undefined
+    const start = b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF ? 3 : 0
+    // Latin-1 keeps every byte as one character: enough to read ASCII markup, whatever the text after it.
+    text = Array.from(b.subarray(start, Math.min(b.length, start + 64 * 1024)), c => String.fromCharCode(c)).join('')
+  }
+  let pos = 0
+  for (;;) {
+    while (pos < text.length && ' \t\r\n'.includes(text[pos]))
+      pos++
+    if (text.startsWith('<?', pos)) {
+      const end = text.indexOf('?>', pos + 2)
+      if (end < 0)
+        return undefined
+      if (pos === 0 && /^<\?xml[ \t\r\n]/.test(text)) {
+        const encoding = /\sencoding\s*=\s*(["'])([^"']*)\1/.exec(text.slice(0, end))?.[2]
+        if (encoding !== undefined && !ASCII_COMPATIBLE.test(encoding))
+          return undefined
+      }
+      pos = end + 2
+    }
+    else if (text.startsWith('<!--', pos)) {
+      const end = text.indexOf('-->', pos + 4)
+      if (end < 0)
+        return undefined
+      pos = end + 3
+    }
+    else if (text.startsWith('<!', pos)) {
+      return true
+    }
+    else if (text[pos] === '<' && pos + 1 < text.length && (/[A-Z_]/i.test(text[pos + 1]) || text.charCodeAt(pos + 1) > 0x7F)) {
+      return false
+    }
+    else {
+      return undefined
+    }
+  }
+}
+
+/**
+ * Whether a document parsed from `input` carries a DOCTYPE. For text (string, Buffer), libxml2's own record of a DTD
+ * (`doc.dtd`) or the raw prolog (`prologHasDoctype()`) decides, so a processing instruction such as
+ * `<?xml-stylesheet?>` before the root is accepted; when the prolog cannot be scanned, and for a caller's
+ * `XmlDocument` (no text to read), the fail-closed node walk (`hasDoctype()`) decides.
+ */
+export function inputHasDoctype(input: string | Uint8Array | XmlDocument, doc: XmlDocument): boolean {
+  if (input instanceof XmlDocument)
+    return hasDoctype(doc)
+  if (doc.dtd !== null)
+    return true
+  return prologHasDoctype(input) ?? hasDoctype(doc)
+}
+
+/** The finding `check()` and the direct validators report for a document with a DOCTYPE (was CG-73). */
+export const DOCTYPE_MESSAGE = 'The document has a DOCTYPE: invoices, orders and lifecycle messages use none, and its entities could hide or replace content, so it is not validated'
+
 /** Whether the root is a UBL 2.1 Invoice or CreditNote (name and namespace). Never throws. */
 export function isUblDocument(fileDoc: XmlDocument): boolean {
   const root = fileDoc.root

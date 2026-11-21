@@ -13,7 +13,7 @@ import { invoiceToUbl } from './converters/ubl'
 import { fromCii, toCii } from './mapping/cii'
 import { xmlToInvoice } from './parsers/facturx'
 import { ublToInvoice } from './parsers/ubl'
-import { getFlavor, hasDoctype } from './xml'
+import { getFlavor, inputHasDoctype } from './xml'
 
 /** The XML syntaxes the EN 16931 model is written to and read from. */
 export type En16931Syntax = 'cii' | 'ubl'
@@ -83,11 +83,12 @@ export async function xmlToEn16931(xml: string | Buffer | XmlDocument): Promise<
   const owned = !(xml instanceof XmlDocument)
   const doc = xml instanceof XmlDocument ? xml : typeof xml === 'string' ? XmlDocument.fromString(xml) : XmlDocument.fromBuffer(xml)
   try {
-    if (hasDoctype(doc))
+    if (inputHasDoctype(xml, doc))
       throw new Error('xmlToEn16931: the document has a DOCTYPE; invoices use none, and its entities could hide or replace content, so it is refused')
     const flavor = getFlavor(doc)
     if (flavor === 'ubl')
-      return { ...await ublToInvoice(doc), syntax: 'ubl' }
+      // Text goes to the reader as text, so it judges the prolog as this function did; a caller's document as is.
+      return { ...await ublToInvoice(owned ? xml : doc), syntax: 'ubl' }
     if (flavor === 'facturx') {
       // `xmlToInvoice()` parses its own copy from text; a caller's document is serialised for it, never disposed.
       const cii = await xmlToInvoice(xml instanceof XmlDocument ? xml.toString() : xml)

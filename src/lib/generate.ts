@@ -20,7 +20,7 @@ import {
 } from 'pdf-lib'
 import pkg from '../../package.json' with { type: 'json' }
 
-import { check } from './check'
+import { checkFrom } from './check'
 import { FACTURX_CONFORMANCE_LEVEL, FACTURX_FILENAME, ORDERX_CONFORMANCE_LEVEL, ORDERX_DOCUMENT_TYPE, ORDERX_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { baseInfo2PdfMetadata } from './metadata'
 import { decodeName, embeddedFileSpecs, embeddedFileStreams, InflateBudget, InflateBudgetExceededError, MalformedPageTreeError, PageScanLimitError, readEmbeddedFilePrefix, readEmbeddedFilesNames } from './pdf'
@@ -131,11 +131,12 @@ export async function generate(options: {
     const documentType = flavor === 'orderx' ? orderDocumentType(xml) : 'INVOICE'
 
     if (options.check === true) {
-      const result = await check({
+      // The DOCTYPE is judged on the text `xml` was parsed from, as `check()` does for text input.
+      const result = await checkFrom({
         xml,
         flavor,
         level,
-      })
+      }, source)
       if (!result.valid) {
         throw new Error(`Invalid XML format (${flavor} - ${level})`)
       }

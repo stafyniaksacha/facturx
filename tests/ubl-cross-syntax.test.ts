@@ -375,12 +375,19 @@ describe('xmlToEn16931', () => {
     }
   })
 
-  it('accepts comments around the root, refuses a processing instruction before it (fail-closed DOCTYPE check)', async () => {
+  it('accepts comments and a processing instruction around the root of text, refuses the PI in a caller XmlDocument', async () => {
     const ubl = await readTwin(uc1.ubl)
     expect((await xmlToEn16931(`${ubl.replace('<Invoice ', '<!-- before -->\n<Invoice ')}\n<!-- after --><?after pi?>`)).syntax).toBe('ubl')
     const pi = ubl.replace('<Invoice ', '<?xml-stylesheet href="x.xsl"?>\n<Invoice ')
-    await expect(xmlToEn16931(pi)).rejects.toThrow(/DOCTYPE/)
-    await expect(ublToInvoice(pi)).rejects.toThrow(/DOCTYPE/)
+    expect((await xmlToEn16931(pi)).syntax).toBe('ubl')
+    expect((await ublToInvoice(pi)).invoice.number).toBeTruthy()
+    const doc = XmlDocument.fromString(pi)
+    try {
+      await expect(ublToInvoice(doc)).rejects.toThrow(/DOCTYPE/)
+    }
+    finally {
+      doc.dispose()
+    }
   })
 })
 

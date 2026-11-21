@@ -16,4 +16,3 @@ export function qname(name: string): [localName: string, prefix: string] {
     throw new Error(`qname: "${name}" is not a prefixed element name`)
   return [name.slice(colon + 1), name.slice(0, colon)]
 }
-

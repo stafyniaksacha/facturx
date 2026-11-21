@@ -25,7 +25,7 @@ import { Item, ItemAttribute, ItemClassification, LineVat, PriceDetails } from '
 import { InvoiceLine, LineAllowance, LineCharge, LineNote, LinePeriod } from '../models/en16931/lines'
 import { Buyer, Delivery, DeliveryTerms, Seller, SellerTaxRepresentative } from '../models/en16931/parties'
 import { CreditTransfer, DirectDebit, DocumentAllowance, DocumentCharge, DocumentTotals, PaymentCard, PaymentInstructions, VatBreakdown, VatCurrencyExchange } from '../models/en16931/settlement'
-import { getUblDeclaredLevel, hasDoctype, isUblDocument } from '../xml'
+import { getUblDeclaredLevel, inputHasDoctype, isUblDocument } from '../xml'
 import { ublDiffPaths } from './ubl-dropped'
 
 /** What `ublToInvoice()` returns. */
@@ -720,7 +720,7 @@ export async function ublToInvoice(xml: string | Buffer | XmlDocument): Promise<
   const owned = !(xml instanceof XmlDocument)
   const doc = xml instanceof XmlDocument ? xml : typeof xml === 'string' ? XmlDocument.fromString(xml) : XmlDocument.fromBuffer(xml)
   try {
-    if (hasDoctype(doc))
+    if (inputHasDoctype(xml, doc))
       throw new Error('ublToInvoice: the document has a DOCTYPE; UBL uses none, and its entities could hide or replace content, so it is refused')
     if (!isUblDocument(doc))
       throw new Error('ublToInvoice: not a UBL 2.1 Invoice or CreditNote (root element and namespace)')
