@@ -217,14 +217,9 @@ readers saw something else. No CII invoice, Order-X order or UBL invoice uses a 
 
 These shipped on `main` after 0.6.1 and are included in the next release.
 
-- **`invoiceToXml()` returns a document parsed back from its text.** Its elements now carry the CII namespaces in
-  memory: namespace-bound XPath (`doc.find('//ram:ID', ns)`) finds them, `check({ xml: doc })` reads the document as it
-  is, and a node's `name` is its local name (`ExchangedDocument`, not `rsm:ExchangedDocument`). `toString()` gives the
-  same text, except that an element written with an empty value is now `<ram:X/>` instead of `<ram:X></ram:X>`, the
-  same element (XML 1.0 §3.1), a C0 control character (already replaced by U+FFFD) is written as that character
-  instead of `&#xFFFD;`, and a noncharacter such as U+FFFE, which used to be written into XML no parser accepts, now
-  throws. A text node over 10 MB (for example a large BT-125 attachment) now throws `Text node too long` there, as
-  `xmlToInvoice()`, `check()` and `generate()` already did for such a document (CG-76).
+- **`invoiceToXml()` returns a document whose elements carry the CII namespaces in memory.** Namespace-bound XPath
+  (`doc.find('//ram:ID', ns)`) now finds them, `check({ xml: doc })` reads the document as it is, and a node's `name`
+  is its local name (`ExchangedDocument`, not `rsm:ExchangedDocument`). `toString()` gives exactly the same text.
 - **`extract({ check: true })` validates ZUGFeRD attachments** ([#38](https://github.com/stafyniaksacha/facturx/issues/38)). 0.6.1 threw
   `Unknown schema flavor: "zugferd"` for any PDF whose invoice is named `zugferd-invoice.xml` or
   `ZUGFeRD-invoice.xml`, which also broke `facturx extract` (it checks by default). A ZUGFeRD 2.x

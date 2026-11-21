@@ -244,9 +244,9 @@ describe('facturX XML Converter', () => {
   })
 })
 
-// CG-74 (closed): `invoiceToXml()` builds children with `addElement('ram:X')`, which in libxml2-wasm names the element
-// `ram:X` with no namespace in memory; it now returns the document re-parsed from that text, so its nodes carry the CII
-// namespaces and `toString()` gives the same text.
+// CG-74 (closed): `addElement('ram:X')` alone names the element `ram:X` with no namespace in memory. The converter now
+// creates every element through `qname()` (local name + namespace prefix), so its nodes carry the CII namespaces and
+// the serialised text is unchanged; nothing is re-parsed.
 describe('invoiceToXml: namespaces of the returned document (CG-74)', () => {
   const NS = {
     rsm: 'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100',
@@ -283,7 +283,7 @@ describe('invoiceToXml: namespaces of the returned document (CG-74)', () => {
     }
   })
 
-  it('round-trips escaping, CR, tab and non-ASCII text through the re-parse', async () => {
+  it('round-trips escaping, CR, tab and non-ASCII text', async () => {
     const { xmlToInvoice } = await import('@stafyniaksacha/facturx')
     const { readFile } = await import('node:fs/promises')
     const { resolve } = await import('node:path')
@@ -299,48 +299,38 @@ describe('invoiceToXml: namespaces of the returned document (CG-74)', () => {
     }
   })
 
-  // What the re-parse changes in the text, besides `<x></x>` → `<x/>` for an empty value: a character XML 1.0 forbids.
-  // libxml2 writes a C0 control as `&#xFFFD;` when building (the value was never kept), and the re-parse writes that
-  // U+FFFD literally; a noncharacter such as U+FFFE was written as it is, which no XML parser accepts, and now throws.
-  it('writes U+FFFD for a C0 control and refuses U+FFFE, quoting nothing', async () => {
-    const { xmlToInvoice } = await import('@stafyniaksacha/facturx')
+  // CG-76 (open): libxml2's default limit (XML_MAX_TEXT_LENGTH, 10 MB per text node) without XML_PARSE_HUGE, which
+  // AGENTS.md forbids for input documents, applies to every parse of a document. `invoiceToXml()` parses nothing, so it
+  // writes such a value (a large BT-125 attachment, up to 100 MB in the Chorus Pro note of spec p.124); the readers,
+  // and `invoiceToUbl()`, which re-parses for its attributes, refuse it.
+  it('writes a text node over 10 MB, which the readers and invoiceToUbl refuse (CG-76)', async () => {
+    const { check, dropUblUncarried, fromCii, generate, invoiceToUbl, ublToInvoice, xmlToInvoice } = await import('@stafyniaksacha/facturx')
     const { readFile } = await import('node:fs/promises')
     const { resolve } = await import('node:path')
-    const model = await xmlToInvoice(await readFile(resolve(import.meta.dirname, UC1), 'utf8'))
-    model.exchangedDocument.includedNote![0].content = new TextType({ value: 'a\u0001b' })
-    const doc = await invoiceToXml(model)
-    try {
-      expect(doc.toString()).toContain('<ram:Content>a\uFFFDb</ram:Content>')
-    }
-    finally {
-      doc.dispose()
-    }
-    model.exchangedDocument.includedNote![0].content = new TextType({ value: 'SECRET\uFFFE' })
-    const error = await invoiceToXml(model).then(() => undefined, (e: Error) => e)
-    expect(error?.message).toMatch(/invalid Char value 65534/)
-    expect(error?.message).not.toContain('SECRET')
-  })
-
-  // libxml2's default limit (XML_MAX_TEXT_LENGTH, 10 MB per text node) without XML_PARSE_HUGE, which AGENTS.md
-  // forbids for input documents. xmlToInvoice(), check(), generate() and invoiceToUbl() have the same limit (CG-76).
-  it('refuses a text node over 10 MB, as every other parse of the package does (CG-76)', async () => {
-    const { xmlToInvoice } = await import('@stafyniaksacha/facturx')
-    const { readFile } = await import('node:fs/promises')
-    const { resolve } = await import('node:path')
+    const { PDFDocument } = await import('pdf-lib')
+    const A = 'A'.repeat(10 * 1024 * 1024 + 1)
     const source = await readFile(resolve(import.meta.dirname, UC1), 'utf8')
     const model = await xmlToInvoice(source)
-    model.exchangedDocument.includedNote![0].content = new TextType({ value: 'A'.repeat(10 * 1024 * 1024 + 1) })
-    await expect(invoiceToXml(model)).rejects.toThrow(/Text node too long/)
-    const { check, dropUblUncarried, fromCii, generate, invoiceToUbl } = await import('@stafyniaksacha/facturx')
-    const { PDFDocument } = await import('pdf-lib')
-    const big = source.replace(/<ram:BuyerReference>[^<]*</, `<ram:BuyerReference>${'A'.repeat(10 * 1024 * 1024 + 1)}<`)
+    model.exchangedDocument.includedNote![0].content = new TextType({ value: A })
+    const cii = await invoiceToXml(model)
+    let big: string
+    try {
+      big = cii.toString()
+      expect(big).toContain(A)
+    }
+    finally {
+      cii.dispose()
+    }
     await expect(xmlToInvoice(big)).rejects.toThrow(/Text node too long/)
     await expect(check({ xml: big })).rejects.toThrow(/Text node too long/)
     const pdf = await PDFDocument.create()
     pdf.addPage()
     await expect(generate({ pdf, xml: big })).rejects.toThrow(/Text node too long/)
     const { invoice } = dropUblUncarried(fromCii(await xmlToInvoice(source)).invoice, { level: 'en16931' })
-    invoice.buyerReference = 'A'.repeat(10 * 1024 * 1024 + 1)
+    invoice.buyerReference = A
     await expect(invoiceToUbl(invoice, { level: 'en16931' })).rejects.toThrow(/Text node too long/)
-  })
+    const ubl = (await readFile(resolve(import.meta.dirname, UC1.replace('_FX_CII_', '_UBL_')), 'utf8')).replace(/<cbc:BuyerReference>[^<]*</, `<cbc:BuyerReference>${A}<`)
+    expect(ubl).toContain(A)
+    await expect(ublToInvoice(ubl)).rejects.toThrow(/Text node too long/)
+  }, 30_000)
 })

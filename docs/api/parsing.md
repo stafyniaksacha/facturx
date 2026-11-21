@@ -36,10 +36,10 @@ of the Factur-X 1.09 (CII D22B) **EXTENDED** schema — a superset of all lower 
 fields present on the model are emitted, so the same converter produces valid output for every
 profile from `MINIMUM` to `EXTENDED`.
 
-The return value is a `libxml2-wasm` `XmlDocument`; call `.toString()` for the serialized XML. It is parsed back from
-that text, so its nodes carry the CII namespaces: namespace-bound XPath works on it, and you can pass it to `check()`
-as it is. Like every parse in the package it uses libxml2's default limits, so a text node over 10 MB (a large BT-125
-attachment) throws `Text node too long` (CG-76).
+The return value is a `libxml2-wasm` `XmlDocument`; call `.toString()` for the serialized XML. Its nodes carry the
+CII namespaces: namespace-bound XPath works on it, and you can pass it to `check()` as it is. Nothing is parsed, so a
+large value (a BT-125 attachment over 10 MB) is written; reading such a document back hits libxml2's default 10 MB
+text node limit (CG-76).
 
 ```ts
 import { invoiceToXml } from '@stafyniaksacha/facturx'

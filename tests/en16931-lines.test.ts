@@ -154,7 +154,7 @@ describe('en 16931 model: lines round trip', () => {
     lines.lines[3].statusReasonCode = ''
     const blank = await invoiceToXml(toCii(lines, { level }))
     try {
-      expect(blank.toString()).toMatch(/<ram:LineStatusReasonCode\/>/)
+      expect(blank.toString()).toContain('<ram:LineStatusReasonCode></ram:LineStatusReasonCode>')
       expect(await ruleIds(blank.toString())).not.toContain(rule)
     }
     finally {
