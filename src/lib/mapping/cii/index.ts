@@ -50,7 +50,7 @@ function levelOf(cii: CrossIndustryInvoiceType): En16931Level {
   const level = levelOfGuidelineId(id)
   if (level)
     return level
-  const other = typeof id === 'string' ? id.trim() : ''
+  const other = typeof id === 'string' ? id : ''
   if (Object.hasOwn(NON_EN16931_GUIDELINE_IDS, other))
     throw new Error(`fromCii: a "${NON_EN16931_GUIDELINE_IDS[other]}" document is not an EN 16931 invoice (it lacks mandatory EN 16931 terms); use the CII model (Models) for it`)
   throw new Error(`fromCii: BT-24 (specification identifier) is not the identifier of a profile this model maps (${LEVEL_LIST}); not an EN 16931 invoice this model reads`)

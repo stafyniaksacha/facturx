@@ -99,6 +99,65 @@ describe('xmlToInvoice refuses a DOCTYPE (CG-73)', () => {
   })
 })
 
+// The message says what was found: a DOCTYPE when libxml2 recorded one, otherwise the node before the root the
+// fail-closed walk could not see past (a processing instruction in a caller's XmlDocument, or in text whose prolog
+// could not be scanned, such as UTF-16).
+describe('names the cause: a DOCTYPE, or a node before the root that cannot be checked (CG-73)', () => {
+  const utf16 = (text: string): Buffer => Buffer.concat([Buffer.from([0xFF, 0xFE]), Buffer.from(text, 'utf16le')])
+  const UNCHECKED = /cannot be checked/
+
+  it('a real DOCTYPE, from text or an XmlDocument', async () => {
+    const xml = (await source(CII)).replace('<rsm:CrossIndustryInvoice ', '<!DOCTYPE rsm:CrossIndustryInvoice>\n<rsm:CrossIndustryInvoice ')
+    const error = await xmlToInvoice(xml).then(() => undefined, (e: Error) => e)
+    expect(error?.message).toMatch(/^xmlToInvoice: the document has a DOCTYPE; /)
+    const doc = XmlDocument.fromString(xml)
+    try {
+      const { errors } = await check({ xml: doc })
+      expect(errors[0].message).toMatch(/^The document has a DOCTYPE: /)
+      expect(errors[0].message).not.toMatch(UNCHECKED)
+    }
+    finally {
+      doc.dispose()
+    }
+    // UTF-16 text: the scanner hands over, libxml2 recorded the DTD.
+    await expect(xmlToInvoice(utf16(xml))).rejects.toThrow(/^xmlToInvoice: the document has a DOCTYPE; /)
+  })
+
+  it('a processing instruction in a caller XmlDocument, or in text whose prolog could not be read', async () => {
+    const cii = await source(CII)
+    const pi = `<?xml-stylesheet href="x.xsl"?>\n${cii}`
+    const doc = XmlDocument.fromString(pi)
+    try {
+      expect((await check({ xml: doc })).errors[0].message).toMatch(/^The document has a DOCTYPE, or a node before the root element that cannot be checked \(only comments are allowed before the root of an XmlDocument\)/)
+      await expect(xmlToEn16931(doc)).rejects.toThrow(/^xmlToEn16931: the document has a DOCTYPE, or a node before the root element that cannot be checked/)
+      await expect(ublToInvoice(doc)).rejects.toThrow(UNCHECKED)
+    }
+    finally {
+      doc.dispose()
+    }
+    expect(fromCii(await xmlToInvoice(utf16(cii))).invoice.buyerReference).toBeDefined()
+    await expect(xmlToInvoice(utf16(pi))).rejects.toThrow(/^xmlToInvoice: the document has a DOCTYPE, or a node before the root element that cannot be checked \(its prolog could not be read/)
+  })
+})
+
+// CG-78 (open, pinned): the readers parse a Buffer with the encoding its BOM or declaration gives, check() and the
+// other validators force UTF-8 (`resolveXml`, `src/lib/resolve.ts`). The same bytes are accepted by one and refused by
+// the other.
+describe('encoding differential between the readers and check() (CG-78, pinned)', () => {
+  it('a UTF-16 invoice with a BOM is read by xmlToInvoice, check() throws', async () => {
+    const cii = await source(CII)
+    const bytes = Buffer.concat([Buffer.from([0xFF, 0xFE]), Buffer.from(cii, 'utf16le')])
+    expect((await xmlToInvoice(bytes)).exchangedDocument.id.value).toBeTruthy()
+    await expect(check({ xml: bytes })).rejects.toThrow(/Start tag expected/)
+  })
+
+  it('uTF-8 bytes declaring encoding="UTF-16" pass check(), xmlToInvoice throws', async () => {
+    const bytes = Buffer.from(`<?xml version="1.0" encoding="UTF-16"?>\n${await source(CII)}`, 'utf8')
+    expect((await check({ xml: bytes })).valid).toBe(true)
+    await expect(xmlToInvoice(bytes)).rejects.toThrow()
+  })
+})
+
 describe('check reports a DOCTYPE as invalid without throwing (CG-73)', () => {
   it('for a CII invoice, as a string, a Buffer and a caller XmlDocument it does not dispose', async () => {
     for (const [name, xml] of await variants()) {

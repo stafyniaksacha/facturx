@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path'
 import { XmlDocument, XmlValidateError, XsdValidator } from 'libxml2-wasm'
 import { resolveXml } from './resolve'
 import { runSchematron } from './schematron'
-import { DOCTYPE_MESSAGE, inputHasDoctype } from './xml'
+import { doctypeMessage, inputHasDoctype } from './xml'
 // Registers the filesystem input provider, so the CDAR XSD imports resolve.
 import './xsd'
 
@@ -82,7 +82,7 @@ export async function validateCdar(options: {
       throw new Error(`Not a CDAR lifecycle message: expected the root element CrossDomainAcknowledgementAndResponse in ${CDAR_NS}, got "${root.name}"`)
     // Reported as an invalid result, as `check()` does (was CG-73): a declared entity would otherwise pass unseen.
     if (inputHasDoctype(options.xml, xml))
-      return { valid: false, errors: [{ message: DOCTYPE_MESSAGE }], schematronErrors: [], schematronWarnings: [] }
+      return { valid: false, errors: [{ message: doctypeMessage(options.xml, xml) }], schematronErrors: [], schematronWarnings: [] }
 
     const validator = XsdValidator.fromDoc(await cdarXsd())
     try {

@@ -51,11 +51,14 @@ export const NON_EN16931_GUIDELINE_IDS: Readonly<Record<string, 'minimum' | 'bas
 }
 
 /**
- * The level an exact BT-24 names (surrounding whitespace aside: BT-24 is an `xs:token`): an identifier of
- * `GUIDELINE_IDS`, the one source `toCii()` writes from, or of `GUIDELINE_ID_ALIASES`. `undefined` for anything else.
+ * The level an exact BT-24 names: an identifier of `GUIDELINE_IDS`, the one source `toCii()` writes from, or of
+ * `GUIDELINE_ID_ALIASES`; `undefined` for anything else. Compared as it is, surrounding whitespace included, as the
+ * Factur-X Schematrons compare BT-24 with their code list 1 (`<xsl:variable name="codeValue1" select="."/>`, untrimmed:
+ * FX-SCH-A-000026 at BASIC, `FACTUR-X_BASIC.xslt` l.4908; FX-SCH-A-000556 at EN 16931, `FACTUR-X_EN16931.xslt` l.5350;
+ * FX-SCH-A-000636 at EXTENDED, `FACTUR-X_EXTENDED.xslt` l.5815), although the XSD types it `xs:token` (CG-77).
  */
 export function levelOfGuidelineId(id: string | undefined): En16931Level | undefined {
-  const value = typeof id === 'string' ? id.trim() : undefined
+  const value = typeof id === 'string' ? id : undefined
   if (!value)
     return undefined
   for (const level of EN16931_LEVELS) {

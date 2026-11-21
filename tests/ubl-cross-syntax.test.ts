@@ -400,9 +400,24 @@ describe('bT-24 to level: fromCii reads the exact id (CG-75, closed)', () => {
   const cii = async (id: string, twin = uc1): Promise<string> => withId(await readTwin(twin.cii), id)
   const ubl = async (id: string): Promise<string> => (await readTwin(uc1.ubl)).replace(/<cbc:CustomizationID>[^<]*</, `<cbc:CustomizationID>${id}<`)
 
-  it('accepts the identifier of each level, surrounding whitespace aside', async () => {
-    expect(fromCii(await xmlToInvoice(await cii(' urn:cen.eu:en16931:2017\n'))).dropped).toEqual([])
+  it('accepts the exact identifier of each level', async () => {
+    expect(fromCii(await xmlToInvoice(await cii('urn:cen.eu:en16931:2017'))).dropped).toEqual([])
     expect(fromCii(await xmlToInvoice(await readTwin(ext.cii))).invoice.specificationIdentifier).toBe('urn:cen.eu:en16931:2017#conformant#urn.cpro.gouv.fr:1p0:extended-ctc-fr')
+  })
+
+  // The Factur-X Schematrons compare BT-24 untrimmed with their code list 1 (`codeValue1 select="."`, FX-SCH-A-000556
+  // at EN 16931), though the XSD types it `xs:token` (CG-77): fromCii() follows the executable rule. The UBL
+  // Schematrons compare no value and the UBL type is an `xsd:normalizedString`, which keeps surrounding spaces.
+  it.each([
+    ['space-padded', ' urn:cen.eu:en16931:2017 '],
+    ['newline-padded', 'urn:cen.eu:en16931:2017\n'],
+    ['NBSP-padded', '\u00A0urn:cen.eu:en16931:2017\u00A0'],
+  ])('refuses a %s BT-24, which the Schematron refuses too (CG-77)', async (_name, id) => {
+    const xml = await cii(id)
+    await expect(xmlToInvoice(xml).then(fromCii)).rejects.toThrow(/^fromCii: BT-24 \(specification identifier\) is not the identifier/)
+    const result = await check({ xml, schematron: true })
+    expect(result.schematronErrors!.map(e => e.assertId)).toContain('FX-SCH-A-000556')
+    await expect(ublToInvoice(await ubl(id))).rejects.toThrow(/BT-24/)
   })
 
   // FACTUR-X_BASIC_codedb.xml / FACTUR-X_EXTENDED_codedb.xml code list 1, checked on BT-24 by the Schematron; listed in

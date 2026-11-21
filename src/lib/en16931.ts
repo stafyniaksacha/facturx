@@ -13,7 +13,7 @@ import { invoiceToUbl } from './converters/ubl'
 import { fromCii, toCii } from './mapping/cii'
 import { xmlToInvoice } from './parsers/facturx'
 import { ublToInvoice } from './parsers/ubl'
-import { getFlavor, inputHasDoctype } from './xml'
+import { getFlavor, inputHasDoctype, prologFindingDetail } from './xml'
 
 /** The XML syntaxes the EN 16931 model is written to and read from. */
 export type En16931Syntax = 'cii' | 'ubl'
@@ -84,7 +84,7 @@ export async function xmlToEn16931(xml: string | Buffer | XmlDocument): Promise<
   const doc = xml instanceof XmlDocument ? xml : typeof xml === 'string' ? XmlDocument.fromString(xml) : XmlDocument.fromBuffer(xml)
   try {
     if (inputHasDoctype(xml, doc))
-      throw new Error('xmlToEn16931: the document has a DOCTYPE; invoices use none, and its entities could hide or replace content, so it is refused')
+      throw new Error(`xmlToEn16931: the document has a DOCTYPE${prologFindingDetail(xml, doc)}; invoices use none, and its entities could hide or replace content, so it is refused`)
     const flavor = getFlavor(doc)
     if (flavor === 'ubl')
       // Text goes to the reader as text, so it judges the prolog as this function did; a caller's document as is.

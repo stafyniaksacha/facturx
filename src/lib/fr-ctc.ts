@@ -3,7 +3,7 @@ import type { SchematronConfig, SchematronError, SchematronResult } from './sche
 import { UBL_LEVELS } from './constants'
 import { resolveXml } from './resolve'
 import { runSchematron } from './schematron'
-import { assertUblLevelMatches, DOCTYPE_MESSAGE, getUblLevel, inputHasDoctype, isUblDocument, levelFromGuidelineId } from './xml'
+import { assertUblLevelMatches, doctypeMessage, getUblLevel, inputHasDoctype, isUblDocument, levelFromGuidelineId } from './xml'
 
 /**
  * French CTC business rules (`BR-FR-Flux2`) for invoices in UN/CEFACT CII D22B (hence Factur-X) and UBL 2.1.
@@ -87,8 +87,8 @@ export async function validateFrCtc(options: {
     assertFrCtcApplicable(options.flavor, options.level ?? 'en16931')
   const profile = await declaredProfile(options.xml, options.flavor, options.level)
   // Reported as an invalid result, as `check()` does: a declared entity would otherwise pass unseen.
-  if (profile === 'doctype')
-    return { valid: false, errors: [{ message: DOCTYPE_MESSAGE, severity: 'error' }], warnings: [] }
+  if ('doctype' in profile)
+    return { valid: false, errors: [{ message: profile.doctype, severity: 'error' }], warnings: [] }
   const { flavor, declared } = profile
 
   if (flavor === 'ubl') {
@@ -129,12 +129,12 @@ const RAM_NS = 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInf
  * The plain-CII `EXTENDED-CTC-FR` profile (`…urn.cpro.gouv.fr:1p0:extended-ctc-fr`) is
  * `extended-ctc-fr`, like its UBL counterpart. BR-FR itself doesn't read the profile.
  */
-async function declaredProfile(xml: string | Buffer, requested?: string, explicitLevel?: string): Promise<{ flavor: 'facturx' | 'ubl', declared: string } | 'doctype'> {
+async function declaredProfile(xml: string | Buffer, requested?: string, explicitLevel?: string): Promise<{ flavor: 'facturx' | 'ubl', declared: string } | { doctype: string }> {
   const doc = await resolveXml(xml)
   try {
     // Before anything reads the document: an entity could hide BT-24 (was CG-73).
     if (inputHasDoctype(xml, doc))
-      return 'doctype'
+      return { doctype: doctypeMessage(xml, doc) }
     const root = doc.root
     const flavor = isUblDocument(doc)
       ? 'ubl'

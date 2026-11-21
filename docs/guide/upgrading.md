@@ -207,7 +207,7 @@ CII invoices carry no DOCTYPE: remove it, and declare `version="1.0"`.
 `The document has a DOCTYPE …`, for every flavor (Factur-X, Order-X, ZUGFeRD, UBL), and reports the Schematron and
 BR-FR layers you asked for as not run; `extract({ check: true })` therefore throws `Invalid XML` for such an
 attachment. `validateSchematron()`, `validateFrCtc()` and `validateCdar()` return an invalid result with that one
-error too, where 0.6.1 passed a document whose DOCTYPE declared an entity it did not use, and threw on one it used. In 0.6.1 an internal entity standing for an element (`<!ENTITY br "<ram:BuyerReference>…">` used as
+error too; before this release they passed a document whose DOCTYPE declared an entity it did not use, and threw on one it used. Before this release an internal entity standing for an element (`<!ENTITY br "<ram:BuyerReference>…">` used as
 `&br;`) was kept unexpanded, so `xmlToInvoice()` read the invoice without it and `check()` validated a document whose
 readers saw something else. No CII invoice, Order-X order or UBL invoice uses a DOCTYPE: remove it.
 

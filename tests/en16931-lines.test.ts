@@ -113,53 +113,68 @@ describe('en 16931 model: lines round trip', () => {
   })
 
   // CG-69 (closed): both extended Schematrons want price, quantity and VAT category on a DETAIL or unset-subtype line
-  // only. Annex B UC12 at each extended level: the rule fires on its source with a detail price removed, `toCii()`
-  // refuses that invoice, and its GROUP (no VAT already) and INFORMATION lines written without price, quantity or VAT
-  // pass the level Schematron.
-  it.each([
+  // only. Annex B UC12 at each extended level, one assertion per test. Each runs the level Schematron (SaxonJS) once or
+  // twice, which takes several seconds on a loaded machine: 30 s, as for the other Schematron-heavy tests.
+  describe.each([
     ['extended', 'EXTENDED_FX', 'BR-FXEXT-BR-26'],
     ['extended-ctc-fr', 'EXTENDED-CTC-FR', 'BR-FREXT-BR-26'],
-  ] as const)('needs BG-29 / BT-129 / BG-30 on detail lines only at %s (annex B UC12, CG-69)', async (level, tag, rule) => {
-    const file = annexBCii.find(f => f.includes('UC12_') && f.includes(`_${tag}_`))!
-    const source = await readFile(file, 'utf8')
+  ] as const)('detail lines need BG-29 / BT-129 / BG-30 at %s, the others do not (annex B UC12, CG-69)', (level, tag, rule) => {
+    const SCHEMATRON_TIMEOUT = 30_000
+    const read = async (): Promise<string> => readFile(annexBCii.find(f => f.includes('UC12_') && f.includes(`_${tag}_`))!, 'utf8')
     const ruleIds = async (xml: string): Promise<string[]> => {
       const result = await check({ xml, level, schematron: true })
       expect(result.errors).toEqual([])
       return (result.schematronErrors ?? []).map(e => e.id ?? e.message)
     }
-    expect(await ruleIds(source)).toEqual([])
-    // The second NetPriceProductTradePrice is line 2's, a DETAIL line.
-    let n = 0
-    const unpriced = source.replace(/<ram:NetPriceProductTradePrice>[\s\S]*?<\/ram:NetPriceProductTradePrice>/g, m => ++n === 2 ? '' : m)
-    expect(await ruleIds(unpriced)).toContain(rule)
+    // Lines 1 (GROUP, no VAT already) and 4 (INFORMATION) without price, quantity or VAT.
+    const unpricedGroupAndInformation = async (source: string) => {
+      const { invoice } = fromCii(await xmlToInvoice(source))
+      for (const i of [0, 3]) {
+        expect(invoice.lines[i].statusReasonCode).toBe(i === 0 ? 'GROUP' : 'INFORMATION')
+        Object.assign(invoice.lines[i], { price: undefined, vat: undefined, invoicedQuantity: undefined, invoicedQuantityUnitCode: undefined })
+      }
+      return invoice
+    }
 
-    const { invoice } = fromCii(await xmlToInvoice(source))
-    invoice.lines[1].price = undefined
-    expect(() => toCii(invoice, { level })).toThrow(/^toCii: BG-29 .*"DETAIL" or not set/)
+    it(`the source passes, and ${rule} fires once a detail line's price is removed`, async () => {
+      const source = await read()
+      expect(await ruleIds(source)).toEqual([])
+      // The second NetPriceProductTradePrice is line 2's, a DETAIL line.
+      let n = 0
+      const unpriced = source.replace(/<ram:NetPriceProductTradePrice>[\s\S]*?<\/ram:NetPriceProductTradePrice>/g, m => ++n === 2 ? '' : m)
+      expect(await ruleIds(unpriced)).toContain(rule)
+    }, SCHEMATRON_TIMEOUT)
 
-    const lines = fromCii(await xmlToInvoice(source)).invoice
-    for (const i of [0, 3]) {
-      expect(lines.lines[i].statusReasonCode).toBe(i === 0 ? 'GROUP' : 'INFORMATION')
-      Object.assign(lines.lines[i], { price: undefined, vat: undefined, invoicedQuantity: undefined, invoicedQuantityUnitCode: undefined })
-    }
-    const doc = await invoiceToXml(toCii(lines, { level }))
-    try {
-      expect(await ruleIds(doc.toString())).toEqual([])
-    }
-    finally {
-      doc.dispose()
-    }
+    it('toCii() refuses the detail line without its price', async () => {
+      const { invoice } = fromCii(await xmlToInvoice(await read()))
+      invoice.lines[1].price = undefined
+      expect(() => toCii(invoice, { level })).toThrow(/^toCii: BG-29 .*"DETAIL" or not set/)
+    })
+
+    it('the GROUP and INFORMATION lines written without price, quantity or VAT pass the Schematron', async () => {
+      const doc = await invoiceToXml(toCii(await unpricedGroupAndInformation(await read()), { level }))
+      try {
+        expect(await ruleIds(doc.toString())).toEqual([])
+      }
+      finally {
+        doc.dispose()
+      }
+    }, SCHEMATRON_TIMEOUT)
+
     // A blank EXT-FR-FE-163 is written as an empty `LineStatusReasonCode`, which the context does not select either
     // (neither absent nor `DETAIL`): the shared check lets it through, and the rule agrees.
-    lines.lines[3].statusReasonCode = ''
-    const blank = await invoiceToXml(toCii(lines, { level }))
-    try {
-      expect(blank.toString()).toContain('<ram:LineStatusReasonCode></ram:LineStatusReasonCode>')
-      expect(await ruleIds(blank.toString())).not.toContain(rule)
-    }
-    finally {
-      blank.dispose()
-    }
+    it('a blank subtype is exempt, as in the Schematron context', async () => {
+      const invoice = await unpricedGroupAndInformation(await read())
+      invoice.lines[3].statusReasonCode = ''
+      const blank = await invoiceToXml(toCii(invoice, { level }))
+      try {
+        expect(blank.toString()).toContain('<ram:LineStatusReasonCode></ram:LineStatusReasonCode>')
+        expect(await ruleIds(blank.toString())).not.toContain(rule)
+      }
+      finally {
+        blank.dispose()
+      }
+    }, SCHEMATRON_TIMEOUT)
   })
 
   it('reads the multi-vendor lines of UC10: line seller, object identifiers, VAT with exemption reason and point date code', async () => {

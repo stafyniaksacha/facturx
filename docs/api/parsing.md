@@ -22,8 +22,9 @@ by [`invoiceToXml`](#invoicetoxml) is read back, so the two are mirror images.
 
 Throws `Invalid XML: no root element` if the input has no document root, and
 `xmlToInvoice: the document has a DOCTYPE …` for a document with a DOCTYPE, read from the raw prolog (comments and
-processing instructions before the root element are accepted; a prolog the reader cannot scan, such as a non
-ASCII-compatible encoding, falls back to accepting only comments there): CII uses no DOCTYPE, and an internal entity, which is
+processing instructions before the root element are accepted; a prolog the reader cannot scan, such as a UTF-16
+document, falls back to accepting only comments there). `xmlToInvoice()` honours the encoding of a Buffer (BOM or
+declaration), while `check()` and the other validators parse UTF-8 only (CG-78): CII uses no DOCTYPE, and an internal entity, which is
 never expanded, would hide the content it stands for from the reader. The error quotes nothing from the document.
 
 ## `invoiceToXml()`

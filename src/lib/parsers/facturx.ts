@@ -13,7 +13,7 @@ import {
 import * as qdt from '../models/facturx/qualifiedTypes'
 import * as ram from '../models/facturx/reusableTypes'
 import * as udt from '../models/facturx/unqualifiedTypes'
-import { inputHasDoctype } from '../xml'
+import { inputHasDoctype, prologFindingDetail } from '../xml'
 
 type NS = Record<string, string>
 
@@ -45,7 +45,7 @@ export async function xmlToInvoice(xml: string | Buffer): Promise<CrossIndustryI
       throw new Error('Invalid XML: no root element')
     }
     if (inputHasDoctype(xml, doc))
-      throw new Error('xmlToInvoice: the document has a DOCTYPE; CII uses none, and its entities could hide or replace content, so it is refused')
+      throw new Error(`xmlToInvoice: the document has a DOCTYPE${prologFindingDetail(xml, doc)}; CII uses none, and its entities could hide or replace content, so it is refused`)
 
     return new CrossIndustryInvoiceType({
       exchangedDocumentContext: parseExchangedDocumentContext(root),

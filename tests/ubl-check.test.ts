@@ -210,11 +210,13 @@ describe('facturx check on a UBL file', () => {
   const run = (...args: string[]): { status: number | null, stdout: string, stderr: string } =>
     spawnSync(process.execPath, [CLI, 'check', ...args], { encoding: 'utf8' })
 
+  // A cold CLI process: it loads the package and compiles two SEF transforms before validating, several seconds on a
+  // loaded machine, so 30 s, as in tests/generate.test.ts.
   it('validates a UBL example with the full sequence and names the flavor', () => {
     const { status, stdout } = run(UC, '--schematron', '--fr-ctc')
     expect(status).toBe(0)
     expect(stdout).toContain('Valid XML format (ubl - en16931, XSD + Schematron + BR-FR)')
-  })
+  }, 30_000)
 
   it('exits 1 on a UBL invoice that breaks a business rule', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'facturx-ubl-'))

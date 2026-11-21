@@ -6,7 +6,7 @@ import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
 import { assertFrCtcApplicable, validateFrCtc } from './fr-ctc'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
-import { assertUblLevelMatches, declaresExtendedCtcFr, DOCTYPE_MESSAGE, getFlavor, getLevel, inputHasDoctype, isUblDocument } from './xml'
+import { assertUblLevelMatches, declaresExtendedCtcFr, doctypeMessage, getFlavor, getLevel, inputHasDoctype, isUblDocument } from './xml'
 import { getXsd } from './xsd'
 
 // XPath dynamic errors caused by the document's values (XPath and XQuery Functions and Operators 3.1
@@ -73,7 +73,7 @@ export async function checkFrom(options: Parameters<typeof check>[0], source: st
     throw error
   }
   if (doctype)
-    return doctypeResult(xml, options)
+    return doctypeResult(xml, options, doctypeMessage(source, xml))
 
   let flavor: string
   let level: string
@@ -202,10 +202,10 @@ function bestEffort(read: () => string): string {
 
 // `check()`'s result for a document with a DOCTYPE: invalid, with one error naming the cause, and the requested
 // business-rule stages reported as not run. Disposes only a document `check()` parsed.
-function doctypeResult(xml: XmlDocument, options: Parameters<typeof check>[0]): Awaited<ReturnType<typeof check>> {
+function doctypeResult(xml: XmlDocument, options: Parameters<typeof check>[0], message: string): Awaited<ReturnType<typeof check>> {
   const result: Awaited<ReturnType<typeof check>> = {
     valid: false,
-    errors: [{ message: DOCTYPE_MESSAGE }],
+    errors: [{ message }],
     flavor: options.flavor || bestEffort(() => getFlavor(xml)),
     level: options.level || bestEffort(() => getLevel(xml)),
   }

@@ -83,13 +83,16 @@ export function declaresExtendedCtcFr(xml: XmlDocument): boolean {
   }
 }
 
-/** `cbc:CustomizationID` (BT-24) of a UBL document, trimmed, or `undefined` when absent. */
+/** `cbc:CustomizationID` (BT-24) of a UBL document, as written, or `undefined` when absent. */
 function ublCustomizationId(xmlDoc: XmlDocument): string | undefined {
   // Direct child of the root only: a nested cbc:CustomizationID is not BT-24.
   for (let node = xmlDoc.root?.firstChild ?? null; node; node = node.next) {
     if (node instanceof XmlElement && node.name === 'CustomizationID' && node.namespaceUri === UBL_CBC_NS) {
-      // BT-24 is an xs:normalizedString: surrounding whitespace is not significant here.
-      return node.content.trim()
+      // Not trimmed: the UBL type is an `xsd:normalizedString` (CCTS IdentifierType, `CCTS_CCT_SchemaModule-2.1.xsd` l.391), which
+      // keeps surrounding spaces, and the UBL Schematrons compare no value (BR-01 tests only
+      // `normalize-space(cbc:CustomizationID) != ''`, `EN16931-UBL-validation.xslt` and `EXTENDED-CTC-FR-UBL.xslt`), so the
+      // level is matched on the raw text, as `fromCii()` does for CII (CG-77).
+      return node.content
     }
   }
   return undefined
@@ -241,21 +244,45 @@ export function prologHasDoctype(input: string | Uint8Array): boolean | undefine
 }
 
 /**
- * Whether a document parsed from `input` carries a DOCTYPE. For text (string, Buffer), libxml2's own record of a DTD
- * (`doc.dtd`) or the raw prolog (`prologHasDoctype()`) decides, so a processing instruction such as
- * `<?xml-stylesheet?>` before the root is accepted; when the prolog cannot be scanned, and for a caller's
- * `XmlDocument` (no text to read), the fail-closed node walk (`hasDoctype()`) decides.
+ * What stops a document parsed from `input` before anything reads it: `'doctype'` when it has a DOCTYPE (libxml2's own
+ * record of a DTD, `doc.dtd`, or for text the raw prolog, `prologHasDoctype()`); `'unchecked'` when the fail-closed
+ * node walk (`hasDoctype()`) refuses a node before the root element that it cannot see past, with no DTD recorded (a
+ * processing instruction in a caller's `XmlDocument`, which has no text to read, or in text whose prolog could not be
+ * scanned); `undefined` otherwise. For text, comments and processing instructions such as `<?xml-stylesheet?>` before
+ * the root are accepted.
  */
-export function inputHasDoctype(input: string | Uint8Array | XmlDocument, doc: XmlDocument): boolean {
-  if (input instanceof XmlDocument)
-    return hasDoctype(doc)
+export function prologFinding(input: string | Uint8Array | XmlDocument, doc: XmlDocument): 'doctype' | 'unchecked' | undefined {
   if (doc.dtd !== null)
-    return true
-  return prologHasDoctype(input) ?? hasDoctype(doc)
+    return 'doctype'
+  if (!(input instanceof XmlDocument)) {
+    const scanned = prologHasDoctype(input)
+    if (scanned !== undefined)
+      return scanned ? 'doctype' : undefined
+  }
+  return hasDoctype(doc) ? 'unchecked' : undefined
 }
 
-/** The finding `check()` and the direct validators report for a document with a DOCTYPE (was CG-73). */
-export const DOCTYPE_MESSAGE = 'The document has a DOCTYPE: invoices, orders and lifecycle messages use none, and its entities could hide or replace content, so it is not validated'
+/** Whether `prologFinding()` stops the document. */
+export function inputHasDoctype(input: string | Uint8Array | XmlDocument, doc: XmlDocument): boolean {
+  return prologFinding(input, doc) !== undefined
+}
+
+/**
+ * What follows "the document has a DOCTYPE" in a refusal: nothing for a real DOCTYPE, the fail-closed reason when no
+ * DTD was recorded (`'unchecked'`).
+ */
+export function prologFindingDetail(input: string | Uint8Array | XmlDocument, doc: XmlDocument): string {
+  if (prologFinding(input, doc) !== 'unchecked')
+    return ''
+  return input instanceof XmlDocument
+    ? ', or a node before the root element that cannot be checked (only comments are allowed before the root of an XmlDocument)'
+    : ', or a node before the root element that cannot be checked (its prolog could not be read, so only comments are allowed before the root)'
+}
+
+/** The finding `check()` and the direct validators report for a document `prologFinding()` stops (was CG-73). */
+export function doctypeMessage(input: string | Uint8Array | XmlDocument, doc: XmlDocument): string {
+  return `The document has a DOCTYPE${prologFindingDetail(input, doc)}: invoices, orders and lifecycle messages use none, and a DOCTYPE's entities could hide or replace content, so it is not validated`
+}
 
 /** Whether the root is a UBL 2.1 Invoice or CreditNote (name and namespace). Never throws. */
 export function isUblDocument(fileDoc: XmlDocument): boolean {
