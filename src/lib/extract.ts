@@ -5,7 +5,7 @@ import { Buffer } from 'node:buffer'
 
 import { PDFHexString, PDFName, PDFString } from 'pdf-lib'
 
-import { check } from './check'
+import { checkFrom } from './check'
 import { FACTURX_FILENAME, ORDERX_FILENAME, XRECHNUNG_FILENAME, ZUGFERD_FILENAMES } from './constants'
 import { decodeName, EmbeddedFileDecodeError, embeddedFileStream, EmbeddedFileTooLargeError, InflateBudget, InflateBudgetExceededError, readEmbeddedFile, readEmbeddedFilesNames } from './pdf'
 import { resolvePdf, resolveXml } from './resolve'
@@ -142,11 +142,11 @@ export async function extract(options: {
       // (BR-HYBRID-07/15). Read from the XML, so an explicit `level` cannot hide it.
       if (checkFlavor === 'facturx' && declaresExtendedCtcFr(xml))
         throw new Error('Invalid XML: the embedded invoice declares EXTENDED-CTC-FR, a plain CII profile that is not a Factur-X profile')
-      const result = await check({
+      const result = await checkFrom({
         xml,
         flavor: checkFlavor,
         level,
-      })
+      }, data)
       if (!result.valid) {
         throw new Error('Invalid XML')
       }

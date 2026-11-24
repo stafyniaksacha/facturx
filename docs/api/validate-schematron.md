@@ -44,6 +44,10 @@ such as Peppol BIS are **not** run.
 | `errors` | `SchematronError[]` | Findings (failed asserts and fired reports) that make the document invalid. With `warningsAsErrors`, the warnings are listed here too. |
 | `warnings` | `SchematronError[]` | Findings flagged `warning`/`information`, always reported. |
 
+A document with a DOCTYPE is not run through the rules: the result is `valid: false` with one error, `The document has a
+DOCTYPE …`, and no warnings (for text input the raw prolog decides, so comments and processing instructions before the
+root element are fine). An entity the DOCTYPE declares is never expanded, so the rules would not see what it stands for.
+
 Some rules are non-blocking by design and flagged `warning` in the spec's Schematron (for example
 `PEPPOL-EN16931-R008` in EN16931, or the EXTENDED ini/rev rules). They are reported in `warnings`
 and don't affect `valid` unless you pass `warningsAsErrors: true`.

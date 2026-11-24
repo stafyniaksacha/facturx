@@ -74,7 +74,8 @@ instructions group (BG-16, the first payment means) and one line VAT block (BG-3
 or profiles allow several. What `fromCii()` finds beyond them goes to `dropped`.
 `CONFORMANCE.md` records the details (CG-50, CG-51, CG-52). A preceding invoice reference on a line
 (`EXT-FR-FE-BG-06`) is an array, since the UBL annex allows two, but CII has room for one: `toCii()` throws on a
-second. At the `extended` levels a group or information line (annex B UC10 to UC13) may have no price, quantity or VAT (CG-54).
+second. At the `extended` levels a group or information line (annex B UC10 to UC13) may have no price, quantity or VAT (CG-54);
+a detail line may not (below).
 
 ## Levels: `toCii(invoice, { level })`
 
@@ -93,7 +94,10 @@ specification identifier) and which terms may be present.
 - a mandatory term is empty or missing (a string of only XML whitespace, that is space, tab, CR or LF, counts
   as empty, as `normalize-space()` does in the Schematron; a no-break space does not): BT-1, BT-2, BT-3, BT-5, the seller (BG-4) and buyer (BG-7) with their
   names, postal addresses and country codes, the totals, the VAT breakdown, the lines and their mandatory
-  terms. Below `extended`, a line needs its price (BG-29), quantity (BT-129) and VAT (BG-30);
+  terms. Below `extended`, a line needs its price (BG-29), quantity (BT-129) and VAT (BG-30). At `extended` and
+  `extended-ctc-fr`, so does a line whose subtype EXT-FR-FE-163 is `DETAIL` or unset, with a VAT category code
+  (BT-151): BR-FXEXT-BR-26 / -BR-22 / -CO-04 and BR-FREXT-BR-26 / -BR-22 / -CO-04. A `GROUP` or `INFORMATION`
+  line may go without them;
 - the invoice holds a term the level cannot carry: a term missing from the Factur-X BASIC matrix needs
   `en16931`, and an `EXT-FR-FE-*` field needs `extended` or `extended-ctc-fr`. A BASIC invoice with
   `EXT-FR-FE-12` set is an error, not a silent drop;
@@ -128,7 +132,13 @@ writer's list is in [UBL 2.1](#ubl-invoicetoubl-and-ubltoinvoice).
 ## Reading: `fromCii(cii)`
 
 `fromCii()` takes the CII model that `xmlToInvoice()` returns and gives `{ invoice, dropped }`. The level
-comes from BT-24 of the document.
+comes from BT-24 of the document, compared exactly as written, surrounding whitespace included, as the Factur-X
+Schematrons compare it (the XSD types it `xs:token`, CG-77): one of the four identifiers in the
+table above, or the deprecated ZUGFeRD 2.0 id of BASIC (`urn:cen.eu:en16931:2017#compliant#urn:zugferd.de:2p0:basic`)
+or EXTENDED (`urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended`), which the Factur-X appendices list and
+its Schematrons accept. Any other BT-24 (a `#conformant#` extension, a CIUS such as Peppol BIS, an id that merely ends
+in a level name, an id padded with spaces or no-break spaces) throws, naming BT-24 without quoting it. `check()` and
+`generate()` still read the level from the end of BT-24, trimmed (CG-77), and the UBL reader accepts a `#compliant#` CIUS as `en16931`.
 
 ```ts
 const { invoice, dropped } = fromCii(await xmlToInvoice(xml))
@@ -237,8 +247,7 @@ const { invoice: read, dropped } = await ublToInvoice(xml) // string, Buffer or 
   `83`, `261`, `262`, `296`, `308`, `381`, `396`, `420`, `458`, `502`, `503`, `532`), otherwise an `Invoice`.
   `root: 'Invoice' | 'CreditNote'` overrides it, and BT-3 must then be in the BR-CL-01 list of that root.
 - It returns a libxml2-wasm `XmlDocument`, like `invoiceToXml()`: serialise it with `.toString()` and `dispose()` it.
-  Its nodes carry the UBL namespaces, so namespace-bound XPath works on it (the CII writer's document does not yet,
-  CG-74).
+  Its nodes carry the UBL namespaces, so namespace-bound XPath works on it, as on the CII writer's document.
 - Dates are ISO `YYYY-MM-DD`, Amounts carry `currencyID` and have at most two decimals, unit prices and quantities
   are written unrounded without exponent notation, as in CII.
 - Each credit transfer (BG-17) gets its own `cac:PaymentMeans` with the same BT-81 / BT-83. BT-82, the direct debit
@@ -263,7 +272,7 @@ differently:
 | BT-14 without BT-13, EXT-FR-FE-144 without EXT-FR-FE-135 and similar | the UBL element needs its identifier | CG-65 |
 | a missing BT-110 (VAT total) | UBL holds BG-23 in the `cac:TaxTotal` whose amount is BT-110 | CG-66 |
 | EXT-FR-FE-180 without a line period | BR-CO-20 | CG-68 |
-| at `extended-ctc-fr`, a `DETAIL` (or unset EXT-FR-FE-163) line without BG-29, BT-129 or BG-30 | BR-26, BR-FREXT-22, BR-FREXT-CO-04 | CG-69 |
+| at `extended-ctc-fr`, a `DETAIL` (or unset EXT-FR-FE-163) line without BG-29, BT-129, BG-30 or BT-151 (the check `toCii()` shares) | BR-26, BR-FREXT-22, BR-FREXT-CO-04 | CG-69 |
 | an `EXT-FR-FE` term, or more than one BT-18, BT-46 or BT-60, at `en16931` | UBL-CR-*, UBL-SR-04 / -16 / -20 | |
 | BT-24 other than the `cbc:CustomizationID` of `level` (a Factur-X id, a CIUS id) | the document would claim a profile it was not checked against; clear it (`undefined`) to get the level's id | |
 | BT-84 and BT-84-0 together, BT-105 and BT-177, BT-145 and BT-193 | two terms in one UBL element | CG-64 (BT-84) |
@@ -304,11 +313,10 @@ Two limits of that contract:
 
 An `XmlDocument` you pass stays yours: `ublToInvoice()` never disposes it.
 
-**Security.** `ublToInvoice()` and `xmlToEn16931()` (both syntaxes) refuse any document with a DOCTYPE: invoices
-never use one, and an entity could hide or replace content the reader would then miss. The check is fail-closed: before
-the root element only comments are accepted, so a processing instruction there is refused too. `xmlToInvoice()` (and so
-`fromCii(await xmlToInvoice(xml))` called directly) does not refuse it yet: an internal entity standing for an element
-is read around, and `dropped` cannot see it (CG-73). No path expands external entities. Errors never quote text
+**Security.** `ublToInvoice()`, `xmlToInvoice()` (and so `fromCii(await xmlToInvoice(xml))`) and `xmlToEn16931()`
+refuse any document with a DOCTYPE: invoices never use one, and an entity could hide or replace content the reader would
+then miss. For text input (a string or Buffer) the raw prolog decides: the XML declaration, whitespace, comments and processing instructions (such as `<?xml-stylesheet?>`) are skipped, and a `<!DOCTYPE` before the root element is refused. For an `XmlDocument` you pass, which has no text, the check is fail-closed: only comments may precede the root element. `check()` reports such a document as invalid instead of throwing. No path expands external
+entities. Errors never quote text
 content; a malformed input passes libxml2's parse error through, which can name elements.
 
 ### What is proven for UBL

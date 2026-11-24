@@ -20,7 +20,12 @@ by [`invoiceToXml`](#invoicetoxml) is read back, so the two are mirror images.
 
 <<< ../../examples/parse.ts#main{ts}
 
-Throws `Invalid XML: no root element` if the input has no document root.
+Throws `Invalid XML: no root element` if the input has no document root, and
+`xmlToInvoice: the document has a DOCTYPE …` for a document with a DOCTYPE, read from the raw prolog (comments and
+processing instructions before the root element are accepted; a prolog the reader cannot scan, such as a UTF-16
+document, falls back to accepting only comments there). `xmlToInvoice()` honours the encoding of a Buffer (BOM or
+declaration), while `check()` and the other validators parse UTF-8 only (CG-78): CII uses no DOCTYPE, and an internal entity, which is
+never expanded, would hide the content it stands for from the reader. The error quotes nothing from the document.
 
 ## `invoiceToXml()`
 
@@ -33,7 +38,10 @@ of the Factur-X 1.09 (CII D22B) **EXTENDED** schema — a superset of all lower 
 fields present on the model are emitted, so the same converter produces valid output for every
 profile from `MINIMUM` to `EXTENDED`.
 
-The return value is a `libxml2-wasm` `XmlDocument`; call `.toString()` for the serialized XML.
+The return value is a `libxml2-wasm` `XmlDocument`; call `.toString()` for the serialized XML. Its nodes carry the
+CII namespaces: namespace-bound XPath works on it, and you can pass it to `check()` as it is. Nothing is parsed, so a
+large value (a BT-125 attachment over 10 MB) is written; reading such a document back hits libxml2's default 10 MB
+text node limit (CG-76).
 
 ```ts
 import { invoiceToXml } from '@stafyniaksacha/facturx'

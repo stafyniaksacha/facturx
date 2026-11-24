@@ -9,12 +9,11 @@ import type { InvoiceLine } from '../../models/en16931/lines'
 import type { CrossIndustryInvoiceType } from '../../models/facturx/crossIndustryInvoice'
 import { Invoice } from '../../models/en16931/invoice'
 import * as udt from '../../models/facturx/unqualifiedTypes'
-import { levelFromGuidelineId } from '../../xml'
 import { assertAmountDecimals } from './amounts'
 import { diffPaths } from './dropped'
 import { assertHeaderComplete, HEADER_GATES, headerFromCii, headerToCii } from './header'
-import { assertLevelCarries, EN16931_LEVELS, GUIDELINE_IDS, isEn16931Level } from './levels'
-import { assertLinesComplete, LINE_GATES, linesFromCii } from './lines'
+import { assertLevelCarries, EN16931_LEVELS, GUIDELINE_IDS, isEn16931Level, levelOfGuidelineId, NON_EN16931_GUIDELINE_IDS } from './levels'
+import { assertDetailLinesComplete, assertLinesComplete, CII_DETAIL_LINE_RULES, LINE_GATES, linesFromCii } from './lines'
 import { assertPartiesComplete, assertPartyIdentifierCounts, partiesFromCii, PARTY_GATES } from './parties'
 import { assertSettlementComplete, SETTLEMENT_GATES, settlementFromCii } from './settlement'
 import { isBlank } from './values'
@@ -41,19 +40,20 @@ export interface ToCiiOptions {
 
 const LEVEL_LIST = EN16931_LEVELS.map(l => `"${l}"`).join(', ')
 
-// The level of a CII document, from BT-24. MINIMUM and BASIC WL miss mandatory EN 16931 terms (no
-// lines, no VAT breakdown detail), so they have no EN 16931 model (design, non-goals).
+// The level of a CII document, from its exact BT-24 (was CG-75): an identifier `toCii()` writes for a level, or a
+// deprecated ZUGFeRD 2.0 alias the Factur-X appendices and Schematrons accept (`GUIDELINE_ID_ALIASES`). A `#conformant#`
+// extension or a CIUS of EN 16931 is another specification, which this model does not claim to read. MINIMUM and
+// BASIC WL miss mandatory EN 16931 terms (no lines, no VAT breakdown detail), so they have no EN 16931 model (design,
+// non-goals). The errors never quote BT-24.
 function levelOf(cii: CrossIndustryInvoiceType): En16931Level {
-  let level: string
-  try {
-    level = levelFromGuidelineId(cii.exchangedDocumentContext?.guidelineSpecifiedDocumentContextParameter?.id?.value)
-  }
-  catch {
-    throw new Error(`fromCii: BT-24 (specification identifier) names no profile this model maps (${LEVEL_LIST}); not an EN 16931 invoice this model reads`)
-  }
-  if (!isEn16931Level(level))
-    throw new Error(`fromCii: a "${level}" document is not an EN 16931 invoice (it lacks mandatory EN 16931 terms); use the CII model (Models) for it`)
-  return level
+  const id = cii.exchangedDocumentContext?.guidelineSpecifiedDocumentContextParameter?.id?.value
+  const level = levelOfGuidelineId(id)
+  if (level)
+    return level
+  const other = typeof id === 'string' ? id : ''
+  if (Object.hasOwn(NON_EN16931_GUIDELINE_IDS, other))
+    throw new Error(`fromCii: a "${NON_EN16931_GUIDELINE_IDS[other]}" document is not an EN 16931 invoice (it lacks mandatory EN 16931 terms); use the CII model (Models) for it`)
+  throw new Error(`fromCii: BT-24 (specification identifier) is not the identifier of a profile this model maps (${LEVEL_LIST}); not an EN 16931 invoice this model reads`)
 }
 
 // Every group mapping, in CII document order. Content checks (gates, BT-24) are the caller's.
@@ -63,8 +63,9 @@ function buildCii(invoice: Invoice, level: En16931Level): CrossIndustryInvoiceTy
 
 /**
  * Read a CII invoice into the EN 16931 model. Accepts BASIC, EN 16931, EXTENDED and
- * EXTENDED-CTC-FR documents (from BT-24); throws for MINIMUM and BASIC WL, which are not EN 16931
- * invoices. `dropped` lists every CII value the model cannot hold, computed by mapping the invoice
+ * EXTENDED-CTC-FR documents, from their exact BT-24 (the identifier `toCii()` writes for the level, or the deprecated
+ * ZUGFeRD 2.0 id of BASIC or EXTENDED); throws for any other BT-24, naming BT-24 without quoting it, and for MINIMUM
+ * and BASIC WL, which are not EN 16931 invoices. `dropped` lists every CII value the model cannot hold, computed by mapping the invoice
  * back at the document's level and comparing.
  */
 export function fromCii(cii: CrossIndustryInvoiceType): FromCiiResult {
@@ -182,6 +183,8 @@ function checked(cii: CrossIndustryInvoiceType): CrossIndustryInvoiceType {
  * - BT-24 is set to anything but the exact identifier of `level`;
  * - a date is not a valid ISO `YYYY-MM-DD` date;
  * - BT-11-0 is set without BT-11;
+ * - at `extended` and `extended-ctc-fr`, a line whose EXT-FR-FE-163 is `DETAIL` or unset lacks BG-29, BT-129, BG-30
+ *   or BT-151 (BR-FXEXT-BR-26 / -BR-22 / -CO-04, BR-FREXT-BR-26 / -BR-22 / -CO-04);
  * - an *Amount* has more than two decimals (spec §7.1.5).
  */
 export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInvoiceType {
@@ -199,6 +202,8 @@ export function toCii(invoice: Invoice, options: ToCiiOptions): CrossIndustryInv
   assertPartyIdentifierCounts(full, level)
   assertSettlementComplete(full)
   assertLinesComplete(full, level)
+  if (level === 'extended' || level === 'extended-ctc-fr')
+    assertDetailLinesComplete(full, CII_DETAIL_LINE_RULES[level])
   assertLevelCarries(full, level, [...HEADER_GATES, ...PARTY_GATES, ...SETTLEMENT_GATES, ...LINE_GATES])
   // CII has the project name only inside the project reference: writing it alone would lose it.
   if (full.projectName !== undefined && full.projectReference === undefined)

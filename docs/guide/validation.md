@@ -36,7 +36,15 @@ if (!valid) {
 ```
 
 `errors` is the list of structural problems reported by the XSD validator (empty when `valid` is
-`true`).
+`true`). A document with a DOCTYPE is not validated at all: `valid` is `false` and `errors` holds one entry naming
+the cause. `validateSchematron()`, `validateFrCtc()` and `validateCdar()` report it the same way, as an invalid
+result. For text input (a string or Buffer) the raw prolog decides: the XML declaration, whitespace, comments and processing instructions (such as `<?xml-stylesheet?>`) are skipped, and a `<!DOCTYPE` before the root element is refused. For an `XmlDocument` you pass, which has no text, the check is fail-closed: only comments may precede the root element,
+and the error then says a node before the root could not be checked. No invoice or order uses a DOCTYPE, and the
+entities it declares are never expanded, so the XSD and the readers would not see the content they stand for.
+
+`check()`, `generate()`, `extract()` and the direct validators parse their input as UTF-8 only; the readers
+(`xmlToInvoice()`, `ublToInvoice()`, `xmlToEn16931()`) honour a Buffer's BOM or encoding declaration. A UTF-16 invoice
+is therefore read but not validated, and UTF-8 bytes that declare another encoding are validated but not read (CG-78).
 
 ## UBL invoices
 
@@ -50,7 +58,8 @@ result.flavor // 'ubl'
 result.level // 'en16931' or 'extended-ctc-fr', read from cbc:CustomizationID
 ```
 
-The level comes from `cbc:CustomizationID` (BT-24): `urn:cen.eu:en16931:2017`, or an id starting with
+The level comes from `cbc:CustomizationID` (BT-24), as written (surrounding spaces are not removed: the UBL type is an
+`xsd:normalizedString`): `urn:cen.eu:en16931:2017`, or an id starting with
 `urn:cen.eu:en16931:2017#compliant#` (a CIUS) with no `#conformant#` extension after it, gives `en16931`; the
 exact EXTENDED-CTC-FR id gives `extended-ctc-fr`; anything else (including a CIUS followed by an extension,
 such as the XRechnung extension) throws, naming the `level` option.

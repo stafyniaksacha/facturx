@@ -27,6 +27,47 @@ export const GUIDELINE_IDS: Record<En16931Level, string> = {
   'extended-ctc-fr': EXTENDED_CTC_FR_GUIDELINE_ID,
 }
 
+/**
+ * Other BT-24 values that name a level of the model: the deprecated ZUGFeRD 2.0 identifiers that the Factur-X 1.09
+ * technical appendices list for the profile ("should not be used", BASIC appendix p.9, EXTENDED appendix p.34-35) and
+ * that its Schematron accepts (code list 1 of `FACTUR-X_BASIC_codedb.xml` / `FACTUR-X_EXTENDED_codedb.xml`, checked on
+ * BT-24). EN 16931 lists `urn:cen.eu:en16931:2017` only, and EXTENDED-CTC-FR its annex A id only. Read, never written:
+ * `toCii()` writes `GUIDELINE_IDS`.
+ */
+export const GUIDELINE_ID_ALIASES: Readonly<Record<string, En16931Level>> = {
+  'urn:cen.eu:en16931:2017#compliant#urn:zugferd.de:2p0:basic': 'basic',
+  'urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended': 'extended',
+}
+
+/**
+ * BT-24 of the Factur-X profiles that are not EN 16931 invoices (no lines, no full VAT breakdown), with their deprecated
+ * ZUGFeRD 2.0 aliases (code list 1 of `FACTUR-X_MINIMUM_codedb.xml` / `FACTUR-X_BASIC-WL_codedb.xml`).
+ */
+export const NON_EN16931_GUIDELINE_IDS: Readonly<Record<string, 'minimum' | 'basicwl'>> = {
+  'urn:factur-x.eu:1p0:minimum': 'minimum',
+  'urn:zugferd.de:2p0:minimum': 'minimum',
+  'urn:factur-x.eu:1p0:basicwl': 'basicwl',
+  'urn:zugferd.de:2p0:basicwl': 'basicwl',
+}
+
+/**
+ * The level an exact BT-24 names: an identifier of `GUIDELINE_IDS`, the one source `toCii()` writes from, or of
+ * `GUIDELINE_ID_ALIASES`; `undefined` for anything else. Compared as it is, surrounding whitespace included, as the
+ * Factur-X Schematrons compare BT-24 with their code list 1 (`<xsl:variable name="codeValue1" select="."/>`, untrimmed:
+ * FX-SCH-A-000026 at BASIC, `FACTUR-X_BASIC.xslt` l.4908; FX-SCH-A-000556 at EN 16931, `FACTUR-X_EN16931.xslt` l.5350;
+ * FX-SCH-A-000636 at EXTENDED, `FACTUR-X_EXTENDED.xslt` l.5815), although the XSD types it `xs:token` (CG-77).
+ */
+export function levelOfGuidelineId(id: string | undefined): En16931Level | undefined {
+  const value = typeof id === 'string' ? id : undefined
+  if (!value)
+    return undefined
+  for (const level of EN16931_LEVELS) {
+    if (GUIDELINE_IDS[level] === value)
+      return level
+  }
+  return Object.hasOwn(GUIDELINE_ID_ALIASES, value) ? GUIDELINE_ID_ALIASES[value] : undefined
+}
+
 const RANK: Record<En16931Level, number> = { 'basic': 0, 'en16931': 1, 'extended': 2, 'extended-ctc-fr': 2 }
 
 export function isEn16931Level(level: unknown): level is En16931Level {

@@ -38,8 +38,9 @@ function validateCdar(options: {
 ## Behaviour
 
 - Throws `Not a CDAR lifecycle message` when the root element is not a CDAR
-  `CrossDomainAcknowledgementAndResponse`. Malformed XML, and a document using an entity reference,
-  throw a libxml2 parse or validation error (entities are never expanded).
+  `CrossDomainAcknowledgementAndResponse`. Malformed XML throws a libxml2 parse error. A message with a DOCTYPE
+  returns `valid: false` with one `errors` entry, `The document has a DOCTYPE …`, and runs neither the XSD nor the
+  rules (entities are never expanded; lifecycle messages use no DOCTYPE).
 - Runs the rules **as FNFE-MPE publishes them**. Every Annex A `BR-FR-CDV` rule has an assertion, but
   some can never fail (for example a missing MDT-87 or MDG-4 is not reported), a few code lists differ
   from Annex A, and conditions that need the invoice itself (the seller's legal ID, the rejected file

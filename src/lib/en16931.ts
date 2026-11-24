@@ -13,7 +13,7 @@ import { invoiceToUbl } from './converters/ubl'
 import { fromCii, toCii } from './mapping/cii'
 import { xmlToInvoice } from './parsers/facturx'
 import { ublToInvoice } from './parsers/ubl'
-import { getFlavor, hasDoctype } from './xml'
+import { getFlavor, inputHasDoctype, prologFindingDetail } from './xml'
 
 /** The XML syntaxes the EN 16931 model is written to and read from. */
 export type En16931Syntax = 'cii' | 'ubl'
@@ -74,7 +74,7 @@ export async function en16931ToXml(invoice: Invoice, options: En16931ToXmlOption
  * Read a CII (Factur-X BASIC, EN 16931, EXTENDED, or plain-CII EXTENDED-CTC-FR) or UBL 2.1 invoice into the EN 16931
  * model, choosing the reader from the root element: `fromCii(await xmlToInvoice(xml))` or `ublToInvoice(xml)`.
  * Refuses a document with a DOCTYPE, whatever its syntax (an internal entity could hide or replace content the reader
- * would then miss; `xmlToInvoice()` itself does not refuse it yet, CG-73). Throws what the readers throw (MINIMUM and
+ * would then miss; `xmlToInvoice()` and `ublToInvoice()` refuse it too, was CG-73). Throws what the readers throw (MINIMUM and
  * BASIC WL are not EN 16931 invoices), and for an Order-X, ZUGFeRD 1.0, CDAR or unrecognised document. An
  * `XmlDocument` passed in stays the caller's (never disposed). Errors never quote text content; a malformed input
  * passes libxml2's parse error through, which can name elements.
@@ -83,11 +83,12 @@ export async function xmlToEn16931(xml: string | Buffer | XmlDocument): Promise<
   const owned = !(xml instanceof XmlDocument)
   const doc = xml instanceof XmlDocument ? xml : typeof xml === 'string' ? XmlDocument.fromString(xml) : XmlDocument.fromBuffer(xml)
   try {
-    if (hasDoctype(doc))
-      throw new Error('xmlToEn16931: the document has a DOCTYPE; invoices use none, and its entities could hide or replace content, so it is refused')
+    if (inputHasDoctype(xml, doc))
+      throw new Error(`xmlToEn16931: the document has a DOCTYPE${prologFindingDetail(xml, doc)}; invoices use none, and its entities could hide or replace content, so it is refused`)
     const flavor = getFlavor(doc)
     if (flavor === 'ubl')
-      return { ...await ublToInvoice(doc), syntax: 'ubl' }
+      // Text goes to the reader as text, so it judges the prolog as this function did; a caller's document as is.
+      return { ...await ublToInvoice(owned ? xml : doc), syntax: 'ubl' }
     if (flavor === 'facturx') {
       // `xmlToInvoice()` parses its own copy from text; a caller's document is serialised for it, never disposed.
       const cii = await xmlToInvoice(xml instanceof XmlDocument ? xml.toString() : xml)

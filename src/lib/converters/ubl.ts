@@ -14,6 +14,7 @@
 
 import type { XmlElement } from 'libxml2-wasm'
 import type { UBL_ROOT } from '../constants'
+import type { DetailLineRules } from '../mapping/cii/lines'
 import type { BillingParty, BuyerAgent, Invoicee, Payer, SellerAgent } from '../models/en16931/additional-parties'
 import type { Contact, Identifier, PostalAddress } from '../models/en16931/common'
 import type { Invoice } from '../models/en16931/invoice'
@@ -24,11 +25,12 @@ import { UBL_CBC_NS, UBL_CREDITNOTE_NS, UBL_EN16931_CUSTOMIZATION_ID, UBL_EXTEND
 import { hasMoreThanTwoDecimals } from '../mapping/cii/amounts'
 import { assertHeaderComplete, DEFAULT_PROJECT_NAME, HEADER_GATES } from '../mapping/cii/header'
 import { MANDATORY, withArrays } from '../mapping/cii/index'
-import { assertLinesComplete, LINE_GATES } from '../mapping/cii/lines'
+import { assertDetailLinesComplete, assertLinesComplete, LINE_GATES } from '../mapping/cii/lines'
 import { assertPartiesComplete, PARTY_GATES } from '../mapping/cii/parties'
 import { assertSettlementComplete, SETTLEMENT_GATES } from '../mapping/cii/settlement'
 import { isBlank, isCalendarDate } from '../mapping/cii/values'
 import { formatDecimal } from './facturx'
+import { qname } from './qname'
 
 /** The UBL levels `invoiceToUbl()` writes. */
 export type UblLevel = typeof UBL_LEVELS[number]
@@ -238,6 +240,10 @@ function assertRoot(invoice: Invoice, root: UBL_ROOT): void {
     fail(`BT-3 (invoice type code) is not a ${root} type code of BR-CL-01; write it with the other root`)
 }
 
+// `EXTENDED-CTC-FR-UBL.xslt`: BR-FREXT-26 (message `[BR-26]`, l.1890), BR-FREXT-22 (l.1845), BR-FREXT-CO-04 (l.1905) and
+// UBL-FREXT-SR-48 (l.15595), all fatal. They follow the rule text, stricter than the UBL `$lineInCalul` XPath (CG-69).
+const UBL_DETAIL_LINE_RULES: DetailLineRules = { price: 'BR-26', quantity: 'BR-FREXT-22', vat: 'BR-FREXT-CO-04, UBL-FREXT-SR-48' }
+
 // Line rules of the UBL Schematrons the shared CII checks do not know.
 function assertUblLines(invoice: Invoice, level: UblLevel): void {
   for (const line of invoice.lines) {
@@ -245,18 +251,12 @@ function assertUblLines(invoice: Invoice, level: UblLevel): void {
     // start or end date (CG-68).
     if (line.vat?.vatPointDateCode !== undefined && line.period?.startDate === undefined && line.period?.endDate === undefined)
       fail('EXT-FR-FE-180 (line value added tax point date code) needs BT-134 or BT-135 (invoice line period) in UBL: it sits in `cac:InvoicePeriod` (BR-CO-20)')
-    // EXTENDED-CTC-FR-UBL BR-FREXT-26 ([BR-26]), BR-FREXT-22, BR-FREXT-CO-04 and UBL-FREXT-SR-48: a line whose subtype EXT-FR-FE-163 is
-    // `DETAIL` or not specified needs its net price, quantity and one VAT category (CG-69). Below
-    // extended-ctc-fr the shared checks already require them.
-    if (level === 'extended-ctc-fr' && (line.statusReasonCode === undefined || line.statusReasonCode === 'DETAIL')) {
-      if (!line.price)
-        fail('BG-29 (price details) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (BR-26)')
-      if (line.invoicedQuantity === undefined)
-        fail('BT-129 (invoiced quantity) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (BR-FREXT-22)')
-      if (!line.vat)
-        fail('BG-30 (line VAT information) is mandatory on a line whose EXT-FR-FE-163 (line status reason code) is "DETAIL" or not set (BR-FREXT-CO-04, UBL-FREXT-SR-48)')
-    }
   }
+  // EXTENDED-CTC-FR-UBL BR-FREXT-26 ([BR-26]), BR-FREXT-22, BR-FREXT-CO-04 and UBL-FREXT-SR-48: a line whose subtype
+  // EXT-FR-FE-163 is `DETAIL` or not specified needs its net price, quantity and one VAT category, as in CII (CG-69,
+  // closed). Below extended-ctc-fr the shared checks already require them.
+  if (level === 'extended-ctc-fr')
+    reprefixed(() => assertDetailLinesComplete(invoice, UBL_DETAIL_LINE_RULES))
 }
 
 // A note is written `#subject#text` or `text`; refuse what `UBL_NOTE_PATTERN` would read back differently.
@@ -330,13 +330,13 @@ function lenientNumber(value: number): string {
 
 function text(parent: XmlElement, name: string, value: string | undefined): void {
   if (value !== undefined)
-    parent.addElement(name).addText(value)
+    parent.addElement(...qname(name)).addText(value)
 }
 
 function identifier(parent: XmlElement, name: string, value: Identifier | undefined): void {
   if (value === undefined)
     return
-  const element = parent.addElement(name)
+  const element = parent.addElement(...qname(name))
   element.addText(value.value)
   if (value.schemeId !== undefined)
     element.setAttr('schemeID', value.schemeId)
@@ -347,7 +347,7 @@ function date(ctx: BuildContext, parent: XmlElement, name: string, iso: string |
     return
   if (!ctx.lenient && !isCalendarDate(iso))
     fail(`${term} must be an ISO date (YYYY-MM-DD)`)
-  parent.addElement(name).addText(iso)
+  parent.addElement(...qname(name)).addText(iso)
 }
 
 /** *Amount* (BR-DEC: at most 2 decimals), with its `@currencyID`. Throws, naming `term`, on more decimals. */
@@ -355,7 +355,7 @@ function amount(ctx: BuildContext, parent: XmlElement, name: string, value: numb
   if (value === undefined)
     return
   if (ctx.lenient) {
-    const element = parent.addElement(name)
+    const element = parent.addElement(...qname(name))
     element.addText(lenientNumber(value))
     if (currency !== undefined)
       element.setAttr('currencyID', currency)
@@ -366,7 +366,7 @@ function amount(ctx: BuildContext, parent: XmlElement, name: string, value: numb
   if (hasMoreThanTwoDecimals(value))
     fail(`${term} has more than 2 decimals; an Amount is limited to 2 (BR-DEC), round it first`)
   const fixed = value.toFixed(2)
-  const element = parent.addElement(name)
+  const element = parent.addElement(...qname(name))
   // `toFixed()` switches to exponent notation from 1e21 up, which `xs:decimal` rejects (CG-28).
   element.addText(/e/i.test(fixed) ? formatDecimal(value) : fixed)
   element.setAttr('currencyID', currency!)
@@ -376,7 +376,7 @@ function amount(ctx: BuildContext, parent: XmlElement, name: string, value: numb
 function unitPrice(ctx: BuildContext, parent: XmlElement, name: string, value: number, currency: string, term: string): void {
   if (!ctx.lenient && !Number.isFinite(value))
     fail(`${term} must be a finite number`)
-  const element = parent.addElement(name)
+  const element = parent.addElement(...qname(name))
   element.addText(lenientNumber(value))
   element.setAttr('currencyID', currency)
 }
@@ -386,7 +386,7 @@ function decimal(ctx: BuildContext, parent: XmlElement, name: string, value: num
     return
   if (!ctx.lenient && !Number.isFinite(value))
     fail(`${term} must be a finite number`)
-  parent.addElement(name).addText(lenientNumber(value))
+  parent.addElement(...qname(name)).addText(lenientNumber(value))
 }
 
 function quantity(ctx: BuildContext, parent: XmlElement, name: string, value: number | undefined, unitCode: string | undefined, term: string): void {
@@ -394,7 +394,7 @@ function quantity(ctx: BuildContext, parent: XmlElement, name: string, value: nu
     return
   if (!ctx.lenient && !Number.isFinite(value))
     fail(`${term} must be a finite number`)
-  const element = parent.addElement(name)
+  const element = parent.addElement(...qname(name))
   element.addText(lenientNumber(value))
   if (unitCode !== undefined)
     element.setAttr('unitCode', unitCode)
@@ -402,7 +402,7 @@ function quantity(ctx: BuildContext, parent: XmlElement, name: string, value: nu
 
 /** A note: UBL has one `cbc:Note`, the subject code written in front between `#` (annex A BT-21, EXT-FR-FE-183). */
 function note(parent: XmlElement, subjectCode: string | undefined, content: string | undefined): void {
-  parent.addElement('cbc:Note').addText(subjectCode === undefined ? (content ?? '') : `#${subjectCode}#${content ?? ''}`)
+  parent.addElement(...qname('cbc:Note')).addText(subjectCode === undefined ? (content ?? '') : `#${subjectCode}#${content ?? ''}`)
 }
 
 // ---------------------------------------------------------------------------
@@ -412,29 +412,29 @@ function note(parent: XmlElement, subjectCode: string | undefined, content: stri
 function address(parent: XmlElement, name: string, value: PostalAddress | undefined): void {
   if (value === undefined)
     return
-  const element = parent.addElement(name)
+  const element = parent.addElement(...qname(name))
   text(element, 'cbc:StreetName', value.addressLine1)
   text(element, 'cbc:AdditionalStreetName', value.addressLine2)
   text(element, 'cbc:CityName', value.city)
   text(element, 'cbc:PostalZone', value.postCode)
   text(element, 'cbc:CountrySubentity', value.countrySubdivision)
   if (value.addressLine3 !== undefined)
-    element.addElement('cac:AddressLine').addElement('cbc:Line').addText(value.addressLine3)
-  element.addElement('cac:Country').addElement('cbc:IdentificationCode').addText(value.countryCode)
+    element.addElement(...qname('cac:AddressLine')).addElement(...qname('cbc:Line')).addText(value.addressLine3)
+  element.addElement(...qname('cac:Country')).addElement(...qname('cbc:IdentificationCode')).addText(value.countryCode)
 }
 
 function taxScheme(parent: XmlElement, companyId: string | undefined, scheme: string): void {
   if (companyId === undefined)
     return
-  const element = parent.addElement('cac:PartyTaxScheme')
-  element.addElement('cbc:CompanyID').addText(companyId)
-  element.addElement('cac:TaxScheme').addElement('cbc:ID').addText(scheme)
+  const element = parent.addElement(...qname('cac:PartyTaxScheme'))
+  element.addElement(...qname('cbc:CompanyID')).addText(companyId)
+  element.addElement(...qname('cac:TaxScheme')).addElement(...qname('cbc:ID')).addText(scheme)
 }
 
 function contact(parent: XmlElement, value: Contact | undefined): void {
   if (value === undefined || (value.point === undefined && value.telephoneNumber === undefined && value.emailAddress === undefined))
     return
-  const element = parent.addElement('cac:Contact')
+  const element = parent.addElement(...qname('cac:Contact'))
   text(element, 'cbc:Name', value.point)
   text(element, 'cbc:Telephone', value.telephoneNumber)
   text(element, 'cbc:ElectronicMail', value.emailAddress)
@@ -461,23 +461,23 @@ function party(element: XmlElement, content: PartyContent): void {
   identifier(element, 'cbc:EndpointID', content.endpoint)
   text(element, 'cbc:IndustryClassificationCode', content.roleCode)
   for (const id of content.identifiers ?? [])
-    identifier(element.addElement('cac:PartyIdentification'), 'cbc:ID', id)
+    identifier(element.addElement(...qname('cac:PartyIdentification')), 'cbc:ID', id)
   if (content.tradingName !== undefined)
-    element.addElement('cac:PartyName').addElement('cbc:Name').addText(content.tradingName)
+    element.addElement(...qname('cac:PartyName')).addElement(...qname('cbc:Name')).addText(content.tradingName)
   address(element, 'cac:PostalAddress', content.address)
   taxScheme(element, content.vatIdentifier, VAT_SCHEME)
   taxScheme(element, content.taxRegistrationIdentifier, TAX_REGISTRATION_SCHEME)
   if (content.registrationName !== undefined || content.legalRegistrationIdentifier !== undefined || content.legalForm !== undefined) {
-    const legal = element.addElement('cac:PartyLegalEntity')
+    const legal = element.addElement(...qname('cac:PartyLegalEntity'))
     text(legal, 'cbc:RegistrationName', content.registrationName)
     identifier(legal, 'cbc:CompanyID', content.legalRegistrationIdentifier)
     text(legal, 'cbc:CompanyLegalForm', content.legalForm)
   }
   contact(element, content.contact)
   if (content.agent)
-    party(element.addElement('cac:AgentParty'), content.agent)
+    party(element.addElement(...qname('cac:AgentParty')), content.agent)
   if (content.serviceProvider)
-    party(element.addElement('cac:ServiceProviderParty').addElement('cac:Party'), content.serviceProvider)
+    party(element.addElement(...qname('cac:ServiceProviderParty')).addElement(...qname('cac:Party')), content.serviceProvider)
 }
 
 type ExtraParty = BuyerAgent | SellerAgent | Invoicee | Payer | BillingParty
@@ -506,7 +506,7 @@ function creditorIdentifier(invoice: Invoice): Identifier[] {
 
 function parties(root: XmlElement, invoice: Invoice): void {
   const { seller, buyer, payee, sellerTaxRepresentative: representative } = invoice
-  party(root.addElement('cac:AccountingSupplierParty').addElement('cac:Party'), {
+  party(root.addElement(...qname('cac:AccountingSupplierParty')).addElement(...qname('cac:Party')), {
     endpoint: seller.electronicAddress,
     identifiers: [...seller.identifiers, ...(payee ? [] : creditorIdentifier(invoice))],
     tradingName: seller.tradingName,
@@ -520,7 +520,7 @@ function parties(root: XmlElement, invoice: Invoice): void {
     agent: extraParty(invoice.sellerAgent),
     serviceProvider: extraParty(invoice.billingParty),
   })
-  party(root.addElement('cac:AccountingCustomerParty').addElement('cac:Party'), {
+  party(root.addElement(...qname('cac:AccountingCustomerParty')).addElement(...qname('cac:Party')), {
     endpoint: buyer.electronicAddress,
     identifiers: buyer.identifiers,
     tradingName: buyer.tradingName,
@@ -534,7 +534,7 @@ function parties(root: XmlElement, invoice: Invoice): void {
   })
   if (payee) {
     // The payee's name is `cac:PartyName` (BT-59); its `cac:PartyLegalEntity` holds BT-61 only.
-    party(root.addElement('cac:PayeeParty'), {
+    party(root.addElement(...qname('cac:PayeeParty')), {
       endpoint: payee.electronicAddress,
       roleCode: payee.roleCode,
       identifiers: [...payee.identifiers, ...creditorIdentifier(invoice)],
@@ -546,7 +546,7 @@ function parties(root: XmlElement, invoice: Invoice): void {
     })
   }
   if (representative) {
-    party(root.addElement('cac:TaxRepresentativeParty'), {
+    party(root.addElement(...qname('cac:TaxRepresentativeParty')), {
       tradingName: representative.name,
       address: representative.address,
       vatIdentifier: representative.vatIdentifier,
@@ -561,7 +561,7 @@ function parties(root: XmlElement, invoice: Invoice): void {
 function period(ctx: BuildContext, parent: XmlElement, start: string | undefined, end: string | undefined, descriptionCode: string | undefined, terms: [string, string]): void {
   if (start === undefined && end === undefined && descriptionCode === undefined)
     return
-  const element = parent.addElement('cac:InvoicePeriod')
+  const element = parent.addElement(...qname('cac:InvoicePeriod'))
   date(ctx, element, 'cbc:StartDate', start, terms[0])
   date(ctx, element, 'cbc:EndDate', end, terms[1])
   text(element, 'cbc:DescriptionCode', descriptionCode)
@@ -570,54 +570,54 @@ function period(ctx: BuildContext, parent: XmlElement, start: string | undefined
 function documentReference(ctx: BuildContext, parent: XmlElement, name: string, id: string | undefined, issueDate: string | undefined, issueDateTerm: string, documentType?: string): void {
   if (id === undefined)
     return
-  const element = parent.addElement(name)
-  element.addElement('cbc:ID').addText(id)
+  const element = parent.addElement(...qname(name))
+  element.addElement(...qname('cbc:ID')).addText(id)
   date(ctx, element, 'cbc:IssueDate', issueDate, issueDateTerm)
   text(element, 'cbc:DocumentType', documentType)
 }
 
 function additionalDocuments(root: XmlElement, invoice: Invoice, creditNote: boolean): void {
   for (const document of invoice.additionalDocuments) {
-    const element = root.addElement('cac:AdditionalDocumentReference')
-    element.addElement('cbc:ID').addText(document.reference)
+    const element = root.addElement(...qname('cac:AdditionalDocumentReference'))
+    element.addElement(...qname('cbc:ID')).addText(document.reference)
     text(element, 'cbc:DocumentDescription', document.description)
     if (document.attachedDocument !== undefined || document.externalLocation !== undefined) {
-      const attachment = element.addElement('cac:Attachment')
+      const attachment = element.addElement(...qname('cac:Attachment'))
       if (document.attachedDocument) {
-        const binary = attachment.addElement('cbc:EmbeddedDocumentBinaryObject')
+        const binary = attachment.addElement(...qname('cbc:EmbeddedDocumentBinaryObject'))
         binary.addText(document.attachedDocument.content)
         binary.setAttr('mimeCode', document.attachedDocument.mimeCode)
         binary.setAttr('filename', document.attachedDocument.filename)
       }
       if (document.externalLocation !== undefined)
-        attachment.addElement('cac:ExternalReference').addElement('cbc:URI').addText(document.externalLocation)
+        attachment.addElement(...qname('cac:ExternalReference')).addElement(...qname('cbc:URI')).addText(document.externalLocation)
     }
   }
   for (const object of invoice.invoicedObjectIdentifiers) {
-    const element = root.addElement('cac:AdditionalDocumentReference')
+    const element = root.addElement(...qname('cac:AdditionalDocumentReference'))
     identifier(element, 'cbc:ID', object)
-    element.addElement('cbc:DocumentTypeCode').addText(INVOICED_OBJECT)
+    element.addElement(...qname('cbc:DocumentTypeCode')).addText(INVOICED_OBJECT)
   }
   // A UBL CreditNote has no `cac:ProjectReference`: BT-11 is an additional document of type 50 (UBL-SR-43, annex A).
   if (creditNote && invoice.projectReference !== undefined) {
-    const element = root.addElement('cac:AdditionalDocumentReference')
-    element.addElement('cbc:ID').addText(invoice.projectReference)
-    element.addElement('cbc:DocumentTypeCode').addText(PROJECT_REFERENCE)
+    const element = root.addElement(...qname('cac:AdditionalDocumentReference'))
+    element.addElement(...qname('cbc:ID')).addText(invoice.projectReference)
+    element.addElement(...qname('cbc:DocumentTypeCode')).addText(PROJECT_REFERENCE)
   }
 }
 
 function delivery(ctx: BuildContext, root: XmlElement, invoice: Invoice): void {
   const value = invoice.delivery
   if (value) {
-    const element = root.addElement('cac:Delivery')
+    const element = root.addElement(...qname('cac:Delivery'))
     date(ctx, element, 'cbc:ActualDeliveryDate', value.actualDeliveryDate, 'BT-72 (actual delivery date)')
     if (value.locationIdentifier !== undefined || value.address !== undefined) {
-      const location = element.addElement('cac:DeliveryLocation')
+      const location = element.addElement(...qname('cac:DeliveryLocation'))
       identifier(location, 'cbc:ID', value.locationIdentifier)
       address(location, 'cac:Address', value.address)
     }
     if (value.name !== undefined)
-      element.addElement('cac:DeliveryParty').addElement('cac:PartyName').addElement('cbc:Name').addText(value.name)
+      element.addElement(...qname('cac:DeliveryParty')).addElement(...qname('cac:PartyName')).addElement(...qname('cbc:Name')).addText(value.name)
   }
   deliveryTerms(root, invoice.deliveryTerms)
 }
@@ -625,10 +625,10 @@ function delivery(ctx: BuildContext, root: XmlElement, invoice: Invoice): void {
 function deliveryTerms(parent: XmlElement, value: { deliveryTypeCode: string, locationName?: string } | undefined): void {
   if (!value)
     return
-  const element = parent.addElement('cac:DeliveryTerms')
-  element.addElement('cbc:ID').addText(value.deliveryTypeCode)
+  const element = parent.addElement(...qname('cac:DeliveryTerms'))
+  element.addElement(...qname('cbc:ID')).addText(value.deliveryTypeCode)
   if (value.locationName !== undefined)
-    element.addElement('cac:DeliveryLocation').addElement('cbc:Name').addText(value.locationName)
+    element.addElement(...qname('cac:DeliveryLocation')).addElement(...qname('cbc:Name')).addText(value.locationName)
 }
 
 // One `cac:PaymentMeans` per credit transfer (UBL has one `cac:PayeeFinancialAccount` per payment means), one
@@ -642,8 +642,8 @@ function paymentMeans(ctx: BuildContext, root: XmlElement, invoice: Invoice, cre
   const transfers: (CreditTransfer | undefined)[] = instructions.creditTransfers.length > 0 ? instructions.creditTransfers : [undefined]
   transfers.forEach((transfer, index) => {
     const first = index === 0
-    const element = root.addElement('cac:PaymentMeans')
-    const code = element.addElement('cbc:PaymentMeansCode')
+    const element = root.addElement(...qname('cac:PaymentMeans'))
+    const code = element.addElement(...qname('cbc:PaymentMeansCode'))
     code.addText(instructions.paymentMeansTypeCode)
     if (first && instructions.paymentMeansText !== undefined)
       code.setAttr('name', instructions.paymentMeansText)
@@ -653,50 +653,50 @@ function paymentMeans(ctx: BuildContext, root: XmlElement, invoice: Invoice, cre
     // Reached only by the reader's difference: the writer refuses BG-18 before building (CG-61). Without
     // BT-87-1 the written `cac:CardAccount` lacks its mandatory `cbc:NetworkID`, which `dropped` then reports.
     if (first && instructions.card) {
-      const card = element.addElement('cac:CardAccount')
+      const card = element.addElement(...qname('cac:CardAccount'))
       text(card, 'cbc:PrimaryAccountNumberID', instructions.card.primaryAccountNumber)
       text(card, 'cbc:HolderName', instructions.card.holderName)
     }
     if (transfer) {
-      const account = element.addElement('cac:PayeeFinancialAccount')
+      const account = element.addElement(...qname('cac:PayeeFinancialAccount'))
       // UBL has one account `cbc:ID`: BT-84, else the national account number BT-84-0 (EN 16931 BT-84 is any
       // account identifier; CII alone splits IBANID / ProprietaryID). Both set is refused (CG-64).
       text(account, 'cbc:ID', transfer.paymentAccountIdentifier ?? transfer.nationalAccountNumber)
       text(account, 'cbc:Name', transfer.paymentAccountName)
       if (transfer.paymentServiceProviderIdentifier !== undefined)
-        account.addElement('cac:FinancialInstitutionBranch').addElement('cbc:ID').addText(transfer.paymentServiceProviderIdentifier)
+        account.addElement(...qname('cac:FinancialInstitutionBranch')).addElement(...qname('cbc:ID')).addText(transfer.paymentServiceProviderIdentifier)
     }
     const debit = instructions.directDebit
     if (first && (debit?.mandateReferenceIdentifier !== undefined || debit?.debitedAccountIdentifier !== undefined || invoice.payer)) {
-      const mandate = element.addElement('cac:PaymentMandate')
+      const mandate = element.addElement(...qname('cac:PaymentMandate'))
       text(mandate, 'cbc:ID', debit?.mandateReferenceIdentifier)
       const payer = extraParty(invoice.payer)
       if (payer)
-        party(mandate.addElement('cac:PayerParty'), payer)
+        party(mandate.addElement(...qname('cac:PayerParty')), payer)
       if (debit?.debitedAccountIdentifier !== undefined)
-        mandate.addElement('cac:PayerFinancialAccount').addElement('cbc:ID').addText(debit.debitedAccountIdentifier)
+        mandate.addElement(...qname('cac:PayerFinancialAccount')).addElement(...qname('cbc:ID')).addText(debit.debitedAccountIdentifier)
     }
   })
 }
 
 function taxCategory(ctx: BuildContext, parent: XmlElement, name: string, code: string | undefined, rate: number | undefined, exemptionCode: string | undefined, exemption: string | undefined, rateTerm: string): void {
-  const element = parent.addElement(name)
+  const element = parent.addElement(...qname(name))
   text(element, 'cbc:ID', code)
   decimal(ctx, element, 'cbc:Percent', rate, rateTerm)
   text(element, 'cbc:TaxExemptionReasonCode', exemptionCode)
   text(element, 'cbc:TaxExemptionReason', exemption)
-  element.addElement('cac:TaxScheme').addElement('cbc:ID').addText(VAT_SCHEME)
+  element.addElement(...qname('cac:TaxScheme')).addElement(...qname('cbc:ID')).addText(VAT_SCHEME)
 }
 
 function documentAllowanceCharge(ctx: BuildContext, root: XmlElement, entry: DocumentAllowance | DocumentCharge, charge: boolean, currency: string): void {
   const ids = charge
     ? { amount: 'BT-99', base: 'BT-100', percentage: 'BT-101', rate: 'BT-103', term: 'document level charge' }
     : { amount: 'BT-92', base: 'BT-93', percentage: 'BT-94', rate: 'BT-96', term: 'document level allowance' }
-  const element = root.addElement('cac:AllowanceCharge')
-  element.addElement('cbc:ChargeIndicator').addText(String(charge))
+  const element = root.addElement(...qname('cac:AllowanceCharge'))
+  element.addElement(...qname('cbc:ChargeIndicator')).addText(String(charge))
   const nonVatTaxCode = charge ? (entry as DocumentCharge).nonVatTaxCode : undefined
   if (nonVatTaxCode !== undefined) {
-    const code = element.addElement('cbc:AllowanceChargeReasonCode')
+    const code = element.addElement(...qname('cbc:AllowanceChargeReasonCode'))
     code.addText(nonVatTaxCode)
     code.setAttr('listID', NON_VAT_TAX_LIST)
   }
@@ -714,32 +714,32 @@ function taxExchangeRate(ctx: BuildContext, root: XmlElement, invoice: Invoice):
   const exchange = invoice.vatCurrencyExchange
   if (!exchange)
     return
-  const element = root.addElement('cac:TaxExchangeRate')
-  element.addElement('cbc:SourceCurrencyCode').addText(exchange.sourceCurrencyCode)
-  element.addElement('cbc:TargetCurrencyCode').addText(exchange.targetCurrencyCode)
+  const element = root.addElement(...qname('cac:TaxExchangeRate'))
+  element.addElement(...qname('cbc:SourceCurrencyCode')).addText(exchange.sourceCurrencyCode)
+  element.addElement(...qname('cbc:TargetCurrencyCode')).addText(exchange.targetCurrencyCode)
   decimal(ctx, element, 'cbc:CalculationRate', exchange.exchangeRate, 'BT-167 (VAT currency exchange rate)')
   date(ctx, element, 'cbc:Date', exchange.exchangeRateDate, 'EXT-FR-FE-192 (exchange rate date)')
 }
 
 function taxTotals(ctx: BuildContext, root: XmlElement, invoice: Invoice): void {
   const currency = invoice.currencyCode
-  const total = root.addElement('cac:TaxTotal')
+  const total = root.addElement(...qname('cac:TaxTotal'))
   amount(ctx, total, 'cbc:TaxAmount', invoice.totals.invoiceTotalVatAmount, currency, 'BT-110 (invoice total VAT amount)')
   for (const breakdown of invoice.vatBreakdown) {
-    const subtotal = total.addElement('cac:TaxSubtotal')
+    const subtotal = total.addElement(...qname('cac:TaxSubtotal'))
     amount(ctx, subtotal, 'cbc:TaxableAmount', breakdown.categoryTaxableAmount, currency, 'BT-116 (VAT category taxable amount)')
     amount(ctx, subtotal, 'cbc:TaxAmount', breakdown.categoryTaxAmount, currency, 'BT-117 (VAT category tax amount)')
     taxCategory(ctx, subtotal, 'cac:TaxCategory', breakdown.categoryCode, breakdown.categoryRate, breakdown.exemptionReasonCode, breakdown.exemptionReasonText, 'BT-119 (VAT category rate)')
   }
   // BT-111 is a second `cac:TaxTotal` in the VAT accounting currency, without breakdown (annex A BT-111-00).
   if (invoice.totals.invoiceTotalVatAmountInAccountingCurrency !== undefined) {
-    amount(ctx, root.addElement('cac:TaxTotal'), 'cbc:TaxAmount', invoice.totals.invoiceTotalVatAmountInAccountingCurrency, invoice.vatAccountingCurrencyCode!, 'BT-111 (invoice total VAT amount in accounting currency)')
+    amount(ctx, root.addElement(...qname('cac:TaxTotal')), 'cbc:TaxAmount', invoice.totals.invoiceTotalVatAmountInAccountingCurrency, invoice.vatAccountingCurrencyCode!, 'BT-111 (invoice total VAT amount in accounting currency)')
   }
 }
 
 function monetaryTotal(ctx: BuildContext, root: XmlElement, invoice: Invoice): void {
   const { totals, currencyCode: currency } = invoice
-  const element = root.addElement('cac:LegalMonetaryTotal')
+  const element = root.addElement(...qname('cac:LegalMonetaryTotal'))
   amount(ctx, element, 'cbc:LineExtensionAmount', totals.sumOfInvoiceLineNetAmount, currency, 'BT-106 (sum of invoice line net amount)')
   amount(ctx, element, 'cbc:TaxExclusiveAmount', totals.invoiceTotalAmountWithoutVat, currency, 'BT-109 (invoice total amount without VAT)')
   amount(ctx, element, 'cbc:TaxInclusiveAmount', totals.invoiceTotalAmountWithVat, currency, 'BT-112 (invoice total amount with VAT)')
@@ -758,11 +758,11 @@ function lineAllowanceCharge(ctx: BuildContext, parent: XmlElement, entry: LineA
   const ids = charge
     ? { amount: 'BT-141', base: 'BT-142', percentage: 'BT-143', term: 'invoice line charge' }
     : { amount: 'BT-136', base: 'BT-137', percentage: 'BT-138', term: 'invoice line allowance' }
-  const element = parent.addElement('cac:AllowanceCharge')
-  element.addElement('cbc:ChargeIndicator').addText(String(charge))
+  const element = parent.addElement(...qname('cac:AllowanceCharge'))
+  element.addElement(...qname('cbc:ChargeIndicator')).addText(String(charge))
   const nonVatTaxCode = charge ? (entry as LineCharge).nonVatTaxCode : undefined
   if (nonVatTaxCode !== undefined) {
-    const code = element.addElement('cbc:AllowanceChargeReasonCode')
+    const code = element.addElement(...qname('cbc:AllowanceChargeReasonCode'))
     code.addText(nonVatTaxCode)
     code.setAttr('listID', NON_VAT_TAX_LIST)
   }
@@ -777,9 +777,9 @@ function lineAllowanceCharge(ctx: BuildContext, parent: XmlElement, entry: LineA
 
 function lineTaxTotals(ctx: BuildContext, parent: XmlElement, line: InvoiceLine, invoice: Invoice): void {
   if (line.vatAmount !== undefined)
-    amount(ctx, parent.addElement('cac:TaxTotal'), 'cbc:TaxAmount', line.vatAmount, invoice.currencyCode, 'EXT-FR-FE-181 (line total VAT amount)')
+    amount(ctx, parent.addElement(...qname('cac:TaxTotal')), 'cbc:TaxAmount', line.vatAmount, invoice.currencyCode, 'EXT-FR-FE-181 (line total VAT amount)')
   if (line.vatAmountInAccountingCurrency !== undefined)
-    amount(ctx, parent.addElement('cac:TaxTotal'), 'cbc:TaxAmount', line.vatAmountInAccountingCurrency, invoice.vatAccountingCurrencyCode!, 'EXT-FR-FE-182 (line total VAT amount in accounting currency)')
+    amount(ctx, parent.addElement(...qname('cac:TaxTotal')), 'cbc:TaxAmount', line.vatAmountInAccountingCurrency, invoice.vatAccountingCurrencyCode!, 'EXT-FR-FE-182 (line total VAT amount in accounting currency)')
 }
 
 function lineAllowancesCharges(ctx: BuildContext, parent: XmlElement, line: InvoiceLine, currency: string): void {
@@ -791,20 +791,20 @@ function lineAllowancesCharges(ctx: BuildContext, parent: XmlElement, line: Invo
 
 function item(ctx: BuildContext, parent: XmlElement, line: InvoiceLine): void {
   const value = line.item
-  const element = parent.addElement('cac:Item')
+  const element = parent.addElement(...qname('cac:Item'))
   text(element, 'cbc:Description', value.description)
   quantity(ctx, element, 'cbc:PackQuantity', line.unitsInParentLine, line.unitsInParentLineUnitCode, 'EXT-FR-FE-191 (number of units in a parent line unit)')
-  element.addElement('cbc:Name').addText(value.name)
+  element.addElement(...qname('cbc:Name')).addText(value.name)
   if (value.buyersIdentifier !== undefined)
-    element.addElement('cac:BuyersItemIdentification').addElement('cbc:ID').addText(value.buyersIdentifier)
+    element.addElement(...qname('cac:BuyersItemIdentification')).addElement(...qname('cbc:ID')).addText(value.buyersIdentifier)
   if (value.sellersIdentifier !== undefined)
-    element.addElement('cac:SellersItemIdentification').addElement('cbc:ID').addText(value.sellersIdentifier)
+    element.addElement(...qname('cac:SellersItemIdentification')).addElement(...qname('cbc:ID')).addText(value.sellersIdentifier)
   if (value.standardIdentifier !== undefined)
-    identifier(element.addElement('cac:StandardItemIdentification'), 'cbc:ID', value.standardIdentifier)
+    identifier(element.addElement(...qname('cac:StandardItemIdentification')), 'cbc:ID', value.standardIdentifier)
   if (value.countryOfOrigin !== undefined)
-    element.addElement('cac:OriginCountry').addElement('cbc:IdentificationCode').addText(value.countryOfOrigin)
+    element.addElement(...qname('cac:OriginCountry')).addElement(...qname('cbc:IdentificationCode')).addText(value.countryOfOrigin)
   for (const classification of value.classifications) {
-    const code = element.addElement('cac:CommodityClassification').addElement('cbc:ItemClassificationCode')
+    const code = element.addElement(...qname('cac:CommodityClassification')).addElement(...qname('cbc:ItemClassificationCode'))
     code.addText(classification.code)
     code.setAttr('listID', classification.listId)
     if (classification.listVersionId !== undefined)
@@ -813,15 +813,15 @@ function item(ctx: BuildContext, parent: XmlElement, line: InvoiceLine): void {
   if (line.vat)
     taxCategory(ctx, element, 'cac:ClassifiedTaxCategory', line.vat.categoryCode, line.vat.rate, line.vat.exemptionReasonCode, line.vat.exemptionReason, 'BT-152 (invoiced item VAT rate)')
   for (const attribute of value.attributes) {
-    const property = element.addElement('cac:AdditionalItemProperty')
-    property.addElement('cbc:Name').addText(attribute.name)
+    const property = element.addElement(...qname('cac:AdditionalItemProperty'))
+    property.addElement(...qname('cbc:Name')).addText(attribute.name)
     text(property, 'cbc:NameCode', attribute.typeCode)
     text(property, 'cbc:Value', attribute.value)
     quantity(ctx, property, 'cbc:ValueQuantity', attribute.valueQuantity, attribute.valueQuantityUnitCode, 'EXT-FR-FE-160 (item attribute value quantity)')
   }
   const seller = line.seller
   if (seller) {
-    party(element.addElement('cac:ManufacturerParty'), {
+    party(element.addElement(...qname('cac:ManufacturerParty')), {
       endpoint: seller.electronicAddress,
       identifiers: seller.identifiers,
       tradingName: seller.tradingName,
@@ -838,15 +838,15 @@ function price(ctx: BuildContext, parent: XmlElement, line: InvoiceLine, currenc
   const value = line.price
   if (!value)
     return
-  const element = parent.addElement('cac:Price')
+  const element = parent.addElement(...qname('cac:Price'))
   unitPrice(ctx, element, 'cbc:PriceAmount', value.netPrice, currency, 'BT-146 (item net price)')
   quantity(ctx, element, 'cbc:BaseQuantity', value.priceBaseQuantity, value.priceBaseQuantityUnitCode, 'BT-149 (item price base quantity)')
   // BT-148 sits in the price allowance, whose amount BT-147 is mandatory: a gross price without discount
   // is written with a zero discount, as annex B does (CG-62). A discount without gross price has no
   // `cbc:BaseAmount` (optional in UBL, annex A BT-148 `0..1`).
   if (value.grossPrice !== undefined || value.priceDiscount !== undefined) {
-    const discount = element.addElement('cac:AllowanceCharge')
-    discount.addElement('cbc:ChargeIndicator').addText('false')
+    const discount = element.addElement(...qname('cac:AllowanceCharge'))
+    discount.addElement(...qname('cbc:ChargeIndicator')).addText('false')
     text(discount, 'cbc:AllowanceChargeReasonCode', value.priceDiscountReasonCode)
     text(discount, 'cbc:AllowanceChargeReason', value.priceDiscountReason)
     unitPrice(ctx, discount, 'cbc:Amount', value.priceDiscount ?? 0, currency, 'BT-147 (item price discount)')
@@ -857,56 +857,56 @@ function price(ctx: BuildContext, parent: XmlElement, line: InvoiceLine, currenc
 
 function lineReferences(ctx: BuildContext, element: XmlElement, line: InvoiceLine, invoice: Invoice): void {
   if (line.purchaseOrderLineReference !== undefined) {
-    const reference = element.addElement('cac:OrderLineReference')
-    reference.addElement('cbc:LineID').addText(line.purchaseOrderLineReference)
+    const reference = element.addElement(...qname('cac:OrderLineReference'))
+    reference.addElement(...qname('cbc:LineID')).addText(line.purchaseOrderLineReference)
     text(reference, 'cbc:SalesOrderLineID', line.sellerOrderReference?.orderLineReference)
     if (line.purchaseOrderReference !== undefined) {
-      const order = reference.addElement('cac:OrderReference')
-      order.addElement('cbc:ID').addText(line.purchaseOrderReference)
+      const order = reference.addElement(...qname('cac:OrderReference'))
+      order.addElement(...qname('cbc:ID')).addText(line.purchaseOrderReference)
       text(order, 'cbc:SalesOrderID', line.sellerOrderReference?.orderReference)
       date(ctx, order, 'cbc:IssueDate', line.purchaseOrderDate, 'EXT-FR-FE-200 (purchase order date of the line)')
     }
   }
   const despatch = line.despatchAdviceReference
   if (despatch) {
-    const reference = element.addElement('cac:DespatchLineReference')
-    reference.addElement('cbc:LineID').addText(despatch.lineReference ?? '')
+    const reference = element.addElement(...qname('cac:DespatchLineReference'))
+    reference.addElement(...qname('cbc:LineID')).addText(despatch.lineReference ?? '')
     if (despatch.reference !== undefined) {
-      const document = reference.addElement('cac:DocumentReference')
-      document.addElement('cbc:ID').addText(despatch.reference)
+      const document = reference.addElement(...qname('cac:DocumentReference'))
+      document.addElement(...qname('cbc:ID')).addText(despatch.reference)
       date(ctx, document, 'cbc:IssueDate', despatch.issueDate, 'EXT-FR-FE-201 (despatch advice issue date of the line)')
     }
   }
   const receipt = line.receivingAdviceReference
   if (receipt) {
-    const reference = element.addElement('cac:ReceiptLineReference')
-    reference.addElement('cbc:LineID').addText(receipt.lineReference ?? '')
+    const reference = element.addElement(...qname('cac:ReceiptLineReference'))
+    reference.addElement(...qname('cbc:LineID')).addText(receipt.lineReference ?? '')
     if (receipt.reference !== undefined)
-      reference.addElement('cac:DocumentReference').addElement('cbc:ID').addText(receipt.reference)
+      reference.addElement(...qname('cac:DocumentReference')).addElement(...qname('cbc:ID')).addText(receipt.reference)
   }
   for (const preceding of line.precedingInvoiceReferences) {
-    const billing = element.addElement('cac:BillingReference')
-    const document = billing.addElement('cac:InvoiceDocumentReference')
-    document.addElement('cbc:ID').addText(preceding.reference ?? '')
+    const billing = element.addElement(...qname('cac:BillingReference'))
+    const document = billing.addElement(...qname('cac:InvoiceDocumentReference'))
+    document.addElement(...qname('cbc:ID')).addText(preceding.reference ?? '')
     date(ctx, document, 'cbc:IssueDate', preceding.issueDate, 'EXT-FR-FE-138 (preceding invoice issue date of the line)')
     text(document, 'cbc:DocumentTypeCode', preceding.typeCode)
     if (preceding.lineReference !== undefined)
-      billing.addElement('cac:BillingReferenceLine').addElement('cbc:ID').addText(preceding.lineReference)
+      billing.addElement(...qname('cac:BillingReferenceLine')).addElement(...qname('cbc:ID')).addText(preceding.lineReference)
   }
   // Annex A / annex B UC10 ... UC13: the line status and the parent line sit in a `cac:BillingReference` whose
   // document is the invoice itself (BT-1), which is how EXTENDED-CTC-FR-UBL finds them.
   if (line.statusReasonCode !== undefined || line.parentLineIdentifier !== undefined) {
-    const billing = element.addElement('cac:BillingReference')
-    const document = billing.addElement('cac:InvoiceDocumentReference')
-    document.addElement('cbc:ID').addText(invoice.number)
+    const billing = element.addElement(...qname('cac:BillingReference'))
+    const document = billing.addElement(...qname('cac:InvoiceDocumentReference'))
+    document.addElement(...qname('cbc:ID')).addText(invoice.number)
     text(document, 'cbc:DocumentStatusCode', line.statusReasonCode)
     if (line.parentLineIdentifier !== undefined)
-      billing.addElement('cac:BillingReferenceLine').addElement('cbc:ID').addText(line.parentLineIdentifier)
+      billing.addElement(...qname('cac:BillingReferenceLine')).addElement(...qname('cbc:ID')).addText(line.parentLineIdentifier)
   }
   for (const object of line.objectIdentifiers) {
-    const document = element.addElement('cac:DocumentReference')
+    const document = element.addElement(...qname('cac:DocumentReference'))
     identifier(document, 'cbc:ID', object)
-    document.addElement('cbc:DocumentTypeCode').addText(INVOICED_OBJECT)
+    document.addElement(...qname('cbc:DocumentTypeCode')).addText(INVOICED_OBJECT)
   }
 }
 
@@ -914,21 +914,21 @@ function lineDelivery(ctx: BuildContext, element: XmlElement, line: InvoiceLine)
   const { deliverTo, actualDelivery } = line
   if (!deliverTo && !actualDelivery)
     return
-  const delivery = element.addElement('cac:Delivery')
+  const delivery = element.addElement(...qname('cac:Delivery'))
   date(ctx, delivery, 'cbc:ActualDeliveryDate', actualDelivery?.actualDeliveryDate, 'EXT-FR-FE-158 (actual delivery date of the line)')
   if (deliverTo && (deliverTo.identifiers.length > 0 || deliverTo.address !== undefined)) {
-    const location = delivery.addElement('cac:DeliveryLocation')
+    const location = delivery.addElement(...qname('cac:DeliveryLocation'))
     identifier(location, 'cbc:ID', deliverTo.identifiers[0])
     address(location, 'cac:Address', deliverTo.address)
   }
   if (deliverTo?.name !== undefined)
-    delivery.addElement('cac:DeliveryParty').addElement('cac:PartyName').addElement('cbc:Name').addText(deliverTo.name)
+    delivery.addElement(...qname('cac:DeliveryParty')).addElement(...qname('cac:PartyName')).addElement(...qname('cbc:Name')).addText(deliverTo.name)
 }
 
 function invoiceLine(ctx: BuildContext, root: XmlElement, line: InvoiceLine, invoice: Invoice, creditNote: boolean): void {
   const currency = invoice.currencyCode
-  const element = root.addElement(creditNote ? 'cac:CreditNoteLine' : 'cac:InvoiceLine')
-  element.addElement('cbc:ID').addText(line.identifier)
+  const element = root.addElement(...qname(creditNote ? 'cac:CreditNoteLine' : 'cac:InvoiceLine'))
+  element.addElement(...qname('cbc:ID')).addText(line.identifier)
   for (const lineNote of line.notes)
     note(element, lineNote.subjectCode, lineNote.note)
   quantity(ctx, element, creditNote ? 'cbc:CreditedQuantity' : 'cbc:InvoicedQuantity', line.invoicedQuantity, line.invoicedQuantityUnitCode, 'BT-129 (invoiced quantity)')
@@ -956,38 +956,38 @@ function invoiceLine(ctx: BuildContext, root: XmlElement, line: InvoiceLine, inv
 // ---------------------------------------------------------------------------
 
 function header(ctx: BuildContext, root: XmlElement, invoice: Invoice, level: UblLevel, creditNote: boolean): void {
-  root.addElement('cbc:UBLVersionID').addText('2.1')
+  root.addElement(...qname('cbc:UBLVersionID')).addText('2.1')
   // The checked writer accepts only the level's id (or none); the reader's build keeps what the model holds.
-  root.addElement('cbc:CustomizationID').addText(invoice.specificationIdentifier || CUSTOMIZATION_IDS[level])
+  root.addElement(...qname('cbc:CustomizationID')).addText(invoice.specificationIdentifier || CUSTOMIZATION_IDS[level])
   text(root, 'cbc:ProfileID', invoice.businessProcessType)
-  root.addElement('cbc:ID').addText(invoice.number)
+  root.addElement(...qname('cbc:ID')).addText(invoice.number)
   date(ctx, root, 'cbc:IssueDate', invoice.issueDate, 'BT-2 (invoice issue date)')
   if (creditNote) {
     date(ctx, root, 'cbc:TaxPointDate', invoice.valueAddedTaxPointDate, 'BT-7 (value added tax point date)')
-    root.addElement('cbc:CreditNoteTypeCode').addText(invoice.typeCode)
+    root.addElement(...qname('cbc:CreditNoteTypeCode')).addText(invoice.typeCode)
   }
   else {
     date(ctx, root, 'cbc:DueDate', invoice.paymentDueDate, 'BT-9 (payment due date)')
-    root.addElement('cbc:InvoiceTypeCode').addText(invoice.typeCode)
+    root.addElement(...qname('cbc:InvoiceTypeCode')).addText(invoice.typeCode)
   }
   for (const invoiceNote of invoice.notes)
     note(root, invoiceNote.subjectCode, invoiceNote.note)
   if (!creditNote)
     date(ctx, root, 'cbc:TaxPointDate', invoice.valueAddedTaxPointDate, 'BT-7 (value added tax point date)')
-  root.addElement('cbc:DocumentCurrencyCode').addText(invoice.currencyCode)
+  root.addElement(...qname('cbc:DocumentCurrencyCode')).addText(invoice.currencyCode)
   text(root, 'cbc:TaxCurrencyCode', invoice.vatAccountingCurrencyCode)
   text(root, 'cbc:AccountingCost', invoice.buyerAccountingReference)
   text(root, 'cbc:BuyerReference', invoice.buyerReference)
   period(ctx, root, invoice.invoicingPeriod?.startDate, invoice.invoicingPeriod?.endDate, invoice.valueAddedTaxPointDateCode, ['BT-73 (invoicing period start date)', 'BT-74 (invoicing period end date)'])
   if (invoice.purchaseOrderReference !== undefined) {
-    const order = root.addElement('cac:OrderReference')
-    order.addElement('cbc:ID').addText(invoice.purchaseOrderReference)
+    const order = root.addElement(...qname('cac:OrderReference'))
+    order.addElement(...qname('cbc:ID')).addText(invoice.purchaseOrderReference)
     text(order, 'cbc:SalesOrderID', invoice.salesOrderReference)
     date(ctx, order, 'cbc:IssueDate', invoice.orderDate, 'EXT-FR-FE-197 (order date)')
   }
   for (const preceding of invoice.precedingInvoiceReferences) {
-    const document = root.addElement('cac:BillingReference').addElement('cac:InvoiceDocumentReference')
-    document.addElement('cbc:ID').addText(preceding.reference)
+    const document = root.addElement(...qname('cac:BillingReference')).addElement(...qname('cac:InvoiceDocumentReference'))
+    document.addElement(...qname('cbc:ID')).addText(preceding.reference)
     date(ctx, document, 'cbc:IssueDate', preceding.issueDate, 'BT-26 (preceding invoice issue date)')
     text(document, 'cbc:DocumentTypeCode', preceding.typeCode)
   }
@@ -1001,7 +1001,7 @@ function header(ctx: BuildContext, root: XmlElement, invoice: Invoice, level: Ub
   if (creditNote)
     documentReference(ctx, root, 'cac:OriginatorDocumentReference', invoice.tenderOrLotReference, undefined, '')
   else if (invoice.projectReference !== undefined)
-    root.addElement('cac:ProjectReference').addElement('cbc:ID').addText(invoice.projectReference)
+    root.addElement(...qname('cac:ProjectReference')).addElement(...qname('cbc:ID')).addText(invoice.projectReference)
 }
 
 /** What `dropUblUncarried()` returns. */
@@ -1120,7 +1120,7 @@ export function dropUblUncarried(invoice: Invoice, options: { level: UblLevel })
  * - BT-9 of a credit note, or the payer, has no `cac:PaymentMeans` to sit in;
  * - BT-24 is set to anything but the `cbc:CustomizationID` of `level`;
  * - EXT-FR-FE-180 is set without a line period (BR-CO-20), or, at `extended-ctc-fr`, a line whose EXT-FR-FE-163 is
- *   `DETAIL` or unset lacks BG-29, BT-129 or BG-30 (BR-26, BR-FREXT-22, BR-FREXT-CO-04 / UBL-FREXT-SR-48);
+ *   `DETAIL` or unset lacks BG-29, BT-129, BG-30 or BT-151 (BR-26, BR-FREXT-22, BR-FREXT-CO-04 / UBL-FREXT-SR-48);
  * - a note would read back differently from `#subject#text` (`UBL_NOTE_PATTERN`; line notes at `extended-ctc-fr`
  *   only, CG-70).
  */
@@ -1167,9 +1167,11 @@ export async function invoiceToUbl(invoice: Invoice, options: InvoiceToUblOption
  */
 export function buildUbl(full: Invoice, level: UblLevel, root: UBL_ROOT, options: { lenient?: boolean } = {}): XmlDocument {
   const built = build({ lenient: options.lenient === true }, full, level, root)
-  // `addElement('cbc:X')` names the element `cbc:X` in the root's namespace in memory; only the serialisation
-  // carries the UBL namespaces. Re-parsed (default options) so the returned nodes are in their real namespaces
-  // and namespace-bound XPath works on them.
+  // `qname()` gives every element its UBL namespace in memory, but an unprefixed attribute still lands in the root's
+  // default namespace: libxml2-wasm 0.7.2 resolves a missing prefix to the default namespace in scope and offers no way
+  // to create an attribute in no namespace (`setAttr(name, value, '')` passes a null prefix too). Re-parsed (default
+  // options) so the attributes carry none, as XML Namespaces §6.2 says; the text is unchanged. This keeps libxml2's
+  // 10 MB text node limit on what `invoiceToUbl()` writes (CG-76), which `invoiceToXml()` no longer has.
   let serialised: string
   try {
     serialised = built.toString()
@@ -1191,7 +1193,7 @@ function build(ctx: BuildContext, full: Invoice, level: UblLevel, root: UBL_ROOT
     delivery(ctx, element, full)
     paymentMeans(ctx, element, full, creditNote)
     if (full.paymentTerms !== undefined)
-      element.addElement('cac:PaymentTerms').addElement('cbc:Note').addText(full.paymentTerms)
+      element.addElement(...qname('cac:PaymentTerms')).addElement(...qname('cbc:Note')).addText(full.paymentTerms)
     if (creditNote)
       taxExchangeRate(ctx, element, full)
     for (const allowance of full.allowances)

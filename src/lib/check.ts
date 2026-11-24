@@ -6,7 +6,7 @@ import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
 import { assertFrCtcApplicable, validateFrCtc } from './fr-ctc'
 import { resolveXml } from './resolve'
 import { validateSchematron } from './schematron'
-import { assertUblLevelMatches, declaresExtendedCtcFr, getFlavor, getLevel, isUblDocument } from './xml'
+import { assertUblLevelMatches, declaresExtendedCtcFr, doctypeMessage, getFlavor, getLevel, inputHasDoctype, isUblDocument } from './xml'
 import { getXsd } from './xsd'
 
 // XPath dynamic errors caused by the document's values (XPath and XQuery Functions and Operators 3.1
@@ -48,7 +48,32 @@ export async function check(options: {
   frCtcErrors?: SchematronError[]
   frCtcWarnings?: SchematronError[]
 }> {
+  return checkFrom(options, options.xml)
+}
+
+/**
+ * `check()` on `options.xml`, judging a DOCTYPE from `source`: the text that document was parsed from, whose raw
+ * prolog decides (`inputHasDoctype()`), or the same `XmlDocument`, walked fail-closed. For `generate()` and
+ * `extract()`, which parse the text themselves. Not exported from the package.
+ */
+export async function checkFrom(options: Parameters<typeof check>[0], source: string | Uint8Array | XmlDocument): ReturnType<typeof check> {
   const xml = await resolveXml(options.xml)
+
+  // Reported, not thrown, before anything reads the document (was CG-73): libxml2 keeps an internal entity unexpanded
+  // for the XSD, the Schematron runs on the serialisation, and the readers refuse it, so no step would check what
+  // another sees. No invoice, order or CDAR message uses a DOCTYPE. Flavor and level are read best effort: an entity
+  // may hide BT-24.
+  let doctype: boolean
+  try {
+    doctype = inputHasDoctype(source, xml)
+  }
+  catch (error) {
+    if (!(options.xml instanceof XmlDocument))
+      xml.dispose()
+    throw error
+  }
+  if (doctype)
+    return doctypeResult(xml, options, doctypeMessage(source, xml))
 
   let flavor: string
   let level: string
@@ -163,5 +188,39 @@ export async function check(options: {
   }
 
   result.valid = valid
+  return result
+}
+
+function bestEffort(read: () => string): string {
+  try {
+    return read()
+  }
+  catch {
+    return ''
+  }
+}
+
+// `check()`'s result for a document with a DOCTYPE: invalid, with one error naming the cause, and the requested
+// business-rule stages reported as not run. Disposes only a document `check()` parsed.
+function doctypeResult(xml: XmlDocument, options: Parameters<typeof check>[0], message: string): Awaited<ReturnType<typeof check>> {
+  const result: Awaited<ReturnType<typeof check>> = {
+    valid: false,
+    errors: [{ message }],
+    flavor: options.flavor || bestEffort(() => getFlavor(xml)),
+    level: options.level || bestEffort(() => getLevel(xml)),
+  }
+  if (!(options.xml instanceof XmlDocument))
+    xml.dispose()
+  const notRun = (stage: string): SchematronError[] => [{ message: `${stage} was not run: the document has a DOCTYPE`, severity: 'error' }]
+  if (options.schematron) {
+    result.schematronValid = false
+    result.schematronErrors = notRun('Schematron')
+    result.schematronWarnings = []
+  }
+  if (options.frCtc) {
+    result.frCtcValid = false
+    result.frCtcErrors = notRun('BR-FR')
+    result.frCtcWarnings = []
+  }
   return result
 }

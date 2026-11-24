@@ -1,7 +1,7 @@
 import type { Invoice } from '@stafyniaksacha/facturx/en16931'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { check, fromCii, invoiceToUbl, ublToInvoice, xmlToInvoice } from '@stafyniaksacha/facturx'
+import { check, invoiceToUbl, ublToInvoice, xmlToInvoice } from '@stafyniaksacha/facturx'
 import { XmlDocument, XmlElement } from 'libxml2-wasm'
 import { describe, expect, it } from 'vitest'
 // Not public: the lenient write-back the reader computes `dropped` with.
@@ -457,18 +457,15 @@ describe('ublToInvoice: DOCTYPE (UBL uses none)', () => {
     }
   })
 
-  // Open, fixed outside this PR (CG-73): the CII parser leaves the entity reference unread and `fromCii()` does not
-  // see it, so BT-10 is lost with nothing in `dropped`. Pinned as today's behaviour.
-  it('cII side (CG-73, open): an internal entity hides BT-10 from xmlToInvoice / fromCii', async () => {
+  // CG-73 (closed): the CII reader refuses the DOCTYPE too, so the entity can no longer hide BT-10 from it.
+  it('cII side (CG-73, closed): xmlToInvoice refuses the internal entity that would hide BT-10', async () => {
     const ram = 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100'
     const cii = (await readFile(resolve(FACTURES, uc1.cii), 'utf8')).replace(/^<\?xml[^>]*\?>\s*/, '')
     expect(cii).toMatch(/<ram:BuyerReference>[^<]*<\/ram:BuyerReference>/)
     const xml = cii
       .replace(/<ram:BuyerReference>[^<]*<\/ram:BuyerReference>/, '&br;')
       .replace('<rsm:CrossIndustryInvoice ', `<!DOCTYPE rsm:CrossIndustryInvoice [<!ENTITY br "<ram:BuyerReference xmlns:ram='${ram}'>BR-X</ram:BuyerReference>">]>\n<rsm:CrossIndustryInvoice `)
-    const { invoice, dropped } = fromCii(await xmlToInvoice(xml))
-    expect(invoice.buyerReference).toBeUndefined()
-    expect(dropped).toEqual([])
+    await expect(xmlToInvoice(xml)).rejects.toThrow(/^xmlToInvoice: the document has a DOCTYPE/)
   })
 })
 

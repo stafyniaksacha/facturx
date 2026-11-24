@@ -41,6 +41,10 @@ call throws. The transform (CII or UBL) is chosen from the document root. The ru
 | `errors` | `SchematronError[]` | Failed rules. `id` is the rule (`BR-FR-05`), `assertId` the assertion (`BR-FR-05_BT-22_PMT`). |
 | `warnings` | `SchematronError[]` | Failed rules flagged `warning`/`information`: none with the vendored rules. |
 
+A document with a DOCTYPE is not run through the rules: the result is `valid: false` with one error, `The document has a
+DOCTYPE …`, and no warnings (for text input the raw prolog decides, so comments and processing instructions before the
+root element are fine). An entity the DOCTYPE declares is never expanded, so the rules would not see what it stands for.
+
 `SchematronError` is described on [`validateSchematron()`](/api/validate-schematron#schematronerror).
 Messages are in French and may quote invoice values: treat them as personal data.
 

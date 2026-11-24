@@ -112,6 +112,71 @@ describe('en 16931 model: lines round trip', () => {
     expect(linesOf(written)[0].specifiedLineTradeSettlement.applicableTradeTax).toEqual([])
   })
 
+  // CG-69 (closed): both extended Schematrons want price, quantity and VAT category on a DETAIL or unset-subtype line
+  // only. Annex B UC12 at each extended level, one assertion per test. Each runs the level Schematron (SaxonJS) once or
+  // twice, which takes several seconds on a loaded machine: 30 s, as for the other Schematron-heavy tests.
+  describe.each([
+    ['extended', 'EXTENDED_FX', 'BR-FXEXT-BR-26'],
+    ['extended-ctc-fr', 'EXTENDED-CTC-FR', 'BR-FREXT-BR-26'],
+  ] as const)('detail lines need BG-29 / BT-129 / BG-30 at %s, the others do not (annex B UC12, CG-69)', (level, tag, rule) => {
+    const SCHEMATRON_TIMEOUT = 30_000
+    const read = async (): Promise<string> => readFile(annexBCii.find(f => f.includes('UC12_') && f.includes(`_${tag}_`))!, 'utf8')
+    const ruleIds = async (xml: string): Promise<string[]> => {
+      const result = await check({ xml, level, schematron: true })
+      expect(result.errors).toEqual([])
+      return (result.schematronErrors ?? []).map(e => e.id ?? e.message)
+    }
+    // Lines 1 (GROUP, no VAT already) and 4 (INFORMATION) without price, quantity or VAT.
+    const unpricedGroupAndInformation = async (source: string) => {
+      const { invoice } = fromCii(await xmlToInvoice(source))
+      for (const i of [0, 3]) {
+        expect(invoice.lines[i].statusReasonCode).toBe(i === 0 ? 'GROUP' : 'INFORMATION')
+        Object.assign(invoice.lines[i], { price: undefined, vat: undefined, invoicedQuantity: undefined, invoicedQuantityUnitCode: undefined })
+      }
+      return invoice
+    }
+
+    it(`the source passes, and ${rule} fires once a detail line's price is removed`, async () => {
+      const source = await read()
+      expect(await ruleIds(source)).toEqual([])
+      // The second NetPriceProductTradePrice is line 2's, a DETAIL line.
+      let n = 0
+      const unpriced = source.replace(/<ram:NetPriceProductTradePrice>[\s\S]*?<\/ram:NetPriceProductTradePrice>/g, m => ++n === 2 ? '' : m)
+      expect(await ruleIds(unpriced)).toContain(rule)
+    }, SCHEMATRON_TIMEOUT)
+
+    it('toCii() refuses the detail line without its price', async () => {
+      const { invoice } = fromCii(await xmlToInvoice(await read()))
+      invoice.lines[1].price = undefined
+      expect(() => toCii(invoice, { level })).toThrow(/^toCii: BG-29 .*"DETAIL" or not set/)
+    })
+
+    it('the GROUP and INFORMATION lines written without price, quantity or VAT pass the Schematron', async () => {
+      const doc = await invoiceToXml(toCii(await unpricedGroupAndInformation(await read()), { level }))
+      try {
+        expect(await ruleIds(doc.toString())).toEqual([])
+      }
+      finally {
+        doc.dispose()
+      }
+    }, SCHEMATRON_TIMEOUT)
+
+    // A blank EXT-FR-FE-163 is written as an empty `LineStatusReasonCode`, which the context does not select either
+    // (neither absent nor `DETAIL`): the shared check lets it through, and the rule agrees.
+    it('a blank subtype is exempt, as in the Schematron context', async () => {
+      const invoice = await unpricedGroupAndInformation(await read())
+      invoice.lines[3].statusReasonCode = ''
+      const blank = await invoiceToXml(toCii(invoice, { level }))
+      try {
+        expect(blank.toString()).toContain('<ram:LineStatusReasonCode></ram:LineStatusReasonCode>')
+        expect(await ruleIds(blank.toString())).not.toContain(rule)
+      }
+      finally {
+        blank.dispose()
+      }
+    }, SCHEMATRON_TIMEOUT)
+  })
+
   it('reads the multi-vendor lines of UC10: line seller, object identifiers, VAT with exemption reason and point date code', async () => {
     const file = annexBCii.find(f => f.includes('UC10_') && f.includes('EXTENDED-CTC-FR'))!
     const { invoice } = fromCii(await xmlToInvoice(await readFile(file)))
@@ -441,9 +506,10 @@ describe('en 16931 model: line terms', () => {
 
   it.each(['extended', 'extended-ctc-fr'] as const)('writes XML that the %s XSD accepts, every line term included', async (level) => {
     expect(await xsdErrors(FULL_LINE(), level)).toEqual([])
-    // The three VAT block shapes of 1.09.2.fixFR04: no block, a block without codes, a coded block.
+    // The three VAT block shapes of 1.09.2.fixFR04: no block, a block without codes, a coded block. Only a line that is
+    // not a detail line may go without the category (CG-69): an INFORMATION line here.
     for (const vat of [undefined, new EN16931.LineVat({ rate: 5 }), new EN16931.LineVat({}), new EN16931.LineVat({ categoryCode: 'S', rate: 5 })])
-      expect(await xsdErrors(MINIMAL_LINE({ vat }), level)).toEqual([])
+      expect(await xsdErrors(MINIMAL_LINE({ vat, statusReasonCode: 'INFORMATION' }), level)).toEqual([])
     // A group line: no price, quantity or VAT block.
     expect(await xsdErrors(MINIMAL_LINE({ price: undefined, vat: undefined, invoicedQuantity: undefined, invoicedQuantityUnitCode: undefined, statusReasonCode: 'GROUP' }), level)).toEqual([])
   })
@@ -511,19 +577,21 @@ describe('en 16931 model: line terms', () => {
     expect(text).toMatch(/BG-26.*BR-CO-20/)
   })
 
+  // On an INFORMATION line: a detail line needs BG-30 with BT-151 at the extended levels (CG-69).
   it('writes a line without VAT block, with an empty block, and with a block without codes, apart', () => {
-    const none = linesOf(ciiOf(MINIMAL_LINE({ vat: undefined })))[0]
+    const info = { statusReasonCode: 'INFORMATION' }
+    const none = linesOf(ciiOf(MINIMAL_LINE({ vat: undefined, ...info })))[0]
     expect(none.specifiedLineTradeSettlement.applicableTradeTax).toEqual([])
-    const noCodes = linesOf(ciiOf(MINIMAL_LINE({ vat: new EN16931.LineVat({ rate: 5 }) })))[0].specifiedLineTradeSettlement.applicableTradeTax
+    const noCodes = linesOf(ciiOf(MINIMAL_LINE({ vat: new EN16931.LineVat({ rate: 5 }), ...info })))[0].specifiedLineTradeSettlement.applicableTradeTax
     expect(noCodes).toHaveLength(1)
     expect(noCodes[0].typeCode).toBeUndefined()
     expect(noCodes[0].categoryCode).toBeUndefined()
     expect(noCodes[0].rateApplicablePercent?.value).toBe(5)
-    const empty = linesOf(ciiOf(MINIMAL_LINE({ vat: new EN16931.LineVat({}) })))[0].specifiedLineTradeSettlement.applicableTradeTax
+    const empty = linesOf(ciiOf(MINIMAL_LINE({ vat: new EN16931.LineVat({}), ...info })))[0].specifiedLineTradeSettlement.applicableTradeTax
     expect(empty).toHaveLength(1)
     // And each reads back as what it was.
     for (const vat of [undefined, new EN16931.LineVat({ rate: 5 }), new EN16931.LineVat({}), new EN16931.LineVat({ categoryCode: 'S', rate: 5 })]) {
-      const line = MINIMAL_LINE({ vat })
+      const line = MINIMAL_LINE({ vat, ...info })
       expect(fromCii(ciiOf(line)).invoice.lines[0].vat).toEqual(vat)
     }
   })
@@ -698,15 +766,37 @@ describe('en 16931 model: line level gates and mandatory terms', () => {
 
   it('makes BG-29, BG-30, BT-129, BT-151 and BT-161 optional at the extended levels (information and sub-lines)', () => {
     const line = MINIMAL_LINE({
+      statusReasonCode: 'GROUP',
       price: undefined,
       vat: undefined,
       invoicedQuantity: undefined,
       invoicedQuantityUnitCode: undefined,
       item: new EN16931.Item({ name: 'N', attributes: [new EN16931.ItemAttribute({ name: 'a', valueQuantity: 2, valueQuantityUnitCode: 'C62', typeCode: 'T' })] }),
     })
-    const invoice = new EN16931.Invoice(base([line, MINIMAL_LINE({ identifier: '2', vat: new EN16931.LineVat({ rate: 10 }) })]))
+    const invoice = new EN16931.Invoice(base([line, MINIMAL_LINE({ identifier: '2', statusReasonCode: 'INFORMATION', vat: new EN16931.LineVat({ rate: 10 }) })]))
     for (const level of ['extended', 'extended-ctc-fr'] as const)
       expect(message(invoice, level)).toBe('')
+  })
+
+  // CG-69 (closed): the line context `AssociatedDocumentLineDocument[not(ram:LineStatusReasonCode) or
+  // ram:LineStatusReasonCode = 'DETAIL']` of both extended Schematrons (BR-FXEXT-BR-22 / -BR-26 / -CO-04 in
+  // FACTUR-X_EXTENDED.xslt, BR-FREXT-BR-22 / -BR-26 / -CO-04 in EXTENDED-CTC-FR-CII.xslt).
+  it.each([
+    ['BG-29', { price: undefined }, 'BR-FXEXT-BR-26', 'BR-FREXT-BR-26'],
+    ['BT-129', { invoicedQuantity: undefined, invoicedQuantityUnitCode: undefined }, 'BR-FXEXT-BR-22', 'BR-FREXT-BR-22'],
+    ['BG-30', { vat: undefined }, 'BR-FXEXT-CO-04', 'BR-FREXT-CO-04'],
+    ['BT-151', { vat: new EN16931.LineVat({ rate: 20 }) }, 'BR-FXEXT-CO-04', 'BR-FREXT-CO-04'],
+  ] as const)('throws on a DETAIL or unset-subtype line without %s at the extended levels (CG-69)', (id, extra, fx, fr) => {
+    for (const statusReasonCode of [undefined, 'DETAIL']) {
+      const invoice = withLine({ ...extra, statusReasonCode })
+      const on = 'is mandatory on a line whose EXT-FR-FE-163 \\(line status reason code\\) is "DETAIL" or not set'
+      expect(message(invoice, 'extended')).toMatch(new RegExp(`^toCii: ${id} \\(.*\\) ${on} \\(${fx}\\)$`))
+      expect(message(invoice, 'extended-ctc-fr')).toMatch(new RegExp(`^toCii: ${id} \\(.*\\) ${on} \\(${fr}\\)$`))
+    }
+    for (const statusReasonCode of ['GROUP', 'INFORMATION']) {
+      expect(message(withLine({ ...extra, statusReasonCode }), 'extended')).toBe('')
+      expect(message(withLine({ ...extra, statusReasonCode }), 'extended-ctc-fr')).toBe('')
+    }
   })
 
   it.each([

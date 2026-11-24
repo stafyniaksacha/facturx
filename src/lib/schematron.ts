@@ -7,7 +7,7 @@ import { gunzipSync } from 'node:zlib'
 import SaxonJS from 'saxon-js'
 import { EXTENDED_CTC_FR_GUIDELINE_ID } from './constants'
 import { resolveXml } from './resolve'
-import { assertUblLevelMatches, declaresExtendedCtcFr, isUblDocument } from './xml'
+import { assertUblLevelMatches, declaresExtendedCtcFr, doctypeMessage, inputHasDoctype, isUblDocument } from './xml'
 
 /**
  * Schematron (business-rule) validation for Factur-X (1.09 FINAL for MINIMUM and
@@ -260,6 +260,11 @@ export async function validateSchematron(options: {
     if (!config) {
       throw new Error(`No ${flavor === 'ubl' ? 'UBL' : 'Factur-X'} Schematron available for level: "${options.level}"`)
     }
+
+    // Reported as an invalid result, as `check()` does (was CG-73): a declared entity would otherwise pass unseen, and
+    // a used one makes the transform abort.
+    if (inputHasDoctype(xml, doc))
+      return { valid: false, errors: [{ message: doctypeMessage(xml, doc), severity: 'error' }], warnings: [] }
 
     if (flavor === 'ubl') {
       // The two UBL transforms are picked by level, but the level is only a CustomizationID (BT-24).
